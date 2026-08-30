@@ -109,3 +109,76 @@ form.card button:disabled {
   flex: 1;
   text-align: center;
 }
+
+.visit-board {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.visit-card {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+}
+
+.visit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.visit-meta {
+  color: #555;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.note-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.note-list li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.note-author {
+  font-weight: 600;
+}
+
+.note-empty {
+  color: #999;
+}
+
+.note-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.note-form input {
+  flex: 1;
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.note-form select {
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.note-form button {
+  padding: 0.4rem 1rem;
+  background: #10603e;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}

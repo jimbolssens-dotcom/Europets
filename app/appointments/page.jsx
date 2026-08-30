@@ -128,6 +128,15 @@ export default function AppointmentsPage() {
     loadAppointments(date);
   }
 
+  async function checkIn(appointmentId) {
+    await fetch('/api/visits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appointment_id: appointmentId }),
+    });
+    loadAppointments(date);
+  }
+
   return (
     <div>
       <h1>Appointments</h1>
@@ -171,6 +180,12 @@ export default function AppointmentsPage() {
                 <td>{a.staff?.full_name || '—'}</td>
                 <td>{a.status}</td>
                 <td>
+                  {a.status === 'booked' && (
+                    <button type="button" onClick={() => checkIn(a.id)}>
+                      Check In
+                    </button>
+                  )}
+                  {a.status === 'checked_in' && <a href="/visits">View Visit</a>}
                   {a.status !== 'cancelled' && a.status !== 'complete' && (
                     <button type="button" onClick={() => cancelAppointment(a.id)}>
                       Cancel
