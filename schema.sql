@@ -124,3 +124,17 @@ create index idx_appointments_room_time on appointments(room_id, start_time);
 create index idx_visits_patient on visits(patient_id);
 create index idx_consult_notes_visit on consult_notes(visit_id);
 create index idx_invoice_line_items_invoice on invoice_line_items(invoice_id);
+
+-- ============ REALTIME ============
+-- The app subscribes to postgres_changes on these tables (patient list,
+-- appointment calendar, active visits board, live consult notes, invoice
+-- line items) — they must be in the supabase_realtime publication for
+-- those subscriptions to receive anything.
+alter publication supabase_realtime add table
+    clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items;
+
+-- ============ ROW LEVEL SECURITY ============
+-- RLS is intentionally left disabled: the app has no staff auth yet and
+-- talks to Supabase directly with the anon key. Enable RLS and add
+-- policies (e.g. scoped to authenticated staff) before this goes anywhere
+-- near production data.

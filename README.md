@@ -1,7 +1,7 @@
 # Europets — Vet Clinic Management System
 
 Next.js + Supabase app for managing a multi-room vet clinic: clients, patients,
-appointments, visits, and invoicing.
+appointments, visits with live consult notes, and invoicing.
 
 ## Stack
 - **Frontend + Backend**: Next.js (App Router) — API routes double as the backend.
@@ -15,20 +15,26 @@ appointments, visits, and invoicing.
    npm install
    ```
 2. Create a free project at [supabase.com](https://supabase.com), then run
-   `schema.sql` in its SQL editor to create the tables.
+   `schema.sql` in its SQL editor. This creates the tables, adds the
+   realtime-changes publication the app relies on, and leaves RLS disabled
+   (see note below).
 3. Copy `.env.local.example` to `.env.local` and fill in your Supabase project
-   URL and anon key.
+   URL and anon key (Project Settings → API).
 4. Run the dev server:
    ```
    npm run dev
    ```
 5. Open [http://localhost:3000](http://localhost:3000).
 
+> **Security note:** RLS is intentionally left disabled — there's no staff
+> auth yet, and the app talks to Supabase directly with the anon key. Add
+> auth and RLS policies before this holds real client data.
+
 ## Build phases
-1. **Clients & Patients database** ← current
-2. Appointments (15-min consult / 10-min surgery increments)
-3. Visits & real-time consult notes (multi-user across rooms)
-4. Goods/services & invoicing (flat + per-kg pricing, 5% UAE VAT)
+1. ✅ Clients & Patients database
+2. ✅ Appointments (15-min consult / 10-min surgery increments, conflict checked)
+3. ✅ Visits & real-time consult notes (multi-user across rooms)
+4. ✅ Goods/services & invoicing (flat + per-kg pricing, 5% UAE VAT)
 5. AI layer — consult/surgery audio → summarized notes
 6. FileMaker migration
 
@@ -36,12 +42,28 @@ appointments, visits, and invoicing.
 ```
 app/
 ├── api/
-│   ├── clients/route.js    → client CRUD endpoints
-│   └── patients/route.js   → patient CRUD endpoints
-├── clients/page.jsx        → client list & create form
-├── patients/page.jsx       → patient list & create form (realtime)
-└── layout.js, page.js      → app shell & home page
+│   ├── clients/route.js               → client CRUD
+│   ├── patients/route.js              → patient CRUD
+│   ├── rooms/route.js                 → room CRUD
+│   ├── staff/route.js                 → staff CRUD
+│   ├── appointments/route.js          → booking (list/create)
+│   ├── appointments/[id]/route.js     → status updates (check-in, cancel, ...)
+│   ├── visits/route.js                → start a visit (from appointment or walk-in)
+│   ├── visits/[id]/route.js           → complete a visit
+│   ├── consult-notes/route.js         → per-visit note thread
+│   ├── goods-services/route.js        → catalog CRUD
+│   ├── goods-services/[id]/route.js   → edit/toggle a catalog item
+│   ├── invoices/route.js              → list/open invoices
+│   ├── invoices/[id]/route.js         → invoice detail, status updates
+│   └── invoices/[id]/line-items/      → add/remove invoice line items
+├── clients/, patients/                → list & create-form UI
+├── appointments/                      → day-view booking calendar
+├── visits/                            → active-visits board with live notes
+├── invoices/, catalog/                → invoicing UI
+├── rooms/, staff/                     → admin list & create-form UI
+└── layout.js, page.js                 → app shell & home page
 lib/
-└── supabaseClient.js       → shared Supabase connection
-schema.sql                  → full database schema
+├── supabaseClient.js                  → shared Supabase connection
+└── invoicing.js                       → subtotal/VAT/total calculation
+schema.sql                             → full database schema
 ```
