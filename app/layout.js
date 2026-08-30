@@ -15,6 +15,8 @@ export default function RootLayout({ children }) {
           <a href="/patients">Patients</a>
           <a href="/appointments">Appointments</a>
           <a href="/visits">Visits</a>
+          <a href="/invoices">Invoices</a>
+          <a href="/catalog">Catalog</a>
           <a href="/rooms">Rooms</a>
           <a href="/staff">Staff</a>
         </nav>
