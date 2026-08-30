@@ -13,6 +13,9 @@ export default function RootLayout({ children }) {
           <a href="/" className="brand">Europets</a>
           <a href="/clients">Clients</a>
           <a href="/patients">Patients</a>
+          <a href="/appointments">Appointments</a>
+          <a href="/rooms">Rooms</a>
+          <a href="/staff">Staff</a>
         </nav>
         <main className="content">{children}</main>
       </body>
