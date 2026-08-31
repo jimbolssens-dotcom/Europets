@@ -16,6 +16,7 @@ const emptyForm = {
   date_of_birth: '',
   sex: '',
   current_weight_kg: '',
+  microchip_number: '',
 };
 
 export default function PatientsPage() {
@@ -65,6 +66,7 @@ export default function PatientsPage() {
       ...form,
       current_weight_kg: form.current_weight_kg ? Number(form.current_weight_kg) : null,
       date_of_birth: form.date_of_birth || null,
+      microchip_number: form.microchip_number || null,
     };
 
     const res = await fetch('/api/patients', {
@@ -97,6 +99,7 @@ export default function PatientsPage() {
             <th>Breed</th>
             <th>Owner</th>
             <th>Weight (kg)</th>
+            <th>Microchip #</th>
           </tr>
         </thead>
         <tbody>
@@ -112,6 +115,7 @@ export default function PatientsPage() {
                 <a href={`/clients/${p.client_id}`}>{p.clients?.full_name}</a>
               </td>
               <td>{p.current_weight_kg}</td>
+              <td>{p.microchip_number || '—'}</td>
             </tr>
           ))}
         </tbody>
@@ -168,6 +172,11 @@ export default function PatientsPage() {
           step="0.01"
           value={form.current_weight_kg}
           onChange={(e) => setForm({ ...form, current_weight_kg: e.target.value })}
+        />
+        <input
+          placeholder="Microchip number (optional)"
+          value={form.microchip_number}
+          onChange={(e) => setForm({ ...form, microchip_number: e.target.value })}
         />
         <button type="submit" disabled={submitting || clients.length === 0}>
           {submitting ? 'Saving...' : 'Add Patient'}

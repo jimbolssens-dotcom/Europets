@@ -32,6 +32,7 @@ create table patients (
     date_of_birth date,
     sex text,                        -- 'male', 'female', 'unknown'
     current_weight_kg numeric(6,2),  -- updated at each visit; used for per-kg pricing
+    microchip_number text unique,    -- ISO microchip number, if chipped
     notes text,
     created_at timestamptz default now()
 );

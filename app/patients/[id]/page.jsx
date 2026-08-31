@@ -81,6 +81,10 @@ export default function PatientDetailPage() {
             <td>{patient.current_weight_kg ?? '—'}</td>
           </tr>
           <tr>
+            <th>Microchip #</th>
+            <td>{patient.microchip_number || '—'}</td>
+          </tr>
+          <tr>
             <th>Notes</th>
             <td>{patient.notes || '—'}</td>
           </tr>

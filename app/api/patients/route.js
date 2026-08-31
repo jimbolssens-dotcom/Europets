@@ -29,7 +29,16 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { client_id, name, species, breed, date_of_birth, sex, current_weight_kg } = body;
+  const {
+    client_id,
+    name,
+    species,
+    breed,
+    date_of_birth,
+    sex,
+    current_weight_kg,
+    microchip_number,
+  } = body;
 
   if (!client_id || !name || !species) {
     return NextResponse.json(
@@ -40,11 +49,28 @@ export async function POST(request) {
 
   const { data, error } = await supabase
     .from('patients')
-    .insert([{ client_id, name, species, breed, date_of_birth, sex, current_weight_kg }])
+    .insert([
+      {
+        client_id,
+        name,
+        species,
+        breed,
+        date_of_birth,
+        sex,
+        current_weight_kg,
+        microchip_number: microchip_number || null,
+      },
+    ])
     .select()
     .single();
 
   if (error) {
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { error: 'that microchip number is already registered to another patient' },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json(data, { status: 201 });
