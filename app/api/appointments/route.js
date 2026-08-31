@@ -1,5 +1,6 @@
 // app/api/appointments/route.js
-// GET  /api/appointments?date=YYYY-MM-DD&room_id=X&vet_id=X  -> list appointments
+// GET  /api/appointments?date=YYYY-MM-DD&room_id=X&vet_id=X  -> list appointments for a day
+// GET  /api/appointments?month=YYYY-MM&room_id=X&vet_id=X    -> list appointments for a month
 // POST /api/appointments                                     -> book a new appointment
 //
 // Booking rules:
@@ -16,6 +17,7 @@ const SURGERY_INCREMENT_MINUTES = 10;
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const date = searchParams.get('date');
+  const month = searchParams.get('month');
   const roomId = searchParams.get('room_id');
   const vetId = searchParams.get('vet_id');
 
@@ -31,6 +33,11 @@ export async function GET(request) {
     const dayEnd = new Date(`${date}T00:00:00.000Z`);
     dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
     query = query.gte('start_time', dayStart.toISOString()).lt('start_time', dayEnd.toISOString());
+  } else if (month) {
+    const monthStart = new Date(`${month}-01T00:00:00.000Z`);
+    const monthEnd = new Date(monthStart);
+    monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1);
+    query = query.gte('start_time', monthStart.toISOString()).lt('start_time', monthEnd.toISOString());
   }
   if (roomId) {
     query = query.eq('room_id', roomId);

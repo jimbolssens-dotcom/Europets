@@ -1,5 +1,5 @@
 // app/appointments/page.jsx
-// Day-view appointment calendar + booking form.
+// Month calendar overview + a clickable time-slot grid for booking.
 // Consult slots are fixed at 15 minutes; surgery slots run in 10-minute
 // increments. Booking a room/vet that's already taken for that time is
 // rejected by the API (409).
@@ -9,13 +9,55 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
+const OPEN_HOUR = 8;
+const CLOSE_HOUR = 19;
+const SLOT_MINUTES = 15;
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function pad(n) {
+  return String(n).padStart(2, '0');
+}
+
+function toISODate(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function toMonthKey(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+
 function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
+  return toISODate(new Date());
 }
 
 function formatTime(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
+
+// build a 6-row Sun-start grid of Date objects covering the given month,
+// padded with the trailing days of the previous/next month
+function buildMonthGrid(year, monthIndex) {
+  const firstOfMonth = new Date(year, monthIndex, 1);
+  const startOffset = firstOfMonth.getDay();
+  const gridStart = new Date(year, monthIndex, 1 - startOffset);
+
+  const days = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+function buildDaySlots() {
+  const slots = [];
+  for (let minutes = OPEN_HOUR * 60; minutes < CLOSE_HOUR * 60; minutes += SLOT_MINUTES) {
+    slots.push(`${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`);
+  }
+  return slots;
+}
+const DAY_SLOTS = buildDaySlots();
 
 const emptyForm = {
   client_id: '',
@@ -23,25 +65,30 @@ const emptyForm = {
   room_id: '',
   vet_id: '',
   type: 'consult',
-  time: '09:00',
+  time: '',
   duration_minutes: '10',
   reason: '',
 };
 
 export default function AppointmentsPage() {
-  const [date, setDate] = useState(todayISODate());
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonthIndex, setViewMonthIndex] = useState(today.getMonth());
+  const [selectedDate, setSelectedDate] = useState(todayISODate());
   const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState([]);
   const [patients, setPatients] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [vets, setVets] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  const loadAppointments = (forDate) =>
-    fetch(`/api/appointments?date=${forDate}`)
+  const monthKey = toMonthKey(new Date(viewYear, viewMonthIndex, 1));
+
+  const loadMonth = () =>
+    fetch(`/api/appointments?month=${monthKey}`)
       .then((res) => res.json())
       .then((data) => {
         setAppointments(Array.isArray(data) ? data : []);
@@ -50,8 +97,9 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     setLoading(true);
-    loadAppointments(date);
-  }, [date]);
+    loadMonth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthKey]);
 
   useEffect(() => {
     Promise.all([
@@ -68,10 +116,8 @@ export default function AppointmentsPage() {
 
     const channel = supabase
       .channel('appointments-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'appointments' },
-        () => loadAppointments(date)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () =>
+        loadMonth()
       )
       .subscribe();
 
@@ -81,17 +127,74 @@ export default function AppointmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const countsByDate = useMemo(() => {
+    const counts = {};
+    for (const a of appointments) {
+      if (a.status === 'cancelled') continue;
+      const d = toISODate(new Date(a.start_time));
+      counts[d] = (counts[d] || 0) + 1;
+    }
+    return counts;
+  }, [appointments]);
+
+  const dayAppointments = useMemo(
+    () => appointments.filter((a) => toISODate(new Date(a.start_time)) === selectedDate),
+    [appointments, selectedDate]
+  );
+
+  // map each slot's "HH:MM" to the appointment occupying it, if any
+  const slotMap = useMemo(() => {
+    const map = {};
+    for (const a of dayAppointments) {
+      if (a.status === 'cancelled') continue;
+      const start = new Date(a.start_time);
+      const startMinutes = start.getHours() * 60 + start.getMinutes();
+      const slotsCovered = Math.ceil(a.duration_minutes / SLOT_MINUTES);
+      for (let i = 0; i < slotsCovered; i++) {
+        const minutes = startMinutes + i * SLOT_MINUTES;
+        const key = `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
+        map[key] = { appointment: a, isStart: i === 0 };
+      }
+    }
+    return map;
+  }, [dayAppointments]);
+
+  const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonthIndex), [viewYear, viewMonthIndex]);
+
   const patientsForClient = useMemo(
     () => patients.filter((p) => p.client_id === form.client_id),
     [patients, form.client_id]
   );
 
+  function goToMonth(delta) {
+    const d = new Date(viewYear, viewMonthIndex + delta, 1);
+    setViewYear(d.getFullYear());
+    setViewMonthIndex(d.getMonth());
+  }
+
+  function selectDay(d) {
+    setSelectedDate(toISODate(d));
+    if (d.getMonth() !== viewMonthIndex || d.getFullYear() !== viewYear) {
+      setViewYear(d.getFullYear());
+      setViewMonthIndex(d.getMonth());
+    }
+  }
+
+  function pickSlot(time) {
+    setForm({ ...form, time });
+    setError(null);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!form.time) {
+      setError('Pick a time slot below first');
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
-    const startTime = new Date(`${date}T${form.time}:00`);
+    const startTime = new Date(`${selectedDate}T${form.time}:00`);
 
     const payload = {
       patient_id: form.patient_id,
@@ -114,7 +217,7 @@ export default function AppointmentsPage() {
       setError(data.error || 'Failed to book appointment');
     } else {
       setForm({ ...emptyForm, client_id: form.client_id });
-      loadAppointments(date);
+      loadMonth();
     }
     setSubmitting(false);
   }
@@ -125,7 +228,7 @@ export default function AppointmentsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'cancelled' }),
     });
-    loadAppointments(date);
+    loadMonth();
   }
 
   async function checkIn(appointmentId) {
@@ -134,73 +237,131 @@ export default function AppointmentsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ appointment_id: appointmentId }),
     });
-    loadAppointments(date);
+    loadMonth();
   }
+
+  const monthLabel = new Date(viewYear, viewMonthIndex, 1).toLocaleDateString([], {
+    month: 'long',
+    year: 'numeric',
+  });
+  const selectedDateLabel = new Date(`${selectedDate}T00:00:00`).toLocaleDateString([], {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
 
   return (
     <div>
       <h1>Appointments</h1>
 
-      <label>
-        Date:{' '}
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-      </label>
+      <div className="cal-header">
+        <button type="button" onClick={() => goToMonth(-1)}>
+          &larr;
+        </button>
+        <strong>{monthLabel}</strong>
+        <button type="button" onClick={() => goToMonth(1)}>
+          &rarr;
+        </button>
+        <button type="button" onClick={() => selectDay(new Date())}>
+          Today
+        </button>
+      </div>
+
+      <div className="cal-grid">
+        {WEEKDAY_LABELS.map((w) => (
+          <div key={w} className="cal-weekday">
+            {w}
+          </div>
+        ))}
+        {monthGrid.map((d) => {
+          const iso = toISODate(d);
+          const inMonth = d.getMonth() === viewMonthIndex;
+          const isSelected = iso === selectedDate;
+          const isToday = iso === todayISODate();
+          const count = countsByDate[iso] || 0;
+          return (
+            <button
+              type="button"
+              key={iso}
+              className={[
+                'cal-day',
+                inMonth ? '' : 'cal-day-outside',
+                isSelected ? 'cal-day-selected' : '',
+                isToday ? 'cal-day-today' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => selectDay(d)}
+            >
+              <span className="cal-day-number">{d.getDate()}</span>
+              {count > 0 && <span className="cal-day-badge">{count}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      <h2>{selectedDateLabel}</h2>
 
       {loading ? (
-        <p>Loading appointments...</p>
+        <p>Loading...</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Type</th>
-              <th>Patient</th>
-              <th>Owner</th>
-              <th>Room</th>
-              <th>Vet</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {appointments.length === 0 && (
-              <tr>
-                <td colSpan={8}>No appointments booked for this day.</td>
-              </tr>
-            )}
-            {appointments.map((a) => (
-              <tr key={a.id}>
-                <td>
-                  {formatTime(a.start_time)} ({a.duration_minutes}m)
-                </td>
-                <td>{a.type}</td>
-                <td>{a.patients?.name}</td>
-                <td>{a.clients?.full_name}</td>
-                <td>{a.rooms?.name}</td>
-                <td>{a.staff?.full_name || '—'}</td>
-                <td>{a.status}</td>
-                <td>
-                  {a.status === 'booked' && (
-                    <button type="button" onClick={() => checkIn(a.id)}>
-                      Check In
-                    </button>
-                  )}
-                  {a.status === 'checked_in' && <a href="/visits">View Visit</a>}
-                  {a.status !== 'cancelled' && a.status !== 'complete' && (
-                    <button type="button" onClick={() => cancelAppointment(a.id)}>
-                      Cancel
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="slot-grid">
+          {DAY_SLOTS.map((time) => {
+            const occupied = slotMap[time];
+            if (occupied && !occupied.isStart) {
+              return <div key={time} className="slot slot-continued" />;
+            }
+            if (occupied) {
+              const a = occupied.appointment;
+              return (
+                <div key={time} className="slot slot-booked">
+                  <div className="slot-time">{time}</div>
+                  <div className="slot-info">
+                    <strong>{a.patients?.name}</strong> ({a.type}, {a.duration_minutes}m)
+                    <br />
+                    {a.rooms?.name} · {a.staff?.full_name || 'unassigned'} · {a.status}
+                  </div>
+                  <div className="slot-actions">
+                    {a.status === 'booked' && (
+                      <button type="button" onClick={() => checkIn(a.id)}>
+                        Check In
+                      </button>
+                    )}
+                    {a.status === 'checked_in' && <a href="/visits">View Visit</a>}
+                    {a.status !== 'cancelled' && a.status !== 'complete' && (
+                      <button type="button" onClick={() => cancelAppointment(a.id)}>
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <button
+                type="button"
+                key={time}
+                className={`slot slot-free ${form.time === time ? 'slot-picked' : ''}`}
+                onClick={() => pickSlot(time)}
+              >
+                <span className="slot-time">{time}</span>
+                <span className="slot-pick-label">
+                  {form.time === time ? 'Selected' : 'Book'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       )}
 
       <form className="card" onSubmit={handleSubmit}>
         <h2>Book Appointment</h2>
         {error && <p className="error">{error}</p>}
+        <p>
+          {form.time
+            ? `Booking ${selectedDateLabel} at ${form.time}`
+            : 'Click a free slot above to pick a time'}
+        </p>
 
         <select
           required
@@ -231,9 +392,7 @@ export default function AppointmentsPage() {
 
         <select
           value={form.type}
-          onChange={(e) =>
-            setForm({ ...form, type: e.target.value, duration_minutes: '10' })
-          }
+          onChange={(e) => setForm({ ...form, type: e.target.value, duration_minutes: '10' })}
         >
           <option value="consult">Consult (15 min)</option>
           <option value="surgery">Surgery (10-min increments)</option>
@@ -250,13 +409,6 @@ export default function AppointmentsPage() {
           />
         )}
 
-        <input
-          type="time"
-          required
-          value={form.time}
-          onChange={(e) => setForm({ ...form, time: e.target.value })}
-        />
-
         <select
           required
           value={form.room_id}
@@ -270,10 +422,7 @@ export default function AppointmentsPage() {
           ))}
         </select>
 
-        <select
-          value={form.vet_id}
-          onChange={(e) => setForm({ ...form, vet_id: e.target.value })}
-        >
+        <select value={form.vet_id} onChange={(e) => setForm({ ...form, vet_id: e.target.value })}>
           <option value="">Select vet (optional)...</option>
           {vets.map((v) => (
             <option key={v.id} value={v.id}>
@@ -288,7 +437,7 @@ export default function AppointmentsPage() {
           onChange={(e) => setForm({ ...form, reason: e.target.value })}
         />
 
-        <button type="submit" disabled={submitting}>
+        <button type="submit" disabled={submitting || !form.time}>
           {submitting ? 'Booking...' : 'Book Appointment'}
         </button>
       </form>
