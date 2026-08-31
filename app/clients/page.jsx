@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
-const emptyForm = { full_name: '', phone: '', phone2: '', phone2_label: '', email: '', address: '' };
+const emptyForm = { full_name: '', phone: '+971', phone2: '', phone2_label: '', email: '', address: '' };
 
 const PHONE2_LABELS = [
   { value: 'husband', label: 'Husband' },
@@ -80,7 +80,7 @@ export default function ClientsPage() {
     setEditingId(client.id);
     setEditForm({
       full_name: client.full_name,
-      phone: client.phone || '',
+      phone: client.phone || '+971',
       phone2: client.phone2 || '',
       phone2_label: client.phone2_label || '',
       email: client.email || '',
