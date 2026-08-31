@@ -69,6 +69,7 @@ export default function ClientsPage() {
       <table>
         <thead>
           <tr>
+            <th>Client #</th>
             <th>Name</th>
             <th>Phone</th>
             <th>Email</th>
@@ -78,7 +79,10 @@ export default function ClientsPage() {
         <tbody>
           {clients.map((c) => (
             <tr key={c.id}>
-              <td>{c.full_name}</td>
+              <td>{c.client_number}</td>
+              <td>
+                <a href={`/clients/${c.id}`}>{c.full_name}</a>
+              </td>
               <td>{c.phone}</td>
               <td>{c.email}</td>
               <td>{c.address}</td>

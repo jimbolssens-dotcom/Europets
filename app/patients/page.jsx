@@ -91,6 +91,7 @@ export default function PatientsPage() {
       <table>
         <thead>
           <tr>
+            <th>Patient #</th>
             <th>Name</th>
             <th>Species</th>
             <th>Breed</th>
@@ -101,10 +102,15 @@ export default function PatientsPage() {
         <tbody>
           {patients.map((p) => (
             <tr key={p.id}>
-              <td>{p.name}</td>
+              <td>{p.patient_number}</td>
+              <td>
+                <a href={`/patients/${p.id}`}>{p.name}</a>
+              </td>
               <td>{p.species}</td>
               <td>{p.breed}</td>
-              <td>{p.clients?.full_name}</td>
+              <td>
+                <a href={`/clients/${p.client_id}`}>{p.clients?.full_name}</a>
+              </td>
               <td>{p.current_weight_kg}</td>
             </tr>
           ))}

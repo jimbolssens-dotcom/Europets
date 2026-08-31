@@ -13,6 +13,7 @@ create table staff (
 -- ============ CLIENTS ============
 create table clients (
     id uuid primary key default gen_random_uuid(),
+    client_number bigint generated always as identity unique,  -- human-facing client number
     full_name text not null,
     phone text,
     email text,
@@ -23,6 +24,7 @@ create table clients (
 -- ============ PATIENTS ============
 create table patients (
     id uuid primary key default gen_random_uuid(),
+    patient_number bigint generated always as identity unique,  -- human-facing patient number
     client_id uuid references clients(id) on delete cascade,
     name text not null,
     species text not null,           -- dog, cat, etc.
