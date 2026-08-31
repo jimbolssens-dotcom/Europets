@@ -75,7 +75,8 @@ appointments, full consult medical records, hospitalization, and invoicing.
 4. ✅ Goods/services & invoicing (flat + per-kg pricing, 5% UAE VAT)
 5. ✅ Hospitalization — standalone multi-day admissions with a day-to-day
    worksheet, startable from a consult, with photo capture (camera button
-   on iPad/phones) and a one-click PDF summary to share with the client
+   on iPad/phones) and a one-click PDF summary — including the case's and
+   each day's photos — to share with the client
 6. ✅ AI layer — record a consult or surgery in the browser, AssemblyAI
    transcribes it, Claude summarizes it, and the summary is folded into
    consult notes / the surgical report automatically. A small 🎤 button on
