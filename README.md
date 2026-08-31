@@ -67,6 +67,9 @@ appointments, full consult medical records, hospitalization, and invoicing.
 > Supabase project of your own. The app-specific names sidestep that.
 
 ## Build phases
+0. ✅ Global search — a search box in the nav (live dropdown as you type,
+   or a full results page) finds clients by name/phone and patients by
+   name/breed/microchip number
 1. ✅ Clients & Patients database
 2. ✅ Appointments (15-min consult / 10-min surgery increments, conflict checked)
 3. ✅ Consults — full medical record (vitals, anamnesis, findings, prognosis),
@@ -103,9 +106,11 @@ app/
 │   ├── recordings/route.js               → save an uploaded recording + submit for transcription
 │   ├── recordings/[id]/webhook/route.js  → AssemblyAI callback → Claude summary → notes/report
 │   ├── voice-to-text/route.js            → dictate one field: transcribe + summarize synchronously
+│   ├── search/route.js                   → find clients/patients by name/phone/breed/microchip
 │   ├── goods-services/route.js           → catalog CRUD
 │   ├── invoices/route.js                 → list/open invoices
 │   └── invoices/[id]/line-items/         → add/remove invoice line items
+├── search/                                → full results page for a nav search
 ├── clients/, patients/                   → list, detail, edit/delete
 ├── appointments/                         → month calendar + room x time schedule
 ├── consults/                             → active/completed board + full consult record
@@ -113,6 +118,7 @@ app/
 ├── invoices/, catalog/                   → invoicing UI
 ├── rooms/, staff/                        → admin list, edit/delete
 ├── _components/AttachmentSection.jsx     → reusable file upload/list widget
+├── _components/SearchBox.jsx             → nav search box with a live results dropdown
 ├── _components/AudioRecorder.jsx         → record/upload audio, show transcript+summary
 ├── _components/VoiceToTextButton.jsx     → small 🎤 button that dictates a single field
 └── layout.js, page.js                    → app shell & home page

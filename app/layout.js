@@ -1,4 +1,5 @@
 import './globals.css';
+import SearchBox from './_components/SearchBox';
 
 export const metadata = {
   title: 'Europets Clinic — Management',
@@ -13,6 +14,7 @@ export default function RootLayout({ children }) {
           <a href="/" className="brand">
             <img src="/logo.png" alt="Europets Clinic" />
           </a>
+          <SearchBox />
           <div className="topnav-links">
             <a href="/clients">Clients</a>
             <a href="/patients">Patients</a>
