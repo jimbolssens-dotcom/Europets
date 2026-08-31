@@ -1,5 +1,5 @@
 // app/clients/page.jsx
-// Client list + create form.
+// Client list + create form, with inline edit and delete.
 
 'use client';
 
@@ -14,6 +14,9 @@ export default function ClientsPage() {
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(emptyForm);
+  const [rowError, setRowError] = useState(null);
 
   const loadClients = () =>
     fetch('/api/clients')
@@ -61,11 +64,58 @@ export default function ClientsPage() {
     setSubmitting(false);
   }
 
+  function startEdit(client) {
+    setEditingId(client.id);
+    setEditForm({
+      full_name: client.full_name,
+      phone: client.phone || '',
+      email: client.email || '',
+      address: client.address || '',
+    });
+    setRowError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setRowError(null);
+  }
+
+  async function saveEdit(id) {
+    setRowError(null);
+    const res = await fetch(`/api/clients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setRowError(data.error || 'Failed to save client');
+    } else {
+      setEditingId(null);
+      loadClients();
+    }
+  }
+
+  async function deleteClient(client) {
+    if (!confirm(`Delete ${client.full_name}? This cannot be undone.`)) return;
+    setRowError(null);
+
+    const res = await fetch(`/api/clients/${client.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error || 'Failed to delete client');
+    } else {
+      loadClients();
+    }
+  }
+
   if (loading) return <p>Loading clients...</p>;
 
   return (
     <div>
       <h1>Clients</h1>
+      {rowError && <p className="error">{rowError}</p>}
       <table>
         <thead>
           <tr>
@@ -74,20 +124,68 @@ export default function ClientsPage() {
             <th>Phone</th>
             <th>Email</th>
             <th>Address</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
-          {clients.map((c) => (
-            <tr key={c.id}>
-              <td>{c.client_number}</td>
-              <td>
-                <a href={`/clients/${c.id}`}>{c.full_name}</a>
-              </td>
-              <td>{c.phone}</td>
-              <td>{c.email}</td>
-              <td>{c.address}</td>
-            </tr>
-          ))}
+          {clients.map((c) =>
+            editingId === c.id ? (
+              <tr key={c.id}>
+                <td>{c.client_number}</td>
+                <td>
+                  <input
+                    value={editForm.full_name}
+                    onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    value={editForm.address}
+                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <button type="button" onClick={() => saveEdit(c.id)}>
+                    Save
+                  </button>
+                  <button type="button" onClick={cancelEdit}>
+                    Cancel
+                  </button>
+                </td>
+              </tr>
+            ) : (
+              <tr key={c.id}>
+                <td>{c.client_number}</td>
+                <td>
+                  <a href={`/clients/${c.id}`}>{c.full_name}</a>
+                </td>
+                <td>{c.phone}</td>
+                <td>{c.email}</td>
+                <td>{c.address}</td>
+                <td>
+                  <button type="button" onClick={() => startEdit(c)}>
+                    Edit
+                  </button>
+                  <button type="button" onClick={() => deleteClient(c)}>
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            )
+          )}
         </tbody>
       </table>
 

@@ -74,7 +74,12 @@ export default function ClientDetailPage() {
             <tr key={p.id}>
               <td>{p.patient_number}</td>
               <td>
-                <a href={`/patients/${p.id}`}>{p.name}</a>
+                <a
+                  href={`/patients/${p.id}`}
+                  style={p.deceased ? { textDecoration: 'line-through' } : undefined}
+                >
+                  {p.name}
+                </a>
               </td>
               <td>{p.species}</td>
               <td>{p.breed}</td>

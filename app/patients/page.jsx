@@ -1,7 +1,7 @@
 // app/patients/page.jsx
-// Patient list + create form. Demonstrates the realtime pattern used
-// throughout the app: when one terminal adds/edits a patient, every
-// other open terminal updates live.
+// Patient list + create form, with inline edit, delete, and a deceased flag.
+// Demonstrates the realtime pattern used throughout the app: when one
+// terminal adds/edits a patient, every other open terminal updates live.
 
 'use client';
 
@@ -19,6 +19,15 @@ const emptyForm = {
   microchip_number: '',
 };
 
+const emptyEditForm = {
+  name: '',
+  species: '',
+  breed: '',
+  current_weight_kg: '',
+  microchip_number: '',
+  deceased: false,
+};
+
 export default function PatientsPage() {
   const [patients, setPatients] = useState([]);
   const [clients, setClients] = useState([]);
@@ -26,6 +35,9 @@ export default function PatientsPage() {
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(emptyEditForm);
+  const [rowError, setRowError] = useState(null);
 
   const loadPatients = () =>
     fetch('/api/patients')
@@ -85,11 +97,66 @@ export default function PatientsPage() {
     setSubmitting(false);
   }
 
+  function startEdit(patient) {
+    setEditingId(patient.id);
+    setEditForm({
+      name: patient.name,
+      species: patient.species,
+      breed: patient.breed || '',
+      current_weight_kg: patient.current_weight_kg ?? '',
+      microchip_number: patient.microchip_number || '',
+      deceased: patient.deceased || false,
+    });
+    setRowError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setRowError(null);
+  }
+
+  async function saveEdit(id) {
+    setRowError(null);
+    const payload = {
+      ...editForm,
+      current_weight_kg: editForm.current_weight_kg ? Number(editForm.current_weight_kg) : null,
+      microchip_number: editForm.microchip_number || null,
+    };
+
+    const res = await fetch(`/api/patients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setRowError(data.error || 'Failed to save patient');
+    } else {
+      setEditingId(null);
+      loadPatients();
+    }
+  }
+
+  async function deletePatient(patient) {
+    if (!confirm(`Delete ${patient.name}? This cannot be undone.`)) return;
+    setRowError(null);
+
+    const res = await fetch(`/api/patients/${patient.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error || 'Failed to delete patient');
+    } else {
+      loadPatients();
+    }
+  }
+
   if (loading) return <p>Loading patients...</p>;
 
   return (
     <div>
       <h1>Patients</h1>
+      {rowError && <p className="error">{rowError}</p>}
       <table>
         <thead>
           <tr>
@@ -100,24 +167,97 @@ export default function PatientsPage() {
             <th>Owner</th>
             <th>Weight (kg)</th>
             <th>Microchip #</th>
+            <th>Deceased</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
-          {patients.map((p) => (
-            <tr key={p.id}>
-              <td>{p.patient_number}</td>
-              <td>
-                <a href={`/patients/${p.id}`}>{p.name}</a>
-              </td>
-              <td>{p.species}</td>
-              <td>{p.breed}</td>
-              <td>
-                <a href={`/clients/${p.client_id}`}>{p.clients?.full_name}</a>
-              </td>
-              <td>{p.current_weight_kg}</td>
-              <td>{p.microchip_number || '—'}</td>
-            </tr>
-          ))}
+          {patients.map((p) =>
+            editingId === p.id ? (
+              <tr key={p.id}>
+                <td>{p.patient_number}</td>
+                <td>
+                  <input
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    value={editForm.species}
+                    onChange={(e) => setEditForm({ ...editForm, species: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    value={editForm.breed}
+                    onChange={(e) => setEditForm({ ...editForm, breed: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <a href={`/clients/${p.client_id}`}>{p.clients?.full_name}</a>
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.current_weight_kg}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, current_weight_kg: e.target.value })
+                    }
+                  />
+                </td>
+                <td>
+                  <input
+                    value={editForm.microchip_number}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, microchip_number: e.target.value })
+                    }
+                  />
+                </td>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={editForm.deceased}
+                    onChange={(e) => setEditForm({ ...editForm, deceased: e.target.checked })}
+                  />
+                </td>
+                <td>
+                  <button type="button" onClick={() => saveEdit(p.id)}>
+                    Save
+                  </button>
+                  <button type="button" onClick={cancelEdit}>
+                    Cancel
+                  </button>
+                </td>
+              </tr>
+            ) : (
+              <tr key={p.id}>
+                <td>{p.patient_number}</td>
+                <td>
+                  <a href={`/patients/${p.id}`} style={p.deceased ? { textDecoration: 'line-through' } : undefined}>
+                    {p.name}
+                  </a>
+                </td>
+                <td>{p.species}</td>
+                <td>{p.breed}</td>
+                <td>
+                  <a href={`/clients/${p.client_id}`}>{p.clients?.full_name}</a>
+                </td>
+                <td>{p.current_weight_kg}</td>
+                <td>{p.microchip_number || '—'}</td>
+                <td>{p.deceased ? 'Yes' : '—'}</td>
+                <td>
+                  <button type="button" onClick={() => startEdit(p)}>
+                    Edit
+                  </button>
+                  <button type="button" onClick={() => deletePatient(p)}>
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            )
+          )}
         </tbody>
       </table>
 

@@ -48,6 +48,7 @@ export default function PatientDetailPage() {
       </p>
       <h1>
         {patient.name} <span>(Patient #{patient.patient_number})</span>
+        {patient.deceased && <span className="error"> · Deceased</span>}
       </h1>
 
       <table>
