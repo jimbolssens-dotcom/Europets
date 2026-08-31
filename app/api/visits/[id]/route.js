@@ -1,8 +1,13 @@
 // app/api/visits/[id]/route.js
-// GET   /api/visits/:id  -> a single consult, with patient/client/room/vet joins
-// PATCH /api/visits/:id  -> update status and/or the medical record fields.
+// GET    /api/visits/:id  -> a single consult, with patient/client/room/vet joins
+// PATCH  /api/visits/:id  -> update status and/or the medical record fields.
 // Completing a consult sets ended_at and also completes its linked
 // appointment. Updating weight_kg also syncs the patient's current weight.
+// DELETE /api/visits/:id  -> remove a consult (blocked if it has a linked
+// invoice or hospitalization admission). Diagnostics/treatment items/
+// surgical & dental reports/consult notes cascade automatically; their
+// file attachments and audio recordings don't (they're linked generically
+// via entity_type/entity_id), so those are cleaned up explicitly here.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -85,4 +90,57 @@ export async function PATCH(request, { params }) {
   }
 
   return NextResponse.json(data);
+}
+
+export async function DELETE(request, { params }) {
+  const visitId = params.id;
+
+  const [{ data: diagnostics }, { data: surgicalReports }, { data: dentalReports }] =
+    await Promise.all([
+      supabase.from('diagnostics').select('id').eq('visit_id', visitId),
+      supabase.from('surgical_reports').select('id').eq('visit_id', visitId),
+      supabase.from('dental_reports').select('id').eq('visit_id', visitId),
+    ]);
+
+  const relevantIds = [
+    visitId,
+    ...(diagnostics || []).map((d) => d.id),
+    ...(surgicalReports || []).map((r) => r.id),
+    ...(dentalReports || []).map((r) => r.id),
+  ];
+
+  const [{ data: attachments }, { data: recordings }] = await Promise.all([
+    supabase.from('attachments').select('id, file_path').in('entity_id', relevantIds),
+    supabase.from('recordings').select('id, file_path').in('entity_id', relevantIds),
+  ]);
+
+  const filePaths = [
+    ...(attachments || []).map((a) => a.file_path),
+    ...(recordings || []).map((r) => r.file_path),
+  ];
+  if (filePaths.length > 0) {
+    await supabase.storage.from('consult-files').remove(filePaths);
+  }
+  if (attachments?.length) {
+    await supabase.from('attachments').delete().in('id', attachments.map((a) => a.id));
+  }
+  if (recordings?.length) {
+    await supabase.from('recordings').delete().in('id', recordings.map((r) => r.id));
+  }
+
+  const { error } = await supabase.from('visits').delete().eq('id', visitId);
+
+  if (error) {
+    if (error.code === '23503') {
+      return NextResponse.json(
+        {
+          error:
+            'cannot delete this consult — it has a linked invoice or hospitalization admission. Void the invoice / resolve the admission first.',
+        },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
 }

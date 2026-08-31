@@ -25,6 +25,7 @@ export default function ConsultsPage() {
   const [walkIn, setWalkIn] = useState(emptyWalkIn);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [rowError, setRowError] = useState(null);
 
   const loadConsults = () =>
     fetch('/api/visits')
@@ -85,6 +86,20 @@ export default function ConsultsPage() {
     setSubmitting(false);
   }
 
+  async function deleteConsult(consult) {
+    if (!confirm(`Delete this consult for ${consult.patients?.name}? This cannot be undone.`))
+      return;
+    setRowError(null);
+
+    const res = await fetch(`/api/visits/${consult.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json();
+      setRowError(data.error || 'Failed to delete consult');
+    } else {
+      loadConsults();
+    }
+  }
+
   if (loading) return <p>Loading consults...</p>;
 
   const active = consults.filter((c) => c.status === 'in_progress');
@@ -99,6 +114,7 @@ export default function ConsultsPage() {
   return (
     <div>
       <h1>Consults</h1>
+      {rowError && <p className="error">{rowError}</p>}
 
       <div className="split">
       <div className="split-main">
@@ -127,6 +143,9 @@ export default function ConsultsPage() {
                 <td>{elapsedMinutes(c.started_at)} min</td>
                 <td>
                   <a href={`/consults/${c.id}`}>Open</a>
+                  <button type="button" onClick={() => deleteConsult(c)}>
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}
@@ -155,6 +174,9 @@ export default function ConsultsPage() {
                 <td>{c.ended_at ? new Date(c.ended_at).toLocaleString() : '—'}</td>
                 <td>
                   <a href={`/consults/${c.id}`}>Open</a>
+                  <button type="button" onClick={() => deleteConsult(c)}>
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}

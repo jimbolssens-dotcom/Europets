@@ -219,6 +219,17 @@ export default function ConsultDetailPage() {
     loadConsult();
   }
 
+  async function deleteConsult() {
+    if (!confirm('Delete this consult? This cannot be undone.')) return;
+    const res = await fetch(`/api/visits/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error || 'Failed to delete consult');
+    } else {
+      router.push('/consults');
+    }
+  }
+
   async function addDiagnostic(e) {
     e.preventDefault();
     await fetch('/api/diagnostics', {
@@ -314,7 +325,10 @@ export default function ConsultDetailPage() {
         <button type="button" onClick={completeConsult}>
           Complete Consult
         </button>
-      )}
+      )}{' '}
+      <button type="button" onClick={deleteConsult}>
+        Delete Consult
+      </button>
 
       <div className="two-col">
       <div>
