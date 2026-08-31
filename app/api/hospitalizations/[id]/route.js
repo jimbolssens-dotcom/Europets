@@ -9,7 +9,7 @@ export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('hospitalizations')
     .select(
-      '*, patients(id, name, species, current_weight_kg, deceased), clients(id, full_name, phone), rooms(name)'
+      '*, patients(id, name, species, current_weight_kg), clients(id, full_name, phone), rooms(name)'
     )
     .eq('id', params.id)
     .single();
@@ -46,7 +46,7 @@ export async function PATCH(request, { params }) {
     .from('hospitalizations')
     .update(update)
     .eq('id', params.id)
-    .select('*, patients(id, name, species, current_weight_kg, deceased), clients(id, full_name, phone), rooms(name)')
+    .select('*, patients(id, name, species, current_weight_kg), clients(id, full_name, phone), rooms(name)')
     .single();
 
   if (error) {

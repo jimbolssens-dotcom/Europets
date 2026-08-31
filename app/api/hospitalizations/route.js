@@ -14,7 +14,7 @@ export async function GET(request) {
 
   let query = supabase
     .from('hospitalizations')
-    .select('*, patients(name, species, current_weight_kg, deceased), clients(full_name, phone), rooms(name)')
+    .select('*, patients(name, species, current_weight_kg), clients(full_name, phone), rooms(name)')
     .order('admitted_at', { ascending: false });
 
   if (status) {
@@ -66,7 +66,7 @@ export async function POST(request) {
         reason: reason || null,
       },
     ])
-    .select('*, patients(name, species, current_weight_kg, deceased), clients(full_name, phone), rooms(name)')
+    .select('*, patients(name, species, current_weight_kg), clients(full_name, phone), rooms(name)')
     .single();
 
   if (error) {
