@@ -383,6 +383,7 @@ export default function ClientsPage() {
                         />
                         <ScanIdButton
                           label="📷"
+                          uploadLabel="🖼️"
                           onScanned={(scanned) => handleEditScanned(c.id, scanned)}
                         />
                       </td>
