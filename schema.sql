@@ -138,6 +138,19 @@ alter publication supabase_realtime add table
 
 -- ============ ROW LEVEL SECURITY ============
 -- RLS is intentionally left disabled: the app has no staff auth yet and
--- talks to Supabase directly with the anon key. Enable RLS and add
+-- talks to Supabase directly with the publishable key. Enable RLS and add
 -- policies (e.g. scoped to authenticated staff) before this goes anywhere
 -- near production data.
+--
+-- Newer Supabase projects auto-enable RLS by default on new tables, so
+-- this is explicit rather than relying on Postgres's off-by-default.
+alter table staff disable row level security;
+alter table clients disable row level security;
+alter table patients disable row level security;
+alter table rooms disable row level security;
+alter table appointments disable row level security;
+alter table visits disable row level security;
+alter table consult_notes disable row level security;
+alter table goods_services disable row level security;
+alter table invoices disable row level security;
+alter table invoice_line_items disable row level security;
