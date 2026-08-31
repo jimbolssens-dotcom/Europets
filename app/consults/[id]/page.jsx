@@ -10,6 +10,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import AudioRecorder from '@/app/_components/AudioRecorder';
+import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 
 const DIAGNOSTIC_TYPES = [
   { value: 'blood_test', label: 'Blood test' },
@@ -180,6 +181,18 @@ export default function ConsultDetailPage() {
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  function appendRecordField(field, text) {
+    setRecord((prev) => ({ ...prev, [field]: prev[field] ? `${prev[field]}\n${text}` : text }));
+  }
+
+  function appendSurgNotes(text) {
+    setSurgForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }));
+  }
+
+  function appendDentalNotes(text) {
+    setDentalForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }));
+  }
 
   async function saveRecord(e) {
     e.preventDefault();
@@ -364,7 +377,13 @@ export default function ConsultDetailPage() {
           />
         </label>
         <label>
-          Anamnesis (history / owner-reported complaint)
+          <span className="field-label-row">
+            Anamnesis (history / owner-reported complaint)
+            <VoiceToTextButton
+              kind="anamnesis"
+              onResult={(text) => appendRecordField('anamnesis', text)}
+            />
+          </span>
           <textarea
             rows={2}
             value={record.anamnesis}
@@ -372,7 +391,13 @@ export default function ConsultDetailPage() {
           />
         </label>
         <label>
-          Findings (physical exam)
+          <span className="field-label-row">
+            Findings (physical exam)
+            <VoiceToTextButton
+              kind="findings"
+              onResult={(text) => appendRecordField('findings', text)}
+            />
+          </span>
           <textarea
             rows={2}
             value={record.findings}
@@ -388,7 +413,13 @@ export default function ConsultDetailPage() {
           />
         </label>
         <label>
-          Treatment plan notes
+          <span className="field-label-row">
+            Treatment plan notes
+            <VoiceToTextButton
+              kind="treatment_notes"
+              onResult={(text) => appendRecordField('treatment_notes', text)}
+            />
+          </span>
           <textarea
             rows={2}
             value={record.treatment_notes}
@@ -557,11 +588,17 @@ export default function ConsultDetailPage() {
             </option>
           ))}
         </select>
-        <input
-          placeholder="Notes"
-          value={surgForm.notes}
-          onChange={(e) => setSurgForm({ ...surgForm, notes: e.target.value })}
-        />
+        <label>
+          <span className="field-label-row">
+            Notes
+            <VoiceToTextButton kind="surgical_notes" onResult={appendSurgNotes} />
+          </span>
+          <textarea
+            rows={2}
+            value={surgForm.notes}
+            onChange={(e) => setSurgForm({ ...surgForm, notes: e.target.value })}
+          />
+        </label>
         <button type="submit">Add Surgical Report</button>
       </form>
       </div>
@@ -609,11 +646,17 @@ export default function ConsultDetailPage() {
           value={dentalForm.procedures_performed}
           onChange={(e) => setDentalForm({ ...dentalForm, procedures_performed: e.target.value })}
         />
-        <input
-          placeholder="Notes"
-          value={dentalForm.notes}
-          onChange={(e) => setDentalForm({ ...dentalForm, notes: e.target.value })}
-        />
+        <label>
+          <span className="field-label-row">
+            Notes
+            <VoiceToTextButton kind="dental_notes" onResult={appendDentalNotes} />
+          </span>
+          <textarea
+            rows={2}
+            value={dentalForm.notes}
+            onChange={(e) => setDentalForm({ ...dentalForm, notes: e.target.value })}
+          />
+        </label>
         <button type="submit">Add Dental Report</button>
       </form>
       </div>

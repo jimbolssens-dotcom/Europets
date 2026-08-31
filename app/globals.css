@@ -627,3 +627,46 @@ form.card label {
   white-space: pre-wrap;
 }
 
+/* Per-field "dictate with AI" mic button */
+
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.voice-btn-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.voice-btn {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  border-radius: 999px;
+  background: var(--pink-tint);
+  color: var(--pink-dark);
+  font-weight: 400;
+}
+
+.voice-btn:hover {
+  background: var(--pink);
+  color: white;
+}
+
+.voice-btn-recording {
+  background: #b00020;
+  color: white;
+  animation: recorder-pulse 1.1s infinite;
+}
+
+.voice-btn-error {
+  color: #b00020;
+  font-size: 0.75rem;
+  font-weight: normal;
+  text-transform: none;
+}
+

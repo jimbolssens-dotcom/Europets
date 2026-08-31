@@ -39,12 +39,15 @@ appointments, full consult medical records, hospitalization, and invoicing.
 > auth yet, and the app talks to Supabase directly with the publishable key.
 > Add auth and RLS policies before this holds real client data.
 
-> **Audio recording only works on a publicly reachable deployment.**
-> AssemblyAI transcribes asynchronously and calls back a webhook
-> (`/api/recordings/:id/webhook`) built from the request's own origin —
-> that has to be reachable from the internet, so recording will start fine
-> on `localhost` but the transcript/summary will never arrive until you're
-> running on your real Vercel URL (or a tunnel like ngrok).
+> **Full consult/surgery recording only works on a publicly reachable
+> deployment.** AssemblyAI transcribes it asynchronously and calls back a
+> webhook (`/api/recordings/:id/webhook`) built from the request's own
+> origin — that has to be reachable from the internet, so recording will
+> start fine on `localhost` but the transcript/summary will never arrive
+> until you're running on your real Vercel URL (or a tunnel like ngrok).
+> The per-field 🎤 dictation buttons don't have this limitation — they
+> transcribe synchronously within the request, so they work on `localhost`
+> too.
 
 > **Env var naming:** the app reads `NEXT_PUBLIC_SUPABASE_APP_URL` /
 > `NEXT_PUBLIC_SUPABASE_APP_KEY`, not the more obvious
@@ -65,7 +68,9 @@ appointments, full consult medical records, hospitalization, and invoicing.
    worksheet, startable from a consult
 6. ✅ AI layer — record a consult or surgery in the browser, AssemblyAI
    transcribes it, Claude summarizes it, and the summary is folded into
-   consult notes / the surgical report automatically
+   consult notes / the surgical report automatically. A small 🎤 button on
+   individual fields (anamnesis, findings, treatment notes, surgical/dental
+   notes) does the same for a short dictation, filling in just that field
 7. FileMaker migration
 
 ## Folder layout
@@ -85,6 +90,7 @@ app/
 │   ├── attachments/                      → file metadata (files live in Storage)
 │   ├── recordings/route.js               → save an uploaded recording + submit for transcription
 │   ├── recordings/[id]/webhook/route.js  → AssemblyAI callback → Claude summary → notes/report
+│   ├── voice-to-text/route.js            → dictate one field: transcribe + summarize synchronously
 │   ├── goods-services/route.js           → catalog CRUD
 │   ├── invoices/route.js                 → list/open invoices
 │   └── invoices/[id]/line-items/         → add/remove invoice line items
@@ -96,6 +102,7 @@ app/
 ├── rooms/, staff/                        → admin list, edit/delete
 ├── _components/AttachmentSection.jsx     → reusable file upload/list widget
 ├── _components/AudioRecorder.jsx         → record/upload audio, show transcript+summary
+├── _components/VoiceToTextButton.jsx     → small 🎤 button that dictates a single field
 └── layout.js, page.js                    → app shell & home page
 lib/
 ├── supabaseClient.js                     → shared Supabase connection
