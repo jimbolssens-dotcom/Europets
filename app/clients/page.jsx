@@ -116,6 +116,8 @@ export default function ClientsPage() {
     <div>
       <h1>Clients</h1>
       {rowError && <p className="error">{rowError}</p>}
+      <div className="split">
+      <div className="split-main">
       <table>
         <thead>
           <tr>
@@ -188,7 +190,9 @@ export default function ClientsPage() {
           )}
         </tbody>
       </table>
+      </div>
 
+      <div className="split-aside">
       <form className="card" onSubmit={handleSubmit}>
         <h2>Add Client</h2>
         {error && <p className="error">{error}</p>}
@@ -218,6 +222,8 @@ export default function ClientsPage() {
           {submitting ? 'Saving...' : 'Add Client'}
         </button>
       </form>
+      </div>
+      </div>
     </div>
   );
 }

@@ -85,8 +85,55 @@ button:disabled {
 
 .content {
   padding: 2rem;
-  max-width: 960px;
+  max-width: 1440px;
   margin: 0 auto;
+}
+
+/* Two-column layout: a wide main area (list/table) beside a narrower
+   side column (a form or secondary panel). Used on every list+form page
+   so the form doesn't force a long scroll below the table. */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: 2rem;
+  align-items: start;
+}
+
+.split-main {
+  min-width: 0;
+}
+
+.split-aside form.card,
+.split-aside .card {
+  max-width: none;
+  margin-top: 0;
+}
+
+@media (max-width: 900px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Even split: two same-width columns, e.g. pairing sections on the
+   consult record so they sit side by side instead of stacking. */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.two-col form.card,
+.two-col .card {
+  max-width: none;
+  margin-top: 0;
+}
+
+@media (max-width: 900px) {
+  .two-col {
+    grid-template-columns: 1fr;
+  }
 }
 
 .tagline {
@@ -231,6 +278,7 @@ form.card label {
 
 .visit-board {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 1rem;
   margin-top: 1rem;
 }

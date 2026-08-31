@@ -97,6 +97,8 @@ export default function StaffPage() {
     <div>
       <h1>Staff</h1>
       {rowError && <p className="error">{rowError}</p>}
+      <div className="split">
+      <div className="split-main">
       <table>
         <thead>
           <tr>
@@ -161,7 +163,9 @@ export default function StaffPage() {
           )}
         </tbody>
       </table>
+      </div>
 
+      <div className="split-aside">
       <form className="card" onSubmit={handleSubmit}>
         <h2>Add Staff</h2>
         {error && <p className="error">{error}</p>}
@@ -190,6 +194,8 @@ export default function StaffPage() {
           {submitting ? 'Saving...' : 'Add Staff'}
         </button>
       </form>
+      </div>
+      </div>
     </div>
   );
 }

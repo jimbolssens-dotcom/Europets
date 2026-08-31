@@ -413,6 +413,8 @@ export default function AppointmentsPage() {
       )}
 
       <h2>{selectedDateLabel} — list</h2>
+      <div className="split">
+      <div className="split-main">
       <table>
         <thead>
           <tr>
@@ -458,7 +460,9 @@ export default function AppointmentsPage() {
           ))}
         </tbody>
       </table>
+      </div>
 
+      <div className="split-aside">
       <form className="card" onSubmit={handleSubmit}>
         <h2>Book Appointment</h2>
         {error && <p className="error">{error}</p>}
@@ -548,6 +552,8 @@ export default function AppointmentsPage() {
           {submitting ? 'Booking...' : 'Book Appointment'}
         </button>
       </form>
+      </div>
+      </div>
     </div>
   );
 }

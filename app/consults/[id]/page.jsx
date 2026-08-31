@@ -315,6 +315,8 @@ export default function ConsultDetailPage() {
         </button>
       )}
 
+      <div className="two-col">
+      <div>
       <h2>Vitals & Exam</h2>
       <form className="card" onSubmit={saveRecord}>
         {recordError && <p className="error">{recordError}</p>}
@@ -382,10 +384,16 @@ export default function ConsultDetailPage() {
           {savingRecord ? 'Saving...' : 'Save Record'}
         </button>
       </form>
+      </div>
 
+      <div>
       <h2>Notes</h2>
       <NoteThread visitId={id} staff={staff} />
+      </div>
+      </div>
 
+      <div className="two-col">
+      <div>
       <h2>Diagnostics</h2>
       {diagnostics.map((d) => (
         <div key={d.id} className="visit-card">
@@ -425,7 +433,9 @@ export default function ConsultDetailPage() {
         />
         <button type="submit">Add Diagnostic</button>
       </form>
+      </div>
 
+      <div>
       <h2>Treatment Plan</h2>
       <table>
         <thead>
@@ -486,7 +496,11 @@ export default function ConsultDetailPage() {
         />
         <button type="submit">Add to Plan</button>
       </form>
+      </div>
+      </div>
 
+      <div className="two-col">
+      <div>
       <h2>Surgical Reports</h2>
       {surgicalReports.map((r) => (
         <div key={r.id} className="visit-card">
@@ -524,7 +538,9 @@ export default function ConsultDetailPage() {
         />
         <button type="submit">Add Surgical Report</button>
       </form>
+      </div>
 
+      <div>
       <h2>Dental Reports</h2>
       {dentalReports.map((r) => (
         <div key={r.id} className="visit-card">
@@ -574,6 +590,8 @@ export default function ConsultDetailPage() {
         />
         <button type="submit">Add Dental Report</button>
       </form>
+      </div>
+      </div>
 
       <h2>Hospitalization</h2>
       <form className="card" onSubmit={admitToHospital}>

@@ -247,6 +247,8 @@ export default function InvoicesPage() {
     <div>
       <h1>Invoices</h1>
 
+      <div className="split">
+      <div className="split-main">
       <label>
         Filter:{' '}
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
@@ -273,7 +275,9 @@ export default function InvoicesPage() {
           ))}
         </div>
       )}
+      </div>
 
+      <div className="split-aside">
       <form className="card" onSubmit={handleSubmit}>
         <h2>Open Invoice</h2>
         {error && <p className="error">{error}</p>}
@@ -305,6 +309,8 @@ export default function InvoicesPage() {
           {submitting ? 'Opening...' : 'Open Invoice'}
         </button>
       </form>
+      </div>
+      </div>
     </div>
   );
 }

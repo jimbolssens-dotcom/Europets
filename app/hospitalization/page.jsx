@@ -79,6 +79,8 @@ export default function HospitalizationPage() {
     <div>
       <h1>Hospitalization</h1>
 
+      <div className="split">
+      <div className="split-main">
       <h2>Currently Admitted</h2>
       {admitted.length === 0 ? (
         <p>No patients currently admitted.</p>
@@ -138,7 +140,9 @@ export default function HospitalizationPage() {
           </tbody>
         </table>
       )}
+      </div>
 
+      <div className="split-aside">
       <form className="card" onSubmit={handleSubmit}>
         <h2>Admit Patient</h2>
         <p>Usually started from a consult's "Admit to Hospitalization" button — use this for a standalone admission.</p>
@@ -185,6 +189,8 @@ export default function HospitalizationPage() {
           {submitting ? 'Admitting...' : 'Admit Patient'}
         </button>
       </form>
+      </div>
+      </div>
     </div>
   );
 }

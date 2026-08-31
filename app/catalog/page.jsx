@@ -62,6 +62,8 @@ export default function CatalogPage() {
   return (
     <div>
       <h1>Goods & Services</h1>
+      <div className="split">
+      <div className="split-main">
       <table>
         <thead>
           <tr>
@@ -92,7 +94,9 @@ export default function CatalogPage() {
           ))}
         </tbody>
       </table>
+      </div>
 
+      <div className="split-aside">
       <form className="card" onSubmit={handleSubmit}>
         <h2>Add Item</h2>
         {error && <p className="error">{error}</p>}
@@ -138,6 +142,8 @@ export default function CatalogPage() {
           {submitting ? 'Saving...' : 'Add Item'}
         </button>
       </form>
+      </div>
+      </div>
     </div>
   );
 }

@@ -97,6 +97,8 @@ export default function RoomsPage() {
     <div>
       <h1>Rooms</h1>
       {rowError && <p className="error">{rowError}</p>}
+      <div className="split">
+      <div className="split-main">
       <table>
         <thead>
           <tr>
@@ -150,7 +152,9 @@ export default function RoomsPage() {
           )}
         </tbody>
       </table>
+      </div>
 
+      <div className="split-aside">
       <form className="card" onSubmit={handleSubmit}>
         <h2>Add Room</h2>
         {error && <p className="error">{error}</p>}
@@ -171,6 +175,8 @@ export default function RoomsPage() {
           {submitting ? 'Saving...' : 'Add Room'}
         </button>
       </form>
+      </div>
+      </div>
     </div>
   );
 }

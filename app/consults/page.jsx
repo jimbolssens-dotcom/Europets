@@ -100,6 +100,8 @@ export default function ConsultsPage() {
     <div>
       <h1>Consults</h1>
 
+      <div className="split">
+      <div className="split-main">
       <h2>Active</h2>
       {active.length === 0 ? (
         <p>No active consults right now.</p>
@@ -159,7 +161,9 @@ export default function ConsultsPage() {
           </tbody>
         </table>
       )}
+      </div>
 
+      <div className="split-aside">
       <form className="card" onSubmit={handleWalkIn}>
         <h2>Start Walk-in Consult</h2>
         {error && <p className="error">{error}</p>}
@@ -215,6 +219,8 @@ export default function ConsultsPage() {
           {submitting ? 'Starting...' : 'Start Consult'}
         </button>
       </form>
+      </div>
+      </div>
     </div>
   );
 }

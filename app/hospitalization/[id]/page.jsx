@@ -121,6 +121,8 @@ export default function HospitalizationDetailPage() {
         </p>
       )}
 
+      <div className="split">
+      <div className="split-main">
       <h2>Day-to-day Worksheet</h2>
       {notes.length === 0 && <p>No entries yet.</p>}
       {notes.map((n) => (
@@ -150,7 +152,9 @@ export default function HospitalizationDetailPage() {
           <AttachmentSection entityType="hospitalization_note" entityId={n.id} />
         </div>
       ))}
+      </div>
 
+      <div className="split-aside">
       <form className="card" onSubmit={addNote}>
         <h3>Add Worksheet Entry</h3>
         <input
@@ -200,6 +204,8 @@ export default function HospitalizationDetailPage() {
           {submitting ? 'Saving...' : 'Add Entry'}
         </button>
       </form>
+      </div>
+      </div>
     </div>
   );
 }

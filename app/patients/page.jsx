@@ -157,6 +157,8 @@ export default function PatientsPage() {
     <div>
       <h1>Patients</h1>
       {rowError && <p className="error">{rowError}</p>}
+      <div className="split">
+      <div className="split-main">
       <table>
         <thead>
           <tr>
@@ -260,7 +262,9 @@ export default function PatientsPage() {
           )}
         </tbody>
       </table>
+      </div>
 
+      <div className="split-aside">
       <form className="card" onSubmit={handleSubmit}>
         <h2>Add Patient</h2>
         {error && <p className="error">{error}</p>}
@@ -323,6 +327,8 @@ export default function PatientsPage() {
         </button>
         {clients.length === 0 && <p>Add a client first.</p>}
       </form>
+      </div>
+      </div>
     </div>
   );
 }
