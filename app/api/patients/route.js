@@ -1,6 +1,10 @@
 // app/api/patients/route.js
 // GET  /api/patients             -> list all patients, with owner (client) info
 // GET  /api/patients?client_id=X -> list patients for one client
+// GET  /api/patients?name=&species=&breed=&microchip=&owner=&patient_number=
+//                                 -> filtered by any combination of those (all
+//                                    optional, AND'ed together) — used by the
+//                                    Patients page search
 // POST /api/patients             -> create a new patient (linked to a client)
 
 import { supabase } from '@/lib/supabaseClient';
@@ -9,14 +13,28 @@ import { NextResponse } from 'next/server';
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get('client_id');
+  const name = searchParams.get('name');
+  const species = searchParams.get('species');
+  const breed = searchParams.get('breed');
+  const microchip = searchParams.get('microchip');
+  const owner = searchParams.get('owner');
+  const patientNumber = searchParams.get('patient_number');
 
+  // Filtering on the owner's name requires the join to be an inner join so
+  // the foreign-table filter below actually applies.
   let query = supabase
     .from('patients')
-    .select('*, clients(full_name, phone)')  // join owner info
+    .select(owner ? '*, clients!inner(full_name, phone)' : '*, clients(full_name, phone)')
     .order('name', { ascending: true });
 
-  if (clientId) {
-    query = query.eq('client_id', clientId);
+  if (clientId) query = query.eq('client_id', clientId);
+  if (name) query = query.ilike('name', `%${name}%`);
+  if (species) query = query.ilike('species', `%${species}%`);
+  if (breed) query = query.ilike('breed', `%${breed}%`);
+  if (microchip) query = query.ilike('microchip_number', `%${microchip}%`);
+  if (owner) query = query.ilike('clients.full_name', `%${owner}%`);
+  if (patientNumber && !Number.isNaN(Number(patientNumber))) {
+    query = query.eq('patient_number', Number(patientNumber));
   }
 
   const { data, error } = await query;

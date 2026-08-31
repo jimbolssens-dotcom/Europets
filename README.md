@@ -69,7 +69,9 @@ appointments, full consult medical records, hospitalization, and invoicing.
 ## Build phases
 0. ✅ Global search — a search box in the nav (live dropdown as you type,
    or a full results page) finds clients by name/phone and patients by
-   name/breed/microchip number
+   name/breed/microchip number. The Clients and Patients pages themselves
+   are search-first too: search + add sit side by side, and no list loads
+   until you search — it doesn't dump the entire, ever-growing table
 1. ✅ Clients & Patients database
 2. ✅ Appointments (15-min consult / 10-min surgery increments, conflict checked)
 3. ✅ Consults — full medical record (vitals, anamnesis, findings, prognosis),

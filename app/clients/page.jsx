@@ -1,12 +1,16 @@
 // app/clients/page.jsx
-// Client list + create form, with inline edit and delete.
+// Client search + create, with inline edit and delete. The client list can
+// grow large, so nothing loads until a search is run — no full-table dump
+// on page load. Search and Add Client sit side by side; results appear
+// below once you search.
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 const emptyForm = { full_name: '', phone: '+971', phone2: '+971', phone2_label: '', email: '', address: '' };
+const emptySearch = { client_number: '', name: '', phone: '', email: '', address: '' };
 
 const PHONE2_LABELS = [
   { value: 'husband', label: 'Husband' },
@@ -28,9 +32,26 @@ function normalizePhone(value) {
   return digits === '' || digits === '971' ? '' : value;
 }
 
+function buildQuery(search) {
+  const params = new URLSearchParams();
+  if (search.client_number.trim()) params.set('client_number', search.client_number.trim());
+  if (search.name.trim()) params.set('name', search.name.trim());
+  if (search.phone.trim()) params.set('phone', search.phone.trim());
+  if (search.email.trim()) params.set('email', search.email.trim());
+  if (search.address.trim()) params.set('address', search.address.trim());
+  return params.toString();
+}
+
+function hasAnyTerm(search) {
+  return Object.values(search).some((v) => v.trim());
+}
+
 export default function ClientsPage() {
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [results, setResults] = useState([]);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [search, setSearch] = useState(emptySearch);
+
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -38,30 +59,46 @@ export default function ClientsPage() {
   const [editForm, setEditForm] = useState(emptyForm);
   const [rowError, setRowError] = useState(null);
 
-  const loadClients = () =>
-    fetch('/api/clients')
+  const searchRef = useRef(search);
+  const hasSearchedRef = useRef(hasSearched);
+  searchRef.current = search;
+  hasSearchedRef.current = hasSearched;
+
+  const runSearch = (searchValues) => {
+    setSearching(true);
+    fetch(`/api/clients?${buildQuery(searchValues)}`)
       .then((res) => res.json())
       .then((data) => {
-        setClients(Array.isArray(data) ? data : []);
-        setLoading(false);
+        setResults(Array.isArray(data) ? data : []);
+        setHasSearched(true);
+        setSearching(false);
       });
+  };
 
   useEffect(() => {
-    loadClients();
-
     const channel = supabase
       .channel('clients-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'clients' },
-        () => loadClients()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
+        if (hasSearchedRef.current) runSearch(searchRef.current);
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  function handleSearchSubmit(e) {
+    e.preventDefault();
+    if (!hasAnyTerm(search)) return;
+    runSearch(search);
+  }
+
+  function clearSearch() {
+    setSearch(emptySearch);
+    setResults([]);
+    setHasSearched(false);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -83,7 +120,7 @@ export default function ClientsPage() {
       setError(data.error || 'Failed to create client');
     } else {
       setForm(emptyForm);
-      loadClients();
+      if (hasSearched) runSearch(search);
     }
     setSubmitting(false);
   }
@@ -123,7 +160,7 @@ export default function ClientsPage() {
       setRowError(data.error || 'Failed to save client');
     } else {
       setEditingId(null);
-      loadClients();
+      runSearch(search);
     }
   }
 
@@ -136,164 +173,207 @@ export default function ClientsPage() {
       const data = await res.json();
       alert(data.error || 'Failed to delete client');
     } else {
-      loadClients();
+      runSearch(search);
     }
   }
-
-  if (loading) return <p>Loading clients...</p>;
 
   return (
     <div>
       <h1>Clients</h1>
       {rowError && <p className="error">{rowError}</p>}
-      <div className="split">
-      <div className="split-main">
-      <table>
-        <thead>
-          <tr>
-            <th>Client #</th>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>2nd Phone</th>
-            <th>Email</th>
-            <th>Address</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {clients.map((c) =>
-            editingId === c.id ? (
-              <tr key={c.id}>
-                <td>{c.client_number}</td>
-                <td>
-                  <input
-                    value={editForm.full_name}
-                    onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    value={editForm.phone}
-                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    placeholder="Phone"
-                    value={editForm.phone2}
-                    onChange={(e) => setEditForm({ ...editForm, phone2: e.target.value })}
-                  />
-                  <select
-                    value={editForm.phone2_label}
-                    onChange={(e) => setEditForm({ ...editForm, phone2_label: e.target.value })}
-                  >
-                    <option value="">Whose?</option>
-                    {PHONE2_LABELS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <input
-                    type="email"
-                    value={editForm.email}
-                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    value={editForm.address}
-                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                  />
-                </td>
-                <td>
-                  <button type="button" onClick={() => saveEdit(c.id)}>
-                    Save
-                  </button>
-                  <button type="button" onClick={cancelEdit}>
-                    Cancel
-                  </button>
-                </td>
-              </tr>
-            ) : (
-              <tr key={c.id}>
-                <td>{c.client_number}</td>
-                <td>
-                  <a href={`/clients/${c.id}`}>{c.full_name}</a>
-                </td>
-                <td>{c.phone}</td>
-                <td>
-                  {c.phone2
-                    ? `${c.phone2}${c.phone2_label ? ` (${phone2LabelText(c.phone2_label)})` : ''}`
-                    : ''}
-                </td>
-                <td>{c.email}</td>
-                <td>{c.address}</td>
-                <td>
-                  <button type="button" onClick={() => startEdit(c)}>
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => deleteClient(c)}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            )
-          )}
-        </tbody>
-      </table>
+
+      <div className="two-col">
+        <form className="card" onSubmit={handleSearchSubmit}>
+          <h2>Search Clients</h2>
+          <input
+            placeholder="Client #"
+            value={search.client_number}
+            onChange={(e) => setSearch({ ...search, client_number: e.target.value })}
+          />
+          <input
+            placeholder="Name"
+            value={search.name}
+            onChange={(e) => setSearch({ ...search, name: e.target.value })}
+          />
+          <input
+            placeholder="Phone"
+            value={search.phone}
+            onChange={(e) => setSearch({ ...search, phone: e.target.value })}
+          />
+          <input
+            placeholder="Email"
+            value={search.email}
+            onChange={(e) => setSearch({ ...search, email: e.target.value })}
+          />
+          <input
+            placeholder="Address"
+            value={search.address}
+            onChange={(e) => setSearch({ ...search, address: e.target.value })}
+          />
+          <div className="home-links">
+            <button type="submit" disabled={!hasAnyTerm(search) || searching}>
+              {searching ? 'Searching...' : 'Search'}
+            </button>
+            <button type="button" onClick={clearSearch}>
+              Clear
+            </button>
+          </div>
+        </form>
+
+        <form className="card" onSubmit={handleSubmit}>
+          <h2>Add Client</h2>
+          {error && <p className="error">{error}</p>}
+          <input
+            placeholder="Full name"
+            required
+            value={form.full_name}
+            onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+          />
+          <input
+            placeholder="Phone"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+          <input
+            placeholder="2nd phone (optional)"
+            value={form.phone2}
+            onChange={(e) => setForm({ ...form, phone2: e.target.value })}
+          />
+          <select
+            value={form.phone2_label}
+            onChange={(e) => setForm({ ...form, phone2_label: e.target.value })}
+          >
+            <option value="">2nd phone belongs to...</option>
+            {PHONE2_LABELS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <input
+            placeholder="Email"
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+          <input
+            placeholder="Address"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+          />
+          <button type="submit" disabled={submitting}>
+            {submitting ? 'Saving...' : 'Add Client'}
+          </button>
+        </form>
       </div>
 
-      <div className="split-aside">
-      <form className="card" onSubmit={handleSubmit}>
-        <h2>Add Client</h2>
-        {error && <p className="error">{error}</p>}
-        <input
-          placeholder="Full name"
-          required
-          value={form.full_name}
-          onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-        />
-        <input
-          placeholder="Phone"
-          value={form.phone}
-          onChange={(e) => setForm({ ...form, phone: e.target.value })}
-        />
-        <input
-          placeholder="2nd phone (optional)"
-          value={form.phone2}
-          onChange={(e) => setForm({ ...form, phone2: e.target.value })}
-        />
-        <select
-          value={form.phone2_label}
-          onChange={(e) => setForm({ ...form, phone2_label: e.target.value })}
-        >
-          <option value="">2nd phone belongs to...</option>
-          {PHONE2_LABELS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <input
-          placeholder="Email"
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-        />
-        <input
-          placeholder="Address"
-          value={form.address}
-          onChange={(e) => setForm({ ...form, address: e.target.value })}
-        />
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Saving...' : 'Add Client'}
-        </button>
-      </form>
-      </div>
-      </div>
+      {!hasSearched ? (
+        <p className="visit-meta">Search above to find a client — nothing loads until you do.</p>
+      ) : (
+        <>
+          <h2>Results ({results.length})</h2>
+          {results.length === 0 ? (
+            <p>No clients match that search.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Client #</th>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>2nd Phone</th>
+                  <th>Email</th>
+                  <th>Address</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((c) =>
+                  editingId === c.id ? (
+                    <tr key={c.id}>
+                      <td>{c.client_number}</td>
+                      <td>
+                        <input
+                          value={editForm.full_name}
+                          onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          value={editForm.phone}
+                          onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          placeholder="Phone"
+                          value={editForm.phone2}
+                          onChange={(e) => setEditForm({ ...editForm, phone2: e.target.value })}
+                        />
+                        <select
+                          value={editForm.phone2_label}
+                          onChange={(e) => setEditForm({ ...editForm, phone2_label: e.target.value })}
+                        >
+                          <option value="">Whose?</option>
+                          {PHONE2_LABELS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          type="email"
+                          value={editForm.email}
+                          onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          value={editForm.address}
+                          onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <button type="button" onClick={() => saveEdit(c.id)}>
+                          Save
+                        </button>
+                        <button type="button" onClick={cancelEdit}>
+                          Cancel
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={c.id}>
+                      <td>{c.client_number}</td>
+                      <td>
+                        <a href={`/clients/${c.id}`}>{c.full_name}</a>
+                      </td>
+                      <td>{c.phone}</td>
+                      <td>
+                        {c.phone2
+                          ? `${c.phone2}${c.phone2_label ? ` (${phone2LabelText(c.phone2_label)})` : ''}`
+                          : ''}
+                      </td>
+                      <td>{c.email}</td>
+                      <td>{c.address}</td>
+                      <td>
+                        <button type="button" onClick={() => startEdit(c)}>
+                          Edit
+                        </button>
+                        <button type="button" onClick={() => deleteClient(c)}>
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
     </div>
   );
 }
