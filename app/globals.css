@@ -241,6 +241,26 @@ form.card label {
   font-size: 0.75rem;
 }
 
+.attachment-thumb {
+  width: 3rem;
+  height: 3rem;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  display: block;
+}
+
+.attachment-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.attachment-actions button {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+}
+
 .error {
   color: #b00020;
 }

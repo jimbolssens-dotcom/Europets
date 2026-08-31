@@ -126,6 +126,13 @@ export default function HospitalizationDetailPage() {
         </p>
       )}
 
+      <h2>Photos &amp; Files</h2>
+      <p className="visit-meta">
+        Case-wide photos and files (admission photo, wound progress, etc.) — not tied to a single
+        worksheet entry.
+      </p>
+      <AttachmentSection entityType="hospitalization" entityId={id} />
+
       <div className="split">
       <div className="split-main">
       <h2>Day-to-day Worksheet</h2>
