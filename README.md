@@ -19,7 +19,7 @@ appointments, visits with live consult notes, and invoicing.
    realtime-changes publication the app relies on, and leaves RLS disabled
    (see note below).
 3. Copy `.env.local.example` to `.env.local` and fill in your Supabase project
-   URL and anon key (Project Settings → API).
+   URL and publishable key (Project Settings → API Keys).
 4. Run the dev server:
    ```
    npm run dev
@@ -27,8 +27,16 @@ appointments, visits with live consult notes, and invoicing.
 5. Open [http://localhost:3000](http://localhost:3000).
 
 > **Security note:** RLS is intentionally left disabled — there's no staff
-> auth yet, and the app talks to Supabase directly with the anon key. Add
-> auth and RLS policies before this holds real client data.
+> auth yet, and the app talks to Supabase directly with the publishable key.
+> Add auth and RLS policies before this holds real client data.
+
+> **Env var naming:** the app reads `NEXT_PUBLIC_SUPABASE_APP_URL` /
+> `NEXT_PUBLIC_SUPABASE_APP_KEY`, not the more obvious
+> `NEXT_PUBLIC_SUPABASE_URL` / `_ANON_KEY`. That's deliberate — if you ever
+> connect Vercel's Supabase marketplace integration to this project, it
+> auto-injects env vars under those exact common names for whatever
+> project *it* provisions, silently overriding a manually-configured
+> Supabase project of your own. The app-specific names sidestep that.
 
 ## Build phases
 1. ✅ Clients & Patients database
