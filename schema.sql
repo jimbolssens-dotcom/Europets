@@ -111,6 +111,7 @@ create table surgical_reports (
     surgeon_id uuid references staff(id),
     procedure_name text,
     notes text,
+    ai_summary text,          -- populated by AI summarization of a recorded surgery
     performed_at timestamptz default now(),
     created_at timestamptz default now()
 );
@@ -179,6 +180,26 @@ create table consult_notes (
     created_at timestamptz default now()
 );
 
+-- ============ AI RECORDINGS ============
+-- Ambient audio captured during a consult or surgery. Recorded in the
+-- browser, uploaded to the consult-files bucket, then transcribed
+-- (AssemblyAI) and summarized (Claude) asynchronously via a webhook. The
+-- resulting summary is folded into consult_notes (for a visit) or
+-- surgical_reports.ai_summary (for a surgery).
+create table recordings (
+    id uuid primary key default gen_random_uuid(),
+    entity_type text not null,       -- 'visit' or 'surgical_report'
+    entity_id uuid not null,
+    file_path text not null,         -- path within the consult-files bucket
+    file_name text,
+    status text not null default 'processing',  -- 'processing', 'done', 'error'
+    transcript text,
+    summary text,
+    error_message text,
+    assemblyai_transcript_id text,
+    created_at timestamptz default now()
+);
+
 -- ============ GOODS & SERVICES ============
 create table goods_services (
     id uuid primary key default gen_random_uuid(),
@@ -230,6 +251,7 @@ create index idx_dental_reports_visit on dental_reports(visit_id);
 create index idx_hospitalizations_patient on hospitalizations(patient_id);
 create index idx_hospitalization_notes_hosp on hospitalization_notes(hospitalization_id);
 create index idx_attachments_entity on attachments(entity_type, entity_id);
+create index idx_recordings_entity on recordings(entity_type, entity_id);
 
 -- ============ STORAGE BUCKET ============
 -- Public bucket for consult/report file attachments. No staff auth yet,
@@ -253,7 +275,7 @@ create policy "Public delete consult-files" on storage.objects
 alter publication supabase_realtime add table
     clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items,
     diagnostics, treatment_items, surgical_reports, dental_reports,
-    hospitalizations, hospitalization_notes, attachments;
+    hospitalizations, hospitalization_notes, attachments, recordings;
 
 -- ============ ROW LEVEL SECURITY ============
 -- RLS is intentionally left disabled: the app has no staff auth yet and
@@ -280,3 +302,4 @@ alter table dental_reports disable row level security;
 alter table hospitalizations disable row level security;
 alter table hospitalization_notes disable row level security;
 alter table attachments disable row level security;
+alter table recordings disable row level security;

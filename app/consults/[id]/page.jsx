@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
+import AudioRecorder from '@/app/_components/AudioRecorder';
 
 const DIAGNOSTIC_TYPES = [
   { value: 'blood_test', label: 'Blood test' },
@@ -389,6 +390,11 @@ export default function ConsultDetailPage() {
       <div>
       <h2>Notes</h2>
       <NoteThread visitId={id} staff={staff} />
+      <h3>Record Consult</h3>
+      <p className="visit-meta">
+        Record the consult and Claude will transcribe and summarize it into a note above.
+      </p>
+      <AudioRecorder entityType="visit" entityId={id} />
       </div>
       </div>
 
@@ -510,7 +516,13 @@ export default function ConsultDetailPage() {
             {r.performed_at ? new Date(r.performed_at).toLocaleString() : ''}
           </p>
           {r.notes && <p>{r.notes}</p>}
+          {r.ai_summary && (
+            <p>
+              <strong>AI summary:</strong> {r.ai_summary}
+            </p>
+          )}
           <AttachmentSection entityType="surgical_report" entityId={r.id} />
+          <AudioRecorder entityType="surgical_report" entityId={r.id} />
         </div>
       ))}
       <form className="card" onSubmit={addSurgicalReport}>
