@@ -87,6 +87,13 @@ export default function HospitalizationDetailPage() {
     setSubmitting(false);
   }
 
+  function shareViaWhatsApp() {
+    const phone = (admission.clients?.phone || '').replace(/\D/g, '');
+    const message = `Hi ${admission.clients?.full_name || 'there'}, here's the daily care update for ${admission.patients?.name || 'your pet'} during their stay with us. Please attach the summary PDF you just downloaded to this chat.`;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  }
+
   async function discharge() {
     await fetch(`/api/hospitalizations/${id}`, {
       method: 'PATCH',
@@ -125,6 +132,24 @@ export default function HospitalizationDetailPage() {
           <a href={`/consults/${admission.originating_visit_id}`}>View originating consult</a>
         </p>
       )}
+
+      <div className="summary-actions">
+        <a
+          className="btn-link"
+          href={`/api/hospitalizations/${id}/summary-pdf`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          📄 Download Summary PDF
+        </a>
+        <button type="button" onClick={shareViaWhatsApp}>
+          💬 Share via WhatsApp
+        </button>
+      </div>
+      <p className="visit-meta">
+        Download the PDF first, then in the WhatsApp chat that opens, tap the attach icon and pick
+        the file you just downloaded — WhatsApp doesn't let a website attach it automatically.
+      </p>
 
       <h2>Photos &amp; Files</h2>
       <p className="visit-meta">

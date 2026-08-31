@@ -49,6 +49,15 @@ appointments, full consult medical records, hospitalization, and invoicing.
 > transcribe synchronously within the request, so they work on `localhost`
 > too.
 
+> **"Share via WhatsApp" is a manual hand-off, not automated sending.**
+> A website has no way to attach a file to a WhatsApp chat and hit send on
+> its own — that needs the paid WhatsApp Business API (Meta business
+> verification, approved message templates, per-message cost). The
+> "Download Summary PDF" / "Share via WhatsApp" buttons on a hospitalization
+> page instead: download the PDF, then open `wa.me` with the client's
+> number and a drafted message — the vet still taps the attach icon in
+> WhatsApp once to pick the file they just downloaded.
+
 > **Env var naming:** the app reads `NEXT_PUBLIC_SUPABASE_APP_URL` /
 > `NEXT_PUBLIC_SUPABASE_APP_KEY`, not the more obvious
 > `NEXT_PUBLIC_SUPABASE_URL` / `_ANON_KEY`. That's deliberate — if you ever
@@ -65,7 +74,8 @@ appointments, full consult medical records, hospitalization, and invoicing.
    from the catalog, and surgical/dental reports
 4. ✅ Goods/services & invoicing (flat + per-kg pricing, 5% UAE VAT)
 5. ✅ Hospitalization — standalone multi-day admissions with a day-to-day
-   worksheet, startable from a consult
+   worksheet, startable from a consult, with photo capture (camera button
+   on iPad/phones) and a one-click PDF summary to share with the client
 6. ✅ AI layer — record a consult or surgery in the browser, AssemblyAI
    transcribes it, Claude summarizes it, and the summary is folded into
    consult notes / the surgical report automatically. A small 🎤 button on
@@ -87,6 +97,7 @@ app/
 │   ├── diagnostics/, treatment-items/    → per-consult diagnostics & treatment plan
 │   ├── surgical-reports/, dental-reports/ → per-consult advanced-treatment reports
 │   ├── hospitalizations/                 → admissions + day-to-day worksheet notes
+│   ├── hospitalizations/[id]/summary-pdf → PDF summary for sharing with the client
 │   ├── attachments/                      → file metadata (files live in Storage)
 │   ├── recordings/route.js               → save an uploaded recording + submit for transcription
 │   ├── recordings/[id]/webhook/route.js  → AssemblyAI callback → Claude summary → notes/report
@@ -110,6 +121,7 @@ lib/
 ├── recordings.js                         → client-side recording upload helper
 ├── assemblyai.js                         → server-side AssemblyAI REST calls
 ├── anthropicClient.js                    → server-side Claude summarization
+├── hospitalizationSummaryPdf.js          → builds the hospitalization summary PDF (pdf-lib)
 └── invoicing.js                          → subtotal/VAT/total calculation
 schema.sql                                → full database schema
 migrations/                               → incremental SQL for already-deployed databases

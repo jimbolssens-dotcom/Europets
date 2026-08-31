@@ -261,6 +261,29 @@ form.card label {
   font-size: 0.8rem;
 }
 
+.summary-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 0.75rem 0;
+  flex-wrap: wrap;
+}
+
+.summary-actions a.btn-link {
+  display: inline-block;
+  padding: 0.4rem 1rem;
+  background: var(--pink);
+  color: white;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.summary-actions a.btn-link:hover {
+  background: var(--pink-dark);
+}
+
 .error {
   color: #b00020;
 }
