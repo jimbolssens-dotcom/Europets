@@ -1,6 +1,7 @@
 export default function HomePage() {
   return (
     <div>
+      <p className="tagline">Kind, caring, and compassionate veterinary care</p>
       <h1>Europets Clinic</h1>
       <p>Manage clients, patients, appointments, live visits, and invoicing.</p>
       <div className="home-links">
