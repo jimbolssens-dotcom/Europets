@@ -16,6 +16,8 @@ create table clients (
     client_number bigint generated always as identity unique,  -- human-facing client number
     full_name text not null,
     phone text,
+    phone2 text,
+    phone2_label text,       -- who the second number belongs to: 'husband', 'wife', 'maid', 'driver', 'other'
     email text,
     address text,
     created_at timestamptz default now()

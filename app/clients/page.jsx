@@ -6,7 +6,19 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
-const emptyForm = { full_name: '', phone: '', email: '', address: '' };
+const emptyForm = { full_name: '', phone: '', phone2: '', phone2_label: '', email: '', address: '' };
+
+const PHONE2_LABELS = [
+  { value: 'husband', label: 'Husband' },
+  { value: 'wife', label: 'Wife' },
+  { value: 'maid', label: 'Maid' },
+  { value: 'driver', label: 'Driver' },
+  { value: 'other', label: 'Other' },
+];
+
+function phone2LabelText(value) {
+  return PHONE2_LABELS.find((o) => o.value === value)?.label || value;
+}
 
 export default function ClientsPage() {
   const [clients, setClients] = useState([]);
@@ -69,6 +81,8 @@ export default function ClientsPage() {
     setEditForm({
       full_name: client.full_name,
       phone: client.phone || '',
+      phone2: client.phone2 || '',
+      phone2_label: client.phone2_label || '',
       email: client.email || '',
       address: client.address || '',
     });
@@ -124,6 +138,7 @@ export default function ClientsPage() {
             <th>Client #</th>
             <th>Name</th>
             <th>Phone</th>
+            <th>2nd Phone</th>
             <th>Email</th>
             <th>Address</th>
             <th></th>
@@ -145,6 +160,24 @@ export default function ClientsPage() {
                     value={editForm.phone}
                     onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                   />
+                </td>
+                <td>
+                  <input
+                    placeholder="Phone"
+                    value={editForm.phone2}
+                    onChange={(e) => setEditForm({ ...editForm, phone2: e.target.value })}
+                  />
+                  <select
+                    value={editForm.phone2_label}
+                    onChange={(e) => setEditForm({ ...editForm, phone2_label: e.target.value })}
+                  >
+                    <option value="">Whose?</option>
+                    {PHONE2_LABELS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td>
                   <input
@@ -175,6 +208,11 @@ export default function ClientsPage() {
                   <a href={`/clients/${c.id}`}>{c.full_name}</a>
                 </td>
                 <td>{c.phone}</td>
+                <td>
+                  {c.phone2
+                    ? `${c.phone2}${c.phone2_label ? ` (${phone2LabelText(c.phone2_label)})` : ''}`
+                    : ''}
+                </td>
                 <td>{c.email}</td>
                 <td>{c.address}</td>
                 <td>
@@ -207,6 +245,22 @@ export default function ClientsPage() {
           value={form.phone}
           onChange={(e) => setForm({ ...form, phone: e.target.value })}
         />
+        <input
+          placeholder="2nd phone (optional)"
+          value={form.phone2}
+          onChange={(e) => setForm({ ...form, phone2: e.target.value })}
+        />
+        <select
+          value={form.phone2_label}
+          onChange={(e) => setForm({ ...form, phone2_label: e.target.value })}
+        >
+          <option value="">2nd phone belongs to...</option>
+          {PHONE2_LABELS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
         <input
           placeholder="Email"
           type="email"

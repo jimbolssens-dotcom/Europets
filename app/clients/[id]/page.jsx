@@ -8,6 +8,14 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
+const PHONE2_LABEL_TEXT = {
+  husband: 'Husband',
+  wife: 'Wife',
+  maid: 'Maid',
+  driver: 'Driver',
+  other: 'Other',
+};
+
 export default function ClientDetailPage() {
   const { id } = useParams();
   const [client, setClient] = useState(null);
@@ -54,7 +62,11 @@ export default function ClientDetailPage() {
         {client.full_name} <span>(Client #{client.client_number})</span>
       </h1>
       <p>
-        {client.phone} · {client.email}
+        {client.phone}
+        {client.phone2
+          ? ` · ${client.phone2}${client.phone2_label ? ` (${PHONE2_LABEL_TEXT[client.phone2_label] || client.phone2_label})` : ''}`
+          : ''}{' '}
+        · {client.email}
         {client.address ? ` · ${client.address}` : ''}
       </p>
 

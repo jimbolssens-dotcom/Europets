@@ -21,11 +21,17 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { full_name, phone, email, address } = body;
+  const { full_name, phone, phone2, phone2_label, email, address } = body;
 
   const update = {};
   if (full_name !== undefined) update.full_name = full_name;
   if (phone !== undefined) update.phone = phone;
+  if (phone2 !== undefined) {
+    update.phone2 = phone2 || null;
+    update.phone2_label = phone2 ? phone2_label || null : null;
+  } else if (phone2_label !== undefined) {
+    update.phone2_label = phone2_label || null;
+  }
   if (email !== undefined) update.email = email;
   if (address !== undefined) update.address = address;
 
