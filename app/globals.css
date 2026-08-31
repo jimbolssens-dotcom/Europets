@@ -148,17 +148,50 @@ form.card {
 }
 
 form.card input,
-form.card select {
+form.card select,
+form.card textarea {
   padding: 0.5rem;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 1rem;
+  font-family: inherit;
 }
 
 form.card button {
   justify-self: start;
   padding: 0.5rem 1.25rem;
   font-size: 1rem;
+}
+
+form.card label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.attachments {
+  margin-top: 0.5rem;
+}
+
+.attachment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.4rem;
+}
+
+.attachment-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+}
+
+.attachment-list button {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
 }
 
 .error {

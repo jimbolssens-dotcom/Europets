@@ -447,7 +447,7 @@ export default function AppointmentsPage() {
                     Check In
                   </button>
                 )}
-                {a.status === 'checked_in' && <a href="/visits">View Visit</a>}
+                {a.status === 'checked_in' && <a href="/consults">View Consult</a>}
                 {a.status !== 'cancelled' && a.status !== 'complete' && (
                   <button type="button" onClick={() => cancelAppointment(a.id)}>
                     Cancel

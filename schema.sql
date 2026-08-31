@@ -60,8 +60,9 @@ create table appointments (
     created_at timestamptz default now()
 );
 
--- ============ VISITS ============
--- Created when an appointment is checked in (or walk-in)
+-- ============ VISITS (a.k.a. Consults) ============
+-- Created when an appointment is checked in (or walk-in). Called "Consults"
+-- in the UI; kept named `visits` here to avoid rewriting every foreign key.
 create table visits (
     id uuid primary key default gen_random_uuid(),
     appointment_id uuid references appointments(id),
@@ -71,7 +72,101 @@ create table visits (
     attending_vet_id uuid references staff(id),
     status text not null default 'in_progress',  -- in_progress, complete
     started_at timestamptz default now(),
-    ended_at timestamptz
+    ended_at timestamptz,
+    weight_kg numeric(6,2),          -- weight recorded at this consult
+    temperature_c numeric(4,1),
+    body_condition_score smallint check (body_condition_score between 1 and 9),
+    anamnesis text,                  -- client-reported history / complaint
+    findings text,                   -- physical exam findings
+    prognosis text,
+    treatment_notes text
+);
+
+-- ============ DIAGNOSTICS ============
+create table diagnostics (
+    id uuid primary key default gen_random_uuid(),
+    visit_id uuid references visits(id) on delete cascade not null,
+    type text not null,              -- 'blood_test', 'xray', 'ultrasound', 'other'
+    description text,
+    result text,
+    created_at timestamptz default now()
+);
+
+-- ============ TREATMENT PLAN ITEMS ============
+-- Planned treatment referencing the catalog (medications, procedures, ...).
+-- Not linked to invoicing yet.
+create table treatment_items (
+    id uuid primary key default gen_random_uuid(),
+    visit_id uuid references visits(id) on delete cascade not null,
+    goods_service_id uuid references goods_services(id),
+    instructions text,               -- dosage / frequency / duration
+    quantity numeric(10,2) default 1,
+    created_at timestamptz default now()
+);
+
+-- ============ SURGICAL REPORTS ============
+create table surgical_reports (
+    id uuid primary key default gen_random_uuid(),
+    visit_id uuid references visits(id) on delete cascade not null,
+    surgeon_id uuid references staff(id),
+    procedure_name text,
+    notes text,
+    performed_at timestamptz default now(),
+    created_at timestamptz default now()
+);
+
+-- ============ DENTAL REPORTS ============
+create table dental_reports (
+    id uuid primary key default gen_random_uuid(),
+    visit_id uuid references visits(id) on delete cascade not null,
+    performed_by uuid references staff(id),
+    findings text,
+    procedures_performed text,
+    notes text,
+    performed_at timestamptz default now(),
+    created_at timestamptz default now()
+);
+
+-- ============ HOSPITALIZATION ============
+-- Standalone multi-day admission, optionally started from a consult.
+create table hospitalizations (
+    id uuid primary key default gen_random_uuid(),
+    patient_id uuid references patients(id) not null,
+    client_id uuid references clients(id) not null,
+    originating_visit_id uuid references visits(id),
+    room_id uuid references rooms(id),
+    admitted_at timestamptz default now(),
+    discharged_at timestamptz,
+    status text not null default 'admitted',  -- 'admitted', 'discharged'
+    reason text,
+    created_at timestamptz default now()
+);
+
+-- Day-to-day worksheet entries for an admitted patient.
+create table hospitalization_notes (
+    id uuid primary key default gen_random_uuid(),
+    hospitalization_id uuid references hospitalizations(id) on delete cascade not null,
+    author_id uuid references staff(id),
+    note_date date not null default current_date,
+    appetite text,                   -- e.g. 'good', 'reduced', 'none'
+    condition text,                  -- general condition summary
+    temperature_c numeric(4,1),
+    notes text,
+    created_at timestamptz default now()
+);
+
+-- ============ ATTACHMENTS ============
+-- Generic file attachment, reusable across diagnostics, reports, and
+-- hospitalization notes. Files live in the "consult-files" Storage bucket.
+create table attachments (
+    id uuid primary key default gen_random_uuid(),
+    entity_type text not null,       -- 'diagnostic', 'surgical_report', 'dental_report', 'hospitalization_note'
+    entity_id uuid not null,
+    file_path text not null,         -- path within the consult-files bucket
+    file_name text,
+    content_type text,
+    uploaded_by uuid references staff(id),
+    created_at timestamptz default now()
 );
 
 -- ============ CONSULT NOTES ============
@@ -88,7 +183,7 @@ create table consult_notes (
 create table goods_services (
     id uuid primary key default gen_random_uuid(),
     name text not null,
-    category text not null,          -- 'product', 'service', 'procedure', 'medication'
+    category text not null,          -- 'medication', 'food', 'toy', 'product', 'service', 'procedure'
     pricing_type text not null default 'flat',  -- 'flat', 'per_kg', 'per_unit'
     base_price numeric(10,2) not null,
     unit text,                       -- e.g. 'mg', 'ml', 'kg' (used when pricing_type != flat)
@@ -128,14 +223,37 @@ create index idx_appointments_room_time on appointments(room_id, start_time);
 create index idx_visits_patient on visits(patient_id);
 create index idx_consult_notes_visit on consult_notes(visit_id);
 create index idx_invoice_line_items_invoice on invoice_line_items(invoice_id);
+create index idx_diagnostics_visit on diagnostics(visit_id);
+create index idx_treatment_items_visit on treatment_items(visit_id);
+create index idx_surgical_reports_visit on surgical_reports(visit_id);
+create index idx_dental_reports_visit on dental_reports(visit_id);
+create index idx_hospitalizations_patient on hospitalizations(patient_id);
+create index idx_hospitalization_notes_hosp on hospitalization_notes(hospitalization_id);
+create index idx_attachments_entity on attachments(entity_type, entity_id);
+
+-- ============ STORAGE BUCKET ============
+-- Public bucket for consult/report file attachments. No staff auth yet,
+-- so — consistent with RLS being off everywhere else — access is open.
+insert into storage.buckets (id, name, public)
+values ('consult-files', 'consult-files', true)
+on conflict (id) do nothing;
+
+create policy "Public read consult-files" on storage.objects
+    for select using (bucket_id = 'consult-files');
+create policy "Public upload consult-files" on storage.objects
+    for insert with check (bucket_id = 'consult-files');
+create policy "Public delete consult-files" on storage.objects
+    for delete using (bucket_id = 'consult-files');
 
 -- ============ REALTIME ============
 -- The app subscribes to postgres_changes on these tables (patient list,
--- appointment calendar, active visits board, live consult notes, invoice
--- line items) — they must be in the supabase_realtime publication for
--- those subscriptions to receive anything.
+-- appointment calendar, active consults board, live consult notes,
+-- diagnostics, treatment plan, invoice line items) — they must be in the
+-- supabase_realtime publication for those subscriptions to receive anything.
 alter publication supabase_realtime add table
-    clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items;
+    clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items,
+    diagnostics, treatment_items, surgical_reports, dental_reports,
+    hospitalizations, hospitalization_notes, attachments;
 
 -- ============ ROW LEVEL SECURITY ============
 -- RLS is intentionally left disabled: the app has no staff auth yet and
@@ -155,3 +273,10 @@ alter table consult_notes disable row level security;
 alter table goods_services disable row level security;
 alter table invoices disable row level security;
 alter table invoice_line_items disable row level security;
+alter table diagnostics disable row level security;
+alter table treatment_items disable row level security;
+alter table surgical_reports disable row level security;
+alter table dental_reports disable row level security;
+alter table hospitalizations disable row level security;
+alter table hospitalization_notes disable row level security;
+alter table attachments disable row level security;

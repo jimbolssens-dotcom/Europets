@@ -106,10 +106,12 @@ export default function CatalogPage() {
           value={form.category}
           onChange={(e) => setForm({ ...form, category: e.target.value })}
         >
-          <option value="product">Product</option>
+          <option value="medication">Medication</option>
+          <option value="food">Food</option>
+          <option value="toy">Toy</option>
+          <option value="product">Product (other)</option>
           <option value="service">Service</option>
           <option value="procedure">Procedure</option>
-          <option value="medication">Medication</option>
         </select>
         <select
           value={form.pricing_type}
