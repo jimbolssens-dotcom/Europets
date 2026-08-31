@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
-const emptyForm = { full_name: '', phone: '+971', phone2: '', phone2_label: '', email: '', address: '' };
+const emptyForm = { full_name: '', phone: '+971', phone2: '+971', phone2_label: '', email: '', address: '' };
 
 const PHONE2_LABELS = [
   { value: 'husband', label: 'Husband' },
@@ -18,6 +18,14 @@ const PHONE2_LABELS = [
 
 function phone2LabelText(value) {
   return PHONE2_LABELS.find((o) => o.value === value)?.label || value;
+}
+
+// The +971 default is just a typing shortcut — if it's left untouched (no
+// digits typed beyond the country code), treat the field as not filled in
+// rather than saving a bare "+971" as someone's phone number.
+function normalizePhone(value) {
+  const digits = (value || '').replace(/\D/g, '');
+  return digits === '' || digits === '971' ? '' : value;
 }
 
 export default function ClientsPage() {
@@ -63,7 +71,11 @@ export default function ClientsPage() {
     const res = await fetch('/api/clients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        phone: normalizePhone(form.phone),
+        phone2: normalizePhone(form.phone2),
+      }),
     });
     const data = await res.json();
 
@@ -81,7 +93,7 @@ export default function ClientsPage() {
     setEditForm({
       full_name: client.full_name,
       phone: client.phone || '+971',
-      phone2: client.phone2 || '',
+      phone2: client.phone2 || '+971',
       phone2_label: client.phone2_label || '',
       email: client.email || '',
       address: client.address || '',
@@ -99,7 +111,11 @@ export default function ClientsPage() {
     const res = await fetch(`/api/clients/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm),
+      body: JSON.stringify({
+        ...editForm,
+        phone: normalizePhone(editForm.phone),
+        phone2: normalizePhone(editForm.phone2),
+      }),
     });
     const data = await res.json();
 
