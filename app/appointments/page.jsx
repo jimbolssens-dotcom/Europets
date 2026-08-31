@@ -1,8 +1,8 @@
 // app/appointments/page.jsx
-// Month calendar overview + a clickable time-slot grid for booking.
-// Consult slots are fixed at 15 minutes; surgery slots run in 10-minute
-// increments. Booking a room/vet that's already taken for that time is
-// rejected by the API (409).
+// Month calendar overview + an Outlook-style day schedule: one column per
+// room, continuous time down the side, appointments as colored blocks
+// positioned by their actual start time/duration and color-coded by vet.
+// Click empty grid space to pick a room + time for a new booking.
 
 'use client';
 
@@ -11,8 +11,21 @@ import { supabase } from '@/lib/supabaseClient';
 
 const OPEN_HOUR = 8;
 const CLOSE_HOUR = 19;
-const SLOT_MINUTES = 15;
+const PIXELS_PER_MINUTE = 1.4;
+const SNAP_MINUTES = 15;
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const VET_PALETTE = [
+  { bg: '#dbeafe', fg: '#1d4ed8' },
+  { bg: '#dcfce7', fg: '#15803d' },
+  { bg: '#fef3c7', fg: '#b45309' },
+  { bg: '#ede9fe', fg: '#6d28d9' },
+  { bg: '#cffafe', fg: '#0e7490' },
+  { bg: '#ffe4e6', fg: '#be123c' },
+  { bg: '#ecfccb', fg: '#4d7c0f' },
+  { bg: '#fae8ff', fg: '#a21caf' },
+];
+const UNASSIGNED_COLOR = { bg: '#f3f4f6', fg: '#4b5563' };
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -34,6 +47,11 @@ function formatTime(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function minutesSinceOpen(iso) {
+  const d = new Date(iso);
+  return (d.getHours() - OPEN_HOUR) * 60 + d.getMinutes();
+}
+
 // build a 6-row Sun-start grid of Date objects covering the given month,
 // padded with the trailing days of the previous/next month
 function buildMonthGrid(year, monthIndex) {
@@ -50,14 +68,15 @@ function buildMonthGrid(year, monthIndex) {
   return days;
 }
 
-function buildDaySlots() {
-  const slots = [];
-  for (let minutes = OPEN_HOUR * 60; minutes < CLOSE_HOUR * 60; minutes += SLOT_MINUTES) {
-    slots.push(`${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`);
+function buildHourMarks() {
+  const marks = [];
+  for (let h = OPEN_HOUR; h <= CLOSE_HOUR; h++) {
+    marks.push(h);
   }
-  return slots;
+  return marks;
 }
-const DAY_SLOTS = buildDaySlots();
+const HOUR_MARKS = buildHourMarks();
+const SCHEDULE_HEIGHT = (CLOSE_HOUR - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE;
 
 const emptyForm = {
   client_id: '',
@@ -127,6 +146,16 @@ export default function AppointmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const vetColor = useMemo(() => {
+    const map = {};
+    vets.forEach((v, i) => {
+      map[v.id] = VET_PALETTE[i % VET_PALETTE.length];
+    });
+    return map;
+  }, [vets]);
+
+  const colorForVet = (vetId) => (vetId && vetColor[vetId]) || UNASSIGNED_COLOR;
+
   const countsByDate = useMemo(() => {
     const counts = {};
     for (const a of appointments) {
@@ -138,26 +167,12 @@ export default function AppointmentsPage() {
   }, [appointments]);
 
   const dayAppointments = useMemo(
-    () => appointments.filter((a) => toISODate(new Date(a.start_time)) === selectedDate),
+    () =>
+      appointments.filter(
+        (a) => a.status !== 'cancelled' && toISODate(new Date(a.start_time)) === selectedDate
+      ),
     [appointments, selectedDate]
   );
-
-  // map each slot's "HH:MM" to the appointment occupying it, if any
-  const slotMap = useMemo(() => {
-    const map = {};
-    for (const a of dayAppointments) {
-      if (a.status === 'cancelled') continue;
-      const start = new Date(a.start_time);
-      const startMinutes = start.getHours() * 60 + start.getMinutes();
-      const slotsCovered = Math.ceil(a.duration_minutes / SLOT_MINUTES);
-      for (let i = 0; i < slotsCovered; i++) {
-        const minutes = startMinutes + i * SLOT_MINUTES;
-        const key = `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
-        map[key] = { appointment: a, isStart: i === 0 };
-      }
-    }
-    return map;
-  }, [dayAppointments]);
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonthIndex), [viewYear, viewMonthIndex]);
 
@@ -180,15 +195,22 @@ export default function AppointmentsPage() {
     }
   }
 
-  function pickSlot(time) {
-    setForm({ ...form, time });
+  function pickFromGrid(e, roomId) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+    const minutesFromOpen = offsetY / PIXELS_PER_MINUTE;
+    const snapped = Math.round(minutesFromOpen / SNAP_MINUTES) * SNAP_MINUTES;
+    const clamped = Math.max(0, Math.min(snapped, (CLOSE_HOUR - OPEN_HOUR) * 60 - SNAP_MINUTES));
+    const totalMinutes = OPEN_HOUR * 60 + clamped;
+    const time = `${pad(Math.floor(totalMinutes / 60))}:${pad(totalMinutes % 60)}`;
+    setForm({ ...form, time, room_id: roomId });
     setError(null);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.time) {
-      setError('Pick a time slot below first');
+    if (!form.time || !form.room_id) {
+      setError('Click a spot on the schedule below first to pick a room and time');
       return;
     }
     setSubmitting(true);
@@ -302,65 +324,150 @@ export default function AppointmentsPage() {
 
       <h2>{selectedDateLabel}</h2>
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <div className="slot-grid">
-          {DAY_SLOTS.map((time) => {
-            const occupied = slotMap[time];
-            if (occupied && !occupied.isStart) {
-              return <div key={time} className="slot slot-continued" />;
-            }
-            if (occupied) {
-              const a = occupied.appointment;
-              return (
-                <div key={time} className="slot slot-booked">
-                  <div className="slot-time">{time}</div>
-                  <div className="slot-info">
-                    <strong>{a.patients?.name}</strong> ({a.type}, {a.duration_minutes}m)
-                    <br />
-                    {a.rooms?.name} · {a.staff?.full_name || 'unassigned'} · {a.status}
-                  </div>
-                  <div className="slot-actions">
-                    {a.status === 'booked' && (
-                      <button type="button" onClick={() => checkIn(a.id)}>
-                        Check In
-                      </button>
-                    )}
-                    {a.status === 'checked_in' && <a href="/visits">View Visit</a>}
-                    {a.status !== 'cancelled' && a.status !== 'complete' && (
-                      <button type="button" onClick={() => cancelAppointment(a.id)}>
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            }
-            return (
-              <button
-                type="button"
-                key={time}
-                className={`slot slot-free ${form.time === time ? 'slot-picked' : ''}`}
-                onClick={() => pickSlot(time)}
-              >
-                <span className="slot-time">{time}</span>
-                <span className="slot-pick-label">
-                  {form.time === time ? 'Selected' : 'Book'}
-                </span>
-              </button>
-            );
-          })}
+      {vets.length > 0 && (
+        <div className="vet-legend">
+          {vets.map((v) => (
+            <span key={v.id} className="vet-legend-item">
+              <span
+                className="vet-legend-swatch"
+                style={{ background: colorForVet(v.id).bg, borderColor: colorForVet(v.id).fg }}
+              />
+              {v.full_name}
+            </span>
+          ))}
+          <span className="vet-legend-item">
+            <span
+              className="vet-legend-swatch"
+              style={{ background: UNASSIGNED_COLOR.bg, borderColor: UNASSIGNED_COLOR.fg }}
+            />
+            Unassigned
+          </span>
         </div>
       )}
+
+      {loading ? (
+        <p>Loading...</p>
+      ) : rooms.length === 0 ? (
+        <p>
+          No rooms set up yet — add one on the <a href="/rooms">Rooms</a> page first.
+        </p>
+      ) : (
+        <div className="schedule-wrap">
+          <div className="schedule-time-col">
+            <div className="schedule-header schedule-time-header" />
+            <div className="schedule-time-track" style={{ height: SCHEDULE_HEIGHT }}>
+              {HOUR_MARKS.map((h) => (
+                <div
+                  key={h}
+                  className="schedule-hour-label"
+                  style={{ top: (h - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE }}
+                >
+                  {pad(h)}:00
+                </div>
+              ))}
+            </div>
+          </div>
+          {rooms.map((room) => (
+            <div key={room.id} className="schedule-room-col">
+              <div className="schedule-header">{room.name}</div>
+              <div
+                className="schedule-room-track"
+                style={{ height: SCHEDULE_HEIGHT }}
+                onClick={(e) => pickFromGrid(e, room.id)}
+              >
+                {HOUR_MARKS.map((h) => (
+                  <div
+                    key={h}
+                    className="schedule-hour-line"
+                    style={{ top: (h - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE }}
+                  />
+                ))}
+                {dayAppointments
+                  .filter((a) => a.room_id === room.id)
+                  .map((a) => {
+                    const color = colorForVet(a.vet_id);
+                    const top = minutesSinceOpen(a.start_time) * PIXELS_PER_MINUTE;
+                    const height = Math.max(a.duration_minutes * PIXELS_PER_MINUTE, 22);
+                    return (
+                      <div
+                        key={a.id}
+                        className="schedule-block"
+                        style={{
+                          top,
+                          height,
+                          background: color.bg,
+                          borderColor: color.fg,
+                          color: color.fg,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <strong>{a.patients?.name}</strong> {formatTime(a.start_time)} ·{' '}
+                        {a.type} · {a.status}
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h2>{selectedDateLabel} — list</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Type</th>
+            <th>Patient</th>
+            <th>Room</th>
+            <th>Vet</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {dayAppointments.length === 0 && (
+            <tr>
+              <td colSpan={7}>No appointments booked for this day.</td>
+            </tr>
+          )}
+          {dayAppointments.map((a) => (
+            <tr key={a.id}>
+              <td>
+                {formatTime(a.start_time)} ({a.duration_minutes}m)
+              </td>
+              <td>{a.type}</td>
+              <td>{a.patients?.name}</td>
+              <td>{a.rooms?.name}</td>
+              <td>{a.staff?.full_name || '—'}</td>
+              <td>{a.status}</td>
+              <td>
+                {a.status === 'booked' && (
+                  <button type="button" onClick={() => checkIn(a.id)}>
+                    Check In
+                  </button>
+                )}
+                {a.status === 'checked_in' && <a href="/visits">View Visit</a>}
+                {a.status !== 'cancelled' && a.status !== 'complete' && (
+                  <button type="button" onClick={() => cancelAppointment(a.id)}>
+                    Cancel
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
       <form className="card" onSubmit={handleSubmit}>
         <h2>Book Appointment</h2>
         {error && <p className="error">{error}</p>}
         <p>
-          {form.time
-            ? `Booking ${selectedDateLabel} at ${form.time}`
-            : 'Click a free slot above to pick a time'}
+          {form.time && form.room_id
+            ? `Booking ${selectedDateLabel} at ${form.time} in ${
+                rooms.find((r) => r.id === form.room_id)?.name || ''
+              }`
+            : 'Click a spot on the schedule above to pick a room and time'}
         </p>
 
         <select
@@ -437,7 +544,7 @@ export default function AppointmentsPage() {
           onChange={(e) => setForm({ ...form, reason: e.target.value })}
         />
 
-        <button type="submit" disabled={submitting || !form.time}>
+        <button type="submit" disabled={submitting || !form.time || !form.room_id}>
           {submitting ? 'Booking...' : 'Book Appointment'}
         </button>
       </form>
