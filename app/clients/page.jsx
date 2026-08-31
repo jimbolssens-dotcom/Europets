@@ -8,9 +8,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { uploadAttachment } from '@/lib/attachments';
+import ScanIdButton from '@/app/_components/ScanIdButton';
 
-const emptyForm = { full_name: '', phone: '+971', phone2: '+971', phone2_label: '', email: '', address: '' };
-const emptySearch = { client_number: '', name: '', phone: '', email: '', address: '' };
+const emptyForm = {
+  full_name: '',
+  phone: '+971',
+  phone2: '+971',
+  phone2_label: '',
+  emirates_id: '',
+  email: '',
+  address: '',
+};
+const emptySearch = { client_number: '', name: '', phone: '', emirates_id: '', email: '', address: '' };
 
 const PHONE2_LABELS = [
   { value: 'husband', label: 'Husband' },
@@ -37,6 +47,7 @@ function buildQuery(search) {
   if (search.client_number.trim()) params.set('client_number', search.client_number.trim());
   if (search.name.trim()) params.set('name', search.name.trim());
   if (search.phone.trim()) params.set('phone', search.phone.trim());
+  if (search.emirates_id.trim()) params.set('emirates_id', search.emirates_id.trim());
   if (search.email.trim()) params.set('email', search.email.trim());
   if (search.address.trim()) params.set('address', search.address.trim());
   return params.toString();
@@ -55,6 +66,7 @@ export default function ClientsPage() {
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [idScanFile, setIdScanFile] = useState(null); // held until the new client exists
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [rowError, setRowError] = useState(null);
@@ -119,10 +131,34 @@ export default function ClientsPage() {
     if (!res.ok) {
       setError(data.error || 'Failed to create client');
     } else {
+      if (idScanFile) {
+        uploadAttachment({ entityType: 'client', entityId: data.id, file: idScanFile }).catch(() => {});
+        setIdScanFile(null);
+      }
       setForm(emptyForm);
       if (hasSearched) runSearch(search);
     }
     setSubmitting(false);
+  }
+
+  function handleAddScanned({ full_name, emirates_id, file }) {
+    setForm((prev) => ({
+      ...prev,
+      full_name: full_name || prev.full_name,
+      emirates_id: emirates_id || prev.emirates_id,
+    }));
+    setIdScanFile(file);
+  }
+
+  function handleEditScanned(clientId, { full_name, emirates_id, file }) {
+    setEditForm((prev) => ({
+      ...prev,
+      full_name: full_name || prev.full_name,
+      emirates_id: emirates_id || prev.emirates_id,
+    }));
+    if (file) {
+      uploadAttachment({ entityType: 'client', entityId: clientId, file }).catch(() => {});
+    }
   }
 
   function startEdit(client) {
@@ -132,6 +168,7 @@ export default function ClientsPage() {
       phone: client.phone || '+971',
       phone2: client.phone2 || '+971',
       phone2_label: client.phone2_label || '',
+      emirates_id: client.emirates_id || '',
       email: client.email || '',
       address: client.address || '',
     });
@@ -201,6 +238,11 @@ export default function ClientsPage() {
             onChange={(e) => setSearch({ ...search, phone: e.target.value })}
           />
           <input
+            placeholder="Emirates ID"
+            value={search.emirates_id}
+            onChange={(e) => setSearch({ ...search, emirates_id: e.target.value })}
+          />
+          <input
             placeholder="Email"
             value={search.email}
             onChange={(e) => setSearch({ ...search, email: e.target.value })}
@@ -223,11 +265,21 @@ export default function ClientsPage() {
         <form className="card" onSubmit={handleSubmit}>
           <h2>Add Client</h2>
           {error && <p className="error">{error}</p>}
+          <ScanIdButton onScanned={handleAddScanned} />
+          <p className="visit-meta" style={{ margin: 0 }}>
+            Scans the card and fills in name + Emirates ID below.
+            {idScanFile && ' Photo ready — will attach once the client is saved.'}
+          </p>
           <input
             placeholder="Full name"
             required
             value={form.full_name}
             onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+          />
+          <input
+            placeholder="Emirates ID"
+            value={form.emirates_id}
+            onChange={(e) => setForm({ ...form, emirates_id: e.target.value })}
           />
           <input
             placeholder="Phone"
@@ -282,6 +334,7 @@ export default function ClientsPage() {
                   <th>Name</th>
                   <th>Phone</th>
                   <th>2nd Phone</th>
+                  <th>Emirates ID</th>
                   <th>Email</th>
                   <th>Address</th>
                   <th></th>
@@ -324,6 +377,17 @@ export default function ClientsPage() {
                       </td>
                       <td>
                         <input
+                          placeholder="Emirates ID"
+                          value={editForm.emirates_id}
+                          onChange={(e) => setEditForm({ ...editForm, emirates_id: e.target.value })}
+                        />
+                        <ScanIdButton
+                          label="📷"
+                          onScanned={(scanned) => handleEditScanned(c.id, scanned)}
+                        />
+                      </td>
+                      <td>
+                        <input
                           type="email"
                           value={editForm.email}
                           onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
@@ -356,6 +420,7 @@ export default function ClientsPage() {
                           ? `${c.phone2}${c.phone2_label ? ` (${phone2LabelText(c.phone2_label)})` : ''}`
                           : ''}
                       </td>
+                      <td>{c.emirates_id || '—'}</td>
                       <td>{c.email}</td>
                       <td>{c.address}</td>
                       <td>

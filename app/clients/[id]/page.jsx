@@ -7,6 +7,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import AttachmentSection from '@/app/_components/AttachmentSection';
+import ScanIdButton from '@/app/_components/ScanIdButton';
+import { uploadAttachment } from '@/lib/attachments';
 
 const PHONE2_LABEL_TEXT = {
   husband: 'Husband',
@@ -50,6 +53,23 @@ export default function ClientDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  async function handleScanned({ full_name, emirates_id, file }) {
+    const update = {};
+    if (full_name && !client.full_name) update.full_name = full_name;
+    if (emirates_id) update.emirates_id = emirates_id;
+    if (Object.keys(update).length > 0) {
+      await fetch(`/api/clients/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(update),
+      });
+    }
+    if (file) {
+      await uploadAttachment({ entityType: 'client', entityId: id, file }).catch(() => {});
+    }
+    load();
+  }
+
   if (loading) return <p>Loading client...</p>;
   if (!client || client.error) return <p>Client not found.</p>;
 
@@ -68,7 +88,15 @@ export default function ClientDetailPage() {
           : ''}{' '}
         · {client.email}
         {client.address ? ` · ${client.address}` : ''}
+        {client.emirates_id ? ` · Emirates ID: ${client.emirates_id}` : ''}
       </p>
+
+      <h2>Emirates ID</h2>
+      <ScanIdButton
+        label={client.emirates_id ? '📷 Re-scan Emirates ID' : '📷 Scan Emirates ID'}
+        onScanned={handleScanned}
+      />
+      <AttachmentSection entityType="client" entityId={id} />
 
       <h2>Patients</h2>
       <table>

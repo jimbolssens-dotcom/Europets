@@ -21,7 +21,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { full_name, phone, phone2, phone2_label, email, address } = body;
+  const { full_name, phone, phone2, phone2_label, emirates_id, email, address } = body;
 
   const update = {};
   if (full_name !== undefined) update.full_name = full_name;
@@ -32,6 +32,7 @@ export async function PATCH(request, { params }) {
   } else if (phone2_label !== undefined) {
     update.phone2_label = phone2_label || null;
   }
+  if (emirates_id !== undefined) update.emirates_id = emirates_id || null;
   if (email !== undefined) update.email = email;
   if (address !== undefined) update.address = address;
 
@@ -53,6 +54,20 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+  // attachments (e.g. scanned Emirates ID photos) link generically via
+  // entity_type/entity_id, not a real FK, so they don't cascade — clean
+  // them up explicitly before the delete attempt.
+  const { data: attachments } = await supabase
+    .from('attachments')
+    .select('id, file_path')
+    .eq('entity_type', 'client')
+    .eq('entity_id', params.id);
+
+  if (attachments?.length) {
+    await supabase.storage.from('consult-files').remove(attachments.map((a) => a.file_path));
+    await supabase.from('attachments').delete().in('id', attachments.map((a) => a.id));
+  }
+
   const { error } = await supabase.from('clients').delete().eq('id', params.id);
 
   if (error) {

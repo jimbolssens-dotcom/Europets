@@ -1,6 +1,6 @@
 // app/api/clients/route.js
 // GET  /api/clients        -> list all clients (used by dropdowns elsewhere)
-// GET  /api/clients?name=&phone=&email=&address=&client_number=
+// GET  /api/clients?name=&phone=&email=&address=&client_number=&emirates_id=
 //                           -> filtered by any combination of those (all optional,
 //                              AND'ed together) — used by the Clients page search
 // POST /api/clients        -> create a new client
@@ -15,6 +15,7 @@ export async function GET(request) {
   const email = searchParams.get('email');
   const address = searchParams.get('address');
   const clientNumber = searchParams.get('client_number');
+  const emiratesId = searchParams.get('emirates_id');
 
   let query = supabase.from('clients').select('*').order('full_name', { ascending: true });
 
@@ -22,6 +23,7 @@ export async function GET(request) {
   if (phone) query = query.or(`phone.ilike.%${phone}%,phone2.ilike.%${phone}%`);
   if (email) query = query.ilike('email', `%${email}%`);
   if (address) query = query.ilike('address', `%${address}%`);
+  if (emiratesId) query = query.ilike('emirates_id', `%${emiratesId}%`);
   if (clientNumber && !Number.isNaN(Number(clientNumber))) {
     query = query.eq('client_number', Number(clientNumber));
   }
@@ -36,7 +38,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { full_name, phone, phone2, phone2_label, email, address } = body;
+  const { full_name, phone, phone2, phone2_label, emirates_id, email, address } = body;
 
   if (!full_name) {
     return NextResponse.json({ error: 'full_name is required' }, { status: 400 });
@@ -50,6 +52,7 @@ export async function POST(request) {
         phone,
         phone2: phone2 || null,
         phone2_label: phone2 ? phone2_label || null : null,
+        emirates_id: emirates_id || null,
         email,
         address,
       },

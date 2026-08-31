@@ -12,7 +12,8 @@ appointments, full consult medical records, hospitalization, and invoicing.
 - **Hosting**: Vercel (app) + Supabase (database + storage).
 - **AI**: [AssemblyAI](https://www.assemblyai.com/) for speech-to-text and
   [Claude](https://claude.com) (`claude-opus-5`, via `@anthropic-ai/sdk`) for
-  summarizing consult/surgery recordings into clinical notes.
+  summarizing consult/surgery recordings into clinical notes, and for
+  reading name + ID number off a photo of an Emirates ID card.
 
 ## Getting started
 1. Install dependencies:
@@ -57,6 +58,14 @@ appointments, full consult medical records, hospitalization, and invoicing.
 > page instead: download the PDF, then open `wa.me` with the client's
 > number and a drafted message — the vet still taps the attach icon in
 > WhatsApp once to pick the file they just downloaded.
+
+> **Emirates ID scanning reads text, it doesn't crop a face photo.** Claude
+> reads the name and ID number off the card photo and fills in the form;
+> it can't isolate just the small printed photo on the card into a
+> separate "client photo" field. Instead, the whole card photo you scanned
+> gets saved as a regular attachment on the client (visible on their
+> detail page under "Emirates ID") — so the photo is on file, just as a
+> full card scan rather than a cropped headshot.
 
 > **Env var naming:** the app reads `NEXT_PUBLIC_SUPABASE_APP_URL` /
 > `NEXT_PUBLIC_SUPABASE_APP_KEY`, not the more obvious
@@ -109,11 +118,13 @@ app/
 │   ├── recordings/[id]/webhook/route.js  → AssemblyAI callback → Claude summary → notes/report
 │   ├── voice-to-text/route.js            → dictate one field: transcribe + summarize synchronously
 │   ├── search/route.js                   → find clients/patients by name/phone/breed/microchip
+│   ├── clients/scan-id/route.js          → read name + ID number off a photo of an Emirates ID
 │   ├── goods-services/route.js           → catalog CRUD
 │   ├── invoices/route.js                 → list/open invoices
 │   └── invoices/[id]/line-items/         → add/remove invoice line items
 ├── search/                                → full results page for a nav search
-├── clients/, patients/                   → list, detail, edit/delete
+├── clients/, patients/                   → list, detail, edit/delete — Add Client can scan
+│                                            an Emirates ID card to fill in name + ID number
 ├── appointments/                         → month calendar + room x time schedule
 ├── consults/                             → active/completed board + full consult record
 ├── hospitalization/                      → admissions list + day-to-day worksheet
@@ -121,6 +132,7 @@ app/
 ├── rooms/, staff/                        → admin list, edit/delete
 ├── _components/AttachmentSection.jsx     → reusable file upload/list widget
 ├── _components/SearchBox.jsx             → nav search box with a live results dropdown
+├── _components/ScanIdButton.jsx          → camera button that reads an Emirates ID card
 ├── _components/AudioRecorder.jsx         → record/upload audio, show transcript+summary
 ├── _components/VoiceToTextButton.jsx     → small 🎤 button that dictates a single field
 └── layout.js, page.js                    → app shell & home page

@@ -18,6 +18,7 @@ create table clients (
     phone text,
     phone2 text,
     phone2_label text,       -- who the second number belongs to: 'husband', 'wife', 'maid', 'driver', 'other'
+    emirates_id text,        -- UAE Emirates ID number, typed or read off a scanned card
     email text,
     address text,
     created_at timestamptz default now()
