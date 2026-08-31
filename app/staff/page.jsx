@@ -1,5 +1,5 @@
 // app/staff/page.jsx
-// Staff list + create form. Vets are the bookable providers used by appointments.
+// Staff list + create form, with inline edit and delete.
 
 'use client';
 
@@ -13,6 +13,9 @@ export default function StaffPage() {
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(emptyForm);
+  const [rowError, setRowError] = useState(null);
 
   const loadStaff = () =>
     fetch('/api/staff')
@@ -47,27 +50,115 @@ export default function StaffPage() {
     setSubmitting(false);
   }
 
+  function startEdit(member) {
+    setEditingId(member.id);
+    setEditForm({ full_name: member.full_name, role: member.role, email: member.email || '' });
+    setRowError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setRowError(null);
+  }
+
+  async function saveEdit(id) {
+    setRowError(null);
+    const res = await fetch(`/api/staff/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setRowError(data.error || 'Failed to save staff member');
+    } else {
+      setEditingId(null);
+      loadStaff();
+    }
+  }
+
+  async function deleteStaff(member) {
+    if (!confirm(`Delete ${member.full_name}? This cannot be undone.`)) return;
+    setRowError(null);
+
+    const res = await fetch(`/api/staff/${member.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error || 'Failed to delete staff member');
+    } else {
+      loadStaff();
+    }
+  }
+
   if (loading) return <p>Loading staff...</p>;
 
   return (
     <div>
       <h1>Staff</h1>
+      {rowError && <p className="error">{rowError}</p>}
       <table>
         <thead>
           <tr>
             <th>Name</th>
             <th>Role</th>
             <th>Email</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
-          {staff.map((s) => (
-            <tr key={s.id}>
-              <td>{s.full_name}</td>
-              <td>{s.role}</td>
-              <td>{s.email}</td>
-            </tr>
-          ))}
+          {staff.map((s) =>
+            editingId === s.id ? (
+              <tr key={s.id}>
+                <td>
+                  <input
+                    value={editForm.full_name}
+                    onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <select
+                    value={editForm.role}
+                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                  >
+                    <option value="vet">Vet</option>
+                    <option value="tech">Tech</option>
+                    <option value="reception">Reception</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </td>
+                <td>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <button type="button" onClick={() => saveEdit(s.id)}>
+                    Save
+                  </button>
+                  <button type="button" onClick={cancelEdit}>
+                    Cancel
+                  </button>
+                </td>
+              </tr>
+            ) : (
+              <tr key={s.id}>
+                <td>{s.full_name}</td>
+                <td>{s.role}</td>
+                <td>{s.email}</td>
+                <td>
+                  <button type="button" onClick={() => startEdit(s)}>
+                    Edit
+                  </button>
+                  <button type="button" onClick={() => deleteStaff(s)}>
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            )
+          )}
         </tbody>
       </table>
 

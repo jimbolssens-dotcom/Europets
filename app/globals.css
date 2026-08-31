@@ -113,6 +113,19 @@ th, td {
   border-bottom: 1px solid #eee;
 }
 
+td button + button,
+td a + button,
+td button + a {
+  margin-left: 0.4rem;
+}
+
+td input,
+td select {
+  padding: 0.3rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
 th {
   background: var(--pink-tint);
   color: var(--pink-dark);
