@@ -11,7 +11,14 @@ import { NextResponse } from 'next/server';
 
 export const maxDuration = 60;
 
-const VALID_KINDS = ['anamnesis', 'findings', 'treatment_notes', 'surgical_notes', 'dental_notes'];
+const VALID_KINDS = [
+  'anamnesis',
+  'findings',
+  'treatment_notes',
+  'surgical_notes',
+  'dental_notes',
+  'hospitalization_notes',
+];
 
 export async function POST(request) {
   const formData = await request.formData();

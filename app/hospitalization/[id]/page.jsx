@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
+import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -68,6 +69,10 @@ export default function HospitalizationDetailPage() {
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  function appendNoteText(text) {
+    setNoteForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }));
+  }
 
   async function addNote(e) {
     e.preventDefault();
@@ -195,11 +200,17 @@ export default function HospitalizationDetailPage() {
           value={noteForm.condition}
           onChange={(e) => setNoteForm({ ...noteForm, condition: e.target.value })}
         />
-        <input
-          placeholder="Notes"
-          value={noteForm.notes}
-          onChange={(e) => setNoteForm({ ...noteForm, notes: e.target.value })}
-        />
+        <label>
+          <span className="field-label-row">
+            Notes
+            <VoiceToTextButton kind="hospitalization_notes" onResult={appendNoteText} />
+          </span>
+          <textarea
+            rows={2}
+            value={noteForm.notes}
+            onChange={(e) => setNoteForm({ ...noteForm, notes: e.target.value })}
+          />
+        </label>
         <button type="submit" disabled={submitting}>
           {submitting ? 'Saving...' : 'Add Entry'}
         </button>
