@@ -11,7 +11,9 @@ import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
-import VaccinationPanel from '@/app/_components/VaccinationPanel';
+import { useVaccinations } from '@/app/_components/useVaccinations';
+import VaccinationForm from '@/app/_components/VaccinationForm';
+import VaccinationHistory from '@/app/_components/VaccinationHistory';
 
 const DIAGNOSTIC_TYPES = [
   { value: 'blood_test', label: 'Blood test' },
@@ -337,6 +339,8 @@ export default function ConsultDetailPage() {
     }
   }
 
+  const vac = useVaccinations(consult?.patients?.id, consult?.patients?.species);
+
   if (loading || !consult || !record) return <p>Loading consult...</p>;
   if (consult.error) return <p>Consult not found.</p>;
 
@@ -464,10 +468,12 @@ export default function ConsultDetailPage() {
         Record the consult and Claude will transcribe and summarize it into a note above.
       </p>
       <AudioRecorder entityType="visit" entityId={id} />
-      </div>
-      </div>
 
-      <VaccinationPanel patientId={consult.patients?.id} species={consult.patients?.species} staff={staff} />
+      <h2>Vaccinations</h2>
+      <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
+      <VaccinationForm {...vac} species={consult.patients?.species} staff={staff} />
+      </div>
+      </div>
 
       <div className="two-col">
       <div>
