@@ -140,19 +140,20 @@ appointments, full consult medical records, hospitalization, and invoicing.
    and Rabies for cats; DHPPi + Lepto, Rabies, and optional Kennel Cough
    for dogs) recorded per patient, with the Add Vaccination form on a
    patient's page automatically filtered to protocols for their species.
-   Each record gets a next-due date (defaults
-   to the protocol's interval, usually annual, from the date given — stays
-   editable). The Vaccinations nav page is a clinic-wide due/overdue list;
-   its WhatsApp/Email buttons draft a pre-filled reminder for staff to send
-   themselves and mark it reminded — there's no connected email service or
-   WhatsApp Business API to send these automatically yet (same limitation
-   as the hospitalization portal's WhatsApp sharing). A "Mark as Primary"
-   button on a given dose flags it as part of a puppy/kitten primary
-   course: it reschedules the species' core vaccine (PCH / DHPPi + Lepto)
-   for a 1-month booster instead of the normal annual interval, and — only
-   if rabies wasn't given in that same visit — adds a rabies reminder for
-   that same 1-month date (a "scheduled, not yet given" record; rabies
-   given the first time just stays on its normal annual cycle)
+   Each record gets a next-due date (defaults to the protocol's interval,
+   usually annual, from the date given — stays editable). The Vaccinations
+   nav page is a clinic-wide due/overdue list; its WhatsApp/Email buttons
+   draft a pre-filled reminder for staff to send themselves and mark it
+   reminded — there's no connected email service or WhatsApp Business API
+   to send these automatically yet (same limitation as the hospitalization
+   portal's WhatsApp sharing). Add Vaccination has two submit actions
+   instead of one — Add as Annual Vaccine (the normal ~12-month cycle) or
+   Add as Primary Booster, for a puppy/kitten's first visit: it reschedules
+   the species' core vaccine (PCH / DHPPi + Lepto) for a 1-month booster
+   instead of the normal annual interval, and automatically checks whether
+   rabies was checked in that same submission — if not, it adds a rabies
+   reminder for that same 1-month date (a "scheduled, not yet given"
+   record); if rabies WAS given, it just stays on its normal annual cycle
 8. FileMaker migration
 
 ## Folder layout
@@ -185,9 +186,9 @@ app/
 │   ├── invoices/[id]/tax-invoice-pdf/    → FTA-compliant Tax Invoice PDF for one invoice
 │   ├── clinic-settings/route.js          → the clinic's own TRN/identity (singleton row)
 │   ├── vaccine-protocols/route.js        → the species-tagged vaccine catalog (Settings UI)
-│   ├── vaccinations/route.js             → per-patient records; ?due=true for the reminders list
-│   └── vaccinations/[id]/mark-primary/   → flags a dose as a primary-course visit and
-│                                            schedules its 1-month booster reminder(s)
+│   └── vaccinations/route.js             → per-patient records (annual or primary-booster,
+│                                            picked when the vaccination is added); ?due=true
+│                                            for the reminders list
 ├── (admin)/                                → every internal staff page, wrapped in the staff nav
 │   ├── layout.js                           → the nav (Clients, Patients, ... , ⚙️ Settings)
 │   ├── page.js                             → home page

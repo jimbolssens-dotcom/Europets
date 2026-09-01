@@ -56,11 +56,16 @@ export async function POST(request) {
     batch_number,
     administered_by,
     notes,
+    is_primary,
   } = body;
 
-  if (!patient_id || !vaccine_protocol_id || !date_given) {
+  // date_given is normally required (a real dose given today), but a
+  // Primary Booster submission also creates a rabies reminder that hasn't
+  // actually been given yet — that row has no date_given, so it must
+  // supply next_due_date itself instead.
+  if (!patient_id || !vaccine_protocol_id || (!date_given && !next_due_date)) {
     return NextResponse.json(
-      { error: 'patient_id, vaccine_protocol_id, and date_given are required' },
+      { error: 'patient_id, vaccine_protocol_id, and a date_given or next_due_date are required' },
       { status: 400 }
     );
   }
@@ -78,7 +83,7 @@ export async function POST(request) {
   // Default the reminder date to date_given + the protocol's interval
   // (annual, unless the protocol says otherwise) — stays editable afterward.
   let dueDate = next_due_date || null;
-  if (!dueDate) {
+  if (!dueDate && date_given) {
     const given = new Date(`${date_given}T00:00:00`);
     given.setMonth(given.getMonth() + protocol.interval_months);
     dueDate = given.toISOString().slice(0, 10);
@@ -91,11 +96,12 @@ export async function POST(request) {
         patient_id,
         vaccine_protocol_id,
         vaccine_name: protocol.name,
-        date_given,
+        date_given: date_given || null,
         next_due_date: dueDate,
         batch_number: batch_number || null,
         administered_by: administered_by || null,
         notes: notes || null,
+        is_primary: Boolean(is_primary),
       },
     ])
     .select('*, staff(full_name)')

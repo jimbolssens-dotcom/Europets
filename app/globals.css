@@ -387,6 +387,29 @@ form.card label {
   vertical-align: middle;
 }
 
+/* Add Vaccination's two submit actions — Annual vs Primary Booster — sit
+   side by side so the choice is made once, up front, instead of adding
+   the vaccine first and fixing it up afterward. */
+.vaccine-submit-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.vaccine-submit-actions button {
+  flex: 1 1 auto;
+}
+
+button.secondary {
+  background: white;
+  color: var(--pink-dark);
+  border: 1px solid var(--pink);
+}
+
+button.secondary:hover {
+  background: var(--pink-tint);
+}
+
 .attachments {
   margin-top: 0.5rem;
 }

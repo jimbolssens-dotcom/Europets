@@ -37,6 +37,12 @@ function dueStatus(dateStr) {
   return { label: `Due ${formatDate(dateStr)}`, className: 'visit-meta' };
 }
 
+function addMonths(dateStr, months) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+
 function makeEmptyForm() {
   return {
     vaccine_protocol_ids: [],
@@ -58,7 +64,6 @@ export default function PatientDetailPage() {
   const [form, setForm] = useState(makeEmptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [markingPrimaryId, setMarkingPrimaryId] = useState(null);
 
   const load = () =>
     fetch(`/api/patients/${id}`)
@@ -127,10 +132,18 @@ export default function PatientDetailPage() {
 
   // One vaccine given in the same visit can mean several checked at once
   // (e.g. PCH + Rabies for a cat) — record one row per checked protocol,
-  // sharing the date/batch/vet/notes. next_due_date is left for the server
-  // to compute from each protocol's own interval, so a mix of annual and
-  // (eventually) non-annual vaccines each get the right due date.
-  async function addVaccination(e) {
+  // sharing the date/batch/vet/notes.
+  //
+  // Annual: next_due_date is left for the server to compute from each
+  // protocol's own interval (normally 12 months).
+  //
+  // Primary booster: the species' core (non-rabies) protocol gets its
+  // next_due_date set to one month out instead. If rabies wasn't among the
+  // checked boxes, a rabies reminder for that same one-month date is added
+  // too — a "scheduled, not yet given" row (no date_given) rather than
+  // pretending rabies was administered today. If rabies WAS checked, its
+  // row is left on the normal annual cycle — no extra reminder needed.
+  async function addVaccination(e, isPrimary) {
     e.preventDefault();
     if (form.vaccine_protocol_ids.length === 0) {
       setError('Check at least one vaccine given');
@@ -139,19 +152,42 @@ export default function PatientDetailPage() {
     setSubmitting(true);
     setError(null);
 
+    const checkedProtocols = relevantProtocols.filter((p) => form.vaccine_protocol_ids.includes(p.id));
+    const coreProtocol = relevantProtocols.find((p) => p.core && !p.is_rabies);
+    const rabiesGiven = checkedProtocols.some((p) => p.is_rabies);
+    const boosterDue = isPrimary ? addMonths(form.date_given, 1) : null;
+
+    const payloads = checkedProtocols.map((p) => ({
+      patient_id: id,
+      vaccine_protocol_id: p.id,
+      date_given: form.date_given,
+      batch_number: form.batch_number,
+      administered_by: form.administered_by || null,
+      notes: form.notes,
+      is_primary: isPrimary,
+      ...(isPrimary && coreProtocol && p.id === coreProtocol.id ? { next_due_date: boosterDue } : {}),
+    }));
+
+    if (isPrimary && !rabiesGiven) {
+      const rabiesProtocol = relevantProtocols.find((p) => p.is_rabies);
+      if (rabiesProtocol) {
+        payloads.push({
+          patient_id: id,
+          vaccine_protocol_id: rabiesProtocol.id,
+          date_given: null,
+          next_due_date: boosterDue,
+          is_primary: true,
+          notes: 'Primary course booster — rabies not given at the first visit',
+        });
+      }
+    }
+
     const results = await Promise.all(
-      form.vaccine_protocol_ids.map((vaccine_protocol_id) =>
+      payloads.map((payload) =>
         fetch('/api/vaccinations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            patient_id: id,
-            vaccine_protocol_id,
-            date_given: form.date_given,
-            batch_number: form.batch_number,
-            administered_by: form.administered_by || null,
-            notes: form.notes,
-          }),
+          body: JSON.stringify(payload),
         }).then(async (res) => ({ ok: res.ok, data: await res.json() }))
       )
     );
@@ -171,35 +207,6 @@ export default function PatientDetailPage() {
     if (!confirm(`Delete this ${v.vaccine_name} record (${when})?`)) return;
     await fetch(`/api/vaccinations/${v.id}`, { method: 'DELETE' });
     loadVaccinations();
-  }
-
-  async function markPrimary(v) {
-    if (
-      !confirm(
-        `Mark this ${v.vaccine_name} dose as a primary vaccination?\n\n` +
-          `This schedules the core vaccine's booster for one month later. If rabies wasn't ` +
-          `given in this same visit, a rabies reminder for that same date will be added too.`
-      )
-    )
-      return;
-
-    setMarkingPrimaryId(v.id);
-    const res = await fetch(`/api/vaccinations/${v.id}/mark-primary`, { method: 'POST' });
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.error || 'Failed to mark as primary');
-    } else {
-      const dueLabel = formatDate(data.booster_due);
-      alert(
-        data.rabies_reminder_created
-          ? `Booster scheduled for ${dueLabel} — rabies wasn't given at this visit, so a rabies reminder was added for the same date.`
-          : `Booster scheduled for ${dueLabel}.` +
-              (data.rabies_given ? ' Rabies was already given, so it stays on its normal annual cycle.' : '')
-      );
-      loadVaccinations();
-    }
-    setMarkingPrimaryId(null);
   }
 
   if (loading) return <p>Loading patient...</p>;
@@ -256,7 +263,7 @@ export default function PatientDetailPage() {
         </div>
 
         <div className="split-aside">
-          <form className="card" onSubmit={addVaccination}>
+          <form className="card" onSubmit={(e) => e.preventDefault()}>
             <h3>Add Vaccination</h3>
             {error && <p className="error">{error}</p>}
             {protocolsError && (
@@ -327,13 +334,27 @@ export default function PatientDetailPage() {
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
 
-            <button type="submit" disabled={submitting || form.vaccine_protocol_ids.length === 0}>
-              {submitting
-                ? 'Saving...'
-                : form.vaccine_protocol_ids.length > 1
-                ? `Add ${form.vaccine_protocol_ids.length} Vaccinations`
-                : 'Add Vaccination'}
-            </button>
+            <p className="visit-meta" style={{ margin: 0 }}>
+              Primary Booster schedules the core vaccine for a 1-month booster and, if rabies
+              isn&apos;t checked above, adds a rabies reminder for that same date.
+            </p>
+            <div className="vaccine-submit-actions">
+              <button
+                type="button"
+                onClick={(e) => addVaccination(e, false)}
+                disabled={submitting || form.vaccine_protocol_ids.length === 0}
+              >
+                {submitting ? 'Saving...' : 'Add as Annual Vaccine'}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={(e) => addVaccination(e, true)}
+                disabled={submitting || form.vaccine_protocol_ids.length === 0}
+              >
+                {submitting ? 'Saving...' : 'Add as Primary Booster'}
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -367,15 +388,6 @@ export default function PatientDetailPage() {
                   <td className={status?.className}>{status?.label || '—'}</td>
                   <td>{v.staff?.full_name || '—'}</td>
                   <td>
-                    {v.date_given && !v.is_primary && (
-                      <button
-                        type="button"
-                        onClick={() => markPrimary(v)}
-                        disabled={markingPrimaryId === v.id}
-                      >
-                        {markingPrimaryId === v.id ? 'Marking...' : 'Mark as Primary'}
-                      </button>
-                    )}
                     <button type="button" onClick={() => deleteVaccination(v)}>
                       Delete
                     </button>
