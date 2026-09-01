@@ -74,6 +74,19 @@ appointments, full consult medical records, hospitalization, and invoicing.
 > UAE vet clinic normally deals with); there's no per-item VAT rate or
 > zero-rated/exempt handling if that's ever needed.
 
+> **The client portal's security model is "unguessable link," not login.**
+> `/portal/hospitalization/[id]` has no auth check — it's reachable by
+> anyone with the link. That's deliberate and matches the rest of this
+> app (no staff auth either), and the id is a random UUID (not the
+> sequential, guessable admission number shown to staff), so it's not
+> discoverable without being sent the link. What it actually protects
+> against is different: the portal route is **outside** `app/(admin)`,
+> which is the group that carries the internal staff nav — so a client
+> who opens their portal link can't navigate into `/clients`, `/invoices`,
+> or any other page and see other people's data, the way they could if
+> the portal reused the regular app shell. Any new client-facing page
+> must go under `app/portal/`, never `app/(admin)/`, for the same reason.
+
 > **Env var naming:** the app reads `NEXT_PUBLIC_SUPABASE_APP_URL` /
 > `NEXT_PUBLIC_SUPABASE_APP_KEY`, not the more obvious
 > `NEXT_PUBLIC_SUPABASE_URL` / `_ANON_KEY`. That's deliberate — if you ever
@@ -102,7 +115,9 @@ appointments, full consult medical records, hospitalization, and invoicing.
 5. ✅ Hospitalization — standalone multi-day admissions with a day-to-day
    worksheet, startable from a consult, with photo capture (camera button
    on iPad/phones) and a one-click PDF summary — including the case's and
-   each day's photos — to share with the client
+   each day's photos — to share with the client. A "Share Client Portal
+   Link" button sends a live, read-only, client-facing page over WhatsApp
+   (no PDF/attach step) that updates automatically until discharge
 6. ✅ AI layer — record a consult or surgery in the browser, AssemblyAI
    transcribes it, Claude summarizes it, and the summary is folded into
    consult notes / the surgical report automatically. A small 🎤 button on
@@ -138,22 +153,31 @@ app/
 │   │                                        importing its treatment plan as line items
 │   ├── invoices/[id]/tax-invoice-pdf/    → FTA-compliant Tax Invoice PDF for one invoice
 │   └── clinic-settings/route.js          → the clinic's own TRN/identity (singleton row)
-├── search/                                → full results page for a nav search
-├── clients/, patients/                   → list, detail, edit/delete — Add Client can scan
-│                                            an Emirates ID card to fill in name + ID number
-├── appointments/                         → month calendar + room x time schedule
-├── consults/                             → active/completed board + full consult record
-├── hospitalization/                      → admissions list + day-to-day worksheet
-├── invoices/                              → list + create; invoices/[id] is a single invoice's page
-├── catalog/                               → catalog UI
-├── rooms/, staff/                        → admin list, edit/delete
-├── settings/                              → clinic legal name/TRN/address for tax invoices
-├── _components/AttachmentSection.jsx     → reusable file upload/list widget
+├── (admin)/                                → every internal staff page, wrapped in the staff nav
+│   ├── layout.js                           → the nav (Clients, Patients, ... , ⚙️ Settings)
+│   ├── page.js                             → home page
+│   ├── search/                             → full results page for a nav search
+│   ├── clients/, patients/                 → list, detail, edit/delete — Add Client can scan
+│   │                                          an Emirates ID card to fill in name + ID number
+│   ├── appointments/                       → month calendar + room x time schedule
+│   ├── consults/                           → active/completed board + full consult record
+│   ├── hospitalization/                    → admissions list + day-to-day worksheet; "Share
+│   │                                          Client Portal Link" sends a live link over WhatsApp
+│   ├── invoices/                           → list + create; invoices/[id] is a single invoice's page
+│   ├── catalog/                            → catalog UI
+│   ├── rooms/, staff/                      → admin list, edit/delete
+│   └── settings/                           → clinic legal name/TRN/address for tax invoices
+├── portal/                                 → client-facing pages — NO staff nav (see security
+│   │                                          note above), noindex. Add new client-facing pages here.
+│   ├── layout.js
+│   └── hospitalization/[id]/               → live read-only view of one admission
+├── _components/AttachmentSection.jsx     → reusable file upload/list widget (staff, w/ upload+delete)
+├── _components/AttachmentGallery.jsx     → read-only file/photo gallery (client portal)
 ├── _components/SearchBox.jsx             → nav search box with a live results dropdown
 ├── _components/ScanIdButton.jsx          → camera button that reads an Emirates ID card
 ├── _components/AudioRecorder.jsx         → record/upload audio, show transcript+summary
 ├── _components/VoiceToTextButton.jsx     → small 🎤 button that dictates a single field
-└── layout.js, page.js                    → app shell & home page
+└── layout.js                             → bare root shell (html/body only — see security note)
 lib/
 ├── supabaseClient.js                     → shared Supabase connection
 ├── attachments.js                        → client-side Storage upload helper

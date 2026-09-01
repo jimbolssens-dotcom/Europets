@@ -802,3 +802,95 @@ form.card label {
   text-transform: none;
 }
 
+/* Client-facing hospitalization portal */
+
+.portal-page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.portal-loading {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #666;
+}
+
+.portal-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.portal-header img {
+  height: 64px;
+}
+
+.portal-header .tagline {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+}
+
+.portal-card {
+  background: white;
+  border: 1px solid #eee;
+  border-top: 3px solid var(--pink);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.portal-card h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  font-size: 1.4rem;
+  margin: 0 0 0.4rem;
+}
+
+.portal-card h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.75rem;
+}
+
+.portal-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+.portal-status-admitted {
+  background: var(--pink-tint);
+  color: var(--pink-dark);
+}
+
+.portal-status-discharged {
+  background: #eee;
+  color: #555;
+}
+
+.portal-note {
+  padding: 0.75rem 0;
+  border-top: 1px solid #f0f0f0;
+}
+
+.portal-note:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.portal-note-date {
+  font-weight: 700;
+  color: var(--pink-dark);
+  margin-bottom: 0.35rem;
+}
+
+.portal-footer {
+  text-align: center;
+  color: #999;
+  font-size: 0.8rem;
+}
+

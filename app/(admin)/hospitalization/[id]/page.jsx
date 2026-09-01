@@ -32,6 +32,7 @@ export default function HospitalizationDetailPage() {
   const [notes, setNotes] = useState([]);
   const [noteForm, setNoteForm] = useState(emptyNoteForm);
   const [submitting, setSubmitting] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`)
@@ -101,6 +102,23 @@ export default function HospitalizationDetailPage() {
     window.open(url, '_blank');
   }
 
+  function portalUrl() {
+    return `${window.location.origin}/portal/hospitalization/${id}`;
+  }
+
+  function sharePortalLink() {
+    const phone = (admission.clients?.phone || '').replace(/\D/g, '');
+    const message = `Hi ${admission.clients?.full_name || 'there'}, you can follow ${admission.patients?.name || 'your pet'}'s care updates and photos here, live, for the rest of their stay with us: ${portalUrl()}`;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  }
+
+  async function copyPortalLink() {
+    await navigator.clipboard.writeText(portalUrl());
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  }
+
   async function discharge() {
     await fetch(`/api/hospitalizations/${id}`, {
       method: 'PATCH',
@@ -151,6 +169,21 @@ export default function HospitalizationDetailPage() {
       <p className="visit-meta">
         Download the PDF first, then in the WhatsApp chat that opens, tap the attach icon and pick
         the file you just downloaded — WhatsApp doesn't let a website attach it automatically.
+      </p>
+
+      <div className="summary-actions">
+        <button type="button" onClick={sharePortalLink}>
+          🔗 Share Client Portal Link
+        </button>
+        <button type="button" onClick={copyPortalLink}>
+          {linkCopied ? 'Copied!' : 'Copy Link'}
+        </button>
+      </div>
+      <p className="visit-meta">
+        Opens WhatsApp with a live link to a read-only page showing this admission&apos;s photos
+        and daily updates — it updates automatically until you discharge the patient. No
+        attaching needed, and it doesn&apos;t require the client to log in or see anything else
+        in the system.
       </p>
 
       <h2>Photos &amp; Files</h2>

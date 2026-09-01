@@ -1,35 +1,19 @@
 import './globals.css';
-import SearchBox from './_components/SearchBox';
 
 export const metadata = {
   title: 'Europets Clinic — Management',
   description: 'Kind, caring, and compassionate veterinary care — clinic management for Europets',
 };
 
+// Deliberately bare: the internal staff nav lives in app/(admin)/layout.js,
+// not here, so that routes outside that group — the client-facing
+// hospitalization portal — never render it. This app has no login system,
+// so that nav is effectively a list of links into every client's/patient's
+// data; a client portal page must not carry it.
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
-        <nav className="topnav">
-          <a href="/" className="brand">
-            <img src="/logo.png" alt="Europets Clinic" />
-          </a>
-          <SearchBox />
-          <div className="topnav-links">
-            <a href="/clients">Clients</a>
-            <a href="/patients">Patients</a>
-            <a href="/appointments">Appointments</a>
-            <a href="/consults">Consults</a>
-            <a href="/hospitalization">Hospitalization</a>
-            <a href="/invoices">Invoices</a>
-            <a href="/catalog">Catalog</a>
-            <a href="/settings" title="Settings" aria-label="Settings" className="settings-link">
-              ⚙️
-            </a>
-          </div>
-        </nav>
-        <main className="content">{children}</main>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
