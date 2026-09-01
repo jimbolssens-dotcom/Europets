@@ -158,34 +158,6 @@ export default function HospitalizationDetailPage() {
         </p>
       )}
 
-      <div className="summary-actions">
-        <button type="button" onClick={downloadSummaryPdf}>
-          📄 Download Summary PDF
-        </button>
-        <button type="button" onClick={shareViaWhatsApp}>
-          💬 Share via WhatsApp
-        </button>
-      </div>
-      <p className="visit-meta">
-        Download the PDF first, then in the WhatsApp chat that opens, tap the attach icon and pick
-        the file you just downloaded — WhatsApp doesn't let a website attach it automatically.
-      </p>
-
-      <div className="summary-actions">
-        <button type="button" onClick={sharePortalLink}>
-          🔗 Share Client Portal Link
-        </button>
-        <button type="button" onClick={copyPortalLink}>
-          {linkCopied ? 'Copied!' : 'Copy Link'}
-        </button>
-      </div>
-      <p className="visit-meta">
-        Opens WhatsApp with a live link to a read-only page showing this admission&apos;s photos
-        and daily updates — it updates automatically until you discharge the patient. No
-        attaching needed, and it doesn&apos;t require the client to log in or see anything else
-        in the system.
-      </p>
-
       <h2>Photos &amp; Files</h2>
       <p className="visit-meta">
         Case-wide photos and files (admission photo, wound progress, etc.) — not tied to a single
@@ -284,6 +256,25 @@ export default function HospitalizationDetailPage() {
       </form>
       </div>
       </div>
+
+      <div className="share-actions">
+        <button type="button" className="share-btn" onClick={downloadSummaryPdf}>
+          📄 Summary PDF
+        </button>
+        <button type="button" className="share-btn" onClick={shareViaWhatsApp}>
+          💬 Share PDF
+        </button>
+        <button type="button" className="share-btn" onClick={sharePortalLink}>
+          🔗 Share Portal Link
+        </button>
+        <button type="button" className="share-btn" onClick={copyPortalLink}>
+          {linkCopied ? 'Copied!' : 'Copy Link'}
+        </button>
+      </div>
+      <p className="share-hint">
+        PDF sharing needs a manual attach step in WhatsApp; the portal link doesn&apos;t — it's a
+        live, read-only page that updates automatically until discharge.
+      </p>
     </div>
   );
 }
