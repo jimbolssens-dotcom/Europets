@@ -32,6 +32,27 @@ function formatDate(dateStr) {
   });
 }
 
+function listNames(names) {
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
+
+// One patient can have several vaccines due on the same next_due_date (e.g.
+// a Primary Booster's core vaccine + its rabies reminder) — group those into
+// a single reminder row/message instead of sending one per vaccine.
+function groupRows(rows) {
+  const groups = new Map();
+  for (const r of rows) {
+    const key = `${r.patient_id}__${r.next_due_date}`;
+    if (!groups.has(key)) {
+      groups.set(key, { key, patient_id: r.patient_id, next_due_date: r.next_due_date, patients: r.patients, rows: [] });
+    }
+    groups.get(key).rows.push(r);
+  }
+  return [...groups.values()];
+}
+
 const WINDOWS = [
   { label: 'Overdue + 7 days', days: 7 },
   { label: 'Overdue + 30 days', days: 30 },
@@ -63,43 +84,50 @@ export default function VaccinationsDuePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [windowDays]);
 
-  async function markReminded(id) {
-    await fetch(`/api/vaccinations/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mark_reminded: true }),
-    });
+  async function markReminded(ids) {
+    await Promise.all(
+      ids.map((id) =>
+        fetch(`/api/vaccinations/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mark_reminded: true }),
+        })
+      )
+    );
     load();
   }
 
-  function reminderMessage(row) {
-    const client = row.patients?.clients;
-    const status = daysUntil(row.next_due_date) < 0 ? 'overdue' : 'due';
+  function reminderMessage(group) {
+    const client = group.patients?.clients;
+    const status = daysUntil(group.next_due_date) < 0 ? 'overdue' : 'due';
+    const vaccineNames = group.rows.map((r) => r.vaccine_name);
+    const noun = vaccineNames.length === 1 ? 'vaccination is' : 'vaccinations are';
     return `Hi ${client?.full_name || 'there'}, a friendly reminder that ${
-      row.patients?.name || 'your pet'
-    }'s ${row.vaccine_name} vaccination is ${status} (${formatDate(
-      row.next_due_date
+      group.patients?.name || 'your pet'
+    }'s ${listNames(vaccineNames)} ${noun} ${status} (${formatDate(
+      group.next_due_date
     )}). Please call us to book a time. — Europets Clinic`;
   }
 
-  function draftWhatsApp(row) {
-    const phone = (row.patients?.clients?.phone || '').replace(/\D/g, '');
+  function draftWhatsApp(group) {
+    const phone = (group.patients?.clients?.phone || '').replace(/\D/g, '');
     if (!phone) return;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(reminderMessage(row))}`, '_blank');
-    markReminded(row.id);
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(reminderMessage(group))}`, '_blank');
+    markReminded(group.rows.map((r) => r.id));
   }
 
-  function draftEmail(row) {
-    const email = row.patients?.clients?.email;
+  function draftEmail(group) {
+    const email = group.patients?.clients?.email;
     if (!email) return;
-    const subject = `${row.patients?.name || 'Your pet'}'s ${row.vaccine_name} vaccination`;
+    const vaccineNames = group.rows.map((r) => r.vaccine_name);
+    const subject = `${group.patients?.name || 'Your pet'}'s ${listNames(vaccineNames)} vaccination`;
     window.open(
       `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
-        reminderMessage(row)
+        reminderMessage(group)
       )}`,
       '_blank'
     );
-    markReminded(row.id);
+    markReminded(group.rows.map((r) => r.id));
   }
 
   if (loading) return <p>Loading vaccination reminders...</p>;
@@ -141,39 +169,47 @@ export default function VaccinationsDuePage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td className={daysUntil(r.next_due_date) < 0 ? 'error' : ''}>
-                  {dueLabel(r.next_due_date)}
-                </td>
-                <td>
-                  <a href={`/patients/${r.patients?.id}`}>{r.patients?.name}</a>
-                </td>
-                <td>{r.patients?.species}</td>
-                <td>{r.vaccine_name}</td>
-                <td>{formatDate(r.next_due_date)}</td>
-                <td>{r.patients?.clients?.full_name || '—'}</td>
-                <td>
-                  {r.patients?.clients?.phone && (
-                    <button type="button" onClick={() => draftWhatsApp(r)}>
-                      💬 WhatsApp
-                    </button>
-                  )}
-                  {r.patients?.clients?.email && (
-                    <button type="button" onClick={() => draftEmail(r)}>
-                      ✉️ Email
-                    </button>
-                  )}
-                  {r.reminder_sent_at ? (
-                    <span className="visit-meta"> Reminded {formatDate(r.reminder_sent_at.slice(0, 10))}</span>
-                  ) : (
-                    <button type="button" onClick={() => markReminded(r.id)}>
-                      Mark Reminded
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {groupRows(rows).map((g) => {
+              const allReminded = g.rows.every((r) => r.reminder_sent_at);
+              const lastReminded = g.rows
+                .map((r) => r.reminder_sent_at)
+                .filter(Boolean)
+                .sort()
+                .pop();
+              return (
+                <tr key={g.key}>
+                  <td className={daysUntil(g.next_due_date) < 0 ? 'error' : ''}>
+                    {dueLabel(g.next_due_date)}
+                  </td>
+                  <td>
+                    <a href={`/patients/${g.patients?.id}`}>{g.patients?.name}</a>
+                  </td>
+                  <td>{g.patients?.species}</td>
+                  <td>{listNames(g.rows.map((r) => r.vaccine_name))}</td>
+                  <td>{formatDate(g.next_due_date)}</td>
+                  <td>{g.patients?.clients?.full_name || '—'}</td>
+                  <td>
+                    {g.patients?.clients?.phone && (
+                      <button type="button" onClick={() => draftWhatsApp(g)}>
+                        💬 WhatsApp
+                      </button>
+                    )}
+                    {g.patients?.clients?.email && (
+                      <button type="button" onClick={() => draftEmail(g)}>
+                        ✉️ Email
+                      </button>
+                    )}
+                    {allReminded ? (
+                      <span className="visit-meta"> Reminded {formatDate(lastReminded.slice(0, 10))}</span>
+                    ) : (
+                      <button type="button" onClick={() => markReminded(g.rows.map((r) => r.id))}>
+                        Mark Reminded
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
