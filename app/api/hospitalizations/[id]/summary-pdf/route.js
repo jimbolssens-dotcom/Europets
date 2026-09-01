@@ -8,6 +8,11 @@ import { buildHospitalizationSummaryPdf } from '@/lib/hospitalizationSummaryPdf'
 import { NextResponse } from 'next/server';
 
 export const maxDuration = 60;
+// Route Handlers are cached per-URL by default in the App Router unless
+// explicitly opted out — without this, re-downloading the same summary
+// after adding a worksheet entry could keep serving the first PDF ever
+// generated for this admission.
+export const dynamic = 'force-dynamic';
 
 // Keep the PDF (and this request) from ballooning if a case has a lot of photos.
 const MAX_CASE_PHOTOS = 12;
@@ -78,6 +83,7 @@ export async function GET(request, { params }) {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="hospitalization-summary-${params.id}.pdf"`,
+      'Cache-Control': 'no-store, must-revalidate',
     },
   });
 }

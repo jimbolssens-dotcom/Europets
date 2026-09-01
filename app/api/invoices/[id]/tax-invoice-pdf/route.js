@@ -7,6 +7,11 @@ import { supabase } from '@/lib/supabaseClient';
 import { buildTaxInvoicePdf } from '@/lib/taxInvoicePdf';
 import { NextResponse } from 'next/server';
 
+// Route Handlers are cached per-URL by default in the App Router unless
+// explicitly opted out — without this, re-downloading the same invoice
+// after editing it could keep serving the first-ever generated PDF.
+export const dynamic = 'force-dynamic';
+
 export async function GET(request, { params }) {
   const { data: invoice, error } = await supabase
     .from('invoices')
@@ -34,6 +39,7 @@ export async function GET(request, { params }) {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="tax-invoice-${invoice.invoice_number || invoice.id}.pdf"`,
+      'Cache-Control': 'no-store, must-revalidate',
     },
   });
 }
