@@ -49,7 +49,8 @@ export async function GET(request, { params }) {
     .from('hospitalization_notes')
     .select('*, staff(full_name)')
     .eq('hospitalization_id', params.id)
-    .order('note_date', { ascending: true });
+    .order('note_date', { ascending: true })
+    .order('created_at', { ascending: true });
   const notes = notesData || [];
   const noteIds = notes.map((n) => n.id);
 

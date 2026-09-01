@@ -115,14 +115,16 @@ appointments, full consult medical records, hospitalization, and invoicing.
 5. ✅ Hospitalization — standalone multi-day admissions with a day-to-day
    worksheet grouped by day (every entry for a day sits together under
    one heading with its own timestamp, so nothing looks lost as new
-   entries land above older ones), editable after the fact — each edit
-   bumps a separate "last edited" time so multiple touches in a day are
-   visible — startable from a consult, with photo capture (camera
-   button on iPad/phones) and a one-click PDF summary — including the
-   case's and each day's photos — to share with the client. A "Share
+   entries land above older ones). Entries are append-only — a check-in
+   later in the day is a new, separately timestamped and authored entry
+   rather than an edit to a previous one, so the worksheet is a full log
+   of every touch, not just the latest state — startable from a consult,
+   with photo capture (camera button on iPad/phones) and a one-click PDF
+   summary — including the case's and each day's photos, grouped by day
+   with each entry's time and author — to share with the client. A "Share
    Client Portal Link" button sends a live, read-only, client-facing page
-   over WhatsApp (no PDF/attach step) that updates automatically until
-   discharge
+   over WhatsApp (no PDF/attach step) that shows each entry's time and
+   author too, and updates automatically until discharge
 6. ✅ AI layer — record a consult or surgery in the browser, AssemblyAI
    transcribes it, Claude summarizes it, and the summary is folded into
    consult notes / the surgical report automatically. A small 🎤 button on
@@ -144,7 +146,7 @@ app/
 │   ├── diagnostics/, treatment-items/    → per-consult diagnostics & treatment plan
 │   ├── surgical-reports/, dental-reports/ → per-consult advanced-treatment reports
 │   ├── hospitalizations/                 → admissions + day-to-day worksheet notes
-│   ├── hospitalizations/[id]/notes/[noteId]/ → edit a worksheet entry (bumps updated_at)
+│   │                                        (append-only — no edit endpoint)
 │   ├── hospitalizations/[id]/summary-pdf → PDF summary for sharing with the client
 │   ├── attachments/                      → file metadata (files live in Storage)
 │   ├── recordings/route.js               → save an uploaded recording + submit for transcription

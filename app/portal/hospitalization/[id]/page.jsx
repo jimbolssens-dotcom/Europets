@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
-import { formatTime, formatDayHeader, wasEdited, groupNotesByDate } from '@/lib/formatTimestamp';
+import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 
 export default function HospitalizationPortalPage() {
   const { id } = useParams();
@@ -94,12 +94,10 @@ export default function HospitalizationPortalPage() {
             <h3 className="worksheet-day-header">{formatDayHeader(group.date)}</h3>
             {group.entries.map((n) => (
               <div key={n.id} className="portal-note">
-                <div className="portal-note-date">{formatTime(n.created_at)}</div>
-                {wasEdited(n.created_at, n.updated_at) && (
-                  <p className="visit-meta" style={{ margin: '0 0 0.4rem' }}>
-                    Updated {formatTime(n.updated_at)}
-                  </p>
-                )}
+                <div className="portal-note-date">
+                  {formatTime(n.created_at)}
+                  {n.staff?.full_name && <span className="portal-note-author"> · {n.staff.full_name}</span>}
+                </div>
                 {n.appetite && (
                   <p>
                     <strong>Appetite:</strong> {n.appetite}
