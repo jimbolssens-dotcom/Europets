@@ -17,6 +17,7 @@ const emptyForm = {
   phone2: '+971',
   phone2_label: '',
   emirates_id: '',
+  trn: '',
   email: '',
   address: '',
 };
@@ -169,6 +170,7 @@ export default function ClientsPage() {
       phone2: client.phone2 || '+971',
       phone2_label: client.phone2_label || '',
       emirates_id: client.emirates_id || '',
+      trn: client.trn || '',
       email: client.email || '',
       address: client.address || '',
     });
@@ -282,6 +284,11 @@ export default function ClientsPage() {
             onChange={(e) => setForm({ ...form, emirates_id: e.target.value })}
           />
           <input
+            placeholder="TRN (only if a VAT-registered business)"
+            value={form.trn}
+            onChange={(e) => setForm({ ...form, trn: e.target.value })}
+          />
+          <input
             placeholder="Phone"
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -385,6 +392,11 @@ export default function ClientsPage() {
                           label="📷"
                           uploadLabel="🖼️"
                           onScanned={(scanned) => handleEditScanned(c.id, scanned)}
+                        />
+                        <input
+                          placeholder="TRN (business)"
+                          value={editForm.trn}
+                          onChange={(e) => setEditForm({ ...editForm, trn: e.target.value })}
                         />
                       </td>
                       <td>

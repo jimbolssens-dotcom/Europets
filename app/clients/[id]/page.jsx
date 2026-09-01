@@ -89,6 +89,7 @@ export default function ClientDetailPage() {
         · {client.email}
         {client.address ? ` · ${client.address}` : ''}
         {client.emirates_id ? ` · Emirates ID: ${client.emirates_id}` : ''}
+        {client.trn ? ` · TRN: ${client.trn}` : ''}
       </p>
 
       <h2>Emirates ID</h2>

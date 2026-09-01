@@ -38,7 +38,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { full_name, phone, phone2, phone2_label, emirates_id, email, address } = body;
+  const { full_name, phone, phone2, phone2_label, emirates_id, trn, email, address } = body;
 
   if (!full_name) {
     return NextResponse.json({ error: 'full_name is required' }, { status: 400 });
@@ -53,6 +53,7 @@ export async function POST(request) {
         phone2: phone2 || null,
         phone2_label: phone2 ? phone2_label || null : null,
         emirates_id: emirates_id || null,
+        trn: trn || null,
         email,
         address,
       },

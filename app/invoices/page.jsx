@@ -99,6 +99,9 @@ function InvoiceCard({ summary, catalog, onChanged }) {
     <div className="visit-card">
       <div className="visit-header">
         <div>
+          {invoice.invoice_number && (
+            <span className="visit-meta">INV-{String(invoice.invoice_number).padStart(6, '0')} · </span>
+          )}
           <strong>
             <a href={`/invoices/${summary.id}`}>{invoice.clients?.full_name}</a>
           </strong>

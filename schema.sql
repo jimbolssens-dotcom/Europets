@@ -19,6 +19,7 @@ create table clients (
     phone2 text,
     phone2_label text,       -- who the second number belongs to: 'husband', 'wife', 'maid', 'driver', 'other'
     emirates_id text,        -- UAE Emirates ID number, typed or read off a scanned card
+    trn text,                -- client's own VAT Tax Registration Number, if a registered business
     email text,
     address text,
     created_at timestamptz default now()
@@ -203,6 +204,21 @@ create table recordings (
     created_at timestamptz default now()
 );
 
+-- ============ CLINIC SETTINGS ============
+-- Singleton row (id can only ever be `true`) holding the clinic's own
+-- identity for tax invoices — legal name, TRN, address — editable from
+-- the app's Settings page rather than hardcoded.
+create table clinic_settings (
+    id boolean primary key default true check (id),
+    legal_name text not null default 'Europets Veterinary Clinic',
+    trn text,
+    address text,
+    phone text,
+    email text,
+    updated_at timestamptz default now()
+);
+insert into clinic_settings (id) values (true) on conflict do nothing;
+
 -- ============ GOODS & SERVICES ============
 create table goods_services (
     id uuid primary key default gen_random_uuid(),
@@ -218,6 +234,7 @@ create table goods_services (
 -- ============ INVOICES ============
 create table invoices (
     id uuid primary key default gen_random_uuid(),
+    invoice_number bigint generated always as identity unique,  -- sequential, for FTA tax invoices
     visit_id uuid references visits(id),
     client_id uuid references clients(id) not null,
     subtotal numeric(10,2) not null default 0,
@@ -278,7 +295,7 @@ create policy "Public delete consult-files" on storage.objects
 alter publication supabase_realtime add table
     clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items,
     diagnostics, treatment_items, surgical_reports, dental_reports,
-    hospitalizations, hospitalization_notes, attachments, recordings;
+    hospitalizations, hospitalization_notes, attachments, recordings, clinic_settings;
 
 -- ============ ROW LEVEL SECURITY ============
 -- RLS is intentionally left disabled: the app has no staff auth yet and
@@ -306,3 +323,4 @@ alter table hospitalizations disable row level security;
 alter table hospitalization_notes disable row level security;
 alter table attachments disable row level security;
 alter table recordings disable row level security;
+alter table clinic_settings disable row level security;

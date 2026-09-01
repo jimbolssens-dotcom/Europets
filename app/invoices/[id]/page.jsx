@@ -106,7 +106,8 @@ export default function InvoiceDetailPage() {
         <a href="/invoices">&larr; All invoices</a>
       </p>
       <h1>
-        Invoice — {invoice.clients?.full_name} <span>({invoice.status})</span>
+        Invoice {invoice.invoice_number ? `#INV-${String(invoice.invoice_number).padStart(6, '0')}` : ''} —{' '}
+        {invoice.clients?.full_name} <span>({invoice.status})</span>
       </h1>
       <p className="visit-meta">
         {invoice.clients?.phone} · {invoice.clients?.email}
@@ -116,6 +117,11 @@ export default function InvoiceDetailPage() {
             <a href={`/consults/${invoice.visit_id}`}>View originating consult</a>
           </>
         )}
+      </p>
+      <p>
+        <a className="btn-link" href={`/api/invoices/${id}/tax-invoice-pdf`} target="_blank" rel="noreferrer">
+          📄 Download Tax Invoice (PDF)
+        </a>
       </p>
 
       <table>

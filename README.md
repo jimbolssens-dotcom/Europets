@@ -67,6 +67,13 @@ appointments, full consult medical records, hospitalization, and invoicing.
 > detail page under "Emirates ID") — so the photo is on file, just as a
 > full card scan rather than a cropped headshot.
 
+> **Fill in Settings before relying on Tax Invoices.** The clinic's legal
+> name/TRN/address on every generated Tax Invoice PDF come from the
+> Settings page (`/settings`) — it starts with a placeholder legal name and
+> no TRN. Every invoice is assumed standard-rated at 5% (the only rate a
+> UAE vet clinic normally deals with); there's no per-item VAT rate or
+> zero-rated/exempt handling if that's ever needed.
+
 > **Env var naming:** the app reads `NEXT_PUBLIC_SUPABASE_APP_URL` /
 > `NEXT_PUBLIC_SUPABASE_APP_KEY`, not the more obvious
 > `NEXT_PUBLIC_SUPABASE_URL` / `_ANON_KEY`. That's deliberate — if you ever
@@ -88,7 +95,10 @@ appointments, full consult medical records, hospitalization, and invoicing.
    from the catalog, and surgical/dental reports
 4. ✅ Goods/services & invoicing (flat + per-kg pricing, 5% UAE VAT) — a
    consult can open an invoice that imports its whole treatment plan as
-   line items in one click, then take more items added afterward
+   line items in one click, then take more items added afterward.
+   UAE FTA-compliant Tax Invoice PDFs: sequential invoice numbering, the
+   clinic's own TRN (Settings page), and the client's TRN if they're a
+   VAT-registered business
 5. ✅ Hospitalization — standalone multi-day admissions with a day-to-day
    worksheet, startable from a consult, with photo capture (camera button
    on iPad/phones) and a one-click PDF summary — including the case's and
@@ -124,8 +134,10 @@ app/
 │   ├── goods-services/route.js           → catalog CRUD
 │   ├── invoices/route.js                 → list/open invoices
 │   ├── invoices/[id]/line-items/         → add/remove invoice line items
-│   └── visits/[id]/invoice/route.js      → create (or reuse) an invoice for a consult,
-│                                            importing its treatment plan as line items
+│   ├── visits/[id]/invoice/route.js      → create (or reuse) an invoice for a consult,
+│   │                                        importing its treatment plan as line items
+│   ├── invoices/[id]/tax-invoice-pdf/    → FTA-compliant Tax Invoice PDF for one invoice
+│   └── clinic-settings/route.js          → the clinic's own TRN/identity (singleton row)
 ├── search/                                → full results page for a nav search
 ├── clients/, patients/                   → list, detail, edit/delete — Add Client can scan
 │                                            an Emirates ID card to fill in name + ID number
@@ -135,6 +147,7 @@ app/
 ├── invoices/                              → list + create; invoices/[id] is a single invoice's page
 ├── catalog/                               → catalog UI
 ├── rooms/, staff/                        → admin list, edit/delete
+├── settings/                              → clinic legal name/TRN/address for tax invoices
 ├── _components/AttachmentSection.jsx     → reusable file upload/list widget
 ├── _components/SearchBox.jsx             → nav search box with a live results dropdown
 ├── _components/ScanIdButton.jsx          → camera button that reads an Emirates ID card
@@ -148,6 +161,7 @@ lib/
 ├── assemblyai.js                         → server-side AssemblyAI REST calls
 ├── anthropicClient.js                    → server-side Claude summarization
 ├── hospitalizationSummaryPdf.js          → builds the hospitalization summary PDF (pdf-lib)
+├── taxInvoicePdf.js                      → builds the FTA-compliant Tax Invoice PDF (pdf-lib)
 └── invoicing.js                          → subtotal/VAT/total calculation
 schema.sql                                → full database schema
 migrations/                               → incremental SQL for already-deployed databases
