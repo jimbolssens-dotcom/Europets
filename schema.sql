@@ -143,8 +143,7 @@ create table vaccinations (
 );
 
 insert into vaccine_protocols (name, species, core, interval_months) values
-    ('Cat Flu', 'cat', true, 12),
-    ('Feline Enteritis', 'cat', true, 12),
+    ('Cat Flu + Feline Enteritis', 'cat', true, 12),
     ('Rabies', 'cat', true, 12),
     ('DHPPi + Lepto', 'dog', true, 12),
     ('Rabies', 'dog', true, 12),

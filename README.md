@@ -136,8 +136,9 @@ appointments, full consult medical records, hospitalization, and invoicing.
    individual fields (anamnesis, findings, treatment notes, surgical/dental
    notes) does the same for a short dictation, filling in just that field
 7. ✅ Vaccinations — a species-tagged protocol catalog (Settings → Vaccine
-   Protocols: Cat Flu, Feline Enteritis, Rabies for cats; DHPPi + Lepto,
-   Rabies, and optional Kennel Cough for dogs) recorded per patient, with
+   Protocols: Cat Flu + Feline Enteritis — given as one combined vaccine —
+   and Rabies for cats; DHPPi + Lepto, Rabies, and optional Kennel Cough
+   for dogs) recorded per patient, with
    the Add Vaccination form on a patient's page automatically filtered to
    protocols for their species. Each record gets a next-due date (defaults
    to the protocol's interval, usually annual, from the date given — stays
