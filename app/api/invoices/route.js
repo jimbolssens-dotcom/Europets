@@ -1,5 +1,5 @@
 // app/api/invoices/route.js
-// GET  /api/invoices?client_id=X&status=unpaid  -> list invoices
+// GET  /api/invoices?client_id=X&status=unpaid&visit_id=Y  -> list invoices
 // POST /api/invoices                            -> open a new (empty) invoice
 //
 // An invoice can be tied to a visit (visit_id) for context, or stand alone
@@ -13,6 +13,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get('client_id');
   const status = searchParams.get('status');
+  const visitId = searchParams.get('visit_id');
 
   let query = supabase
     .from('invoices')
@@ -21,6 +22,7 @@ export async function GET(request) {
 
   if (clientId) query = query.eq('client_id', clientId);
   if (status) query = query.eq('status', status);
+  if (visitId) query = query.eq('visit_id', visitId);
 
   const { data, error } = await query;
 

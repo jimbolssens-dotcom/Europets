@@ -86,7 +86,9 @@ appointments, full consult medical records, hospitalization, and invoicing.
 3. ✅ Consults — full medical record (vitals, anamnesis, findings, prognosis),
    real-time notes, diagnostics with file attachments, a treatment plan drawn
    from the catalog, and surgical/dental reports
-4. ✅ Goods/services & invoicing (flat + per-kg pricing, 5% UAE VAT)
+4. ✅ Goods/services & invoicing (flat + per-kg pricing, 5% UAE VAT) — a
+   consult can open an invoice that imports its whole treatment plan as
+   line items in one click, then take more items added afterward
 5. ✅ Hospitalization — standalone multi-day admissions with a day-to-day
    worksheet, startable from a consult, with photo capture (camera button
    on iPad/phones) and a one-click PDF summary — including the case's and
@@ -121,14 +123,17 @@ app/
 │   ├── clients/scan-id/route.js          → read name + ID number off a photo of an Emirates ID
 │   ├── goods-services/route.js           → catalog CRUD
 │   ├── invoices/route.js                 → list/open invoices
-│   └── invoices/[id]/line-items/         → add/remove invoice line items
+│   ├── invoices/[id]/line-items/         → add/remove invoice line items
+│   └── visits/[id]/invoice/route.js      → create (or reuse) an invoice for a consult,
+│                                            importing its treatment plan as line items
 ├── search/                                → full results page for a nav search
 ├── clients/, patients/                   → list, detail, edit/delete — Add Client can scan
 │                                            an Emirates ID card to fill in name + ID number
 ├── appointments/                         → month calendar + room x time schedule
 ├── consults/                             → active/completed board + full consult record
 ├── hospitalization/                      → admissions list + day-to-day worksheet
-├── invoices/, catalog/                   → invoicing UI
+├── invoices/                              → list + create; invoices/[id] is a single invoice's page
+├── catalog/                               → catalog UI
 ├── rooms/, staff/                        → admin list, edit/delete
 ├── _components/AttachmentSection.jsx     → reusable file upload/list widget
 ├── _components/SearchBox.jsx             → nav search box with a live results dropdown

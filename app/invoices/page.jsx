@@ -99,7 +99,9 @@ function InvoiceCard({ summary, catalog, onChanged }) {
     <div className="visit-card">
       <div className="visit-header">
         <div>
-          <strong>{invoice.clients?.full_name}</strong>
+          <strong>
+            <a href={`/invoices/${summary.id}`}>{invoice.clients?.full_name}</a>
+          </strong>
           {summary.visits?.patients?.name ? ` — ${summary.visits.patients.name}` : ''}
         </div>
         <span>{invoice.status}</span>

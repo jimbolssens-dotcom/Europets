@@ -115,6 +115,9 @@ export default function ConsultDetailPage() {
   const [hospReason, setHospReason] = useState('');
   const [admitting, setAdmitting] = useState(false);
 
+  const [invoiceInfo, setInvoiceInfo] = useState(null); // { id, status } of the active invoice, if any
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
+
   const loadConsult = () =>
     fetch(`/api/visits/${id}`)
       .then((res) => res.json())
@@ -152,12 +155,21 @@ export default function ConsultDetailPage() {
       .then((res) => res.json())
       .then((data) => setDentalReports(Array.isArray(data) ? data : []));
 
+  const loadInvoiceInfo = () =>
+    fetch(`/api/invoices?visit_id=${id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setInvoiceInfo(list.find((inv) => inv.status !== 'void') || null);
+      });
+
   useEffect(() => {
     loadConsult();
     loadDiagnostics();
     loadTreatmentItems();
     loadSurgicalReports();
     loadDentalReports();
+    loadInvoiceInfo();
 
     Promise.all([
       fetch('/api/staff').then((res) => res.json()),
@@ -176,6 +188,7 @@ export default function ConsultDetailPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'treatment_items', filter: `visit_id=eq.${id}` }, loadTreatmentItems)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'surgical_reports', filter: `visit_id=eq.${id}` }, loadSurgicalReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dental_reports', filter: `visit_id=eq.${id}` }, loadDentalReports)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices', filter: `visit_id=eq.${id}` }, loadInvoiceInfo)
       .subscribe();
 
     return () => supabase.removeChannel(channel);
@@ -296,6 +309,16 @@ export default function ConsultDetailPage() {
     });
     setDentalForm({ performed_by: '', findings: '', procedures_performed: '', notes: '' });
     loadDentalReports();
+  }
+
+  async function createInvoice() {
+    setCreatingInvoice(true);
+    const res = await fetch(`/api/visits/${id}/invoice`, { method: 'POST' });
+    const data = await res.json();
+    setCreatingInvoice(false);
+    if (res.ok) {
+      router.push(`/invoices/${data.id}`);
+    }
   }
 
   async function admitToHospital(e) {
@@ -547,6 +570,23 @@ export default function ConsultDetailPage() {
         />
         <button type="submit">Add to Plan</button>
       </form>
+
+      <h3>Invoice</h3>
+      {invoiceInfo ? (
+        <p>
+          <a href={`/invoices/${invoiceInfo.id}`}>View Invoice</a> ({invoiceInfo.status})
+        </p>
+      ) : (
+        <>
+          <button type="button" onClick={createInvoice} disabled={creatingInvoice}>
+            {creatingInvoice ? 'Creating...' : '🧾 Create Invoice from Treatment Plan'}
+          </button>
+          <p className="visit-meta">
+            Opens a new invoice and imports every item above as a line item. You can still add
+            more items on the invoice itself afterward.
+          </p>
+        </>
+      )}
       </div>
       </div>
 
