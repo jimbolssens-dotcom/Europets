@@ -7,6 +7,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
 const OPEN_HOUR = 8;
@@ -112,6 +113,7 @@ const emptyForm = {
 };
 
 export default function AppointmentsPage() {
+  const router = useRouter();
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonthIndex, setViewMonthIndex] = useState(today.getMonth());
@@ -126,6 +128,7 @@ export default function AppointmentsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [hoverSlot, setHoverSlot] = useState(null);
+  const [openingConsultId, setOpeningConsultId] = useState(null);
   const bookingFormRef = useRef(null);
 
   const monthKey = toMonthKey(new Date(viewYear, viewMonthIndex, 1));
@@ -301,6 +304,38 @@ export default function AppointmentsPage() {
     loadMonth();
   }
 
+  // Double-clicking a booked slot on the schedule jumps straight into its
+  // consult — checking the patient in first if that hasn't happened yet, or
+  // opening the consult record that's already in progress (or finished).
+  async function openConsult(appointment) {
+    if (openingConsultId) return;
+    setOpeningConsultId(appointment.id);
+    try {
+      if (appointment.status === 'booked') {
+        const res = await fetch('/api/visits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ appointment_id: appointment.id }),
+        });
+        const data = await res.json();
+        if (res.ok && data.id) {
+          router.push(`/consults/${data.id}`);
+          return;
+        }
+      } else if (appointment.status === 'checked_in' || appointment.status === 'complete') {
+        const res = await fetch(`/api/visits?appointment_id=${appointment.id}`);
+        const data = await res.json();
+        const visit = Array.isArray(data) ? data[0] : null;
+        if (visit?.id) {
+          router.push(`/consults/${visit.id}`);
+          return;
+        }
+      }
+    } finally {
+      setOpeningConsultId(null);
+    }
+  }
+
   const selectedDateLabel = new Date(`${selectedDate}T00:00:00`).toLocaleDateString([], {
     weekday: 'long',
     month: 'long',
@@ -444,7 +479,12 @@ export default function AppointmentsPage() {
                         return (
                           <div
                             key={a.id}
-                            className="schedule-block"
+                            className={[
+                              'schedule-block',
+                              openingConsultId === a.id ? 'schedule-block-opening' : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
                             style={{
                               top,
                               height,
@@ -452,7 +492,12 @@ export default function AppointmentsPage() {
                               borderColor: color.fg,
                               color: color.fg,
                             }}
+                            title="Double-click to open the consult"
                             onClick={(e) => e.stopPropagation()}
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              openConsult(a);
+                            }}
                             onMouseMove={(e) => e.stopPropagation()}
                             onMouseEnter={() => setHoverSlot(null)}
                           >

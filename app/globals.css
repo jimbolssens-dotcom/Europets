@@ -755,8 +755,13 @@ form.card label {
   padding: 0.2rem 0.4rem;
   font-size: 0.75rem;
   overflow: hidden;
-  cursor: default;
+  cursor: pointer;
   z-index: 2;
+}
+
+.schedule-block-opening {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 /* Ambient audio recorder (consults & surgeries) */
