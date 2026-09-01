@@ -152,46 +152,50 @@ export default function HospitalizationPage() {
       <form className="card admit-patient-form" onSubmit={handleSubmit}>
         <p>Usually started from a consult&apos;s &quot;Admit to Hospitalization&quot; button — use this for a standalone admission.</p>
         {error && <p className="error">{error}</p>}
-        <div className="admit-patient-fields">
-          <select
-            required
-            value={form.client_id}
-            onChange={(e) => setForm({ ...form, client_id: e.target.value, patient_id: '' })}
-          >
-            <option value="">Select owner...</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.full_name}
-              </option>
-            ))}
-          </select>
-          <select
-            required
-            disabled={!form.client_id}
-            value={form.patient_id}
-            onChange={(e) => setForm({ ...form, patient_id: e.target.value })}
-          >
-            <option value="">Select patient...</option>
-            {patientsForClient.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.species})
-              </option>
-            ))}
-          </select>
-          <input
-            placeholder="Reason for admission"
-            value={form.reason}
-            onChange={(e) => setForm({ ...form, reason: e.target.value })}
-          />
-        </div>
+        <div className="admit-patient-row">
+          <div className="admit-patient-fields">
+            <select
+              required
+              value={form.client_id}
+              onChange={(e) => setForm({ ...form, client_id: e.target.value, patient_id: '' })}
+            >
+              <option value="">Select owner...</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.full_name}
+                </option>
+              ))}
+            </select>
+            <select
+              required
+              disabled={!form.client_id}
+              value={form.patient_id}
+              onChange={(e) => setForm({ ...form, patient_id: e.target.value })}
+            >
+              <option value="">Select patient...</option>
+              {patientsForClient.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.species})
+                </option>
+              ))}
+            </select>
+            <input
+              placeholder="Reason for admission"
+              value={form.reason}
+              onChange={(e) => setForm({ ...form, reason: e.target.value })}
+            />
+          </div>
 
-        <p className="cage-picker-label">Cage (optional) — click a cage to assign it, click again to clear</p>
-        <CagePicker
-          cages={cages}
-          occupiedCageIds={occupiedCageIds}
-          value={form.cage_id}
-          onChange={(cage_id) => setForm({ ...form, cage_id })}
-        />
+          <div className="admit-patient-cages">
+            <p className="cage-picker-label">Cage (optional) — click a cage to assign it, click again to clear</p>
+            <CagePicker
+              cages={cages}
+              occupiedCageIds={occupiedCageIds}
+              value={form.cage_id}
+              onChange={(cage_id) => setForm({ ...form, cage_id })}
+            />
+          </div>
+        </div>
 
         <button type="submit" disabled={submitting}>
           {submitting ? 'Admitting...' : 'Admit Patient'}
