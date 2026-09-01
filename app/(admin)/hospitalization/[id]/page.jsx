@@ -38,6 +38,7 @@ export default function HospitalizationDetailPage() {
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [editNoteForm, setEditNoteForm] = useState(emptyNoteForm);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editNoteError, setEditNoteError] = useState(null);
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`)
@@ -95,6 +96,7 @@ export default function HospitalizationDetailPage() {
 
   function startEditNote(n) {
     setEditingNoteId(n.id);
+    setEditNoteError(null);
     setEditNoteForm({
       note_date: n.note_date,
       author_id: n.author_id || '',
@@ -107,6 +109,7 @@ export default function HospitalizationDetailPage() {
 
   function cancelEditNote() {
     setEditingNoteId(null);
+    setEditNoteError(null);
   }
 
   function appendEditNoteText(text) {
@@ -115,11 +118,18 @@ export default function HospitalizationDetailPage() {
 
   async function saveEditNote(noteId) {
     setSavingEdit(true);
-    await fetch(`/api/hospitalizations/${id}/notes/${noteId}`, {
+    setEditNoteError(null);
+    const res = await fetch(`/api/hospitalizations/${id}/notes/${noteId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editNoteForm),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setEditNoteError(data.error || 'Failed to save — the edit was not applied.');
+      setSavingEdit(false);
+      return;
+    }
     setEditingNoteId(null);
     loadNotes();
     setSavingEdit(false);
@@ -212,6 +222,7 @@ export default function HospitalizationDetailPage() {
             <div className="visit-header">
               <strong>Editing entry — {n.note_date}</strong>
             </div>
+            {editNoteError && <p className="error">{editNoteError}</p>}
             <div className="edit-note-form">
               <input
                 type="date"
