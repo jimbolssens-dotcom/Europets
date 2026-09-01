@@ -13,6 +13,7 @@ const OPEN_HOUR = 8;
 const CLOSE_HOUR = 19;
 const PIXELS_PER_MINUTE = 1.4;
 const SNAP_MINUTES = 15;
+const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const VET_PALETTE = [
   { bg: '#dbeafe', fg: '#1d4ed8' },
@@ -49,6 +50,23 @@ function formatTime(iso) {
 function minutesSinceOpen(iso) {
   const d = new Date(iso);
   return (d.getHours() - OPEN_HOUR) * 60 + d.getMinutes();
+}
+
+// A 6-row Sun-start grid of Date objects covering the given month, padded
+// with the trailing days of the previous/next month, for the always-visible
+// mini calendar (no popup — the whole point is not needing to click an icon).
+function buildMonthGrid(year, monthIndex) {
+  const firstOfMonth = new Date(year, monthIndex, 1);
+  const startOffset = firstOfMonth.getDay();
+  const gridStart = new Date(year, monthIndex, 1 - startOffset);
+
+  const days = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + i);
+    days.push(d);
+  }
+  return days;
 }
 
 function buildHourMarks() {
@@ -161,6 +179,18 @@ export default function AppointmentsPage() {
 
   const colorForVet = (vetId) => (vetId && vetColor[vetId]) || UNASSIGNED_COLOR;
 
+  const countsByDate = useMemo(() => {
+    const counts = {};
+    for (const a of appointments) {
+      if (a.status === 'cancelled') continue;
+      const d = toISODate(new Date(a.start_time));
+      counts[d] = (counts[d] || 0) + 1;
+    }
+    return counts;
+  }, [appointments]);
+
+  const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonthIndex), [viewYear, viewMonthIndex]);
+
   const dayAppointments = useMemo(
     () =>
       appointments.filter(
@@ -182,10 +212,10 @@ export default function AppointmentsPage() {
     }
   }
 
-  function shiftDay(delta) {
-    const d = new Date(`${selectedDate}T00:00:00`);
-    d.setDate(d.getDate() + delta);
-    selectDay(d);
+  function goToMonth(delta) {
+    const d = new Date(viewYear, viewMonthIndex + delta, 1);
+    setViewYear(d.getFullYear());
+    setViewMonthIndex(d.getMonth());
   }
 
   // Shared by both the click handler (book here) and the hover handler
@@ -272,6 +302,10 @@ export default function AppointmentsPage() {
     month: 'long',
     day: 'numeric',
   });
+  const monthLabel = new Date(viewYear, viewMonthIndex, 1).toLocaleDateString([], {
+    month: 'short',
+    year: 'numeric',
+  });
 
   return (
     <div>
@@ -279,20 +313,46 @@ export default function AppointmentsPage() {
 
       <div className="schedule-layout">
         <div className="date-nav">
-          <div className="date-nav-arrows">
-            <button type="button" onClick={() => shiftDay(-1)} aria-label="Previous day">
+          <div className="mini-cal-header">
+            <button type="button" onClick={() => goToMonth(-1)} aria-label="Previous month">
               &lsaquo;
             </button>
-            <button type="button" onClick={() => shiftDay(1)} aria-label="Next day">
+            <span>{monthLabel}</span>
+            <button type="button" onClick={() => goToMonth(1)} aria-label="Next month">
               &rsaquo;
             </button>
           </div>
-          <input
-            type="date"
-            className="date-nav-input"
-            value={selectedDate}
-            onChange={(e) => e.target.value && selectDay(new Date(`${e.target.value}T00:00:00`))}
-          />
+          <div className="mini-cal-grid">
+            {WEEKDAY_LETTERS.map((w, i) => (
+              <div key={i} className="mini-cal-weekday">
+                {w}
+              </div>
+            ))}
+            {monthGrid.map((d) => {
+              const iso = toISODate(d);
+              const inMonth = d.getMonth() === viewMonthIndex;
+              const isSelected = iso === selectedDate;
+              const isToday = iso === todayISODate();
+              return (
+                <button
+                  type="button"
+                  key={iso}
+                  className={[
+                    'mini-cal-day',
+                    inMonth ? '' : 'mini-cal-day-outside',
+                    isSelected ? 'mini-cal-day-selected' : '',
+                    isToday && !isSelected ? 'mini-cal-day-today' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={() => selectDay(d)}
+                >
+                  {d.getDate()}
+                  {countsByDate[iso] > 0 && <span className="mini-cal-day-dot" />}
+                </button>
+              );
+            })}
+          </div>
           <button type="button" className="date-nav-today" onClick={() => selectDay(new Date())}>
             Today
           </button>
