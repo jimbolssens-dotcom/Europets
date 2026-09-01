@@ -92,6 +92,8 @@ function buildQuarterMarks() {
 const QUARTER_MARKS = buildQuarterMarks();
 
 const SCHEDULE_HEIGHT = (CLOSE_HOUR - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE;
+const TIME_COL_WIDTH = 64; // matches .schedule-time-col's flex-basis
+const ROOM_COL_WIDTH = 130; // matches .schedule-room-col's flex-basis
 
 // Time (as a 12-hour label, e.g. "2:15 PM") for a snapped "HH:MM" 24-hour string.
 function formatSlotLabel(time24) {
@@ -432,7 +434,13 @@ export default function AppointmentsPage() {
               No rooms set up yet — add one on the <a href="/rooms">Rooms</a> page first.
             </p>
           ) : (
-            <div className="schedule-wrap">
+            <div
+              className="schedule-wrap"
+              // Cap it to exactly what the fixed-width columns need — without
+              // this, the flex row's leftover space stretches the bordered
+              // box out with a big blank area past the last room column.
+              style={{ maxWidth: TIME_COL_WIDTH + rooms.length * ROOM_COL_WIDTH + 2 }}
+            >
               <div className="schedule-time-col">
                 <div className="schedule-header schedule-time-header" />
                 <div className="schedule-time-track" style={{ height: SCHEDULE_HEIGHT }}>
@@ -517,11 +525,101 @@ export default function AppointmentsPage() {
             </div>
           )}
         </div>
+
+        <div className="booking-panel">
+          <form className="card" ref={bookingFormRef} onSubmit={handleSubmit}>
+            <h2>Book Appointment</h2>
+            {error && <p className="error">{error}</p>}
+            <p>
+              {form.time && form.room_id
+                ? `Booking ${selectedDateLabel} at ${form.time} in ${
+                    rooms.find((r) => r.id === form.room_id)?.name || ''
+                  }`
+                : 'Click a spot on the schedule to pick a room and time'}
+            </p>
+
+            <select
+              required
+              value={form.client_id}
+              onChange={(e) => setForm({ ...form, client_id: e.target.value, patient_id: '' })}
+            >
+              <option value="">Select owner...</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.full_name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              required
+              disabled={!form.client_id}
+              value={form.patient_id}
+              onChange={(e) => setForm({ ...form, patient_id: e.target.value })}
+            >
+              <option value="">Select patient...</option>
+              {patientsForClient.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.species})
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={form.type}
+              onChange={(e) => setForm({ ...form, type: e.target.value, duration_minutes: '10' })}
+            >
+              <option value="consult">Consult (15 min)</option>
+              <option value="surgery">Surgery (10-min increments)</option>
+            </select>
+
+            {form.type === 'surgery' && (
+              <input
+                type="number"
+                min="10"
+                step="10"
+                value={form.duration_minutes}
+                onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
+                placeholder="Duration (minutes, multiple of 10)"
+              />
+            )}
+
+            <select
+              required
+              value={form.room_id}
+              onChange={(e) => setForm({ ...form, room_id: e.target.value })}
+            >
+              <option value="">Select room...</option>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+
+            <select value={form.vet_id} onChange={(e) => setForm({ ...form, vet_id: e.target.value })}>
+              <option value="">Select vet (optional)...</option>
+              {vets.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.full_name}
+                </option>
+              ))}
+            </select>
+
+            <input
+              placeholder="Reason for visit"
+              value={form.reason}
+              onChange={(e) => setForm({ ...form, reason: e.target.value })}
+            />
+
+            <button type="submit" disabled={submitting || !form.time || !form.room_id}>
+              {submitting ? 'Booking...' : 'Book Appointment'}
+            </button>
+          </form>
+        </div>
       </div>
 
       <h2>{selectedDateLabel} — list</h2>
-      <div className="split">
-      <div className="split-main">
       <table>
         <thead>
           <tr>
@@ -567,100 +665,6 @@ export default function AppointmentsPage() {
           ))}
         </tbody>
       </table>
-      </div>
-
-      <div className="split-aside">
-      <form className="card" ref={bookingFormRef} onSubmit={handleSubmit}>
-        <h2>Book Appointment</h2>
-        {error && <p className="error">{error}</p>}
-        <p>
-          {form.time && form.room_id
-            ? `Booking ${selectedDateLabel} at ${form.time} in ${
-                rooms.find((r) => r.id === form.room_id)?.name || ''
-              }`
-            : 'Click a spot on the schedule above to pick a room and time'}
-        </p>
-
-        <select
-          required
-          value={form.client_id}
-          onChange={(e) => setForm({ ...form, client_id: e.target.value, patient_id: '' })}
-        >
-          <option value="">Select owner...</option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.full_name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          required
-          disabled={!form.client_id}
-          value={form.patient_id}
-          onChange={(e) => setForm({ ...form, patient_id: e.target.value })}
-        >
-          <option value="">Select patient...</option>
-          {patientsForClient.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} ({p.species})
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={form.type}
-          onChange={(e) => setForm({ ...form, type: e.target.value, duration_minutes: '10' })}
-        >
-          <option value="consult">Consult (15 min)</option>
-          <option value="surgery">Surgery (10-min increments)</option>
-        </select>
-
-        {form.type === 'surgery' && (
-          <input
-            type="number"
-            min="10"
-            step="10"
-            value={form.duration_minutes}
-            onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
-            placeholder="Duration (minutes, multiple of 10)"
-          />
-        )}
-
-        <select
-          required
-          value={form.room_id}
-          onChange={(e) => setForm({ ...form, room_id: e.target.value })}
-        >
-          <option value="">Select room...</option>
-          {rooms.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
-
-        <select value={form.vet_id} onChange={(e) => setForm({ ...form, vet_id: e.target.value })}>
-          <option value="">Select vet (optional)...</option>
-          {vets.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.full_name}
-            </option>
-          ))}
-        </select>
-
-        <input
-          placeholder="Reason for visit"
-          value={form.reason}
-          onChange={(e) => setForm({ ...form, reason: e.target.value })}
-        />
-
-        <button type="submit" disabled={submitting || !form.time || !form.room_id}>
-          {submitting ? 'Booking...' : 'Book Appointment'}
-        </button>
-      </form>
-      </div>
-      </div>
     </div>
   );
 }

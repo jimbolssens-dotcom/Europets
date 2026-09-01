@@ -515,9 +515,24 @@ form.card label {
 
 .schedule-layout {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 1rem;
   margin-top: 1rem;
+}
+
+/* Book Appointment panel, sitting beside the schedule instead of below it —
+   fixed-ish width like .split-aside elsewhere, but wraps below the schedule
+   on narrower viewports instead of squeezing it. */
+.booking-panel {
+  flex: 0 0 320px;
+  min-width: 260px;
+}
+
+.booking-panel form.card,
+.booking-panel .card {
+  max-width: none;
+  margin-top: 0;
 }
 
 .date-nav {
@@ -652,6 +667,7 @@ form.card label {
 
 .schedule-wrap {
   display: flex;
+  max-width: 100%;
   border: 1px solid #eee;
   border-radius: 8px;
   background: white;
@@ -672,6 +688,10 @@ form.card label {
   color: var(--pink-dark);
   position: sticky;
   top: 0;
+  padding: 0 0.3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .schedule-time-col {
@@ -697,8 +717,7 @@ form.card label {
 }
 
 .schedule-room-col {
-  flex: 1 1 180px;
-  min-width: 180px;
+  flex: 0 0 130px;
 }
 
 .schedule-room-track {
