@@ -546,6 +546,37 @@ button.secondary:hover {
   margin: 0;
 }
 
+/* Editable "Reason for admission" on the hospitalization detail page —
+   the diagnosis can change over the course of a stay. */
+.reason-edit-btn {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--pink-tint);
+  color: var(--pink-dark);
+  border-radius: 999px;
+}
+
+.reason-edit-btn:hover {
+  background: var(--pink);
+  color: white;
+}
+
+.reason-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reason-edit input {
+  flex: 1;
+  max-width: 400px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
 /* Vaccination reminders due-window toggle (7/30/60 days) */
 
 .window-filter {

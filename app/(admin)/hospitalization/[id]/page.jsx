@@ -35,6 +35,8 @@ export default function HospitalizationDetailPage() {
   const [noteForm, setNoteForm] = useState(emptyNoteForm);
   const [submitting, setSubmitting] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [editingReason, setEditingReason] = useState(false);
+  const [reasonDraft, setReasonDraft] = useState('');
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`)
@@ -121,6 +123,21 @@ export default function HospitalizationDetailPage() {
     setTimeout(() => setLinkCopied(false), 2000);
   }
 
+  function startEditReason() {
+    setReasonDraft(admission.reason || '');
+    setEditingReason(true);
+  }
+
+  async function saveReason() {
+    await fetch(`/api/hospitalizations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: reasonDraft }),
+    });
+    setEditingReason(false);
+    loadAdmission();
+  }
+
   async function discharge() {
     await fetch(`/api/hospitalizations/${id}`, {
       method: 'PATCH',
@@ -143,12 +160,34 @@ export default function HospitalizationDetailPage() {
       </h1>
       <p>
         Owner: <a href={`/clients/${admission.clients?.id}`}>{admission.clients?.full_name}</a> ·
-        Room: {admission.rooms?.name || '—'} · Admitted:{' '}
+        Cage: {admission.cages?.name || '—'} · Admitted:{' '}
         {new Date(admission.admitted_at).toLocaleString()}
         {admission.discharged_at &&
           ` · Discharged: ${new Date(admission.discharged_at).toLocaleString()}`}
       </p>
-      {admission.reason && <p>Reason: {admission.reason}</p>}
+      {editingReason ? (
+        <p className="reason-edit">
+          <input
+            value={reasonDraft}
+            onChange={(e) => setReasonDraft(e.target.value)}
+            placeholder="Reason for admission"
+            autoFocus
+          />
+          <button type="button" onClick={saveReason}>
+            Save
+          </button>
+          <button type="button" onClick={() => setEditingReason(false)}>
+            Cancel
+          </button>
+        </p>
+      ) : (
+        <p>
+          Reason: {admission.reason || <em>none given</em>}{' '}
+          <button type="button" className="reason-edit-btn" onClick={startEditReason}>
+            Edit
+          </button>
+        </p>
+      )}
       {admission.status === 'admitted' && (
         <button type="button" onClick={discharge}>
           Discharge
