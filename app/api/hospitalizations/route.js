@@ -32,7 +32,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  let { patient_id, client_id, originating_visit_id, room_id, reason } = body;
+  let { patient_id, client_id, originating_visit_id, room_id, cage_id, reason } = body;
 
   if (originating_visit_id && (!patient_id || !client_id)) {
     const { data: visit, error: visitError } = await supabase
@@ -64,6 +64,7 @@ export async function POST(request) {
         client_id,
         originating_visit_id: originating_visit_id || null,
         room_id: room_id || null,
+        cage_id: cage_id || null,
         reason: reason || null,
       },
     ])
@@ -71,6 +72,11 @@ export async function POST(request) {
     .single();
 
   if (error) {
+    // The partial unique index on (cage_id) where status='admitted' blocks
+    // admitting straight into a cage that's already occupied.
+    if (error.code === '23505') {
+      return NextResponse.json({ error: 'That cage is already occupied.' }, { status: 409 });
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json(await attachCages(data), { status: 201 });

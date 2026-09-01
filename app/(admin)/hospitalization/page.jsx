@@ -1,20 +1,23 @@
 // app/hospitalization/page.jsx
 // Hospitalization admissions: currently admitted, and recently discharged.
 // Most admissions start from a consult's "Admit to Hospitalization" button;
-// this also allows a standalone admit for a patient already in-house.
+// this also allows a standalone admit for a patient already in-house, with
+// a compact cage picker (the same floor plan as the Cage Layout page,
+// shrunk down) to assign a cage right at admission time.
 
 'use client';
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import CagePicker from '@/app/_components/CagePicker';
 
-const emptyForm = { client_id: '', patient_id: '', room_id: '', reason: '' };
+const emptyForm = { client_id: '', patient_id: '', cage_id: '', reason: '' };
 
 export default function HospitalizationPage() {
   const [admissions, setAdmissions] = useState([]);
   const [clients, setClients] = useState([]);
   const [patients, setPatients] = useState([]);
-  const [rooms, setRooms] = useState([]);
+  const [cages, setCages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
@@ -33,11 +36,11 @@ export default function HospitalizationPage() {
     Promise.all([
       fetch('/api/clients').then((res) => res.json()),
       fetch('/api/patients').then((res) => res.json()),
-      fetch('/api/rooms').then((res) => res.json()),
-    ]).then(([clientsData, patientsData, roomsData]) => {
+      fetch('/api/cages').then((res) => res.json()),
+    ]).then(([clientsData, patientsData, cagesData]) => {
       setClients(Array.isArray(clientsData) ? clientsData : []);
       setPatients(Array.isArray(patientsData) ? patientsData : []);
-      setRooms(Array.isArray(roomsData) ? roomsData : []);
+      setCages(Array.isArray(cagesData) ? cagesData : []);
     });
 
     const channel = supabase
@@ -74,6 +77,7 @@ export default function HospitalizationPage() {
   const admitted = admissions.filter((a) => a.status === 'admitted');
   const discharged = admissions.filter((a) => a.status === 'discharged').slice(0, 20);
   const patientsForClient = patients.filter((p) => p.client_id === form.client_id);
+  const occupiedCageIds = new Set(admitted.filter((a) => a.cage_id).map((a) => a.cage_id));
 
   return (
     <div>
@@ -82,8 +86,6 @@ export default function HospitalizationPage() {
         <a href="/hospitalization/cages">🗺️ Cage Layout</a>
       </p>
 
-      <div className="split">
-      <div className="split-main">
       <h2>Currently Admitted</h2>
       {admitted.length === 0 ? (
         <p>No patients currently admitted.</p>
@@ -143,57 +145,56 @@ export default function HospitalizationPage() {
           </tbody>
         </table>
       )}
-      </div>
 
-      <div className="split-aside">
-      <form className="card" onSubmit={handleSubmit}>
-        <h2>Admit Patient</h2>
-        <p>Usually started from a consult's "Admit to Hospitalization" button — use this for a standalone admission.</p>
+      <h2>Admit Patient</h2>
+      <form className="card admit-patient-form" onSubmit={handleSubmit}>
+        <p>Usually started from a consult&apos;s &quot;Admit to Hospitalization&quot; button — use this for a standalone admission.</p>
         {error && <p className="error">{error}</p>}
-        <select
-          required
-          value={form.client_id}
-          onChange={(e) => setForm({ ...form, client_id: e.target.value, patient_id: '' })}
-        >
-          <option value="">Select owner...</option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.full_name}
-            </option>
-          ))}
-        </select>
-        <select
-          required
-          disabled={!form.client_id}
-          value={form.patient_id}
-          onChange={(e) => setForm({ ...form, patient_id: e.target.value })}
-        >
-          <option value="">Select patient...</option>
-          {patientsForClient.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} ({p.species})
-            </option>
-          ))}
-        </select>
-        <select value={form.room_id} onChange={(e) => setForm({ ...form, room_id: e.target.value })}>
-          <option value="">Select room (optional)...</option>
-          {rooms.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
-        <input
-          placeholder="Reason for admission"
-          value={form.reason}
-          onChange={(e) => setForm({ ...form, reason: e.target.value })}
+        <div className="admit-patient-fields">
+          <select
+            required
+            value={form.client_id}
+            onChange={(e) => setForm({ ...form, client_id: e.target.value, patient_id: '' })}
+          >
+            <option value="">Select owner...</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.full_name}
+              </option>
+            ))}
+          </select>
+          <select
+            required
+            disabled={!form.client_id}
+            value={form.patient_id}
+            onChange={(e) => setForm({ ...form, patient_id: e.target.value })}
+          >
+            <option value="">Select patient...</option>
+            {patientsForClient.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.species})
+              </option>
+            ))}
+          </select>
+          <input
+            placeholder="Reason for admission"
+            value={form.reason}
+            onChange={(e) => setForm({ ...form, reason: e.target.value })}
+          />
+        </div>
+
+        <p className="cage-picker-label">Cage (optional) — click a cage to assign it, click again to clear</p>
+        <CagePicker
+          cages={cages}
+          occupiedCageIds={occupiedCageIds}
+          value={form.cage_id}
+          onChange={(cage_id) => setForm({ ...form, cage_id })}
         />
+
         <button type="submit" disabled={submitting}>
           {submitting ? 'Admitting...' : 'Admit Patient'}
         </button>
       </form>
-      </div>
-      </div>
     </div>
   );
 }

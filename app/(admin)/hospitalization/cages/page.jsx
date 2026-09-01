@@ -1,23 +1,18 @@
 // app/hospitalization/cages/page.jsx
-// Cage Layout: a visual map of the clinic's physical cages, arranged to
-// roughly match the real floor plan — the 12 standard cages in the
-// middle (2 rows of 6) flanked by the long-term bungalows (2 left, 3
-// right), and on the other side of the room the recovery cages (stacked
-// 4), dog cages (2x2), and isolation cages (2 stacked + 1 beside).
-// Post-op cages sit in their own row below. An occupied cage shows who's
-// in it and opens straight to that hospitalization file on click; an
-// empty cage offers a dropdown to assign one of the currently-
-// admitted-but-unassigned patients to it.
+// Cage Layout: a visual map of the clinic's physical cages (see
+// CageFloorPlan for the arrangement). An occupied cage shows who's in it
+// and opens straight to that hospitalization file on click; an empty
+// cage offers a dropdown to assign one of the currently-admitted-but-
+// unassigned patients to it. Assigning a cage at admission time itself
+// happens on the Admit Patient form (Hospitalization list page), via the
+// same floor plan in miniature.
 
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-
-function byGroup(cages, group) {
-  return cages.filter((c) => c.group_name === group).sort((a, b) => a.sort_order - b.sort_order);
-}
+import CageFloorPlan from '@/app/_components/CageFloorPlan';
 
 function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onOpen }) {
   if (hosp) {
@@ -138,29 +133,6 @@ export default function CageLayoutPage() {
     onOpen: (id) => router.push(`/hospitalization/${id}`),
   };
 
-  const standardCages = byGroup(cages, 'standard');
-  const ltCages = byGroup(cages, 'long_term');
-  const ltLeft = ltCages.slice(0, 2);
-  const ltRight = ltCages.slice(2);
-  const recoveryCages = byGroup(cages, 'recovery');
-  const dogCages = byGroup(cages, 'dog');
-  const isoCages = byGroup(cages, 'isolation');
-  const postOpCages = byGroup(cages, 'post_op');
-
-  function renderCluster(label, groupCages, cols) {
-    if (groupCages.length === 0) return null;
-    return (
-      <div>
-        {label && <h3 className="cage-cluster-label">{label}</h3>}
-        <div className="cage-cluster" style={{ '--cols': cols }}>
-          {groupCages.map((cage) => (
-            <CageTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} {...tileHandlers} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div>
       <p>
@@ -169,40 +141,18 @@ export default function CageLayoutPage() {
       <h1>Cage Layout</h1>
       <p className="visit-meta">
         Click an occupied cage to open that case&apos;s file. An empty cage can be assigned one of
-        the currently admitted, unassigned patients.
+        the currently admitted, unassigned patients. To assign a cage while admitting a new
+        patient, use the picker on the Admit Patient form instead.
       </p>
 
       {error && <p className="error">{error}</p>}
 
-      <div className="floor-plan-row">
-        {renderCluster('LT', ltLeft, 1)}
-        {renderCluster('Hospitalization Cages', standardCages, 6)}
-        {renderCluster('LT', ltRight, 1)}
-      </div>
-
-      <div className="floor-plan-row">
-        {renderCluster('Recovery Cages', recoveryCages, 1)}
-        {renderCluster('Dog Cages', dogCages, 2)}
-        {isoCages.length > 0 && (
-          <div>
-            <h3 className="cage-cluster-label">Isolation Cages</h3>
-            <div className="cage-cluster-flex">
-              <div className="cage-cluster" style={{ '--cols': 1 }}>
-                {isoCages.slice(0, 2).map((cage) => (
-                  <CageTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} {...tileHandlers} />
-                ))}
-              </div>
-              <div className="cage-cluster" style={{ '--cols': 1 }}>
-                {isoCages.slice(2).map((cage) => (
-                  <CageTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} {...tileHandlers} />
-                ))}
-              </div>
-            </div>
-          </div>
+      <CageFloorPlan
+        cages={cages}
+        renderTile={(cage) => (
+          <CageTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} {...tileHandlers} />
         )}
-      </div>
-
-      {renderCluster('Post-Op Cages', postOpCages, 5)}
+      />
     </div>
   );
 }

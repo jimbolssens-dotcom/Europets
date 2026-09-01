@@ -1408,3 +1408,75 @@ button.secondary:hover {
   background: rgba(0, 0, 0, 0.35);
 }
 
+/* Compact cage picker on the Admit Patient form — same CageFloorPlan
+   arrangement and group colors as the full Cage Layout page, shrunk into
+   small clickable squares instead of full detail tiles. */
+.admit-patient-form {
+  max-width: 900px;
+}
+
+.admit-patient-fields {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 420px;
+}
+
+.cage-picker-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 1rem 0 0.5rem;
+}
+
+.cage-floorplan-compact .floor-plan-row {
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.cage-floorplan-compact .cage-cluster-label {
+  font-size: 0.65rem;
+  margin-bottom: 0.3rem;
+}
+
+.cage-floorplan-compact .cage-cluster {
+  grid-template-columns: repeat(var(--cols), minmax(34px, 40px));
+  gap: 0.3rem;
+}
+
+.cage-floorplan-compact .cage-cluster-flex {
+  gap: 0.3rem;
+}
+
+.cage-mini-tile {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  background: #fafafa;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--ink);
+  padding: 0.2rem;
+  min-height: 34px;
+  cursor: pointer;
+}
+
+.cage-mini-tile:disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.cage-mini-tile.cage-occupied {
+  background: var(--pink-tint);
+  border-color: var(--pink);
+  color: var(--pink-dark);
+}
+
+.cage-mini-tile.cage-mini-selected {
+  outline: 2px solid var(--pink-dark);
+  outline-offset: 1px;
+}
+
