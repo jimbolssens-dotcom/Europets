@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
-import { formatTimestamp, wasEdited } from '@/lib/formatTimestamp';
+import { formatTime, formatDayHeader, wasEdited, groupNotesByDate } from '@/lib/formatTimestamp';
 
 export default function HospitalizationPortalPage() {
   const { id } = useParams();
@@ -89,26 +89,31 @@ export default function HospitalizationPortalPage() {
       <div className="portal-card">
         <h2>Daily Updates</h2>
         {notes.length === 0 && <p className="visit-meta">No updates yet — check back soon.</p>}
-        {notes.map((n) => (
-          <div key={n.id} className="portal-note">
-            <div className="portal-note-date">{formatTimestamp(n.created_at)}</div>
-            {wasEdited(n.created_at, n.updated_at) && (
-              <p className="visit-meta" style={{ margin: '0 0 0.4rem' }}>
-                Updated {formatTimestamp(n.updated_at)}
-              </p>
-            )}
-            {n.appetite && (
-              <p>
-                <strong>Appetite:</strong> {n.appetite}
-              </p>
-            )}
-            {n.condition && (
-              <p>
-                <strong>Condition:</strong> {n.condition}
-              </p>
-            )}
-            {n.notes && <p>{n.notes}</p>}
-            <AttachmentGallery entityType="hospitalization_note" entityId={n.id} />
+        {groupNotesByDate(notes).map((group) => (
+          <div key={group.date} className="worksheet-day">
+            <h3 className="worksheet-day-header">{formatDayHeader(group.date)}</h3>
+            {group.entries.map((n) => (
+              <div key={n.id} className="portal-note">
+                <div className="portal-note-date">{formatTime(n.created_at)}</div>
+                {wasEdited(n.created_at, n.updated_at) && (
+                  <p className="visit-meta" style={{ margin: '0 0 0.4rem' }}>
+                    Updated {formatTime(n.updated_at)}
+                  </p>
+                )}
+                {n.appetite && (
+                  <p>
+                    <strong>Appetite:</strong> {n.appetite}
+                  </p>
+                )}
+                {n.condition && (
+                  <p>
+                    <strong>Condition:</strong> {n.condition}
+                  </p>
+                )}
+                {n.notes && <p>{n.notes}</p>}
+                <AttachmentGallery entityType="hospitalization_note" entityId={n.id} />
+              </div>
+            ))}
           </div>
         ))}
       </div>

@@ -113,9 +113,11 @@ appointments, full consult medical records, hospitalization, and invoicing.
    clinic's own TRN (Settings page), and the client's TRN if they're a
    VAT-registered business
 5. ✅ Hospitalization — standalone multi-day admissions with a day-to-day
-   worksheet (real timestamped entries, editable after the fact — each
-   edit bumps a separate "last edited" time so multiple touches in a day
-   are visible), startable from a consult, with photo capture (camera
+   worksheet grouped by day (every entry for a day sits together under
+   one heading with its own timestamp, so nothing looks lost as new
+   entries land above older ones), editable after the fact — each edit
+   bumps a separate "last edited" time so multiple touches in a day are
+   visible — startable from a consult, with photo capture (camera
    button on iPad/phones) and a one-click PDF summary — including the
    case's and each day's photos — to share with the client. A "Share
    Client Portal Link" button sends a live, read-only, client-facing page

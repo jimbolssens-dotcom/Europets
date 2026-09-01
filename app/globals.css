@@ -466,6 +466,31 @@ form.card label {
   align-items: center;
 }
 
+/* Day-grouped worksheet entries (hospitalization) — every entry for a day
+   sits together under one heading, so nothing looks "gone" when a new
+   entry lands above older ones from the same day. */
+.worksheet-day {
+  margin-bottom: 1.5rem;
+}
+
+.worksheet-day-header {
+  color: var(--pink-dark);
+  font-size: 1rem;
+  margin: 0 0 0.6rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 2px solid var(--pink-tint);
+}
+
+.worksheet-day-count {
+  color: #999;
+  font-weight: 400;
+  font-size: 0.8rem;
+}
+
+.worksheet-day .visit-card {
+  margin-bottom: 0.75rem;
+}
+
 .visit-meta {
   color: #555;
   font-size: 0.9rem;

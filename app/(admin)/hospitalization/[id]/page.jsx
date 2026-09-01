@@ -10,7 +10,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
-import { formatTimestamp, wasEdited } from '@/lib/formatTimestamp';
+import { formatTime, formatDayHeader, wasEdited, groupNotesByDate } from '@/lib/formatTimestamp';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -216,109 +216,121 @@ export default function HospitalizationDetailPage() {
       <div className="split-main">
       <h2>Day-to-day Worksheet</h2>
       {notes.length === 0 && <p>No entries yet.</p>}
-      {notes.map((n) =>
-        editingNoteId === n.id ? (
-          <div key={n.id} className="visit-card">
-            <div className="visit-header">
-              <strong>Editing entry — {n.note_date}</strong>
-            </div>
-            {editNoteError && <p className="error">{editNoteError}</p>}
-            <div className="edit-note-form">
-              <input
-                type="date"
-                required
-                value={editNoteForm.note_date}
-                onChange={(e) => setEditNoteForm({ ...editNoteForm, note_date: e.target.value })}
-              />
-              <select
-                value={editNoteForm.author_id}
-                onChange={(e) => setEditNoteForm({ ...editNoteForm, author_id: e.target.value })}
-              >
-                <option value="">Author...</option>
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.full_name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={editNoteForm.appetite}
-                onChange={(e) => setEditNoteForm({ ...editNoteForm, appetite: e.target.value })}
-              >
-                <option value="">Appetite...</option>
-                <option value="good">Good</option>
-                <option value="reduced">Reduced</option>
-                <option value="none">None</option>
-              </select>
-              <input
-                type="number"
-                step="0.1"
-                placeholder="Temperature (°C)"
-                value={editNoteForm.temperature_c}
-                onChange={(e) => setEditNoteForm({ ...editNoteForm, temperature_c: e.target.value })}
-              />
-              <input
-                placeholder="General condition"
-                value={editNoteForm.condition}
-                onChange={(e) => setEditNoteForm({ ...editNoteForm, condition: e.target.value })}
-              />
-              <label>
-                <span className="field-label-row">
-                  Notes
-                  <VoiceToTextButton kind="hospitalization_notes" onResult={appendEditNoteText} />
-                </span>
-                <textarea
-                  rows={2}
-                  value={editNoteForm.notes}
-                  onChange={(e) => setEditNoteForm({ ...editNoteForm, notes: e.target.value })}
-                />
-              </label>
-              <div className="home-links">
-                <button type="button" onClick={() => saveEditNote(n.id)} disabled={savingEdit}>
-                  {savingEdit ? 'Saving...' : 'Save'}
-                </button>
-                <button type="button" onClick={cancelEditNote}>
-                  Cancel
+      {groupNotesByDate(notes).map((group) => (
+        <div key={group.date} className="worksheet-day">
+          <h3 className="worksheet-day-header">
+            {formatDayHeader(group.date)}{' '}
+            <span className="worksheet-day-count">
+              {group.entries.length} {group.entries.length === 1 ? 'entry' : 'entries'}
+            </span>
+          </h3>
+          {group.entries.map((n) =>
+            editingNoteId === n.id ? (
+              <div key={n.id} className="visit-card">
+                <div className="visit-header">
+                  <strong>Editing entry — {formatTime(n.created_at)}</strong>
+                </div>
+                {editNoteError && <p className="error">{editNoteError}</p>}
+                <div className="edit-note-form">
+                  <input
+                    type="date"
+                    required
+                    value={editNoteForm.note_date}
+                    onChange={(e) => setEditNoteForm({ ...editNoteForm, note_date: e.target.value })}
+                  />
+                  <select
+                    value={editNoteForm.author_id}
+                    onChange={(e) => setEditNoteForm({ ...editNoteForm, author_id: e.target.value })}
+                  >
+                    <option value="">Author...</option>
+                    {staff.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.full_name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={editNoteForm.appetite}
+                    onChange={(e) => setEditNoteForm({ ...editNoteForm, appetite: e.target.value })}
+                  >
+                    <option value="">Appetite...</option>
+                    <option value="good">Good</option>
+                    <option value="reduced">Reduced</option>
+                    <option value="none">None</option>
+                  </select>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="Temperature (°C)"
+                    value={editNoteForm.temperature_c}
+                    onChange={(e) =>
+                      setEditNoteForm({ ...editNoteForm, temperature_c: e.target.value })
+                    }
+                  />
+                  <input
+                    placeholder="General condition"
+                    value={editNoteForm.condition}
+                    onChange={(e) => setEditNoteForm({ ...editNoteForm, condition: e.target.value })}
+                  />
+                  <label>
+                    <span className="field-label-row">
+                      Notes
+                      <VoiceToTextButton kind="hospitalization_notes" onResult={appendEditNoteText} />
+                    </span>
+                    <textarea
+                      rows={2}
+                      value={editNoteForm.notes}
+                      onChange={(e) => setEditNoteForm({ ...editNoteForm, notes: e.target.value })}
+                    />
+                  </label>
+                  <div className="home-links">
+                    <button type="button" onClick={() => saveEditNote(n.id)} disabled={savingEdit}>
+                      {savingEdit ? 'Saving...' : 'Save'}
+                    </button>
+                    <button type="button" onClick={cancelEditNote}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div key={n.id} className="visit-card">
+                <div className="visit-header">
+                  <strong>{formatTime(n.created_at)}</strong>
+                  <span>{n.staff?.full_name || 'unassigned'}</span>
+                </div>
+                {wasEdited(n.created_at, n.updated_at) && (
+                  <p className="visit-meta" style={{ margin: '0 0 0.4rem' }}>
+                    Edited {formatTime(n.updated_at)}
+                  </p>
+                )}
+                <p>
+                  {n.appetite && (
+                    <>
+                      <strong>Appetite:</strong> {n.appetite}{' '}
+                    </>
+                  )}
+                  {n.temperature_c != null && (
+                    <>
+                      · <strong>Temp:</strong> {n.temperature_c}°C{' '}
+                    </>
+                  )}
+                </p>
+                {n.condition && (
+                  <p>
+                    <strong>Condition:</strong> {n.condition}
+                  </p>
+                )}
+                {n.notes && <p>{n.notes}</p>}
+                <AttachmentSection entityType="hospitalization_note" entityId={n.id} />
+                <button type="button" onClick={() => startEditNote(n)}>
+                  Edit
                 </button>
               </div>
-            </div>
-          </div>
-        ) : (
-          <div key={n.id} className="visit-card">
-            <div className="visit-header">
-              <strong>{formatTimestamp(n.created_at)}</strong>
-              <span>{n.staff?.full_name || 'unassigned'}</span>
-            </div>
-            {wasEdited(n.created_at, n.updated_at) && (
-              <p className="visit-meta" style={{ margin: '0 0 0.4rem' }}>
-                Edited {formatTimestamp(n.updated_at)}
-              </p>
-            )}
-            <p>
-              {n.appetite && (
-                <>
-                  <strong>Appetite:</strong> {n.appetite}{' '}
-                </>
-              )}
-              {n.temperature_c != null && (
-                <>
-                  · <strong>Temp:</strong> {n.temperature_c}°C{' '}
-                </>
-              )}
-            </p>
-            {n.condition && (
-              <p>
-                <strong>Condition:</strong> {n.condition}
-              </p>
-            )}
-            {n.notes && <p>{n.notes}</p>}
-            <AttachmentSection entityType="hospitalization_note" entityId={n.id} />
-            <button type="button" onClick={() => startEditNote(n)}>
-              Edit
-            </button>
-          </div>
-        )
-      )}
+            )
+          )}
+        </div>
+      ))}
       </div>
 
       <div className="split-aside">

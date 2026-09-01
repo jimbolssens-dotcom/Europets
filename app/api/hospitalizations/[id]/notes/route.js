@@ -11,7 +11,7 @@ export async function GET(request, { params }) {
     .select('*, staff(full_name)')
     .eq('hospitalization_id', params.id)
     .order('note_date', { ascending: false })
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: true });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
