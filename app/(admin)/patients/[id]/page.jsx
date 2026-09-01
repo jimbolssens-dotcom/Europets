@@ -184,87 +184,44 @@ export default function PatientDetailPage() {
         {patient.deceased && <span className="error"> · Deceased</span>}
       </h1>
 
-      <table>
-        <tbody>
-          <tr>
-            <th>Owner</th>
-            <td>
+      <div className="split">
+        <div className="split-main">
+          <div className="patient-facts">
+            <div className="patient-fact">
+              <span className="patient-fact-label">Owner</span>
               <a href={`/clients/${patient.clients?.id}`}>
                 {patient.clients?.full_name} (Client #{patient.clients?.client_number})
               </a>
-            </td>
-          </tr>
-          <tr>
-            <th>Species</th>
-            <td>{patient.species}</td>
-          </tr>
-          <tr>
-            <th>Breed</th>
-            <td>{patient.breed || '—'}</td>
-          </tr>
-          <tr>
-            <th>Sex</th>
-            <td>{patient.sex || 'unknown'}</td>
-          </tr>
-          <tr>
-            <th>Date of birth</th>
-            <td>{patient.date_of_birth || '—'}</td>
-          </tr>
-          <tr>
-            <th>Weight (kg)</th>
-            <td>{patient.current_weight_kg ?? '—'}</td>
-          </tr>
-          <tr>
-            <th>Microchip #</th>
-            <td>{patient.microchip_number || '—'}</td>
-          </tr>
-          <tr>
-            <th>Notes</th>
-            <td>{patient.notes || '—'}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h2>Vaccinations</h2>
-      <div className="split">
-        <div className="split-main">
-          {vaccinations.length === 0 ? (
-            <p>No vaccinations recorded yet.</p>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Vaccine</th>
-                  <th>Given</th>
-                  <th>Next due</th>
-                  <th>By</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {vaccinations.map((v) => {
-                  const status = dueStatus(v.next_due_date);
-                  return (
-                    <tr key={v.id}>
-                      <td>
-                        {v.vaccine_name}
-                        {v.batch_number && <div className="visit-meta">Batch {v.batch_number}</div>}
-                        {v.notes && <div className="visit-meta">{v.notes}</div>}
-                      </td>
-                      <td>{formatDate(v.date_given)}</td>
-                      <td className={status?.className}>{status?.label || '—'}</td>
-                      <td>{v.staff?.full_name || '—'}</td>
-                      <td>
-                        <button type="button" onClick={() => deleteVaccination(v)}>
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+            </div>
+            <div className="patient-fact">
+              <span className="patient-fact-label">Species</span>
+              <span>{patient.species}</span>
+            </div>
+            <div className="patient-fact">
+              <span className="patient-fact-label">Breed</span>
+              <span>{patient.breed || '—'}</span>
+            </div>
+            <div className="patient-fact">
+              <span className="patient-fact-label">Sex</span>
+              <span>{patient.sex || 'unknown'}</span>
+            </div>
+            <div className="patient-fact">
+              <span className="patient-fact-label">Date of birth</span>
+              <span>{patient.date_of_birth || '—'}</span>
+            </div>
+            <div className="patient-fact">
+              <span className="patient-fact-label">Weight (kg)</span>
+              <span>{patient.current_weight_kg ?? '—'}</span>
+            </div>
+            <div className="patient-fact">
+              <span className="patient-fact-label">Microchip #</span>
+              <span>{patient.microchip_number || '—'}</span>
+            </div>
+            <div className="patient-fact">
+              <span className="patient-fact-label">Notes</span>
+              <span>{patient.notes || '—'}</span>
+            </div>
+          </div>
         </div>
 
         <div className="split-aside">
@@ -349,6 +306,45 @@ export default function PatientDetailPage() {
           </form>
         </div>
       </div>
+
+      <h2>Vaccination History</h2>
+      {vaccinations.length === 0 ? (
+        <p>No vaccinations recorded yet.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Vaccine</th>
+              <th>Given</th>
+              <th>Next due</th>
+              <th>By</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {vaccinations.map((v) => {
+              const status = dueStatus(v.next_due_date);
+              return (
+                <tr key={v.id}>
+                  <td>
+                    {v.vaccine_name}
+                    {v.batch_number && <div className="visit-meta">Batch {v.batch_number}</div>}
+                    {v.notes && <div className="visit-meta">{v.notes}</div>}
+                  </td>
+                  <td>{formatDate(v.date_given)}</td>
+                  <td className={status?.className}>{status?.label || '—'}</td>
+                  <td>{v.staff?.full_name || '—'}</td>
+                  <td>
+                    <button type="button" onClick={() => deleteVaccination(v)}>
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

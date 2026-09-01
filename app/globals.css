@@ -308,6 +308,39 @@ form.card label {
   color: var(--ink);
 }
 
+/* Compact patient-facts panel — a lighter, denser alternative to a full
+   <table> for a short list of key/value fields, so it sits comfortably
+   next to the Add Vaccination form instead of stretching the page tall. */
+.patient-facts {
+  margin-top: 0.75rem;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.patient-fact {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.patient-fact:last-child {
+  border-bottom: none;
+}
+
+.patient-fact-label {
+  color: #999;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
 /* Multi-select vaccine checklist on the Add Vaccination form — several
    vaccines given in the same visit get checked and recorded together. */
 .vaccine-checklist {
