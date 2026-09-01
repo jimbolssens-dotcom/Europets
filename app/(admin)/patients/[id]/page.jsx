@@ -37,22 +37,10 @@ function dueStatus(dateStr) {
   return { label: `Due ${formatDate(dateStr)}`, className: 'visit-meta' };
 }
 
-// date_given + a protocol's interval_months, as YYYY-MM-DD, for the
-// next-due-date preview shown while filling in the Add Vaccination form.
-function addMonths(dateStr, months) {
-  if (!dateStr) return '';
-  const d = new Date(`${dateStr}T00:00:00`);
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString().slice(0, 10);
-}
-
-const STANDARD_INTERVAL_MONTHS = 12; // the default before a specific protocol is picked
-
 function makeEmptyForm() {
   return {
-    vaccine_protocol_id: '',
+    vaccine_protocol_ids: [],
     date_given: todayISODate(),
-    next_due_date: addMonths(todayISODate(), STANDARD_INTERVAL_MONTHS),
     batch_number: '',
     administered_by: '',
     notes: '',
@@ -127,45 +115,53 @@ export default function PatientDetailPage() {
     return protocols.filter((p) => p.species === speciesClass);
   }, [protocols, speciesClass]);
 
-  const selectedProtocol = protocols.find((p) => p.id === form.vaccine_protocol_id);
-
-  function selectProtocol(protocolId) {
-    const protocol = protocols.find((p) => p.id === protocolId);
-    const months = protocol ? protocol.interval_months : STANDARD_INTERVAL_MONTHS;
-    setForm({
-      ...form,
-      vaccine_protocol_id: protocolId,
-      next_due_date: addMonths(form.date_given, months),
-    });
+  function toggleProtocol(protocolId) {
+    setForm((prev) => ({
+      ...prev,
+      vaccine_protocol_ids: prev.vaccine_protocol_ids.includes(protocolId)
+        ? prev.vaccine_protocol_ids.filter((id) => id !== protocolId)
+        : [...prev.vaccine_protocol_ids, protocolId],
+    }));
   }
 
-  function setDateGiven(dateGiven) {
-    const months = selectedProtocol ? selectedProtocol.interval_months : STANDARD_INTERVAL_MONTHS;
-    setForm({
-      ...form,
-      date_given: dateGiven,
-      next_due_date: addMonths(dateGiven, months),
-    });
-  }
-
+  // One vaccine given in the same visit can mean several checked at once
+  // (e.g. PCH + Rabies for a cat) — record one row per checked protocol,
+  // sharing the date/batch/vet/notes. next_due_date is left for the server
+  // to compute from each protocol's own interval, so a mix of annual and
+  // (eventually) non-annual vaccines each get the right due date.
   async function addVaccination(e) {
     e.preventDefault();
+    if (form.vaccine_protocol_ids.length === 0) {
+      setError('Check at least one vaccine given');
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
-    const res = await fetch('/api/vaccinations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, patient_id: id, administered_by: form.administered_by || null }),
-    });
-    const data = await res.json();
+    const results = await Promise.all(
+      form.vaccine_protocol_ids.map((vaccine_protocol_id) =>
+        fetch('/api/vaccinations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patient_id: id,
+            vaccine_protocol_id,
+            date_given: form.date_given,
+            batch_number: form.batch_number,
+            administered_by: form.administered_by || null,
+            notes: form.notes,
+          }),
+        }).then(async (res) => ({ ok: res.ok, data: await res.json() }))
+      )
+    );
 
-    if (!res.ok) {
-      setError(data.error || 'Failed to record vaccination');
+    const failed = results.find((r) => !r.ok);
+    if (failed) {
+      setError(failed.data.error || 'Failed to record one or more vaccinations');
     } else {
       setForm(makeEmptyForm());
-      loadVaccinations();
     }
+    loadVaccinations();
     setSubmitting(false);
   }
 
@@ -292,19 +288,21 @@ export default function PatientDetailPage() {
                 Couldn&apos;t tell cat vs dog from &quot;{patient.species}&quot; — showing every protocol.
               </p>
             )}
-            <select
-              required
-              disabled={relevantProtocols.length === 0}
-              value={form.vaccine_protocol_id}
-              onChange={(e) => selectProtocol(e.target.value)}
-            >
-              <option value="">Select vaccine...</option>
-              {relevantProtocols.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} {p.core ? '' : '(optional)'}
-                </option>
-              ))}
-            </select>
+            {relevantProtocols.length > 0 && (
+              <fieldset className="vaccine-checklist">
+                <legend>Vaccines given</legend>
+                {relevantProtocols.map((p) => (
+                  <label key={p.id} className="vaccine-checklist-item">
+                    <input
+                      type="checkbox"
+                      checked={form.vaccine_protocol_ids.includes(p.id)}
+                      onChange={() => toggleProtocol(p.id)}
+                    />
+                    {p.name} {p.core ? '' : '(optional)'}
+                  </label>
+                ))}
+              </fieldset>
+            )}
 
             <label>
               Date given
@@ -312,16 +310,7 @@ export default function PatientDetailPage() {
                 type="date"
                 required
                 value={form.date_given}
-                onChange={(e) => setDateGiven(e.target.value)}
-              />
-            </label>
-
-            <label>
-              Next due
-              <input
-                type="date"
-                value={form.next_due_date}
-                onChange={(e) => setForm({ ...form, next_due_date: e.target.value })}
+                onChange={(e) => setForm({ ...form, date_given: e.target.value })}
               />
             </label>
 
@@ -350,8 +339,12 @@ export default function PatientDetailPage() {
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
 
-            <button type="submit" disabled={submitting}>
-              {submitting ? 'Saving...' : 'Add Vaccination'}
+            <button type="submit" disabled={submitting || form.vaccine_protocol_ids.length === 0}>
+              {submitting
+                ? 'Saving...'
+                : form.vaccine_protocol_ids.length > 1
+                ? `Add ${form.vaccine_protocol_ids.length} Vaccinations`
+                : 'Add Vaccination'}
             </button>
           </form>
         </div>

@@ -308,6 +308,38 @@ form.card label {
   color: var(--ink);
 }
 
+/* Multi-select vaccine checklist on the Add Vaccination form — several
+   vaccines given in the same visit get checked and recorded together. */
+.vaccine-checklist {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.6rem 0.75rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.vaccine-checklist legend {
+  padding: 0 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.vaccine-checklist-item {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem !important;
+  font-size: 0.95rem !important;
+  font-weight: 400 !important;
+}
+
+.vaccine-checklist-item input {
+  width: auto;
+  padding: 0;
+  border: none;
+}
+
 .attachments {
   margin-top: 0.5rem;
 }
