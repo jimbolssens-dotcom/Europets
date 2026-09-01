@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 const OPEN_HOUR = 8;
@@ -126,6 +126,7 @@ export default function AppointmentsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [hoverSlot, setHoverSlot] = useState(null);
+  const bookingFormRef = useRef(null);
 
   const monthKey = toMonthKey(new Date(viewYear, viewMonthIndex, 1));
 
@@ -235,6 +236,9 @@ export default function AppointmentsPage() {
     const { time } = computeSlot(e);
     setForm({ ...form, time, room_id: roomId });
     setError(null);
+    // Jump straight to the booking form so a click on the schedule is enough
+    // to continue — no manual scrolling down to find where the pick landed.
+    bookingFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function hoverGrid(e, roomId) {
@@ -516,7 +520,7 @@ export default function AppointmentsPage() {
       </div>
 
       <div className="split-aside">
-      <form className="card" onSubmit={handleSubmit}>
+      <form className="card" ref={bookingFormRef} onSubmit={handleSubmit}>
         <h2>Book Appointment</h2>
         {error && <p className="error">{error}</p>}
         <p>
