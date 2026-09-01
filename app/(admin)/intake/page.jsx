@@ -68,8 +68,8 @@ export default function IntakePage() {
   }
 
   function shareViaWhatsApp(id) {
-    const phone = (draftPhones[id] || '').replace(/\D/g, '');
-    if (!phone) return;
+    const phone = (draftPhones[id] ?? '+971 ').replace(/\D/g, '');
+    if (phone.length <= 3) return;
     const message = `Hi! Thanks for calling Europets Clinic. Please fill in your details and your pet's details here before your visit: ${portalUrl(
       id
     )}`;
@@ -141,8 +141,9 @@ export default function IntakePage() {
                   <td>{formatDateTime(r.created_at)}</td>
                   <td>
                     <input
+                      type="tel"
                       placeholder="Phone number"
-                      value={draftPhones[r.id] || ''}
+                      value={draftPhones[r.id] ?? '+971 '}
                       onChange={(e) => setDraftPhones({ ...draftPhones, [r.id]: e.target.value })}
                     />
                     <button type="button" onClick={() => shareViaWhatsApp(r.id)}>
