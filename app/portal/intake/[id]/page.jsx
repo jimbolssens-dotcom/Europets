@@ -22,7 +22,7 @@ export default function IntakePortalPage() {
   const [error, setError] = useState(null);
 
   const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState('+971 ');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
@@ -53,7 +53,7 @@ export default function IntakePortalPage() {
     e.preventDefault();
     setError(null);
 
-    if (!fullName || !phone) {
+    if (!fullName || phone.replace(/\D/g, '').length <= 3) {
       setError('Please enter your name and phone number.');
       return;
     }
@@ -122,7 +122,7 @@ export default function IntakePortalPage() {
             </label>
             <label>
               Phone number
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} required />
+              <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
             </label>
             <label>
               Email (optional)
