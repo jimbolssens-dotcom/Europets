@@ -95,6 +95,13 @@ export default function InvoiceDetailPage() {
     loadInvoice();
   }
 
+  function downloadTaxInvoice() {
+    // A cache-busting query param, on top of the route's own no-store
+    // headers, so a browser/download manager can never reuse a previous
+    // download of this same invoice after it's been edited.
+    window.open(`/api/invoices/${id}/tax-invoice-pdf?t=${Date.now()}`, '_blank');
+  }
+
   if (loading || !invoice) return <p>Loading invoice...</p>;
   if (invoice.error) return <p>Invoice not found.</p>;
 
@@ -119,9 +126,9 @@ export default function InvoiceDetailPage() {
         )}
       </p>
       <p>
-        <a className="btn-link" href={`/api/invoices/${id}/tax-invoice-pdf`} target="_blank" rel="noreferrer">
+        <button type="button" onClick={downloadTaxInvoice}>
           📄 Download Tax Invoice (PDF)
-        </a>
+        </button>
       </p>
 
       <table>

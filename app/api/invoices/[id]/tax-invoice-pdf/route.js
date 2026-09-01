@@ -38,7 +38,7 @@ export async function GET(request, { params }) {
   return new NextResponse(Buffer.from(pdfBytes), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="tax-invoice-${invoice.invoice_number || invoice.id}.pdf"`,
+      'Content-Disposition': `attachment; filename="tax-invoice-${invoice.invoice_number || invoice.id}-${Date.now()}.pdf"`,
       'Cache-Control': 'no-store, must-revalidate',
     },
   });

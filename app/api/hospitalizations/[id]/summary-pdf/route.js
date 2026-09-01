@@ -82,7 +82,7 @@ export async function GET(request, { params }) {
   return new NextResponse(Buffer.from(pdfBytes), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="hospitalization-summary-${params.id}.pdf"`,
+      'Content-Disposition': `attachment; filename="hospitalization-summary-${params.id}-${Date.now()}.pdf"`,
       'Cache-Control': 'no-store, must-revalidate',
     },
   });

@@ -87,6 +87,13 @@ export default function HospitalizationDetailPage() {
     setSubmitting(false);
   }
 
+  function downloadSummaryPdf() {
+    // A cache-busting query param, on top of the route's own no-store
+    // headers, so a browser/download manager can never reuse a previous
+    // download of this admission's summary after it's been edited.
+    window.open(`/api/hospitalizations/${id}/summary-pdf?t=${Date.now()}`, '_blank');
+  }
+
   function shareViaWhatsApp() {
     const phone = (admission.clients?.phone || '').replace(/\D/g, '');
     const message = `Hi ${admission.clients?.full_name || 'there'}, here's the daily care update for ${admission.patients?.name || 'your pet'} during their stay with us. Please attach the summary PDF you just downloaded to this chat.`;
@@ -134,14 +141,9 @@ export default function HospitalizationDetailPage() {
       )}
 
       <div className="summary-actions">
-        <a
-          className="btn-link"
-          href={`/api/hospitalizations/${id}/summary-pdf`}
-          target="_blank"
-          rel="noreferrer"
-        >
+        <button type="button" onClick={downloadSummaryPdf}>
           📄 Download Summary PDF
-        </a>
+        </button>
         <button type="button" onClick={shareViaWhatsApp}>
           💬 Share via WhatsApp
         </button>
