@@ -459,6 +459,29 @@ button.secondary:hover {
   font-size: 0.8rem;
 }
 
+/* Case-wide photos/files on the hospitalization page — collapsed by
+   default and tucked above the Add Worksheet Entry form instead of a full
+   section at the top, so the day-to-day worksheet (the main workflow)
+   isn't pushed down by a feature used far less often. */
+.case-files {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
+.case-files summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.case-files[open] summary {
+  margin-bottom: 0.5rem;
+}
+
 /* Compact, low-emphasis sharing controls — tucked below the main
    workflow (e.g. the day-to-day worksheet) rather than competing with it
    for attention at the top of the page. */

@@ -160,13 +160,6 @@ export default function HospitalizationDetailPage() {
         </p>
       )}
 
-      <h2>Photos &amp; Files</h2>
-      <p className="visit-meta">
-        Case-wide photos and files (admission photo, wound progress, etc.) — not tied to a single
-        worksheet entry.
-      </p>
-      <AttachmentSection entityType="hospitalization" entityId={id} />
-
       <div className="split">
       <div className="split-main">
       <h2>Day-to-day Worksheet</h2>
@@ -211,6 +204,14 @@ export default function HospitalizationDetailPage() {
       </div>
 
       <div className="split-aside">
+      <details className="case-files">
+        <summary>📎 Case Photos &amp; Files</summary>
+        <p className="visit-meta">
+          Not tied to a single worksheet entry — admission photo, wound progress, etc.
+        </p>
+        <AttachmentSection entityType="hospitalization" entityId={id} />
+      </details>
+
       <form className="card" onSubmit={addNote}>
         <h3>Add Worksheet Entry</h3>
         <input
