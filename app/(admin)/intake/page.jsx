@@ -64,7 +64,11 @@ export default function IntakePage() {
     }
     setSending(true);
     setError(null);
-    const res = await fetch('/api/intake-requests', { method: 'POST' });
+    const res = await fetch('/api/intake-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sent_to_phone: `+${phone}` }),
+    });
     if (!res.ok) {
       setSending(false);
       const data = await res.json().catch(() => ({}));
@@ -84,10 +88,23 @@ export default function IntakePage() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
-  function shareViaWhatsApp(id) {
-    const phone = (draftPhones[id] ?? '+971 ').replace(/\D/g, '');
+  // Reflects whatever's currently in that row's editable "Sent To" field —
+  // if it was changed since the link was sent, save it first so the list
+  // keeps showing who's actually being waited on.
+  async function shareViaWhatsApp(r) {
+    const raw = draftPhones[r.id] ?? r.sent_to_phone ?? '+971 ';
+    const phone = raw.replace(/\D/g, '');
     if (phone.length <= 3) return;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(intakeMessage(id))}`, '_blank');
+    const normalized = `+${phone}`;
+    if (normalized !== r.sent_to_phone) {
+      await fetch(`/api/intake-requests/${r.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_phone', sent_to_phone: normalized }),
+      });
+    }
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(intakeMessage(r.id))}`, '_blank');
+    load();
   }
 
   async function cancelLink(id) {
@@ -147,8 +164,8 @@ export default function IntakePage() {
             <thead>
               <tr>
                 <th>Link</th>
+                <th>Sent To</th>
                 <th>Sent</th>
-                <th>Resend to a different number</th>
                 <th></th>
               </tr>
             </thead>
@@ -160,18 +177,18 @@ export default function IntakePage() {
                       {copiedId === r.id ? 'Copied!' : '🔗 Copy Link'}
                     </button>
                   </td>
-                  <td>{formatDateTime(r.created_at)}</td>
                   <td>
                     <input
                       type="tel"
                       placeholder="Phone number"
-                      value={draftPhones[r.id] ?? '+971 '}
+                      value={draftPhones[r.id] ?? r.sent_to_phone ?? '+971 '}
                       onChange={(e) => setDraftPhones({ ...draftPhones, [r.id]: e.target.value })}
                     />
-                    <button type="button" onClick={() => shareViaWhatsApp(r.id)}>
+                    <button type="button" onClick={() => shareViaWhatsApp(r)}>
                       💬 WhatsApp
                     </button>
                   </td>
+                  <td>{formatDateTime(r.created_at)}</td>
                   <td>
                     <button type="button" onClick={() => cancelLink(r.id)}>
                       Cancel

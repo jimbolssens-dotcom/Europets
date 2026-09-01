@@ -170,6 +170,8 @@ create table intake_requests (
     status text not null default 'pending',  -- pending (link sent, not filled in yet),
                                               -- submitted (filled in, awaiting staff review),
                                               -- approved, rejected
+    sent_to_phone text,  -- the number staff sent the link to (not the client's own phone —
+                          -- that's the `phone` field below, filled in by the client themselves)
     full_name text,
     phone text,
     email text,

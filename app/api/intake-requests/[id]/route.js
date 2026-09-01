@@ -154,6 +154,19 @@ export async function PATCH(request, { params }) {
   if (body.action === 'submit') return submit(params.id, body);
   if (body.action === 'approve' || body.action === 'reject') return review(params.id, body.action);
 
+  // Editing/resending the number staff sent an unsubmitted link to —
+  // updates the record shown in the "Sent, Awaiting Submission" list.
+  if (body.action === 'update_phone') {
+    const { data, error } = await supabase
+      .from('intake_requests')
+      .update({ sent_to_phone: body.sent_to_phone || null })
+      .eq('id', params.id)
+      .select()
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data);
+  }
+
   return NextResponse.json({ error: 'unknown action' }, { status: 400 });
 }
 
