@@ -35,7 +35,12 @@ export default function CageLayoutPage() {
   useEffect(() => {
     Promise.all([fetch('/api/cages').then((res) => res.json()), loadAdmitted()]).then(
       ([cagesData]) => {
-        setCages(Array.isArray(cagesData) ? cagesData : []);
+        if (Array.isArray(cagesData)) {
+          setCages(cagesData);
+        } else {
+          setCages([]);
+          setError(cagesData?.error || 'Failed to load the cage layout');
+        }
         setLoading(false);
       }
     );
