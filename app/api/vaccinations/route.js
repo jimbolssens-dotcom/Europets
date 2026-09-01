@@ -11,19 +11,23 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const patientId = searchParams.get('patient_id');
   const due = searchParams.get('due');
-
   const withPatient = due === 'true' || !patientId;
-  let query = supabase
-    .from('vaccinations')
-    .select(
-      withPatient
-        ? '*, staff(full_name), patients(id, name, species, deceased, clients(id, full_name, phone, email))'
-        : '*, staff(full_name)'
-    );
+
+  // The due list needs patient/client details too, but doesn't embed them
+  // in one PostgREST query (vaccinations -> patients is a relationship
+  // added in a later migration than the table itself — schema-cache
+  // staleness on a just-added relationship has bitten this app before,
+  // and this query runs across every patient, not one already-loaded
+  // page, so it's worth not depending on that embed at all). Fetch the
+  // vaccinations, then the involved patients (with their client info,
+  // an embed that's existed since day one) as a second query, and join
+  // them here instead.
+  let query = supabase.from('vaccinations').select('*, staff(full_name)');
 
   if (patientId) {
     // Scheduled-but-not-given rows (date_given null — a rabies reminder
-    // created by "Mark as Primary") sort after actual history, not before.
+    // from a Primary Booster whose rabies wasn't given) sort after actual
+    // history, not before.
     query = query.eq('patient_id', patientId).order('date_given', { ascending: false, nullsFirst: false });
   } else {
     query = query.order('next_due_date', { ascending: true, nullsFirst: false });
@@ -43,7 +47,23 @@ export async function GET(request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data);
+
+  if (!withPatient || data.length === 0) {
+    return NextResponse.json(data);
+  }
+
+  const patientIds = [...new Set(data.map((v) => v.patient_id))];
+  const { data: patientsData, error: patientsError } = await supabase
+    .from('patients')
+    .select('id, name, species, deceased, clients(id, full_name, phone, email)')
+    .in('id', patientIds);
+
+  if (patientsError) {
+    return NextResponse.json({ error: patientsError.message }, { status: 500 });
+  }
+
+  const patientsById = Object.fromEntries((patientsData || []).map((p) => [p.id, p]));
+  return NextResponse.json(data.map((v) => ({ ...v, patients: patientsById[v.patient_id] || null })));
 }
 
 export async function POST(request) {
