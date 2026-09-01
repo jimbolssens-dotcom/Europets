@@ -48,8 +48,14 @@ export default function IntakePage() {
 
   async function generateLink() {
     setGenerating(true);
-    await fetch('/api/intake-requests', { method: 'POST' });
+    setError(null);
+    const res = await fetch('/api/intake-requests', { method: 'POST' });
     setGenerating(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || 'Failed to generate an intake link');
+      return;
+    }
     load();
   }
 
