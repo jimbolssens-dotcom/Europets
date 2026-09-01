@@ -22,7 +22,9 @@ export async function GET(request) {
     );
 
   if (patientId) {
-    query = query.eq('patient_id', patientId).order('date_given', { ascending: false });
+    // Scheduled-but-not-given rows (date_given null — a rabies reminder
+    // created by "Mark as Primary") sort after actual history, not before.
+    query = query.eq('patient_id', patientId).order('date_given', { ascending: false, nullsFirst: false });
   } else {
     query = query.order('next_due_date', { ascending: true, nullsFirst: false });
   }

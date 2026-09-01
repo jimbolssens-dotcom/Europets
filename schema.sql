@@ -117,15 +117,22 @@ create table vaccine_protocols (
     species text not null,               -- 'cat' or 'dog'
     core boolean not null default true,  -- core (routine) vs optional (e.g. Kennel Cough)
     interval_months int not null default 12,  -- how often it's due again; 12 = annual
+    is_rabies boolean not null default false,  -- lets the app find "the rabies protocol
+                                                -- for this species" without string-matching
+                                                -- on the (renameable) display name
     active boolean not null default true,
     created_at timestamptz default now()
 );
 
 -- ============ VACCINATIONS ============
--- One row per vaccine actually given to a patient. vaccine_name is copied
+-- One row per vaccine given to a patient — or scheduled but not yet given
+-- (date_given null), for a rabies reminder created by "Mark as Primary"
+-- when rabies wasn't part of that primary visit. vaccine_name is copied
 -- from the protocol at entry time so renaming/retiring a protocol later
 -- never rewrites a patient's history. next_due_date defaults to
--- date_given + the protocol's interval but stays editable. reminder_sent_at
+-- date_given + the protocol's interval but stays editable. is_primary
+-- flags a row as part of a primary (puppy/kitten) course — its booster is
+-- due in 1 month rather than the normal annual cycle. reminder_sent_at
 -- tracks whether staff already drafted a reminder for the current due
 -- date, so the due list doesn't nag about the same one twice.
 create table vaccinations (
@@ -133,21 +140,22 @@ create table vaccinations (
     patient_id uuid references patients(id) on delete cascade not null,
     vaccine_protocol_id uuid references vaccine_protocols(id),
     vaccine_name text not null,
-    date_given date not null,
+    date_given date,
     next_due_date date,
     batch_number text,
     administered_by uuid references staff(id),
     notes text,
+    is_primary boolean not null default false,
     reminder_sent_at timestamptz,
     created_at timestamptz default now()
 );
 
-insert into vaccine_protocols (name, species, core, interval_months) values
-    ('PCH (Feline Flu + Enteritis)', 'cat', true, 12),
-    ('Rabies', 'cat', true, 12),
-    ('DHPPi + Lepto', 'dog', true, 12),
-    ('Rabies', 'dog', true, 12),
-    ('Kennel Cough', 'dog', false, 12);
+insert into vaccine_protocols (name, species, core, interval_months, is_rabies) values
+    ('PCH (Feline Flu + Enteritis)', 'cat', true, 12, false),
+    ('Rabies', 'cat', true, 12, true),
+    ('DHPPi + Lepto', 'dog', true, 12, false),
+    ('Rabies', 'dog', true, 12, true),
+    ('Kennel Cough', 'dog', false, 12, false);
 
 -- ============ SURGICAL REPORTS ============
 create table surgical_reports (

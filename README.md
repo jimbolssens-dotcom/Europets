@@ -146,7 +146,13 @@ appointments, full consult medical records, hospitalization, and invoicing.
    its WhatsApp/Email buttons draft a pre-filled reminder for staff to send
    themselves and mark it reminded — there's no connected email service or
    WhatsApp Business API to send these automatically yet (same limitation
-   as the hospitalization portal's WhatsApp sharing)
+   as the hospitalization portal's WhatsApp sharing). A "Mark as Primary"
+   button on a given dose flags it as part of a puppy/kitten primary
+   course: it reschedules the species' core vaccine (PCH / DHPPi + Lepto)
+   for a 1-month booster instead of the normal annual interval, and — only
+   if rabies wasn't given in that same visit — adds a rabies reminder for
+   that same 1-month date (a "scheduled, not yet given" record; rabies
+   given the first time just stays on its normal annual cycle)
 8. FileMaker migration
 
 ## Folder layout
@@ -179,7 +185,9 @@ app/
 │   ├── invoices/[id]/tax-invoice-pdf/    → FTA-compliant Tax Invoice PDF for one invoice
 │   ├── clinic-settings/route.js          → the clinic's own TRN/identity (singleton row)
 │   ├── vaccine-protocols/route.js        → the species-tagged vaccine catalog (Settings UI)
-│   └── vaccinations/route.js             → per-patient records; ?due=true for the reminders list
+│   ├── vaccinations/route.js             → per-patient records; ?due=true for the reminders list
+│   └── vaccinations/[id]/mark-primary/   → flags a dose as a primary-course visit and
+│                                            schedules its 1-month booster reminder(s)
 ├── (admin)/                                → every internal staff page, wrapped in the staff nav
 │   ├── layout.js                           → the nav (Clients, Patients, ... , ⚙️ Settings)
 │   ├── page.js                             → home page

@@ -373,6 +373,20 @@ form.card label {
   border: none;
 }
 
+.primary-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--pink-tint);
+  color: var(--pink-dark);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+
 .attachments {
   margin-top: 0.5rem;
 }

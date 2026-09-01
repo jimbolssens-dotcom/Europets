@@ -58,6 +58,7 @@ export default function PatientDetailPage() {
   const [form, setForm] = useState(makeEmptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [markingPrimaryId, setMarkingPrimaryId] = useState(null);
 
   const load = () =>
     fetch(`/api/patients/${id}`)
@@ -166,9 +167,39 @@ export default function PatientDetailPage() {
   }
 
   async function deleteVaccination(v) {
-    if (!confirm(`Delete this ${v.vaccine_name} record from ${formatDate(v.date_given)}?`)) return;
+    const when = v.date_given ? formatDate(v.date_given) : 'not yet given';
+    if (!confirm(`Delete this ${v.vaccine_name} record (${when})?`)) return;
     await fetch(`/api/vaccinations/${v.id}`, { method: 'DELETE' });
     loadVaccinations();
+  }
+
+  async function markPrimary(v) {
+    if (
+      !confirm(
+        `Mark this ${v.vaccine_name} dose as a primary vaccination?\n\n` +
+          `This schedules the core vaccine's booster for one month later. If rabies wasn't ` +
+          `given in this same visit, a rabies reminder for that same date will be added too.`
+      )
+    )
+      return;
+
+    setMarkingPrimaryId(v.id);
+    const res = await fetch(`/api/vaccinations/${v.id}/mark-primary`, { method: 'POST' });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || 'Failed to mark as primary');
+    } else {
+      const dueLabel = formatDate(data.booster_due);
+      alert(
+        data.rabies_reminder_created
+          ? `Booster scheduled for ${dueLabel} — rabies wasn't given at this visit, so a rabies reminder was added for the same date.`
+          : `Booster scheduled for ${dueLabel}.` +
+              (data.rabies_given ? ' Rabies was already given, so it stays on its normal annual cycle.' : '')
+      );
+      loadVaccinations();
+    }
+    setMarkingPrimaryId(null);
   }
 
   if (loading) return <p>Loading patient...</p>;
@@ -328,13 +359,23 @@ export default function PatientDetailPage() {
                 <tr key={v.id}>
                   <td>
                     {v.vaccine_name}
+                    {v.is_primary && <span className="primary-badge">Primary</span>}
                     {v.batch_number && <div className="visit-meta">Batch {v.batch_number}</div>}
                     {v.notes && <div className="visit-meta">{v.notes}</div>}
                   </td>
-                  <td>{formatDate(v.date_given)}</td>
+                  <td>{v.date_given ? formatDate(v.date_given) : <em>Scheduled</em>}</td>
                   <td className={status?.className}>{status?.label || '—'}</td>
                   <td>{v.staff?.full_name || '—'}</td>
                   <td>
+                    {v.date_given && !v.is_primary && (
+                      <button
+                        type="button"
+                        onClick={() => markPrimary(v)}
+                        disabled={markingPrimaryId === v.id}
+                      >
+                        {markingPrimaryId === v.id ? 'Marking...' : 'Mark as Primary'}
+                      </button>
+                    )}
                     <button type="button" onClick={() => deleteVaccination(v)}>
                       Delete
                     </button>
