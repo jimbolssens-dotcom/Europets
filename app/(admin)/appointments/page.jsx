@@ -13,7 +13,6 @@ const OPEN_HOUR = 8;
 const CLOSE_HOUR = 19;
 const PIXELS_PER_MINUTE = 1.4;
 const SNAP_MINUTES = 15;
-const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const VET_PALETTE = [
   { bg: '#dbeafe', fg: '#1d4ed8' },
@@ -52,22 +51,6 @@ function minutesSinceOpen(iso) {
   return (d.getHours() - OPEN_HOUR) * 60 + d.getMinutes();
 }
 
-// build a 6-row Sun-start grid of Date objects covering the given month,
-// padded with the trailing days of the previous/next month
-function buildMonthGrid(year, monthIndex) {
-  const firstOfMonth = new Date(year, monthIndex, 1);
-  const startOffset = firstOfMonth.getDay();
-  const gridStart = new Date(year, monthIndex, 1 - startOffset);
-
-  const days = [];
-  for (let i = 0; i < 42; i++) {
-    const d = new Date(gridStart);
-    d.setDate(gridStart.getDate() + i);
-    days.push(d);
-  }
-  return days;
-}
-
 function buildHourMarks() {
   const marks = [];
   for (let h = OPEN_HOUR; h <= CLOSE_HOUR; h++) {
@@ -76,7 +59,28 @@ function buildHourMarks() {
   return marks;
 }
 const HOUR_MARKS = buildHourMarks();
+
+// 15-minute gridlines within each hour (the hour marks above already cover
+// the :00 lines), so the schedule reads in clear quarter-hour brackets.
+function buildQuarterMarks() {
+  const marks = [];
+  const totalMinutes = (CLOSE_HOUR - OPEN_HOUR) * 60;
+  for (let m = SNAP_MINUTES; m < totalMinutes; m += SNAP_MINUTES) {
+    if (m % 60 !== 0) marks.push(m);
+  }
+  return marks;
+}
+const QUARTER_MARKS = buildQuarterMarks();
+
 const SCHEDULE_HEIGHT = (CLOSE_HOUR - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE;
+
+// Time (as a 12-hour label, e.g. "2:15 PM") for a snapped "HH:MM" 24-hour string.
+function formatSlotLabel(time24) {
+  const [h, m] = time24.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
 
 const emptyForm = {
   client_id: '',
@@ -103,6 +107,7 @@ export default function AppointmentsPage() {
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [hoverSlot, setHoverSlot] = useState(null);
 
   const monthKey = toMonthKey(new Date(viewYear, viewMonthIndex, 1));
 
@@ -156,16 +161,6 @@ export default function AppointmentsPage() {
 
   const colorForVet = (vetId) => (vetId && vetColor[vetId]) || UNASSIGNED_COLOR;
 
-  const countsByDate = useMemo(() => {
-    const counts = {};
-    for (const a of appointments) {
-      if (a.status === 'cancelled') continue;
-      const d = toISODate(new Date(a.start_time));
-      counts[d] = (counts[d] || 0) + 1;
-    }
-    return counts;
-  }, [appointments]);
-
   const dayAppointments = useMemo(
     () =>
       appointments.filter(
@@ -174,18 +169,10 @@ export default function AppointmentsPage() {
     [appointments, selectedDate]
   );
 
-  const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonthIndex), [viewYear, viewMonthIndex]);
-
   const patientsForClient = useMemo(
     () => patients.filter((p) => p.client_id === form.client_id),
     [patients, form.client_id]
   );
-
-  function goToMonth(delta) {
-    const d = new Date(viewYear, viewMonthIndex + delta, 1);
-    setViewYear(d.getFullYear());
-    setViewMonthIndex(d.getMonth());
-  }
 
   function selectDay(d) {
     setSelectedDate(toISODate(d));
@@ -195,7 +182,15 @@ export default function AppointmentsPage() {
     }
   }
 
-  function pickFromGrid(e, roomId) {
+  function shiftDay(delta) {
+    const d = new Date(`${selectedDate}T00:00:00`);
+    d.setDate(d.getDate() + delta);
+    selectDay(d);
+  }
+
+  // Shared by both the click handler (book here) and the hover handler
+  // (preview here) so the two always agree on which slot the cursor is over.
+  function computeSlot(e) {
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
     const minutesFromOpen = offsetY / PIXELS_PER_MINUTE;
@@ -203,8 +198,18 @@ export default function AppointmentsPage() {
     const clamped = Math.max(0, Math.min(snapped, (CLOSE_HOUR - OPEN_HOUR) * 60 - SNAP_MINUTES));
     const totalMinutes = OPEN_HOUR * 60 + clamped;
     const time = `${pad(Math.floor(totalMinutes / 60))}:${pad(totalMinutes % 60)}`;
+    return { minutesFromOpen: clamped, time };
+  }
+
+  function pickFromGrid(e, roomId) {
+    const { time } = computeSlot(e);
     setForm({ ...form, time, room_id: roomId });
     setError(null);
+  }
+
+  function hoverGrid(e, roomId) {
+    const { minutesFromOpen, time } = computeSlot(e);
+    setHoverSlot({ roomId, top: minutesFromOpen * PIXELS_PER_MINUTE, label: formatSlotLabel(time) });
   }
 
   async function handleSubmit(e) {
@@ -262,10 +267,6 @@ export default function AppointmentsPage() {
     loadMonth();
   }
 
-  const monthLabel = new Date(viewYear, viewMonthIndex, 1).toLocaleDateString([], {
-    month: 'long',
-    year: 'numeric',
-  });
   const selectedDateLabel = new Date(`${selectedDate}T00:00:00`).toLocaleDateString([], {
     weekday: 'long',
     month: 'long',
@@ -276,141 +277,133 @@ export default function AppointmentsPage() {
     <div>
       <h1>Appointments</h1>
 
-      <div className="cal-header">
-        <button type="button" onClick={() => goToMonth(-1)}>
-          &larr;
-        </button>
-        <strong>{monthLabel}</strong>
-        <button type="button" onClick={() => goToMonth(1)}>
-          &rarr;
-        </button>
-        <button type="button" onClick={() => selectDay(new Date())}>
-          Today
-        </button>
-      </div>
-
-      <div className="cal-grid">
-        {WEEKDAY_LABELS.map((w) => (
-          <div key={w} className="cal-weekday">
-            {w}
-          </div>
-        ))}
-        {monthGrid.map((d) => {
-          const iso = toISODate(d);
-          const inMonth = d.getMonth() === viewMonthIndex;
-          const isSelected = iso === selectedDate;
-          const isToday = iso === todayISODate();
-          const count = countsByDate[iso] || 0;
-          return (
-            <button
-              type="button"
-              key={iso}
-              className={[
-                'cal-day',
-                inMonth ? '' : 'cal-day-outside',
-                isSelected ? 'cal-day-selected' : '',
-                isToday ? 'cal-day-today' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => selectDay(d)}
-            >
-              <span className="cal-day-number">{d.getDate()}</span>
-              {count > 0 && <span className="cal-day-badge">{count}</span>}
+      <div className="schedule-layout">
+        <div className="date-nav">
+          <div className="date-nav-arrows">
+            <button type="button" onClick={() => shiftDay(-1)} aria-label="Previous day">
+              &lsaquo;
             </button>
-          );
-        })}
-      </div>
-
-      <h2>{selectedDateLabel}</h2>
-
-      {vets.length > 0 && (
-        <div className="vet-legend">
-          {vets.map((v) => (
-            <span key={v.id} className="vet-legend-item">
-              <span
-                className="vet-legend-swatch"
-                style={{ background: colorForVet(v.id).bg, borderColor: colorForVet(v.id).fg }}
-              />
-              {v.full_name}
-            </span>
-          ))}
-          <span className="vet-legend-item">
-            <span
-              className="vet-legend-swatch"
-              style={{ background: UNASSIGNED_COLOR.bg, borderColor: UNASSIGNED_COLOR.fg }}
-            />
-            Unassigned
-          </span>
+            <button type="button" onClick={() => shiftDay(1)} aria-label="Next day">
+              &rsaquo;
+            </button>
+          </div>
+          <input
+            type="date"
+            className="date-nav-input"
+            value={selectedDate}
+            onChange={(e) => e.target.value && selectDay(new Date(`${e.target.value}T00:00:00`))}
+          />
+          <button type="button" className="date-nav-today" onClick={() => selectDay(new Date())}>
+            Today
+          </button>
+          <p className="date-nav-label">{selectedDateLabel}</p>
         </div>
-      )}
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : rooms.length === 0 ? (
-        <p>
-          No rooms set up yet — add one on the <a href="/rooms">Rooms</a> page first.
-        </p>
-      ) : (
-        <div className="schedule-wrap">
-          <div className="schedule-time-col">
-            <div className="schedule-header schedule-time-header" />
-            <div className="schedule-time-track" style={{ height: SCHEDULE_HEIGHT }}>
-              {HOUR_MARKS.map((h) => (
-                <div
-                  key={h}
-                  className="schedule-hour-label"
-                  style={{ top: (h - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE }}
-                >
-                  {pad(h)}:00
+        <div className="schedule-main">
+          {vets.length > 0 && (
+            <div className="vet-legend">
+              {vets.map((v) => (
+                <span key={v.id} className="vet-legend-item">
+                  <span
+                    className="vet-legend-swatch"
+                    style={{ background: colorForVet(v.id).bg, borderColor: colorForVet(v.id).fg }}
+                  />
+                  {v.full_name}
+                </span>
+              ))}
+              <span className="vet-legend-item">
+                <span
+                  className="vet-legend-swatch"
+                  style={{ background: UNASSIGNED_COLOR.bg, borderColor: UNASSIGNED_COLOR.fg }}
+                />
+                Unassigned
+              </span>
+            </div>
+          )}
+
+          {loading ? (
+            <p>Loading...</p>
+          ) : rooms.length === 0 ? (
+            <p>
+              No rooms set up yet — add one on the <a href="/rooms">Rooms</a> page first.
+            </p>
+          ) : (
+            <div className="schedule-wrap">
+              <div className="schedule-time-col">
+                <div className="schedule-header schedule-time-header" />
+                <div className="schedule-time-track" style={{ height: SCHEDULE_HEIGHT }}>
+                  {HOUR_MARKS.map((h) => (
+                    <div
+                      key={h}
+                      className="schedule-hour-label"
+                      style={{ top: (h - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE }}
+                    >
+                      {pad(h)}:00
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {rooms.map((room) => (
+                <div key={room.id} className="schedule-room-col">
+                  <div className="schedule-header">{room.name}</div>
+                  <div
+                    className="schedule-room-track"
+                    style={{ height: SCHEDULE_HEIGHT }}
+                    onClick={(e) => pickFromGrid(e, room.id)}
+                    onMouseMove={(e) => hoverGrid(e, room.id)}
+                    onMouseLeave={() => setHoverSlot(null)}
+                  >
+                    {HOUR_MARKS.map((h) => (
+                      <div
+                        key={h}
+                        className="schedule-hour-line"
+                        style={{ top: (h - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE }}
+                      />
+                    ))}
+                    {QUARTER_MARKS.map((m) => (
+                      <div key={m} className="schedule-quarter-line" style={{ top: m * PIXELS_PER_MINUTE }} />
+                    ))}
+                    {hoverSlot && hoverSlot.roomId === room.id && (
+                      <div
+                        className="schedule-hover-slot"
+                        style={{ top: hoverSlot.top, height: SNAP_MINUTES * PIXELS_PER_MINUTE }}
+                      >
+                        <span className="schedule-hover-label">{hoverSlot.label}</span>
+                      </div>
+                    )}
+                    {dayAppointments
+                      .filter((a) => a.room_id === room.id)
+                      .map((a) => {
+                        const color = colorForVet(a.vet_id);
+                        const top = minutesSinceOpen(a.start_time) * PIXELS_PER_MINUTE;
+                        const height = Math.max(a.duration_minutes * PIXELS_PER_MINUTE, 22);
+                        return (
+                          <div
+                            key={a.id}
+                            className="schedule-block"
+                            style={{
+                              top,
+                              height,
+                              background: color.bg,
+                              borderColor: color.fg,
+                              color: color.fg,
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseMove={(e) => e.stopPropagation()}
+                            onMouseEnter={() => setHoverSlot(null)}
+                          >
+                            <strong>{a.patients?.name}</strong> {formatTime(a.start_time)} ·{' '}
+                            {a.type} · {a.status}
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-          {rooms.map((room) => (
-            <div key={room.id} className="schedule-room-col">
-              <div className="schedule-header">{room.name}</div>
-              <div
-                className="schedule-room-track"
-                style={{ height: SCHEDULE_HEIGHT }}
-                onClick={(e) => pickFromGrid(e, room.id)}
-              >
-                {HOUR_MARKS.map((h) => (
-                  <div
-                    key={h}
-                    className="schedule-hour-line"
-                    style={{ top: (h - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE }}
-                  />
-                ))}
-                {dayAppointments
-                  .filter((a) => a.room_id === room.id)
-                  .map((a) => {
-                    const color = colorForVet(a.vet_id);
-                    const top = minutesSinceOpen(a.start_time) * PIXELS_PER_MINUTE;
-                    const height = Math.max(a.duration_minutes * PIXELS_PER_MINUTE, 22);
-                    return (
-                      <div
-                        key={a.id}
-                        className="schedule-block"
-                        style={{
-                          top,
-                          height,
-                          background: color.bg,
-                          borderColor: color.fg,
-                          color: color.fg,
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <strong>{a.patients?.name}</strong> {formatTime(a.start_time)} ·{' '}
-                        {a.type} · {a.status}
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          ))}
+          )}
         </div>
-      )}
+      </div>
 
       <h2>{selectedDateLabel} — list</h2>
       <div className="split">
