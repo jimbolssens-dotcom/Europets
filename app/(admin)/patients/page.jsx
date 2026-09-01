@@ -9,6 +9,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import SpeciesField from '@/app/_components/SpeciesField';
 
 const emptyForm = {
   client_id: '',
@@ -270,15 +271,7 @@ function PatientsPageInner() {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
-          <select
-            required
-            value={form.species}
-            onChange={(e) => setForm({ ...form, species: e.target.value })}
-          >
-            <option value="">Species...</option>
-            <option value="cat">Cat</option>
-            <option value="dog">Dog</option>
-          </select>
+          <SpeciesField value={form.species} onChange={(species) => setForm({ ...form, species })} />
           <input
             placeholder="Breed"
             value={form.breed}
@@ -349,13 +342,10 @@ function PatientsPageInner() {
                         />
                       </td>
                       <td>
-                        <select
+                        <SpeciesField
                           value={editForm.species}
-                          onChange={(e) => setEditForm({ ...editForm, species: e.target.value })}
-                        >
-                          <option value="cat">Cat</option>
-                          <option value="dog">Dog</option>
-                        </select>
+                          onChange={(species) => setEditForm({ ...editForm, species })}
+                        />
                       </td>
                       <td>
                         <input

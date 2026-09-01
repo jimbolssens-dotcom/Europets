@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import SpeciesField from '@/app/_components/SpeciesField';
 
 function emptyPet() {
   return { name: '', species: '', breed: '', date_of_birth: '', sex: '', microchip_number: '' };
@@ -153,11 +154,7 @@ export default function IntakePortalPage() {
                 </label>
                 <label>
                   Species
-                  <select value={pet.species} onChange={(e) => updatePet(i, 'species', e.target.value)} required>
-                    <option value="">Select...</option>
-                    <option value="cat">Cat</option>
-                    <option value="dog">Dog</option>
-                  </select>
+                  <SpeciesField value={pet.species} onChange={(species) => updatePet(i, 'species', species)} />
                 </label>
                 <label>
                   Breed (optional)
