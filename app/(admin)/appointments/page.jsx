@@ -237,7 +237,12 @@ export default function AppointmentsPage() {
 
   function pickFromGrid(e, roomId) {
     const { time } = computeSlot(e);
-    setForm({ ...form, time, room_id: roomId });
+    // A surgery room's column should default the form to a surgery booking
+    // (10-min increments) instead of the usual 15-min consult, so picking a
+    // slot there doesn't also require manually flipping the type dropdown.
+    const room = rooms.find((r) => r.id === roomId);
+    const type = room?.type === 'surgery' ? 'surgery' : 'consult';
+    setForm({ ...form, time, room_id: roomId, type, duration_minutes: '10' });
     setError(null);
     // Jump straight to the booking form so a click on the schedule is enough
     // to continue — no manual scrolling down to find where the pick landed.
