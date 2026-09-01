@@ -24,7 +24,7 @@ export async function GET(request, { params }) {
 }
 
 async function submit(id, body) {
-  const { full_name, phone, email, address, patients, notes } = body;
+  const { full_name, phone, email, address, emirates_id, patients, notes } = body;
 
   if (!full_name || !phone || !Array.isArray(patients) || patients.length === 0) {
     return NextResponse.json(
@@ -57,6 +57,7 @@ async function submit(id, body) {
       phone,
       email: email || null,
       address: address || null,
+      emirates_id: emirates_id || null,
       patients,
       notes: notes || null,
       status: 'submitted',
@@ -100,7 +101,13 @@ async function review(id, action) {
   // link the intake request to the new client.
   const { data: client, error: clientError } = await supabase
     .from('clients')
-    .insert([{ full_name: intake.full_name, phone: intake.phone, email: intake.email, address: intake.address }])
+    .insert([{
+      full_name: intake.full_name,
+      phone: intake.phone,
+      email: intake.email,
+      address: intake.address,
+      emirates_id: intake.emirates_id,
+    }])
     .select()
     .single();
   if (clientError) {
@@ -114,10 +121,19 @@ async function review(id, action) {
     breed: p.breed || null,
     date_of_birth: p.date_of_birth || null,
     sex: p.sex || null,
+    microchip_number: p.microchip_number || null,
   }));
   const { error: patientsError } = await supabase.from('patients').insert(patientRows);
   if (patientsError) {
-    return NextResponse.json({ error: patientsError.message }, { status: 500 });
+    // Roll back the client we just created — there's no cross-table
+    // transaction here, so this stays a clean retry instead of leaving an
+    // orphaned client behind (and a duplicate on the next approve attempt).
+    await supabase.from('clients').delete().eq('id', client.id);
+    const message =
+      patientsError.code === '23505'
+        ? "one of these pets' microchip numbers is already registered to another patient — check and fix it before approving"
+        : patientsError.message;
+    return NextResponse.json({ error: message }, { status: patientsError.code === '23505' ? 409 : 500 });
   }
 
   const { data, error } = await supabase

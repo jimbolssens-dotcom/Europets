@@ -174,7 +174,8 @@ create table intake_requests (
     phone text,
     email text,
     address text,
-    patients jsonb not null default '[]',  -- [{name, species, breed, date_of_birth, sex}], filled in by the client
+    emirates_id text,
+    patients jsonb not null default '[]',  -- [{name, species, breed, date_of_birth, sex, microchip_number}], filled in by the client
     notes text,
     submitted_at timestamptz,
     reviewed_at timestamptz,

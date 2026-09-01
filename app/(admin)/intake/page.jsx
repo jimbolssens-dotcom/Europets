@@ -14,7 +14,9 @@ function formatDateTime(dateStr) {
 }
 
 function petSummary(p) {
-  return [p.name, p.species, p.breed].filter(Boolean).join(' · ');
+  return [p.name, p.species, p.breed, p.microchip_number && `chip ${p.microchip_number}`]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 export default function IntakePage() {
@@ -169,6 +171,7 @@ export default function IntakePage() {
                 {r.email && ` · ${r.email}`}
               </p>
               {r.address && <p className="visit-meta">{r.address}</p>}
+              {r.emirates_id && <p className="visit-meta">Emirates ID: {r.emirates_id}</p>}
               <ul>
                 {(r.patients || []).map((p, i) => (
                   <li key={i}>{petSummary(p)}</li>

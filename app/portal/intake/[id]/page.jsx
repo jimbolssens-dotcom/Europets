@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 
 function emptyPet() {
-  return { name: '', species: '', breed: '', date_of_birth: '', sex: '' };
+  return { name: '', species: '', breed: '', date_of_birth: '', sex: '', microchip_number: '' };
 }
 
 export default function IntakePortalPage() {
@@ -25,6 +25,7 @@ export default function IntakePortalPage() {
   const [phone, setPhone] = useState('+971 ');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+  const [emiratesId, setEmiratesId] = useState('');
   const [notes, setNotes] = useState('');
   const [pets, setPets] = useState([emptyPet()]);
 
@@ -72,6 +73,7 @@ export default function IntakePortalPage() {
         phone,
         email,
         address,
+        emirates_id: emiratesId,
         notes,
         patients: pets,
       }),
@@ -132,6 +134,10 @@ export default function IntakePortalPage() {
               Address (optional)
               <input value={address} onChange={(e) => setAddress(e.target.value)} />
             </label>
+            <label>
+              Emirates ID number (optional)
+              <input value={emiratesId} onChange={(e) => setEmiratesId(e.target.value)} />
+            </label>
 
             <h2>Your pet(s)</h2>
             {pets.map((pet, i) => (
@@ -174,6 +180,13 @@ export default function IntakePortalPage() {
                     <option value="male_castrated">Male (Castrated)</option>
                     <option value="female_spayed">Female (Spayed)</option>
                   </select>
+                </label>
+                <label>
+                  Microchip number (optional)
+                  <input
+                    value={pet.microchip_number}
+                    onChange={(e) => updatePet(i, 'microchip_number', e.target.value)}
+                  />
                 </label>
               </div>
             ))}
