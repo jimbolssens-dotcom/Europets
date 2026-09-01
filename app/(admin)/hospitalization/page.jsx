@@ -81,10 +81,12 @@ export default function HospitalizationPage() {
 
   return (
     <div>
-      <h1>Hospitalization</h1>
-      <p>
-        <a href="/hospitalization/cages">🗺️ Cage Layout</a>
-      </p>
+      <div className="page-header">
+        <h1>Hospitalization</h1>
+        <a href="/hospitalization/cages" className="button-link">
+          🗺️ Cage Layout
+        </a>
+      </div>
 
       <h2>Currently Admitted</h2>
       {admitted.length === 0 ? (
