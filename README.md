@@ -153,8 +153,18 @@ appointments, full consult medical records, hospitalization, and invoicing.
    instead of the normal annual interval, and automatically checks whether
    rabies was checked in that same submission — if not, it adds a rabies
    reminder for that same 1-month date (a "scheduled, not yet given"
-   record); if rabies WAS given, it just stays on its normal annual cycle
-8. FileMaker migration
+   record); if rabies WAS given, it just stays on its normal annual cycle.
+   Reminders due on the same date for the same patient (e.g. a Primary
+   Booster's core vaccine + its rabies reminder) are grouped into one row
+   and one WhatsApp/Email draft instead of sending one per vaccine
+8. ✅ New-Client Intake — staff generate a public, no-login link
+   (`/intake`) to send a first-time caller over WhatsApp before their
+   visit; the client fills in their own details and one or more pets from
+   `/portal/intake/[id]`. Submissions land in a review queue, not
+   straight into `clients`/`patients` — Approve creates the real client
+   and patient record(s); Reject just discards it. Same "unguessable
+   link, not login" security model as the hospitalization portal
+9. FileMaker migration
 
 ## Folder layout
 ```
@@ -186,9 +196,12 @@ app/
 │   ├── invoices/[id]/tax-invoice-pdf/    → FTA-compliant Tax Invoice PDF for one invoice
 │   ├── clinic-settings/route.js          → the clinic's own TRN/identity (singleton row)
 │   ├── vaccine-protocols/route.js        → the species-tagged vaccine catalog (Settings UI)
-│   └── vaccinations/route.js             → per-patient records (annual or primary-booster,
-│                                            picked when the vaccination is added); ?due=true
-│                                            for the reminders list
+│   ├── vaccinations/route.js             → per-patient records (annual or primary-booster,
+│   │                                        picked when the vaccination is added); ?due=true
+│   │                                        for the reminders list
+│   └── intake-requests/route.js          → generate a blank intake link (staff); [id] route
+│                                            handles the client's public submit and staff's
+│                                            approve/reject review
 ├── (admin)/                                → every internal staff page, wrapped in the staff nav
 │   ├── layout.js                           → the nav (Clients, Patients, ... , ⚙️ Settings)
 │   ├── page.js                             → home page
@@ -202,13 +215,17 @@ app/
 │   ├── invoices/                           → list + create; invoices/[id] is a single invoice's page
 │   ├── catalog/                            → catalog UI
 │   ├── vaccinations/                       → clinic-wide due/overdue list, with WhatsApp/Email
-│   │                                          reminder drafting per record
+│   │                                          reminder drafting per record (same-day reminders
+│   │                                          for one patient are grouped into one message)
+│   ├── intake/                             → generate intake links, review submissions
+│   │                                          (Approve/Reject), see recently approved
 │   ├── rooms/, staff/, vaccine-protocols/  → admin lists, edit/delete — tucked under Settings
 │   └── settings/                           → clinic legal name/TRN/address for tax invoices
 ├── portal/                                 → client-facing pages — NO staff nav (see security
 │   │                                          note above), noindex. Add new client-facing pages here.
 │   ├── layout.js
-│   └── hospitalization/[id]/               → live read-only view of one admission
+│   ├── hospitalization/[id]/               → live read-only view of one admission
+│   └── intake/[id]/                        → new-client self-service form (name/contact + pets)
 ├── _components/AttachmentSection.jsx     → reusable file upload/list widget (staff, w/ upload+delete)
 ├── _components/AttachmentGallery.jsx     → read-only file/photo gallery (client portal)
 ├── _components/SearchBox.jsx             → nav search box with a live results dropdown

@@ -1150,3 +1150,59 @@ button.secondary:hover {
   font-size: 0.8rem;
 }
 
+/* New-client intake: public form (app/portal/intake) and its staff review
+   list (app/(admin)/intake) */
+
+.intake-form {
+  max-width: 100%;
+}
+
+.intake-form h2 {
+  font-size: 1rem;
+  margin: 0.5rem 0 0;
+}
+
+.intake-pet {
+  position: relative;
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+}
+
+.intake-pet-remove {
+  justify-self: end !important;
+  padding: 0.2rem 0.6rem !important;
+  font-size: 0.75rem !important;
+  background: transparent;
+  color: #b00020;
+  border: 1px solid #b00020;
+}
+
+.intake-pet-remove:hover {
+  background: #b00020;
+  color: white;
+}
+
+.intake-review-card {
+  background: white;
+  border: 1px solid #eee;
+  border-top: 3px solid var(--pink);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  margin-top: 1rem;
+  max-width: 560px;
+}
+
+.intake-review-card ul {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.intake-review-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+

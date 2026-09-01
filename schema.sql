@@ -157,6 +157,31 @@ insert into vaccine_protocols (name, species, core, interval_months, is_rabies) 
     ('Rabies', 'dog', true, 12, true),
     ('Kennel Cough', 'dog', false, 12, false);
 
+-- ============ INTAKE REQUESTS ============
+-- New-client self-service intake: staff generate a blank row (a shareable
+-- link keyed by its own id, e.g. sent over WhatsApp when someone calls as
+-- a first-time client) and the prospective client fills in their own and
+-- their pet(s)' details from the public portal before ever setting foot in
+-- the clinic. Submissions land here — not directly in clients/patients —
+-- so staff review and approve (or reject) each one; approving creates the
+-- real client and patient rows.
+create table intake_requests (
+    id uuid primary key default gen_random_uuid(),
+    status text not null default 'pending',  -- pending (link sent, not filled in yet),
+                                              -- submitted (filled in, awaiting staff review),
+                                              -- approved, rejected
+    full_name text,
+    phone text,
+    email text,
+    address text,
+    patients jsonb not null default '[]',  -- [{name, species, breed, date_of_birth, sex}], filled in by the client
+    notes text,
+    submitted_at timestamptz,
+    reviewed_at timestamptz,
+    client_id uuid references clients(id),  -- set once approved
+    created_at timestamptz default now()
+);
+
 -- ============ SURGICAL REPORTS ============
 create table surgical_reports (
     id uuid primary key default gen_random_uuid(),
@@ -324,6 +349,7 @@ create index idx_attachments_entity on attachments(entity_type, entity_id);
 create index idx_recordings_entity on recordings(entity_type, entity_id);
 create index idx_vaccinations_patient on vaccinations(patient_id);
 create index idx_vaccinations_due_date on vaccinations(next_due_date);
+create index idx_intake_requests_status on intake_requests(status);
 
 -- ============ STORAGE BUCKET ============
 -- Public bucket for consult/report file attachments. No staff auth yet,
@@ -348,7 +374,7 @@ alter publication supabase_realtime add table
     clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items,
     diagnostics, treatment_items, surgical_reports, dental_reports,
     hospitalizations, hospitalization_notes, attachments, recordings, clinic_settings,
-    vaccine_protocols, vaccinations;
+    vaccine_protocols, vaccinations, intake_requests;
 
 -- ============ ROW LEVEL SECURITY ============
 -- RLS is intentionally left disabled: the app has no staff auth yet and
@@ -379,3 +405,4 @@ alter table recordings disable row level security;
 alter table clinic_settings disable row level security;
 alter table vaccine_protocols disable row level security;
 alter table vaccinations disable row level security;
+alter table intake_requests disable row level security;
