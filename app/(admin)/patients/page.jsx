@@ -6,7 +6,8 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
 const emptyForm = {
@@ -46,14 +47,17 @@ function hasAnyTerm(search) {
   return Object.values(search).some((v) => v.trim());
 }
 
-export default function PatientsPage() {
+function PatientsPageInner() {
+  const searchParams = useSearchParams();
+  const prefilledClientId = searchParams.get('client_id') || '';
+
   const [results, setResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [searching, setSearching] = useState(false);
   const [search, setSearch] = useState(emptySearch);
 
   const [clients, setClients] = useState([]);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState({ ...emptyForm, client_id: prefilledClientId });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -239,6 +243,15 @@ export default function PatientsPage() {
         <form className="card" onSubmit={handleSubmit}>
           <h2>Add Patient</h2>
           {error && <p className="error">{error}</p>}
+          {prefilledClientId && (
+            <p className="visit-meta" style={{ margin: 0 }}>
+              Owner pre-filled from the client you just added
+              {clients.find((c) => c.id === prefilledClientId)
+                ? ` — ${clients.find((c) => c.id === prefilledClientId).full_name}`
+                : ''}
+              .
+            </p>
+          )}
           <select
             required
             value={form.client_id}
@@ -415,5 +428,13 @@ export default function PatientsPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function PatientsPage() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <PatientsPageInner />
+    </Suspense>
   );
 }

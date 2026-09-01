@@ -7,6 +7,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { uploadAttachment } from '@/lib/attachments';
 import ScanIdButton from '@/app/_components/ScanIdButton';
@@ -59,6 +60,7 @@ function hasAnyTerm(search) {
 }
 
 export default function ClientsPage() {
+  const router = useRouter();
   const [results, setResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -131,15 +133,16 @@ export default function ClientsPage() {
 
     if (!res.ok) {
       setError(data.error || 'Failed to create client');
+      setSubmitting(false);
     } else {
       if (idScanFile) {
         uploadAttachment({ entityType: 'client', entityId: data.id, file: idScanFile }).catch(() => {});
-        setIdScanFile(null);
       }
-      setForm(emptyForm);
-      if (hasSearched) runSearch(search);
+      // A client always gets added alongside their first patient — go
+      // straight there instead of leaving the vet to find Patients + pick
+      // the owner they just typed in a second ago.
+      router.push(`/patients?client_id=${data.id}`);
     }
-    setSubmitting(false);
   }
 
   function handleAddScanned({ full_name, emirates_id, file }) {
