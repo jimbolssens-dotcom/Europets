@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
+import { formatTimestamp, wasEdited } from '@/lib/formatTimestamp';
 
 export default function HospitalizationPortalPage() {
   const { id } = useParams();
@@ -90,7 +91,12 @@ export default function HospitalizationPortalPage() {
         {notes.length === 0 && <p className="visit-meta">No updates yet — check back soon.</p>}
         {notes.map((n) => (
           <div key={n.id} className="portal-note">
-            <div className="portal-note-date">{n.note_date}</div>
+            <div className="portal-note-date">{formatTimestamp(n.created_at)}</div>
+            {wasEdited(n.created_at, n.updated_at) && (
+              <p className="visit-meta" style={{ margin: '0 0 0.4rem' }}>
+                Updated {formatTimestamp(n.updated_at)}
+              </p>
+            )}
             {n.appetite && (
               <p>
                 <strong>Appetite:</strong> {n.appetite}

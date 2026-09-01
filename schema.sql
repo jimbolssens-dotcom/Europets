@@ -157,7 +157,8 @@ create table hospitalization_notes (
     condition text,                  -- general condition summary
     temperature_c numeric(4,1),
     notes text,
-    created_at timestamptz default now()
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()   -- bumped on every edit, so multiple touches in a day are visible
 );
 
 -- ============ ATTACHMENTS ============

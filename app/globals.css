@@ -308,6 +308,35 @@ form.card label {
   color: var(--ink);
 }
 
+/* Inline edit form for a worksheet entry — same field styling as
+   form.card, but living inside a .visit-card that already has its own
+   border/background, so no card chrome of its own. */
+.edit-note-form {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+  max-width: 480px;
+}
+
+.edit-note-form input,
+.edit-note-form select,
+.edit-note-form textarea {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.edit-note-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
 .attachments {
   margin-top: 0.5rem;
 }

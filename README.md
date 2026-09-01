@@ -113,11 +113,14 @@ appointments, full consult medical records, hospitalization, and invoicing.
    clinic's own TRN (Settings page), and the client's TRN if they're a
    VAT-registered business
 5. ✅ Hospitalization — standalone multi-day admissions with a day-to-day
-   worksheet, startable from a consult, with photo capture (camera button
-   on iPad/phones) and a one-click PDF summary — including the case's and
-   each day's photos — to share with the client. A "Share Client Portal
-   Link" button sends a live, read-only, client-facing page over WhatsApp
-   (no PDF/attach step) that updates automatically until discharge
+   worksheet (real timestamped entries, editable after the fact — each
+   edit bumps a separate "last edited" time so multiple touches in a day
+   are visible), startable from a consult, with photo capture (camera
+   button on iPad/phones) and a one-click PDF summary — including the
+   case's and each day's photos — to share with the client. A "Share
+   Client Portal Link" button sends a live, read-only, client-facing page
+   over WhatsApp (no PDF/attach step) that updates automatically until
+   discharge
 6. ✅ AI layer — record a consult or surgery in the browser, AssemblyAI
    transcribes it, Claude summarizes it, and the summary is folded into
    consult notes / the surgical report automatically. A small 🎤 button on
@@ -139,6 +142,7 @@ app/
 │   ├── diagnostics/, treatment-items/    → per-consult diagnostics & treatment plan
 │   ├── surgical-reports/, dental-reports/ → per-consult advanced-treatment reports
 │   ├── hospitalizations/                 → admissions + day-to-day worksheet notes
+│   ├── hospitalizations/[id]/notes/[noteId]/ → edit a worksheet entry (bumps updated_at)
 │   ├── hospitalizations/[id]/summary-pdf → PDF summary for sharing with the client
 │   ├── attachments/                      → file metadata (files live in Storage)
 │   ├── recordings/route.js               → save an uploaded recording + submit for transcription
@@ -185,6 +189,7 @@ lib/
 ├── assemblyai.js                         → server-side AssemblyAI REST calls
 ├── anthropicClient.js                    → server-side Claude summarization
 ├── hospitalizationSummaryPdf.js          → builds the hospitalization summary PDF (pdf-lib)
+├── formatTimestamp.js                    → shared entry-timestamp formatting (staff page + portal)
 ├── taxInvoicePdf.js                      → builds the FTA-compliant Tax Invoice PDF (pdf-lib)
 └── invoicing.js                          → subtotal/VAT/total calculation
 schema.sql                                → full database schema

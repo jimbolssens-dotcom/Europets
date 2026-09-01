@@ -10,6 +10,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
+import { formatTimestamp, wasEdited } from '@/lib/formatTimestamp';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -24,6 +25,7 @@ const emptyNoteForm = {
   notes: '',
 };
 
+
 export default function HospitalizationDetailPage() {
   const { id } = useParams();
   const [admission, setAdmission] = useState(null);
@@ -33,6 +35,9 @@ export default function HospitalizationDetailPage() {
   const [noteForm, setNoteForm] = useState(emptyNoteForm);
   const [submitting, setSubmitting] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editNoteForm, setEditNoteForm] = useState(emptyNoteForm);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`)
@@ -86,6 +91,38 @@ export default function HospitalizationDetailPage() {
     setNoteForm({ ...emptyNoteForm, note_date: todayISODate() });
     loadNotes();
     setSubmitting(false);
+  }
+
+  function startEditNote(n) {
+    setEditingNoteId(n.id);
+    setEditNoteForm({
+      note_date: n.note_date,
+      author_id: n.author_id || '',
+      appetite: n.appetite || '',
+      condition: n.condition || '',
+      temperature_c: n.temperature_c ?? '',
+      notes: n.notes || '',
+    });
+  }
+
+  function cancelEditNote() {
+    setEditingNoteId(null);
+  }
+
+  function appendEditNoteText(text) {
+    setEditNoteForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }));
+  }
+
+  async function saveEditNote(noteId) {
+    setSavingEdit(true);
+    await fetch(`/api/hospitalizations/${id}/notes/${noteId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editNoteForm),
+    });
+    setEditingNoteId(null);
+    loadNotes();
+    setSavingEdit(false);
   }
 
   function downloadSummaryPdf() {
@@ -169,33 +206,108 @@ export default function HospitalizationDetailPage() {
       <div className="split-main">
       <h2>Day-to-day Worksheet</h2>
       {notes.length === 0 && <p>No entries yet.</p>}
-      {notes.map((n) => (
-        <div key={n.id} className="visit-card">
-          <div className="visit-header">
-            <strong>{n.note_date}</strong>
-            <span>{n.staff?.full_name || 'unassigned'}</span>
+      {notes.map((n) =>
+        editingNoteId === n.id ? (
+          <div key={n.id} className="visit-card">
+            <div className="visit-header">
+              <strong>Editing entry — {n.note_date}</strong>
+            </div>
+            <div className="edit-note-form">
+              <input
+                type="date"
+                required
+                value={editNoteForm.note_date}
+                onChange={(e) => setEditNoteForm({ ...editNoteForm, note_date: e.target.value })}
+              />
+              <select
+                value={editNoteForm.author_id}
+                onChange={(e) => setEditNoteForm({ ...editNoteForm, author_id: e.target.value })}
+              >
+                <option value="">Author...</option>
+                {staff.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.full_name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={editNoteForm.appetite}
+                onChange={(e) => setEditNoteForm({ ...editNoteForm, appetite: e.target.value })}
+              >
+                <option value="">Appetite...</option>
+                <option value="good">Good</option>
+                <option value="reduced">Reduced</option>
+                <option value="none">None</option>
+              </select>
+              <input
+                type="number"
+                step="0.1"
+                placeholder="Temperature (°C)"
+                value={editNoteForm.temperature_c}
+                onChange={(e) => setEditNoteForm({ ...editNoteForm, temperature_c: e.target.value })}
+              />
+              <input
+                placeholder="General condition"
+                value={editNoteForm.condition}
+                onChange={(e) => setEditNoteForm({ ...editNoteForm, condition: e.target.value })}
+              />
+              <label>
+                <span className="field-label-row">
+                  Notes
+                  <VoiceToTextButton kind="hospitalization_notes" onResult={appendEditNoteText} />
+                </span>
+                <textarea
+                  rows={2}
+                  value={editNoteForm.notes}
+                  onChange={(e) => setEditNoteForm({ ...editNoteForm, notes: e.target.value })}
+                />
+              </label>
+              <div className="home-links">
+                <button type="button" onClick={() => saveEditNote(n.id)} disabled={savingEdit}>
+                  {savingEdit ? 'Saving...' : 'Save'}
+                </button>
+                <button type="button" onClick={cancelEditNote}>
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
-          <p>
-            {n.appetite && (
-              <>
-                <strong>Appetite:</strong> {n.appetite}{' '}
-              </>
+        ) : (
+          <div key={n.id} className="visit-card">
+            <div className="visit-header">
+              <strong>{formatTimestamp(n.created_at)}</strong>
+              <span>{n.staff?.full_name || 'unassigned'}</span>
+            </div>
+            {wasEdited(n.created_at, n.updated_at) && (
+              <p className="visit-meta" style={{ margin: '0 0 0.4rem' }}>
+                Edited {formatTimestamp(n.updated_at)}
+              </p>
             )}
-            {n.temperature_c != null && (
-              <>
-                · <strong>Temp:</strong> {n.temperature_c}°C{' '}
-              </>
-            )}
-          </p>
-          {n.condition && (
             <p>
-              <strong>Condition:</strong> {n.condition}
+              {n.appetite && (
+                <>
+                  <strong>Appetite:</strong> {n.appetite}{' '}
+                </>
+              )}
+              {n.temperature_c != null && (
+                <>
+                  · <strong>Temp:</strong> {n.temperature_c}°C{' '}
+                </>
+              )}
             </p>
-          )}
-          {n.notes && <p>{n.notes}</p>}
-          <AttachmentSection entityType="hospitalization_note" entityId={n.id} />
-        </div>
-      ))}
+            {n.condition && (
+              <p>
+                <strong>Condition:</strong> {n.condition}
+              </p>
+            )}
+            {n.notes && <p>{n.notes}</p>}
+            <AttachmentSection entityType="hospitalization_note" entityId={n.id} />
+            <button type="button" onClick={() => startEditNote(n)}>
+              Edit
+            </button>
+          </div>
+        )
+      )}
       </div>
 
       <div className="split-aside">
