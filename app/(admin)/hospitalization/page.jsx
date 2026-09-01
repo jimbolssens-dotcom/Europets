@@ -78,6 +78,9 @@ export default function HospitalizationPage() {
   return (
     <div>
       <h1>Hospitalization</h1>
+      <p>
+        <a href="/hospitalization/cages">🗺️ Cage Layout</a>
+      </p>
 
       <div className="split">
       <div className="split-main">
@@ -90,7 +93,7 @@ export default function HospitalizationPage() {
             <tr>
               <th>Patient</th>
               <th>Owner</th>
-              <th>Room</th>
+              <th>Cage</th>
               <th>Reason</th>
               <th>Admitted</th>
               <th></th>
@@ -101,7 +104,7 @@ export default function HospitalizationPage() {
               <tr key={a.id}>
                 <td>{a.patients?.name}</td>
                 <td>{a.clients?.full_name}</td>
-                <td>{a.rooms?.name || '—'}</td>
+                <td>{a.cages?.name || '—'}</td>
                 <td>{a.reason || '—'}</td>
                 <td>{new Date(a.admitted_at).toLocaleString()}</td>
                 <td>

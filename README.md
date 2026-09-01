@@ -132,7 +132,14 @@ appointments, full consult medical records, hospitalization, and invoicing.
    with each entry's time and author — to share with the client. A "Share
    Client Portal Link" button sends a live, read-only, client-facing page
    over WhatsApp (no PDF/attach step) that shows each entry's time and
-   author too, and updates automatically until discharge
+   author too, and updates automatically until discharge. A Cage Layout
+   page (`/hospitalization/cages`) shows the clinic's fixed physical cage
+   map — 12 standard cages, 5 long-term bungalows, 4 recovery, 4 dog, 3
+   isolation, 5 post-op (one doubling as the oxygen room) — grouped and
+   color-coded by occupancy; click an occupied cage to jump straight to
+   that case's file, or assign a currently-admitted, unassigned patient to
+   an empty one from a dropdown right on the tile. A cage can only hold
+   one admitted case at a time (DB-enforced)
 6. ✅ AI layer — record a consult or surgery in the browser, AssemblyAI
    transcribes it, Claude summarizes it, and the summary is folded into
    consult notes / the surgical report automatically. A small 🎤 button on
@@ -185,6 +192,7 @@ app/
 │   ├── hospitalizations/                 → admissions + day-to-day worksheet notes
 │   │                                        (append-only — no edit endpoint)
 │   ├── hospitalizations/[id]/summary-pdf → PDF summary for sharing with the client
+│   ├── cages/route.js                    → the clinic's fixed cage layout (read-only list)
 │   ├── attachments/                      → file metadata (files live in Storage)
 │   ├── recordings/route.js               → save an uploaded recording + submit for transcription
 │   ├── recordings/[id]/webhook/route.js  → AssemblyAI callback → Claude summary → notes/report
@@ -215,6 +223,8 @@ app/
 │   ├── consults/                           → active/completed board + full consult record
 │   ├── hospitalization/                    → admissions list + day-to-day worksheet; "Share
 │   │                                          Client Portal Link" sends a live link over WhatsApp
+│   ├── hospitalization/cages/              → visual cage-layout map — click an occupied cage to
+│   │                                          open its case, assign an empty one from a dropdown
 │   ├── invoices/                           → list + create; invoices/[id] is a single invoice's page
 │   ├── catalog/                            → catalog UI
 │   ├── vaccinations/                       → clinic-wide due/overdue list, with WhatsApp/Email

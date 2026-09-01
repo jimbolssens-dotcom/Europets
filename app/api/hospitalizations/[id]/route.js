@@ -5,12 +5,13 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 
+const SELECT_WITH_RELATIONS =
+  '*, patients(id, name, species, current_weight_kg), clients(id, full_name, phone), rooms(name), cages(name, group_name, is_oxygen_room)';
+
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('hospitalizations')
-    .select(
-      '*, patients(id, name, species, current_weight_kg), clients(id, full_name, phone), rooms(name)'
-    )
+    .select(SELECT_WITH_RELATIONS)
     .eq('id', params.id)
     .single();
 
@@ -22,7 +23,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { status, room_id, reason } = body;
+  const { status, room_id, cage_id, reason } = body;
 
   const update = {};
   if (status !== undefined) {
@@ -36,6 +37,7 @@ export async function PATCH(request, { params }) {
     if (status === 'discharged') update.discharged_at = new Date().toISOString();
   }
   if (room_id !== undefined) update.room_id = room_id;
+  if (cage_id !== undefined) update.cage_id = cage_id;
   if (reason !== undefined) update.reason = reason;
 
   if (Object.keys(update).length === 0) {
@@ -46,10 +48,15 @@ export async function PATCH(request, { params }) {
     .from('hospitalizations')
     .update(update)
     .eq('id', params.id)
-    .select('*, patients(id, name, species, current_weight_kg), clients(id, full_name, phone), rooms(name)')
+    .select(SELECT_WITH_RELATIONS)
     .single();
 
   if (error) {
+    // The partial unique index on (cage_id) where status='admitted' blocks
+    // assigning a cage that's already occupied by another admitted case.
+    if (error.code === '23505') {
+      return NextResponse.json({ error: 'That cage is already occupied.' }, { status: 409 });
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json(data);

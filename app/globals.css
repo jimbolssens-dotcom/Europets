@@ -1251,3 +1251,105 @@ button.secondary:hover {
   margin-top: 0.75rem;
 }
 
+/* Cage Layout — a visual map of the clinic's physical hospitalization
+   cages (app/hospitalization/cages). Occupied tiles are clickable
+   shortcuts into that case's file; empty ones offer an assign dropdown. */
+.cage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0 1.75rem;
+}
+
+.cage-tile {
+  position: relative;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  background: white;
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cage-tile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.cage-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.cage-empty {
+  background: #fafafa;
+}
+
+.cage-status {
+  color: #999;
+  font-size: 0.8rem;
+}
+
+.cage-empty select {
+  margin-top: auto;
+  font-size: 0.75rem;
+  padding: 0.25rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  max-width: 100%;
+}
+
+.cage-occupied {
+  background: var(--pink-tint);
+  border-color: var(--pink);
+  cursor: pointer;
+}
+
+/* Leaves room for the absolutely-positioned unassign button so it doesn't
+   sit on top of the oxygen-room badge when a tile has both. */
+.cage-occupied .cage-tile-header {
+  padding-right: 1.1rem;
+}
+
+.cage-occupied:hover {
+  background: var(--pink);
+}
+
+.cage-occupied:hover .cage-name,
+.cage-occupied:hover .cage-patient,
+.cage-occupied:hover .cage-patient-species {
+  color: white;
+}
+
+.cage-patient {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.cage-patient-species {
+  font-size: 0.75rem;
+  color: #777;
+}
+
+.cage-unassign {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 !important;
+  line-height: 1;
+  font-size: 0.8rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.18);
+  color: white;
+}
+
+.cage-unassign:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+
