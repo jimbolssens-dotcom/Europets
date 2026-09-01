@@ -1183,6 +1183,21 @@ button.secondary:hover {
 /* New-client intake: public form (app/portal/intake) and its staff review
    list (app/(admin)/intake) */
 
+.intake-quick-send {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 1rem 0 1.5rem;
+}
+
+.intake-quick-send input {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  min-width: 180px;
+}
+
 .intake-form {
   max-width: 100%;
 }

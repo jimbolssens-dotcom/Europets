@@ -22,7 +22,8 @@ function petSummary(p) {
 export default function IntakePage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [quickPhone, setQuickPhone] = useState('+971 ');
   const [draftPhones, setDraftPhones] = useState({});
   const [copiedId, setCopiedId] = useState(null);
   const [error, setError] = useState(null);
@@ -48,16 +49,32 @@ export default function IntakePage() {
     return `${window.location.origin}/portal/intake/${id}`;
   }
 
-  async function generateLink() {
-    setGenerating(true);
+  function intakeMessage(id) {
+    return `Hi! Thanks for calling Europets Clinic. Please fill in your details and your pet's details here before your visit: ${portalUrl(id)}`;
+  }
+
+  // One click does both steps: generate a fresh link (each is single-use —
+  // the client fills it in once and it moves to Needs Review) and open it
+  // pre-drafted in WhatsApp to the number just typed in.
+  async function sendNewLink() {
+    const phone = quickPhone.replace(/\D/g, '');
+    if (phone.length <= 3) {
+      setError('Enter a phone number first');
+      return;
+    }
+    setSending(true);
     setError(null);
     const res = await fetch('/api/intake-requests', { method: 'POST' });
-    setGenerating(false);
     if (!res.ok) {
+      setSending(false);
       const data = await res.json().catch(() => ({}));
       setError(data.error || 'Failed to generate an intake link');
       return;
     }
+    const data = await res.json();
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(intakeMessage(data.id))}`, '_blank');
+    setQuickPhone('+971 ');
+    setSending(false);
     load();
   }
 
@@ -70,10 +87,7 @@ export default function IntakePage() {
   function shareViaWhatsApp(id) {
     const phone = (draftPhones[id] ?? '+971 ').replace(/\D/g, '');
     if (phone.length <= 3) return;
-    const message = `Hi! Thanks for calling Europets Clinic. Please fill in your details and your pet's details here before your visit: ${portalUrl(
-      id
-    )}`;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(intakeMessage(id))}`, '_blank');
   }
 
   async function cancelLink(id) {
@@ -107,26 +121,34 @@ export default function IntakePage() {
     <div>
       <h1>New-Client Intake</h1>
       <p className="visit-meta">
-        Generate a link for a first-time caller to fill in their own and their pet&apos;s details before
-        they come in. Submissions land here for review — approving creates the client and patient
-        records.
+        Enter a first-time caller&apos;s number and send them a link to fill in their own and their
+        pet&apos;s details before they come in — a fresh link is created and drafted in WhatsApp in one
+        step. Submissions land here for review — approving creates the client and patient records.
       </p>
 
       {error && <p className="error">{error}</p>}
 
-      <button type="button" onClick={generateLink} disabled={generating}>
-        {generating ? 'Generating...' : '+ Generate Intake Link'}
-      </button>
+      <div className="intake-quick-send">
+        <input
+          type="tel"
+          placeholder="Phone number"
+          value={quickPhone}
+          onChange={(e) => setQuickPhone(e.target.value)}
+        />
+        <button type="button" onClick={sendNewLink} disabled={sending}>
+          {sending ? 'Sending...' : '💬 Send Intake Link via WhatsApp'}
+        </button>
+      </div>
 
       {pending.length > 0 && (
         <>
-          <h2>Awaiting Submission</h2>
+          <h2>Sent, Awaiting Submission</h2>
           <table>
             <thead>
               <tr>
                 <th>Link</th>
-                <th>Created</th>
-                <th>Send via WhatsApp</th>
+                <th>Sent</th>
+                <th>Resend to a different number</th>
                 <th></th>
               </tr>
             </thead>
@@ -218,7 +240,7 @@ export default function IntakePage() {
       )}
 
       {pending.length === 0 && submitted.length === 0 && approved.length === 0 && (
-        <p className="visit-meta">No intake links yet — generate one above.</p>
+        <p className="visit-meta">No intake links yet — send one above.</p>
       )}
     </div>
   );
