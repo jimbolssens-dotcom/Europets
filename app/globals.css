@@ -83,6 +83,11 @@ button:disabled {
   border-bottom-color: var(--pink);
 }
 
+.topnav-links a.settings-link {
+  font-size: 1.1rem;
+  letter-spacing: normal;
+}
+
 .search-box {
   position: relative;
   flex: 0 1 300px;

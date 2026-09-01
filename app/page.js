@@ -12,8 +12,7 @@ export default function HomePage() {
         <a href="/hospitalization">Hospitalization</a>
         <a href="/invoices">Invoices</a>
         <a href="/catalog">Catalog</a>
-        <a href="/rooms">Rooms</a>
-        <a href="/staff">Staff</a>
+        <a href="/settings">⚙️ Settings</a>
       </div>
     </div>
   );

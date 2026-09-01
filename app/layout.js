@@ -23,7 +23,9 @@ export default function RootLayout({ children }) {
             <a href="/hospitalization">Hospitalization</a>
             <a href="/invoices">Invoices</a>
             <a href="/catalog">Catalog</a>
-            <a href="/settings">Settings</a>
+            <a href="/settings" title="Settings" aria-label="Settings" className="settings-link">
+              ⚙️
+            </a>
           </div>
         </nav>
         <main className="content">{children}</main>
