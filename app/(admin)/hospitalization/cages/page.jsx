@@ -45,7 +45,7 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onOpen
   }
 
   return (
-    <div className="cage-tile cage-empty">
+    <div className={`cage-tile cage-empty cage-group-${cage.group_name}`}>
       <div className="cage-tile-header">
         <span className="cage-name">{cage.name}</span>
         {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}

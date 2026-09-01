@@ -1311,6 +1311,39 @@ button.secondary:hover {
   background: #fafafa;
 }
 
+/* Color-coded by cage group when empty, so the group a tile belongs to
+   reads at a glance even without checking its cluster heading. Occupied
+   tiles always go pink (.cage-occupied below) regardless of group. */
+.cage-empty.cage-group-standard {
+  background: #f4f7fb;
+  border-color: #c3d0e0;
+}
+
+.cage-empty.cage-group-long_term {
+  background: #f6f1fc;
+  border-color: #cbb8ec;
+}
+
+.cage-empty.cage-group-recovery {
+  background: #edfaf1;
+  border-color: #a3ddb6;
+}
+
+.cage-empty.cage-group-dog {
+  background: #fff4e9;
+  border-color: #f3c48b;
+}
+
+.cage-empty.cage-group-isolation {
+  background: #fdf8e0;
+  border-color: #e6cf6a;
+}
+
+.cage-empty.cage-group-post_op {
+  background: #e9f4fc;
+  border-color: #a1cdea;
+}
+
 .cage-status {
   color: #999;
   font-size: 0.8rem;
