@@ -98,6 +98,13 @@ export default function SettingsPage() {
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
       </form>
+
+      <h2>Rooms &amp; Staff</h2>
+      <p className="visit-meta">Managed occasionally, not day to day — tucked in here instead of the main nav.</p>
+      <div className="home-links">
+        <a href="/rooms">Rooms</a>
+        <a href="/staff">Staff</a>
+      </div>
     </div>
   );
 }
