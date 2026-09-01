@@ -110,7 +110,10 @@ appointments, full consult medical records, hospitalization, and invoicing.
 2. ✅ Appointments (15-min consult / 10-min surgery increments, conflict checked)
 3. ✅ Consults — full medical record (vitals, anamnesis, findings, prognosis),
    real-time notes, diagnostics with file attachments, a treatment plan drawn
-   from the catalog, and surgical/dental reports
+   from the catalog, and surgical/dental reports. Also embeds the same
+   Vaccination History + Add Vaccination module as the patient page (between
+   Notes and Diagnostics/Treatment Plan), so a vaccination given during the
+   visit can be recorded without leaving the consult
 4. ✅ Goods/services & invoicing (flat + per-kg pricing, 5% UAE VAT) — a
    consult can open an invoice that imports its whole treatment plan as
    line items in one click, then take more items added afterward.
@@ -232,6 +235,15 @@ app/
 ├── _components/ScanIdButton.jsx          → camera button that reads an Emirates ID card
 ├── _components/AudioRecorder.jsx         → record/upload audio, show transcript+summary
 ├── _components/VoiceToTextButton.jsx     → small 🎤 button that dictates a single field
+├── _components/SpeciesField.jsx          → Cat/Dog dropdown with an "Other..." free-text fallback
+├── _components/useVaccinations.js        → shared state/logic behind recording a vaccination —
+│                                            used by both patients/[id] and consults/[id]
+├── _components/VaccinationForm.jsx       → the Add Vaccination card (species-filtered checklist,
+│                                            Annual/Primary Booster) — takes useVaccinations' state as props
+├── _components/VaccinationHistory.jsx    → read-only vaccination table with Delete
+└── _components/VaccinationPanel.jsx      → History + Add form side by side (consult page's layout;
+                                             the patient page composes the same pieces around its
+                                             own info panel instead)
 └── layout.js                             → bare root shell (html/body only — see security note)
 lib/
 ├── supabaseClient.js                     → shared Supabase connection

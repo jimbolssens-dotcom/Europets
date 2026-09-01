@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
+import VaccinationPanel from '@/app/_components/VaccinationPanel';
 
 const DIAGNOSTIC_TYPES = [
   { value: 'blood_test', label: 'Blood test' },
@@ -465,6 +466,8 @@ export default function ConsultDetailPage() {
       <AudioRecorder entityType="visit" entityId={id} />
       </div>
       </div>
+
+      <VaccinationPanel patientId={consult.patients?.id} species={consult.patients?.species} staff={staff} />
 
       <div className="two-col">
       <div>
