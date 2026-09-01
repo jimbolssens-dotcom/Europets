@@ -6,6 +6,7 @@
 // client, and room default from that visit) or standalone.
 
 import { supabase } from '@/lib/supabaseClient';
+import { attachCages } from '@/lib/attachCages';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -14,9 +15,7 @@ export async function GET(request) {
 
   let query = supabase
     .from('hospitalizations')
-    .select(
-      '*, patients(name, species, current_weight_kg), clients(full_name, phone), rooms(name), cages(name, group_name, is_oxygen_room)'
-    )
+    .select('*, patients(name, species, current_weight_kg), clients(full_name, phone), rooms(name)')
     .order('admitted_at', { ascending: false });
 
   if (status) {
@@ -28,7 +27,7 @@ export async function GET(request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data);
+  return NextResponse.json(await attachCages(data));
 }
 
 export async function POST(request) {
@@ -68,13 +67,11 @@ export async function POST(request) {
         reason: reason || null,
       },
     ])
-    .select(
-      '*, patients(name, species, current_weight_kg), clients(full_name, phone), rooms(name), cages(name, group_name, is_oxygen_room)'
-    )
+    .select('*, patients(name, species, current_weight_kg), clients(full_name, phone), rooms(name)')
     .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(await attachCages(data), { status: 201 });
 }

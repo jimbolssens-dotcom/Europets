@@ -3,10 +3,11 @@
 // PATCH /api/hospitalizations/:id  -> update status/room/reason; discharging sets discharged_at
 
 import { supabase } from '@/lib/supabaseClient';
+import { attachCages } from '@/lib/attachCages';
 import { NextResponse } from 'next/server';
 
 const SELECT_WITH_RELATIONS =
-  '*, patients(id, name, species, current_weight_kg), clients(id, full_name, phone), rooms(name), cages(name, group_name, is_oxygen_room)';
+  '*, patients(id, name, species, current_weight_kg), clients(id, full_name, phone), rooms(name)';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
@@ -18,7 +19,7 @@ export async function GET(request, { params }) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 404 });
   }
-  return NextResponse.json(data);
+  return NextResponse.json(await attachCages(data));
 }
 
 export async function PATCH(request, { params }) {
@@ -59,5 +60,5 @@ export async function PATCH(request, { params }) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data);
+  return NextResponse.json(await attachCages(data));
 }
