@@ -17,6 +17,7 @@ export default function AdminLayout({ children }) {
           <a href="/appointments">Appointments</a>
           <a href="/consults">Consults</a>
           <a href="/hospitalization">Hospitalization</a>
+          <a href="/vaccinations">Vaccinations</a>
           <a href="/invoices">Invoices</a>
           <a href="/catalog">Catalog</a>
           <a href="/settings" title="Settings" aria-label="Settings" className="settings-link">

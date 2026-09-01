@@ -135,7 +135,18 @@ appointments, full consult medical records, hospitalization, and invoicing.
    consult notes / the surgical report automatically. A small 🎤 button on
    individual fields (anamnesis, findings, treatment notes, surgical/dental
    notes) does the same for a short dictation, filling in just that field
-7. FileMaker migration
+7. ✅ Vaccinations — a species-tagged protocol catalog (Settings → Vaccine
+   Protocols: Cat Flu, Feline Enteritis, Rabies for cats; DHPPi + Lepto,
+   Rabies, and optional Kennel Cough for dogs) recorded per patient, with
+   the Add Vaccination form on a patient's page automatically filtered to
+   protocols for their species. Each record gets a next-due date (defaults
+   to the protocol's interval, usually annual, from the date given — stays
+   editable). The Vaccinations nav page is a clinic-wide due/overdue list;
+   its WhatsApp/Email buttons draft a pre-filled reminder for staff to send
+   themselves and mark it reminded — there's no connected email service or
+   WhatsApp Business API to send these automatically yet (same limitation
+   as the hospitalization portal's WhatsApp sharing)
+8. FileMaker migration
 
 ## Folder layout
 ```
@@ -165,7 +176,9 @@ app/
 │   ├── visits/[id]/invoice/route.js      → create (or reuse) an invoice for a consult,
 │   │                                        importing its treatment plan as line items
 │   ├── invoices/[id]/tax-invoice-pdf/    → FTA-compliant Tax Invoice PDF for one invoice
-│   └── clinic-settings/route.js          → the clinic's own TRN/identity (singleton row)
+│   ├── clinic-settings/route.js          → the clinic's own TRN/identity (singleton row)
+│   ├── vaccine-protocols/route.js        → the species-tagged vaccine catalog (Settings UI)
+│   └── vaccinations/route.js             → per-patient records; ?due=true for the reminders list
 ├── (admin)/                                → every internal staff page, wrapped in the staff nav
 │   ├── layout.js                           → the nav (Clients, Patients, ... , ⚙️ Settings)
 │   ├── page.js                             → home page
@@ -178,7 +191,9 @@ app/
 │   │                                          Client Portal Link" sends a live link over WhatsApp
 │   ├── invoices/                           → list + create; invoices/[id] is a single invoice's page
 │   ├── catalog/                            → catalog UI
-│   ├── rooms/, staff/                      → admin list, edit/delete
+│   ├── vaccinations/                       → clinic-wide due/overdue list, with WhatsApp/Email
+│   │                                          reminder drafting per record
+│   ├── rooms/, staff/, vaccine-protocols/  → admin lists, edit/delete — tucked under Settings
 │   └── settings/                           → clinic legal name/TRN/address for tax invoices
 ├── portal/                                 → client-facing pages — NO staff nav (see security
 │   │                                          note above), noindex. Add new client-facing pages here.
@@ -200,6 +215,7 @@ lib/
 ├── hospitalizationSummaryPdf.js          → builds the hospitalization summary PDF (pdf-lib)
 ├── formatTimestamp.js                    → shared entry-timestamp formatting (staff page + portal)
 ├── taxInvoicePdf.js                      → builds the FTA-compliant Tax Invoice PDF (pdf-lib)
+├── species.js                            → loose cat/dog classification for vaccine filtering
 └── invoicing.js                          → subtotal/VAT/total calculation
 schema.sql                                → full database schema
 migrations/                               → incremental SQL for already-deployed databases

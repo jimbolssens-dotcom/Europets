@@ -108,6 +108,48 @@ create table treatment_items (
     created_at timestamptz default now()
 );
 
+-- ============ VACCINE PROTOCOLS ============
+-- The clinic's standard vaccination catalog, species-tagged so the UI can
+-- filter to just what makes sense for a given patient.
+create table vaccine_protocols (
+    id uuid primary key default gen_random_uuid(),
+    name text not null,
+    species text not null,               -- 'cat' or 'dog'
+    core boolean not null default true,  -- core (routine) vs optional (e.g. Kennel Cough)
+    interval_months int not null default 12,  -- how often it's due again; 12 = annual
+    active boolean not null default true,
+    created_at timestamptz default now()
+);
+
+-- ============ VACCINATIONS ============
+-- One row per vaccine actually given to a patient. vaccine_name is copied
+-- from the protocol at entry time so renaming/retiring a protocol later
+-- never rewrites a patient's history. next_due_date defaults to
+-- date_given + the protocol's interval but stays editable. reminder_sent_at
+-- tracks whether staff already drafted a reminder for the current due
+-- date, so the due list doesn't nag about the same one twice.
+create table vaccinations (
+    id uuid primary key default gen_random_uuid(),
+    patient_id uuid references patients(id) on delete cascade not null,
+    vaccine_protocol_id uuid references vaccine_protocols(id),
+    vaccine_name text not null,
+    date_given date not null,
+    next_due_date date,
+    batch_number text,
+    administered_by uuid references staff(id),
+    notes text,
+    reminder_sent_at timestamptz,
+    created_at timestamptz default now()
+);
+
+insert into vaccine_protocols (name, species, core, interval_months) values
+    ('Cat Flu', 'cat', true, 12),
+    ('Feline Enteritis', 'cat', true, 12),
+    ('Rabies', 'cat', true, 12),
+    ('DHPPi + Lepto', 'dog', true, 12),
+    ('Rabies', 'dog', true, 12),
+    ('Kennel Cough', 'dog', false, 12);
+
 -- ============ SURGICAL REPORTS ============
 create table surgical_reports (
     id uuid primary key default gen_random_uuid(),
@@ -273,6 +315,8 @@ create index idx_hospitalizations_patient on hospitalizations(patient_id);
 create index idx_hospitalization_notes_hosp on hospitalization_notes(hospitalization_id);
 create index idx_attachments_entity on attachments(entity_type, entity_id);
 create index idx_recordings_entity on recordings(entity_type, entity_id);
+create index idx_vaccinations_patient on vaccinations(patient_id);
+create index idx_vaccinations_due_date on vaccinations(next_due_date);
 
 -- ============ STORAGE BUCKET ============
 -- Public bucket for consult/report file attachments. No staff auth yet,
@@ -296,7 +340,8 @@ create policy "Public delete consult-files" on storage.objects
 alter publication supabase_realtime add table
     clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items,
     diagnostics, treatment_items, surgical_reports, dental_reports,
-    hospitalizations, hospitalization_notes, attachments, recordings, clinic_settings;
+    hospitalizations, hospitalization_notes, attachments, recordings, clinic_settings,
+    vaccine_protocols, vaccinations;
 
 -- ============ ROW LEVEL SECURITY ============
 -- RLS is intentionally left disabled: the app has no staff auth yet and
@@ -325,3 +370,5 @@ alter table hospitalization_notes disable row level security;
 alter table attachments disable row level security;
 alter table recordings disable row level security;
 alter table clinic_settings disable row level security;
+alter table vaccine_protocols disable row level security;
+alter table vaccinations disable row level security;
