@@ -255,6 +255,13 @@ td button + a {
   margin-left: 0.4rem;
 }
 
+/* The actions column (Save/Cancel, Edit/Delete, ...) is always short text —
+   never let a cramped row squeeze it onto two lines, which throws its
+   buttons out of alignment with each other. */
+td:last-child {
+  white-space: nowrap;
+}
+
 td input,
 td select {
   padding: 0.3rem;
