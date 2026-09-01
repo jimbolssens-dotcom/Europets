@@ -32,7 +32,18 @@ export default function ScanIdButton({
       const res = await fetch('/api/clients/scan-id', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to read ID card');
-      onScanned({ full_name: data.full_name, emirates_id: data.emirates_id, file });
+
+      // If the server had to convert a HEIC photo to JPEG to read it, save
+      // that JPEG as the attachment too — HEIC files saved as-is show up as
+      // a broken image in most browsers other than Safari.
+      let attachFile = file;
+      if (data.converted_image) {
+        const convertedBlob = await (await fetch(data.converted_image)).blob();
+        const jpegName = (file.name || 'id-card').replace(/\.\w+$/, '') + '.jpg';
+        attachFile = new File([convertedBlob], jpegName, { type: 'image/jpeg' });
+      }
+
+      onScanned({ full_name: data.full_name, emirates_id: data.emirates_id, file: attachFile });
     } catch (err) {
       setError(err.message);
     }

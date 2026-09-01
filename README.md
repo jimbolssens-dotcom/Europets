@@ -65,7 +65,12 @@ appointments, full consult medical records, hospitalization, and invoicing.
 > separate "client photo" field. Instead, the whole card photo you scanned
 > gets saved as a regular attachment on the client (visible on their
 > detail page under "Emirates ID") — so the photo is on file, just as a
-> full card scan rather than a cropped headshot.
+> full card scan rather than a cropped headshot. A photo picked from an
+> iPhone/iPad's photo library is often HEIC — Claude's vision API doesn't
+> accept that format, so `/api/clients/scan-id` converts it to JPEG
+> server-side (via `heic-convert`) before reading it, and that converted
+> JPEG is what gets saved as the attachment too, so it displays correctly
+> in browsers that can't render HEIC.
 
 > **Fill in Settings before relying on Tax Invoices.** The clinic's legal
 > name/TRN/address on every generated Tax Invoice PDF come from the
