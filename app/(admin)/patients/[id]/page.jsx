@@ -46,14 +46,18 @@ function addMonths(dateStr, months) {
   return d.toISOString().slice(0, 10);
 }
 
-const emptyForm = {
-  vaccine_protocol_id: '',
-  date_given: todayISODate(),
-  next_due_date: '',
-  batch_number: '',
-  administered_by: '',
-  notes: '',
-};
+const STANDARD_INTERVAL_MONTHS = 12; // the default before a specific protocol is picked
+
+function makeEmptyForm() {
+  return {
+    vaccine_protocol_id: '',
+    date_given: todayISODate(),
+    next_due_date: addMonths(todayISODate(), STANDARD_INTERVAL_MONTHS),
+    batch_number: '',
+    administered_by: '',
+    notes: '',
+  };
+}
 
 export default function PatientDetailPage() {
   const { id } = useParams();
@@ -61,8 +65,9 @@ export default function PatientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [vaccinations, setVaccinations] = useState([]);
   const [protocols, setProtocols] = useState([]);
+  const [protocolsError, setProtocolsError] = useState(null);
   const [staff, setStaff] = useState([]);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(makeEmptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -84,7 +89,14 @@ export default function PatientDetailPage() {
     loadVaccinations();
     fetch('/api/vaccine-protocols?active=true')
       .then((res) => res.json())
-      .then((data) => setProtocols(Array.isArray(data) ? data : []));
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setProtocols(data);
+        } else {
+          setProtocols([]);
+          setProtocolsError(data?.error || 'Failed to load vaccine protocols');
+        }
+      });
     fetch('/api/staff')
       .then((res) => res.json())
       .then((data) => setStaff(Array.isArray(data) ? data : []));
@@ -119,18 +131,20 @@ export default function PatientDetailPage() {
 
   function selectProtocol(protocolId) {
     const protocol = protocols.find((p) => p.id === protocolId);
+    const months = protocol ? protocol.interval_months : STANDARD_INTERVAL_MONTHS;
     setForm({
       ...form,
       vaccine_protocol_id: protocolId,
-      next_due_date: protocol ? addMonths(form.date_given, protocol.interval_months) : '',
+      next_due_date: addMonths(form.date_given, months),
     });
   }
 
   function setDateGiven(dateGiven) {
+    const months = selectedProtocol ? selectedProtocol.interval_months : STANDARD_INTERVAL_MONTHS;
     setForm({
       ...form,
       date_given: dateGiven,
-      next_due_date: selectedProtocol ? addMonths(dateGiven, selectedProtocol.interval_months) : form.next_due_date,
+      next_due_date: addMonths(dateGiven, months),
     });
   }
 
@@ -149,7 +163,7 @@ export default function PatientDetailPage() {
     if (!res.ok) {
       setError(data.error || 'Failed to record vaccination');
     } else {
-      setForm(emptyForm);
+      setForm(makeEmptyForm());
       loadVaccinations();
     }
     setSubmitting(false);
@@ -261,13 +275,26 @@ export default function PatientDetailPage() {
           <form className="card" onSubmit={addVaccination}>
             <h3>Add Vaccination</h3>
             {error && <p className="error">{error}</p>}
-            {!speciesClass && (
+            {protocolsError && (
+              <p className="error">
+                {protocolsError} — check the{' '}
+                <a href="/vaccine-protocols">Vaccine Protocols catalog</a> in Settings.
+              </p>
+            )}
+            {!protocolsError && relevantProtocols.length === 0 && (
+              <p className="error">
+                No active vaccine protocols found. Add some on the{' '}
+                <a href="/vaccine-protocols">Vaccine Protocols</a> page under Settings.
+              </p>
+            )}
+            {!speciesClass && relevantProtocols.length > 0 && (
               <p className="visit-meta">
                 Couldn&apos;t tell cat vs dog from &quot;{patient.species}&quot; — showing every protocol.
               </p>
             )}
             <select
               required
+              disabled={relevantProtocols.length === 0}
               value={form.vaccine_protocol_id}
               onChange={(e) => selectProtocol(e.target.value)}
             >
