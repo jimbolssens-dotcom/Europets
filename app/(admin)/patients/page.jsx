@@ -270,12 +270,15 @@ function PatientsPageInner() {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
-          <input
-            placeholder="Species (dog, cat, ...)"
+          <select
             required
             value={form.species}
             onChange={(e) => setForm({ ...form, species: e.target.value })}
-          />
+          >
+            <option value="">Species...</option>
+            <option value="cat">Cat</option>
+            <option value="dog">Dog</option>
+          </select>
           <input
             placeholder="Breed"
             value={form.breed}
@@ -290,6 +293,8 @@ function PatientsPageInner() {
             <option value="">Sex (unknown)</option>
             <option value="male">Male</option>
             <option value="female">Female</option>
+            <option value="male_castrated">Male (Castrated)</option>
+            <option value="female_spayed">Female (Spayed)</option>
           </select>
           <input
             placeholder="Weight (kg)"
@@ -344,10 +349,13 @@ function PatientsPageInner() {
                         />
                       </td>
                       <td>
-                        <input
+                        <select
                           value={editForm.species}
                           onChange={(e) => setEditForm({ ...editForm, species: e.target.value })}
-                        />
+                        >
+                          <option value="cat">Cat</option>
+                          <option value="dog">Dog</option>
+                        </select>
                       </td>
                       <td>
                         <input

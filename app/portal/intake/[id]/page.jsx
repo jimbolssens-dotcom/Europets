@@ -146,8 +146,12 @@ export default function IntakePortalPage() {
                   <input value={pet.name} onChange={(e) => updatePet(i, 'name', e.target.value)} required />
                 </label>
                 <label>
-                  Species (dog, cat, ...)
-                  <input value={pet.species} onChange={(e) => updatePet(i, 'species', e.target.value)} required />
+                  Species
+                  <select value={pet.species} onChange={(e) => updatePet(i, 'species', e.target.value)} required>
+                    <option value="">Select...</option>
+                    <option value="cat">Cat</option>
+                    <option value="dog">Dog</option>
+                  </select>
                 </label>
                 <label>
                   Breed (optional)
@@ -167,6 +171,8 @@ export default function IntakePortalPage() {
                     <option value="">Unknown</option>
                     <option value="male">Male</option>
                     <option value="female">Female</option>
+                    <option value="male_castrated">Male (Castrated)</option>
+                    <option value="female_spayed">Female (Spayed)</option>
                   </select>
                 </label>
               </div>

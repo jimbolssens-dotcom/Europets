@@ -37,6 +37,13 @@ function dueStatus(dateStr) {
   return { label: `Due ${formatDate(dateStr)}`, className: 'visit-meta' };
 }
 
+const SEX_LABELS = {
+  male: 'Male',
+  female: 'Female',
+  male_castrated: 'Male (Castrated)',
+  female_spayed: 'Female (Spayed)',
+};
+
 function addMonths(dateStr, months) {
   const d = new Date(`${dateStr}T00:00:00`);
   d.setMonth(d.getMonth() + months);
@@ -241,7 +248,7 @@ export default function PatientDetailPage() {
             </div>
             <div className="patient-fact">
               <span className="patient-fact-label">Sex</span>
-              <span>{patient.sex || 'unknown'}</span>
+              <span>{SEX_LABELS[patient.sex] || 'unknown'}</span>
             </div>
             <div className="patient-fact">
               <span className="patient-fact-label">Date of birth</span>
