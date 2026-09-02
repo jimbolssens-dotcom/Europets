@@ -153,7 +153,7 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
 
       {invoice.status === 'unpaid' && (
         <>
-          <form className="note-form" onSubmit={addLineItem}>
+          <form className="note-form catalog-add-form" onSubmit={addLineItem}>
             {error && <p className="error">{error}</p>}
             <CatalogPicker
               catalog={catalog}
@@ -162,17 +162,19 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
               onChange={setGoodsServiceId}
               onItemCreated={onCatalogChange}
             />
-            <input
-              className="qty-input"
-              type="number"
-              step="0.01"
-              placeholder={selected?.pricing_type === 'per_kg' ? 'kg (blank = patient weight)' : 'qty (default 1)'}
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-            />
-            <button type="submit" disabled={submitting || !goodsServiceId}>
-              Add
-            </button>
+            <div className="catalog-add-form-row">
+              <input
+                className="qty-input"
+                type="number"
+                step="0.01"
+                placeholder={selected?.pricing_type === 'per_kg' ? 'kg (blank = patient weight)' : 'qty (default 1)'}
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+              />
+              <button type="submit" disabled={submitting || !goodsServiceId}>
+                Add
+              </button>
+            </div>
           </form>
           <div className="home-links" style={{ marginTop: '0.75rem' }}>
             <button type="button" onClick={() => setStatus('paid')}>

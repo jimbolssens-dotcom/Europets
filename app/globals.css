@@ -1016,6 +1016,7 @@ button.secondary:hover {
 
 .note-form {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
 }
 
@@ -1032,12 +1033,25 @@ button.secondary:hover {
   border-radius: 4px;
 }
 
-/* Quantity input beside a CatalogPicker in a .note-form — without this it
-   inherits flex: 1 from the rule above and balloons to fill all the extra
-   space the catalog picker's own layout leaves unclaimed. */
-.note-form input.qty-input {
-  flex: 0 0 8rem;
-  width: 8rem;
+/* A .note-form that embeds a CatalogPicker (invoice line-item forms) needs
+   its own layout — CatalogPicker is a multi-row block (category tabs,
+   select, add-new toggle), so sharing one flex row with it stretches a
+   plain sibling input/button to match its full height. Stack the picker
+   above a normal-height quantity + Add row instead. */
+.note-form.catalog-add-form {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.catalog-add-form-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.catalog-add-form-row input.qty-input {
+  flex: 0 0 6rem;
+  width: 6rem;
 }
 
 /* Appointment date picker + Outlook-style room x time schedule.
