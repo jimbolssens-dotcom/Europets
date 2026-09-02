@@ -223,8 +223,13 @@ appointments, full consult medical records, hospitalization, and invoicing.
    typing their name; the exact text shown is snapshotted onto the
    record at signing time so it stays accurate even if the template
    wording changes later, and a signed PDF (`/api/consent-forms/:id/pdf`)
-   is available to download. Not legal advice — have this wording
-   reviewed by a lawyer before relying on it for a real clinic
+   is available to download. Sign & Save also triggers printing straight
+   away (`lib/printPdf.js` — loads the PDF into a hidden iframe and calls
+   print() the moment it's ready) so staff can hand over the physical
+   page for a wet signature; browsers won't print silently without a
+   person confirming the dialog, so it's a one-click confirm rather than
+   fully automatic. Not legal advice — have this wording reviewed by a
+   lawyer before relying on it for a real clinic
 10. FileMaker migration
 
 ## Folder layout
@@ -345,11 +350,14 @@ lib/
 │                                            text renders as a live preview client-side and gets
 │                                            regenerated server-side as the signed record
 ├── consentFormPdf.js                     → builds the signed consent form PDF (pdf-lib)
-└── phoneMatch.js                         → normalizes a phone number down to its trailing digits
-                                             so formatting differences (spaces, missing/extra
-                                             country code) don't hide a duplicate client — used by
-                                             both the Add Client form and the intake review page's
-                                             possible-match check
+├── phoneMatch.js                         → normalizes a phone number down to its trailing digits
+│                                            so formatting differences (spaces, missing/extra
+│                                            country code) don't hide a duplicate client — used by
+│                                            both the Add Client form and the intake review page's
+│                                            possible-match check
+└── printPdf.js                           → client-side: loads a PDF into a hidden iframe and
+                                             triggers the browser's print dialog on it — used to
+                                             print a consent form immediately after Sign & Save
 schema.sql                                → full database schema
 migrations/                               → incremental SQL for already-deployed databases
 ```

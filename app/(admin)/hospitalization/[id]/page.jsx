@@ -16,6 +16,7 @@ import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import { groupCatalogBySubcategory, MAIN_CATEGORIES, MAIN_CATEGORY_LABELS } from '@/lib/catalogGrouping';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
+import { printPdfUrl } from '@/lib/printPdf';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -176,6 +177,7 @@ export default function HospitalizationDetailPage() {
     } else {
       setConsentForm({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '' });
       loadConsentForms();
+      printPdfUrl(`/api/consent-forms/${data.id}/pdf`);
     }
     setConsentSubmitting(false);
   }

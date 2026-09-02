@@ -16,6 +16,7 @@ import VaccinationForm from '@/app/_components/VaccinationForm';
 import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { groupCatalogBySubcategory, subcategoryName, MAIN_CATEGORIES, MAIN_CATEGORY_LABELS } from '@/lib/catalogGrouping';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
+import { printPdfUrl } from '@/lib/printPdf';
 
 const DIAGNOSTIC_TYPES = [
   { value: 'blood_test', label: 'Blood test' },
@@ -328,6 +329,7 @@ export default function ConsultDetailPage() {
     } else {
       setConsentForm({ form_type: '', signed_by_name: '', signed_by_relationship: '', staff_witness_id: '' });
       loadConsentForms();
+      printPdfUrl(`/api/consent-forms/${data.id}/pdf`);
     }
     setConsentSubmitting(false);
   }
