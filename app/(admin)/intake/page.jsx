@@ -252,7 +252,7 @@ export default function IntakePage() {
               <p className="visit-meta">Submitted {formatDateTime(r.submitted_at)}</p>
 
               {possibleMatches[r.id]?.length > 0 && (
-                <div className="intake-possible-match">
+                <div className="possible-duplicate-warning">
                   <p>
                     ⚠️ Possibly already a client — matched by phone or name:
                   </p>

@@ -106,7 +106,13 @@ appointments, full consult medical records, hospitalization, and invoicing.
    name/breed/microchip number. The Clients and Patients pages themselves
    are search-first too: search + add sit side by side, and no list loads
    until you search — it doesn't dump the entire, ever-growing table
-1. ✅ Clients & Patients database
+1. ✅ Clients & Patients database — Add Client cross-references what's
+   typed (phone, Emirates ID, name) against existing clients before
+   creating one; a match warns with each candidate's details and a "Use
+   this client instead" shortcut straight to adding a pet under them, and
+   the plain submit relabels to "Create as New Client Anyway" so staff
+   still can when it's a coincidence, not a duplicate. Same check runs on
+   intake approval (below) — both share `lib/phoneMatch.js`
 2. ✅ Appointments (15-min consult / 10-min surgery increments, conflict checked)
 3. ✅ Consults — full medical record (vitals, anamnesis, findings, prognosis),
    real-time notes, diagnostics with file attachments, a treatment plan drawn
@@ -341,8 +347,9 @@ lib/
 ├── consentFormPdf.js                     → builds the signed consent form PDF (pdf-lib)
 └── phoneMatch.js                         → normalizes a phone number down to its trailing digits
                                              so formatting differences (spaces, missing/extra
-                                             country code) don't hide a duplicate client — used
-                                             by the intake review page's possible-match check
+                                             country code) don't hide a duplicate client — used by
+                                             both the Add Client form and the intake review page's
+                                             possible-match check
 schema.sql                                → full database schema
 migrations/                               → incremental SQL for already-deployed databases
 ```

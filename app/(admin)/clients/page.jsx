@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { uploadAttachment } from '@/lib/attachments';
 import ScanIdButton from '@/app/_components/ScanIdButton';
+import { phoneSearchDigits } from '@/lib/phoneMatch';
 
 const emptyForm = {
   full_name: '',
@@ -70,6 +71,8 @@ export default function ClientsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [idScanFile, setIdScanFile] = useState(null); // held until the new client exists
+  const [possibleDuplicates, setPossibleDuplicates] = useState(null);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [rowError, setRowError] = useState(null);
@@ -115,8 +118,53 @@ export default function ClientsPage() {
     setHasSearched(false);
   }
 
+  // Any edit to the Add Client form invalidates whatever duplicate check
+  // ran against the previous values.
+  function updateForm(patch) {
+    setForm((prev) => ({ ...prev, ...patch }));
+    setPossibleDuplicates(null);
+  }
+
+  // Cross-references what's typed so far against existing clients by
+  // phone (formatting-normalized), Emirates ID, and name — a match on any
+  // of these is a strong sign this "new" client already exists.
+  async function findPossibleDuplicates() {
+    const digits = phoneSearchDigits(normalizePhone(form.phone));
+    const emiratesId = form.emirates_id.trim();
+    const name = form.full_name.trim();
+
+    const requests = [];
+    if (digits) requests.push(fetch(`/api/clients?phone=${digits}`).then((res) => res.json()));
+    if (emiratesId) requests.push(fetch(`/api/clients?emirates_id=${encodeURIComponent(emiratesId)}`).then((res) => res.json()));
+    if (name) requests.push(fetch(`/api/clients?name=${encodeURIComponent(name)}`).then((res) => res.json()));
+    if (requests.length === 0) return [];
+
+    const results = await Promise.all(requests);
+    const byId = new Map();
+    for (const list of results) {
+      for (const c of Array.isArray(list) ? list : []) byId.set(c.id, c);
+    }
+    return [...byId.values()];
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+    setError(null);
+
+    if (!possibleDuplicates) {
+      setCheckingDuplicates(true);
+      const matches = await findPossibleDuplicates();
+      setCheckingDuplicates(false);
+      if (matches.length > 0) {
+        setPossibleDuplicates(matches);
+        return;
+      }
+    }
+
+    await createClient();
+  }
+
+  async function createClient() {
     setSubmitting(true);
     setError(null);
 
@@ -143,6 +191,10 @@ export default function ClientsPage() {
       // the owner they just typed in a second ago.
       router.push(`/patients?client_id=${data.id}`);
     }
+  }
+
+  function useExistingClient(clientId) {
+    router.push(`/patients?client_id=${clientId}`);
   }
 
   function handleAddScanned({ full_name, emirates_id, file }) {
@@ -279,31 +331,31 @@ export default function ClientsPage() {
             placeholder="Full name"
             required
             value={form.full_name}
-            onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+            onChange={(e) => updateForm({ full_name: e.target.value })}
           />
           <input
             placeholder="Emirates ID"
             value={form.emirates_id}
-            onChange={(e) => setForm({ ...form, emirates_id: e.target.value })}
+            onChange={(e) => updateForm({ emirates_id: e.target.value })}
           />
           <input
             placeholder="TRN (only if a VAT-registered business)"
             value={form.trn}
-            onChange={(e) => setForm({ ...form, trn: e.target.value })}
+            onChange={(e) => updateForm({ trn: e.target.value })}
           />
           <input
             placeholder="Phone"
             value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            onChange={(e) => updateForm({ phone: e.target.value })}
           />
           <input
             placeholder="2nd phone (optional)"
             value={form.phone2}
-            onChange={(e) => setForm({ ...form, phone2: e.target.value })}
+            onChange={(e) => updateForm({ phone2: e.target.value })}
           />
           <select
             value={form.phone2_label}
-            onChange={(e) => setForm({ ...form, phone2_label: e.target.value })}
+            onChange={(e) => updateForm({ phone2_label: e.target.value })}
           >
             <option value="">2nd phone belongs to...</option>
             {PHONE2_LABELS.map((o) => (
@@ -316,15 +368,43 @@ export default function ClientsPage() {
             placeholder="Email"
             type="email"
             value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            onChange={(e) => updateForm({ email: e.target.value })}
           />
           <input
             placeholder="Address"
             value={form.address}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            onChange={(e) => updateForm({ address: e.target.value })}
           />
-          <button type="submit" disabled={submitting}>
-            {submitting ? 'Saving...' : 'Add Client'}
+
+          {possibleDuplicates?.length > 0 && (
+            <div className="possible-duplicate-warning">
+              <p>⚠️ This might already be a client — matched by phone, Emirates ID, or name:</p>
+              <ul>
+                {possibleDuplicates.map((c) => (
+                  <li key={c.id}>
+                    <a href={`/clients/${c.id}`} target="_blank" rel="noreferrer">
+                      {c.full_name}
+                    </a>{' '}
+                    · {c.phone || 'no phone'}
+                    {c.emirates_id && ` · ID ${c.emirates_id}`}
+                    {c.email && ` · ${c.email}`}
+                    <button type="button" onClick={() => useExistingClient(c.id)}>
+                      Use this client instead
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <button type="submit" disabled={submitting || checkingDuplicates}>
+            {checkingDuplicates
+              ? 'Checking for duplicates...'
+              : submitting
+                ? 'Saving...'
+                : possibleDuplicates?.length > 0
+                  ? 'Create as New Client Anyway'
+                  : 'Add Client'}
           </button>
         </form>
       </div>

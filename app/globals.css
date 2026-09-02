@@ -1504,7 +1504,7 @@ button.secondary:hover {
   margin-top: 0.75rem;
 }
 
-.intake-possible-match {
+.possible-duplicate-warning {
   background: #fff8ec;
   border: 1px solid #f0c674;
   border-radius: 6px;
@@ -1513,13 +1513,13 @@ button.secondary:hover {
   font-size: 0.9rem;
 }
 
-.intake-possible-match p {
+.possible-duplicate-warning p {
   margin: 0 0 0.4rem;
   font-weight: 600;
   color: #8a6116;
 }
 
-.intake-possible-match ul {
+.possible-duplicate-warning ul {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1527,14 +1527,14 @@ button.secondary:hover {
   gap: 0.4rem;
 }
 
-.intake-possible-match li {
+.possible-duplicate-warning li {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.intake-possible-match button {
+.possible-duplicate-warning button {
   padding: 0.25rem 0.6rem;
   font-size: 0.8rem;
 }
