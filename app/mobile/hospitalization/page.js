@@ -1,15 +1,20 @@
 // app/mobile/hospitalization/page.js
-// The full cage layout, identical to the desktop Cage Layout page's own
-// arrangement (same clusters, same columns, same per-group colors) —
-// meant to be viewed with the phone turned to landscape, not reflowed
-// into a portrait grid. No drag/assign here; tap an occupied cage
-// straight into recording.
+// The mobile cage layout is deliberately its own arrangement, not a
+// resized copy of the desktop Cage Layout page (see CageFloorPlan.jsx
+// for that one) — two vertical columns side by side, sized to fit a
+// portrait phone's width with no horizontal scrolling:
+//   left column, top to bottom:  Recovery -> Isolation -> Dog -> Post-Op
+//   right column, top to bottom: LT (4-5) -> Hospitalization (1-12) -> LT (1-3)
+// Every cluster keeps its own cage grouping/count; only where the
+// clusters sit relative to each other changes. Tile text stays upright
+// throughout — no CSS rotation. No drag/assign here; tap an occupied
+// cage straight into recording.
 
 'use client';
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import CageFloorPlan from '@/app/_components/CageFloorPlan';
+import { byGroup } from '@/app/_components/CageFloorPlan';
 
 function MobileCageTile({ cage, hosp }) {
   if (hosp) {
@@ -30,6 +35,62 @@ function MobileCageTile({ cage, hosp }) {
         {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
       </div>
       <span className="cage-status">Empty</span>
+    </div>
+  );
+}
+
+function Cluster({ label, cages, cols, renderTile }) {
+  if (cages.length === 0) return null;
+  return (
+    <div>
+      <h3 className="cage-cluster-label">{label}</h3>
+      <div className="cage-cluster" style={{ '--cols': cols }}>
+        {cages.map((cage) => renderTile(cage))}
+      </div>
+    </div>
+  );
+}
+
+function IsoCluster({ cages, renderTile }) {
+  if (cages.length === 0) return null;
+  return (
+    <div>
+      <h3 className="cage-cluster-label">Isolation Cages</h3>
+      <div className="cage-cluster-flex">
+        <div className="cage-cluster" style={{ '--cols': 1 }}>
+          {cages.slice(0, 2).map((cage) => renderTile(cage))}
+        </div>
+        <div className="cage-cluster" style={{ '--cols': 1 }}>
+          {cages.slice(2).map((cage) => renderTile(cage))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MobileCageColumns({ cages, renderTile }) {
+  const standardCages = byGroup(cages, 'standard');
+  const ltCages = byGroup(cages, 'long_term');
+  const ltLower = ltCages.slice(0, 3); // LT 1-3, at the bottom of the right column
+  const ltUpper = ltCages.slice(3); // LT 4-5, at the top of the right column
+  const recoveryCages = byGroup(cages, 'recovery');
+  const dogCages = byGroup(cages, 'dog');
+  const isoCages = byGroup(cages, 'isolation');
+  const postOpCages = byGroup(cages, 'post_op');
+
+  return (
+    <div className="mobile-cage-columns">
+      <div className="mobile-cage-col">
+        <Cluster label="Recovery Cages" cages={recoveryCages} cols={1} renderTile={renderTile} />
+        <IsoCluster cages={isoCages} renderTile={renderTile} />
+        <Cluster label="Dog Cages" cages={dogCages} cols={2} renderTile={renderTile} />
+        <Cluster label="Post-Op Cages" cages={postOpCages} cols={2} renderTile={renderTile} />
+      </div>
+      <div className="mobile-cage-col mobile-cage-col-right">
+        <Cluster label="LT" cages={ltUpper} cols={ltUpper.length} renderTile={renderTile} />
+        <Cluster label="Hospitalization Cages" cages={standardCages} cols={2} renderTile={renderTile} />
+        <Cluster label="LT" cages={ltLower} cols={ltLower.length} renderTile={renderTile} />
+      </div>
     </div>
   );
 }
@@ -60,17 +121,16 @@ export default function MobileHospitalizationListPage() {
   const occupancy = Object.fromEntries(admitted.filter((a) => a.cage_id).map((a) => [a.cage_id, a]));
 
   return (
-    <div className="mobile-page mobile-page-wide">
+    <div className="mobile-page">
       <a href="/mobile" className="mobile-back">
         &larr; Record
       </a>
       <h1>Hospitalization</h1>
-      <p className="mobile-hint">Turn your phone sideways for the full layout.</p>
 
       {loading ? (
         <p>Loading...</p>
       ) : (
-        <CageFloorPlan
+        <MobileCageColumns
           cages={cages}
           renderTile={(cage) => <MobileCageTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} />}
         />

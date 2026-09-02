@@ -2021,18 +2021,11 @@ form.card.admit-patient-form {
   padding: 1.25rem 1rem 3rem;
 }
 
-/* Most mobile pages stay narrow/portrait-friendly (480px). The cage
-   layout is the one exception — .mobile-page-wide keeps it landscape,
-   matching the desktop Cage Layout page's own arrangement exactly rather
-   than reflowing it, since staff view it with the phone turned sideways. */
+/* Mobile pages stay narrow/portrait-friendly. */
 .mobile-page,
 .mobile-home {
   max-width: 480px;
   margin: 0 auto;
-}
-
-.mobile-page.mobile-page-wide {
-  max-width: 1200px;
 }
 
 .mobile-home {
@@ -2176,14 +2169,68 @@ form.card.admit-patient-form {
   border: 1px solid var(--pink-tint);
 }
 
-/* Cage layout on mobile: deliberately identical to the desktop Cage
-   Layout page's own grid (same clusters, same column counts, same per-
-   group colors, same physical arrangement) rather than reflowed —
-   viewed with the phone turned to landscape, via .mobile-page-wide
-   above. Occupied tiles get their own color class rather than reusing
-   .cage-occupied, which carries touch-action: none and cursor: grab for
-   the desktop drag-to-move feature — not wanted here, this is a plain
-   tap-to-record link, not a drag source. */
+/* Cage layout on mobile: deliberately its own arrangement, not a resized
+   copy of the desktop Cage Layout page — see MobileCageColumns in
+   app/mobile/hospitalization/page.js. Two vertical columns side by side:
+   left is Recovery / Isolation / Dog / Post-Op stacked top to bottom,
+   right is LT (upper) / Hospitalization cages / LT (lower) stacked top
+   to bottom — everything fits one portrait screen width with no
+   horizontal scrolling, and tile text stays naturally upright (no CSS
+   rotation). Occupied tiles get their own color class rather than
+   reusing .cage-occupied, which carries touch-action: none and cursor:
+   grab for the desktop drag-to-move feature — not wanted here, this is
+   a plain tap-to-record link, not a drag source. */
+.mobile-cage-columns {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+}
+
+.mobile-cage-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* LT (4-5) and LT (1-3) are wider than the 2-wide Hospitalization block
+   between them, so right-align the column instead of the default left —
+   keeps a clean shared right edge instead of a jagged one. */
+.mobile-cage-col-right {
+  align-items: flex-end;
+}
+
+.mobile-app .cage-cluster {
+  grid-template-columns: repeat(var(--cols), 58px);
+  gap: 0.35rem;
+}
+
+.mobile-app .cage-cluster-flex {
+  gap: 0.35rem;
+}
+
+.mobile-app .cage-tile {
+  min-height: 58px;
+  padding: 0.3rem 0.35rem;
+  gap: 0.1rem;
+}
+
+.mobile-app .cage-name {
+  font-size: 0.62rem;
+}
+
+.mobile-app .cage-patient,
+.mobile-app .cage-status {
+  font-size: 0.58rem;
+}
+
+.mobile-app .cage-cluster-label {
+  font-size: 0.6rem;
+  white-space: nowrap;
+  margin-bottom: 0.3rem;
+}
+
 .mobile-app .cage-tile-mobile-occupied {
   background: var(--pink-tint);
   border-color: var(--pink);

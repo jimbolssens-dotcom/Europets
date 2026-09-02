@@ -11,7 +11,7 @@
 // the mobile app can share this same physical layout with completely
 // different tiles.
 
-function byGroup(cages, group) {
+export function byGroup(cages, group) {
   return cages.filter((c) => c.group_name === group).sort((a, b) => a.sort_order - b.sort_order);
 }
 
