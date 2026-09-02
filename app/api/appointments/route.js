@@ -7,6 +7,13 @@
 //   - consult appointments are fixed at 15 minutes
 //   - surgery appointments run in 10-minute increments (10, 20, 30, ...)
 //   - a room (and a vet) can't be double-booked for an overlapping slot
+//   - booking a vet outside their weekly schedule (staff_schedules) is a
+//     soft warning, not a block — the client sends weekday/shift computed
+//     from the *local* date/time it already has (see the appointments
+//     page), sidestepping any server/client timezone mismatch from
+//     re-deriving them off the stored UTC start_time. Pass
+//     override_schedule_warning: true to book anyway once the warning's
+//     been shown.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -54,9 +61,22 @@ export async function GET(request) {
   return NextResponse.json(data);
 }
 
+const SHIFTS = ['morning', 'afternoon'];
+
 export async function POST(request) {
   const body = await request.json();
-  const { patient_id, room_id, vet_id, type, start_time, duration_minutes, reason } = body;
+  const {
+    patient_id,
+    room_id,
+    vet_id,
+    type,
+    start_time,
+    duration_minutes,
+    reason,
+    weekday,
+    shift,
+    override_schedule_warning,
+  } = body;
 
   if (!patient_id || !room_id || !start_time) {
     return NextResponse.json(
@@ -125,6 +145,31 @@ export async function POST(request) {
       { error: 'that room or vet is already booked for an overlapping time' },
       { status: 409 }
     );
+  }
+
+  // Soft schedule warning: only when the client sent a valid weekday/shift
+  // and the vet has an explicit staff_schedules row saying they're not
+  // expected then. No row at all (schedule never configured for this
+  // staff member) means nothing to warn about.
+  if (
+    vet_id &&
+    !override_schedule_warning &&
+    Number.isInteger(weekday) &&
+    weekday >= 0 &&
+    weekday <= 6 &&
+    SHIFTS.includes(shift)
+  ) {
+    const { data: scheduleRow } = await supabase
+      .from('staff_schedules')
+      .select('expected')
+      .eq('staff_id', vet_id)
+      .eq('weekday', weekday)
+      .eq('shift', shift)
+      .maybeSingle();
+
+    if (scheduleRow && scheduleRow.expected === false) {
+      return NextResponse.json({ warning: 'schedule' });
+    }
   }
 
   const { data, error } = await supabase

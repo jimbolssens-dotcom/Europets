@@ -10,6 +10,19 @@ create table staff (
     created_at timestamptz default now()
 );
 
+-- Weekly schedule: which mornings/afternoons each staff member is expected
+-- to work. See migrations/028_staff_schedules.sql for the full rationale.
+create table staff_schedules (
+    id uuid primary key default gen_random_uuid(),
+    staff_id uuid references staff(id) on delete cascade not null,
+    weekday smallint not null check (weekday between 0 and 6), -- 0=Sunday..6=Saturday, matches JS Date#getDay()
+    shift text not null check (shift in ('morning', 'afternoon')),
+    expected boolean not null default true,
+    created_at timestamptz default now(),
+    unique (staff_id, weekday, shift)
+);
+create index idx_staff_schedules_staff on staff_schedules(staff_id);
+
 -- ============ CLIENTS ============
 create table clients (
     id uuid primary key default gen_random_uuid(),
@@ -566,6 +579,7 @@ alter publication supabase_realtime add table
 -- Newer Supabase projects auto-enable RLS by default on new tables, so
 -- this is explicit rather than relying on Postgres's off-by-default.
 alter table staff disable row level security;
+alter table staff_schedules disable row level security;
 alter table clients disable row level security;
 alter table patients disable row level security;
 alter table rooms disable row level security;

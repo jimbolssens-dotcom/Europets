@@ -151,6 +151,7 @@ export default function StaffPage() {
                 <td>{s.role}</td>
                 <td>{s.email}</td>
                 <td>
+                  <a href={`/staff/${s.id}/schedule`}>Schedule</a>{' '}
                   <button type="button" onClick={() => startEdit(s)}>
                     Edit
                   </button>

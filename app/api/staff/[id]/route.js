@@ -1,4 +1,5 @@
 // app/api/staff/[id]/route.js
+// GET    /api/staff/:id  -> a single staff member
 // PATCH  /api/staff/:id  -> edit a staff member
 // DELETE /api/staff/:id  -> remove a staff member (blocked if referenced elsewhere)
 
@@ -6,6 +7,15 @@ import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 
 const VALID_ROLES = ['vet', 'tech', 'reception', 'admin'];
+
+export async function GET(request, { params }) {
+  const { data, error } = await supabase.from('staff').select('*').eq('id', params.id).single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 404 });
+  }
+  return NextResponse.json(data);
+}
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
