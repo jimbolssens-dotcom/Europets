@@ -27,6 +27,14 @@ import { summarizeTranscript, extractConsultFields } from '@/lib/anthropicClient
 import { matchCatalogItem } from '@/lib/catalogMatch';
 import { NextResponse } from 'next/server';
 
+// This route makes two sequential Claude calls (summarizeTranscript, then
+// extractConsultFields) plus several Supabase round-trips for catalog
+// matching — easily past Vercel's default serverless timeout, especially
+// with Opus 5's adaptive thinking on the structured-extraction call. Other
+// routes that call Claude in this app (voice-to-text, scan-id) already set
+// this for the same reason.
+export const maxDuration = 60;
+
 const CONSULT_RECORD_FIELDS = ['anamnesis', 'findings', 'diagnosis', 'prognosis', 'treatment_notes'];
 
 export async function POST(request, { params }) {
