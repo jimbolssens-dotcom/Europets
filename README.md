@@ -119,7 +119,16 @@ appointments, full consult medical records, hospitalization, and invoicing.
    line items in one click, then take more items added afterward.
    UAE FTA-compliant Tax Invoice PDFs: sequential invoice numbering, the
    clinic's own TRN (Settings page), and the client's TRN if they're a
-   VAT-registered business
+   VAT-registered business. The catalog (`/catalog`) is split into three
+   fixed main categories — Products, Tests, Services — each with its own
+   tab and an editable list of subcategories (e.g. Tests: X-Ray,
+   Ultrasound, PCR, Blood Test - CBC, Blood Test - GHP, Urine, ...) that
+   staff can keep extending as the clinic starts offering new ones,
+   without a code change. Every item belongs to exactly one subcategory,
+   which fixes its main category automatically. Catalog dropdowns
+   elsewhere (a consult's treatment plan, a worksheet entry's items) group
+   the item list the same way, via `<optgroup>`s ordered Product / Test /
+   Service
 5. ✅ Hospitalization — standalone multi-day admissions with a day-to-day
    worksheet grouped by day (every entry for a day sits together under
    one heading with its own timestamp, so nothing looks lost as new
@@ -218,7 +227,10 @@ app/
 │   ├── voice-to-text/route.js            → dictate one field: transcribe + summarize synchronously
 │   ├── search/route.js                   → find clients/patients by name/phone/breed/microchip
 │   ├── clients/scan-id/route.js          → read name + ID number off a photo of an Emirates ID
-│   ├── goods-services/route.js           → catalog CRUD
+│   ├── goods-services/route.js           → catalog CRUD (main_category is derived from
+│   │                                        whichever subcategory_id you give it)
+│   ├── catalog-subcategories/route.js    → the editable Product/Test/Service subcategory
+│   │                                        lists (Settings-style CRUD, used by the Catalog page)
 │   ├── invoices/route.js                 → list/open invoices
 │   ├── invoices/[id]/line-items/         → add/remove invoice line items
 │   ├── visits/[id]/invoice/route.js      → create (or reuse) an invoice for a consult,
@@ -245,7 +257,9 @@ app/
 │   ├── hospitalization/cages/              → visual cage-layout map — click an occupied cage to
 │   │                                          open its case, assign an empty one from a dropdown
 │   ├── invoices/                           → list + create; invoices/[id] is a single invoice's page
-│   ├── catalog/                            → catalog UI
+│   ├── catalog/                            → catalog UI — Product/Test/Service tabs, each with
+│   │                                          its own item list, Add Item form, and an editable
+│   │                                          subcategory list (add/rename/deactivate/delete)
 │   ├── vaccinations/                       → clinic-wide due/overdue list, with WhatsApp/Email
 │   │                                          reminder drafting per record (same-day reminders
 │   │                                          for one patient are grouped into one message)
@@ -284,7 +298,11 @@ lib/
 ├── formatTimestamp.js                    → shared entry-timestamp formatting (staff page + portal)
 ├── taxInvoicePdf.js                      → builds the FTA-compliant Tax Invoice PDF (pdf-lib)
 ├── species.js                            → loose cat/dog classification for vaccine filtering
-└── invoicing.js                          → subtotal/VAT/total calculation
+├── invoicing.js                          → subtotal/VAT/total calculation
+└── catalogGrouping.js                    → groups goods_services items by subcategory for
+                                             <optgroup>-based catalog dropdowns (Product/Test/
+                                             Service order), shared across every "add item from
+                                             catalog" form
 schema.sql                                → full database schema
 migrations/                               → incremental SQL for already-deployed databases
 ```

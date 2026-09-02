@@ -22,7 +22,7 @@ export async function GET(request) {
 
   let query = supabase
     .from('treatment_items')
-    .select('*, goods_services(name, category, pricing_type, unit, base_price)')
+    .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price)')
     .order('created_at', { ascending: true });
   query = visitId ? query.eq('visit_id', visitId) : query.eq('hospitalization_note_id', hospitalizationNoteId);
 
@@ -65,7 +65,7 @@ export async function POST(request) {
         quantity: quantity !== undefined && quantity !== '' ? Number(quantity) : 1,
       },
     ])
-    .select('*, goods_services(name, category, pricing_type, unit, base_price)')
+    .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price)')
     .single();
 
   if (error) {

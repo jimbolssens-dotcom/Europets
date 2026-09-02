@@ -144,6 +144,39 @@ create table diagnostics (
     created_at timestamptz default now()
 );
 
+-- ============ CATALOG SUBCATEGORIES ============
+-- The editable subdivisions under each of the three fixed main categories
+-- (product/test/service) — e.g. more test types get added here over time
+-- as the clinic starts offering them, without a code change.
+-- Defined here (ahead of its usual place near invoices) since
+-- goods_services references it — Postgres needs the referenced table to
+-- already exist.
+create table catalog_subcategories (
+    id uuid primary key default gen_random_uuid(),
+    main_category text not null check (main_category in ('product', 'test', 'service')),
+    name text not null,
+    active boolean not null default true,
+    created_at timestamptz default now(),
+    unique (main_category, name)
+);
+
+insert into catalog_subcategories (main_category, name) values
+    ('product', 'Food'),
+    ('product', 'Toys'),
+    ('product', 'Medication'),
+    ('product', 'Other'),
+    ('test', 'X-Ray'),
+    ('test', 'Ultrasound'),
+    ('test', 'PCR'),
+    ('test', 'Blood Pressure'),
+    ('test', 'Blood Test - CBC'),
+    ('test', 'Blood Test - GHP'),
+    ('test', 'Urine'),
+    ('service', 'Consults'),
+    ('service', 'Surgeries'),
+    ('service', 'Dental'),
+    ('service', 'General');
+
 -- ============ GOODS & SERVICES ============
 -- Defined here (ahead of its usual place near invoices) since
 -- treatment_items references it — Postgres needs the referenced table to
@@ -151,13 +184,17 @@ create table diagnostics (
 create table goods_services (
     id uuid primary key default gen_random_uuid(),
     name text not null,
-    category text not null,          -- 'medication', 'food', 'toy', 'product', 'service', 'procedure'
+    main_category text not null check (main_category in ('product', 'test', 'service')),
+    subcategory_id uuid references catalog_subcategories(id),
     pricing_type text not null default 'flat',  -- 'flat', 'per_kg', 'per_unit'
     base_price numeric(10,2) not null,
     unit text,                       -- e.g. 'mg', 'ml', 'kg' (used when pricing_type != flat)
     active boolean default true,
     created_at timestamptz default now()
 );
+
+create index idx_goods_services_main_category on goods_services(main_category);
+create index idx_goods_services_subcategory on goods_services(subcategory_id);
 
 -- ============ TREATMENT PLAN ITEMS ============
 -- Planned treatment referencing the catalog (medications, procedures, ...).

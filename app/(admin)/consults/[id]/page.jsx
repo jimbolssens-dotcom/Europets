@@ -14,6 +14,7 @@ import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { useVaccinations } from '@/app/_components/useVaccinations';
 import VaccinationForm from '@/app/_components/VaccinationForm';
 import VaccinationHistory from '@/app/_components/VaccinationHistory';
+import { groupCatalogBySubcategory, subcategoryName } from '@/lib/catalogGrouping';
 
 const DIAGNOSTIC_TYPES = [
   { value: 'blood_test', label: 'Blood test' },
@@ -93,6 +94,7 @@ export default function ConsultDetailPage() {
   const [staff, setStaff] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [catalog, setCatalog] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
 
   const [record, setRecord] = useState(null);
   const [savingRecord, setSavingRecord] = useState(false);
@@ -178,10 +180,12 @@ export default function ConsultDetailPage() {
       fetch('/api/staff').then((res) => res.json()),
       fetch('/api/rooms').then((res) => res.json()),
       fetch('/api/goods-services?active=true').then((res) => res.json()),
-    ]).then(([staffData, roomsData, catalogData]) => {
+      fetch('/api/catalog-subcategories').then((res) => res.json()),
+    ]).then(([staffData, roomsData, catalogData, subcategoriesData]) => {
       setStaff(Array.isArray(staffData) ? staffData : []);
       setRooms(Array.isArray(roomsData) ? roomsData : []);
       setCatalog(Array.isArray(catalogData) ? catalogData : []);
+      setSubcategories(Array.isArray(subcategoriesData) ? subcategoriesData : []);
     });
 
     const channel = supabase
@@ -538,7 +542,9 @@ export default function ConsultDetailPage() {
           {treatmentItems.map((t) => (
             <tr key={t.id}>
               <td>
-                {t.goods_services?.name} ({t.goods_services?.category})
+                {t.goods_services?.name}
+                {subcategoryName(subcategories, t.goods_services?.subcategory_id) &&
+                  ` (${subcategoryName(subcategories, t.goods_services?.subcategory_id)})`}
               </td>
               <td>{t.instructions}</td>
               <td>{t.quantity}</td>
@@ -559,10 +565,14 @@ export default function ConsultDetailPage() {
           onChange={(e) => setTreatForm({ ...treatForm, goods_service_id: e.target.value })}
         >
           <option value="">Select from catalog...</option>
-          {catalog.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name} ({c.category})
-            </option>
+          {groupCatalogBySubcategory(catalog, subcategories).map((group) => (
+            <optgroup key={group.key} label={group.label}>
+              {group.items.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
         <input

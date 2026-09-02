@@ -28,7 +28,7 @@ export async function GET(request, { params }) {
   if (noteIds.length > 0) {
     const { data: items, error: itemsError } = await supabase
       .from('treatment_items')
-      .select('*, goods_services(name, category, pricing_type, unit, base_price)')
+      .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price)')
       .in('hospitalization_note_id', noteIds);
     if (itemsError) {
       return NextResponse.json({ error: itemsError.message }, { status: 500 });
@@ -81,7 +81,7 @@ export async function POST(request, { params }) {
     const { data: items, error: itemsError } = await supabase
       .from('treatment_items')
       .insert(itemRows)
-      .select('*, goods_services(name, category, pricing_type, unit, base_price)');
+      .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price)');
     if (itemsError) {
       // The entry itself is already saved — surface the item failure
       // rather than losing the note, since reloading will still show it.

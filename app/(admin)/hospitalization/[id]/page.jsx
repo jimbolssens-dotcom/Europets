@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
+import { groupCatalogBySubcategory } from '@/lib/catalogGrouping';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -46,6 +47,7 @@ export default function HospitalizationDetailPage() {
   const [editingReason, setEditingReason] = useState(false);
   const [reasonDraft, setReasonDraft] = useState('');
   const [catalog, setCatalog] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [invoiceInfo, setInvoiceInfo] = useState(null);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
 
@@ -80,6 +82,9 @@ export default function HospitalizationDetailPage() {
     fetch('/api/goods-services?active=true')
       .then((res) => res.json())
       .then((data) => setCatalog(Array.isArray(data) ? data : []));
+    fetch('/api/catalog-subcategories')
+      .then((res) => res.json())
+      .then((data) => setSubcategories(Array.isArray(data) ? data : []));
 
     const channel = supabase
       .channel(`hospitalization-${id}`)
@@ -105,7 +110,7 @@ export default function HospitalizationDetailPage() {
   function addPendingItem() {
     if (!pendingItemForm.goods_service_id) return;
     const catalogItem = catalog.find((c) => c.id === pendingItemForm.goods_service_id);
-    setPendingItems((prev) => [...prev, { ...pendingItemForm, name: catalogItem?.name, category: catalogItem?.category }]);
+    setPendingItems((prev) => [...prev, { ...pendingItemForm, name: catalogItem?.name }]);
     setPendingItemForm(emptyPendingItem);
   }
 
@@ -405,10 +410,14 @@ export default function HospitalizationDetailPage() {
             onChange={(e) => setPendingItemForm({ ...pendingItemForm, goods_service_id: e.target.value })}
           >
             <option value="">Select from catalog...</option>
-            {catalog.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.category})
-              </option>
+            {groupCatalogBySubcategory(catalog, subcategories).map((group) => (
+              <optgroup key={group.key} label={group.label}>
+                {group.items.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
           <input
