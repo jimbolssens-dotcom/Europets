@@ -163,6 +163,7 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
               onItemCreated={onCatalogChange}
             />
             <input
+              className="qty-input"
               type="number"
               step="0.01"
               placeholder={selected?.pricing_type === 'per_kg' ? 'kg (blank = patient weight)' : 'qty (default 1)'}

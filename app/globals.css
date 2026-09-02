@@ -1032,6 +1032,14 @@ button.secondary:hover {
   border-radius: 4px;
 }
 
+/* Quantity input beside a CatalogPicker in a .note-form — without this it
+   inherits flex: 1 from the rule above and balloons to fill all the extra
+   space the catalog picker's own layout leaves unclaimed. */
+.note-form input.qty-input {
+  flex: 0 0 8rem;
+  width: 8rem;
+}
+
 /* Appointment date picker + Outlook-style room x time schedule.
    The date picker is a small, always-visible mini calendar that sits
    beside the schedule — no OS calendar icon to click, no full-size month

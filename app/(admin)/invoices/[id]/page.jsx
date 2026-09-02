@@ -189,6 +189,7 @@ export default function InvoiceDetailPage() {
               onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
             />
             <input
+              className="qty-input"
               type="number"
               step="0.01"
               placeholder={selected?.pricing_type === 'per_kg' ? 'kg (blank = patient weight)' : 'qty (default 1)'}
