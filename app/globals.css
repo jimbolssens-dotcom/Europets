@@ -1504,6 +1504,41 @@ button.secondary:hover {
   margin-top: 0.75rem;
 }
 
+.intake-possible-match {
+  background: #fff8ec;
+  border: 1px solid #f0c674;
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.intake-possible-match p {
+  margin: 0 0 0.4rem;
+  font-weight: 600;
+  color: #8a6116;
+}
+
+.intake-possible-match ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.intake-possible-match li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.intake-possible-match button {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+}
+
 /* Cage Layout — a visual map of the clinic's physical hospitalization
    cages (app/hospitalization/cages), arranged in clusters that roughly
    mirror the real floor plan. Occupied tiles are clickable shortcuts into

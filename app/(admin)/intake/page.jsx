@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { phoneSearchDigits } from '@/lib/phoneMatch';
 
 function formatDateTime(dateStr) {
   return new Date(dateStr).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -27,6 +28,7 @@ export default function IntakePage() {
   const [draftPhones, setDraftPhones] = useState({});
   const [copiedId, setCopiedId] = useState(null);
   const [error, setError] = useState(null);
+  const [possibleMatches, setPossibleMatches] = useState({}); // intake request id -> matching clients[]
 
   const load = () =>
     fetch('/api/intake-requests')
@@ -44,6 +46,29 @@ export default function IntakePage() {
       .subscribe();
     return () => supabase.removeChannel(channel);
   }, []);
+
+  // For every submission awaiting review, check whether its phone number or
+  // name already matches an existing client — a strong sign this is the
+  // same person calling in again, not a genuinely new one — so staff can
+  // attach the pet(s) to that client instead of creating a duplicate.
+  useEffect(() => {
+    const toCheck = requests.filter((r) => r.status === 'submitted' && !(r.id in possibleMatches));
+    if (toCheck.length === 0) return;
+
+    toCheck.forEach(async (r) => {
+      const digits = phoneSearchDigits(r.phone);
+      const [byPhone, byName] = await Promise.all([
+        digits ? fetch(`/api/clients?phone=${digits}`).then((res) => res.json()) : Promise.resolve([]),
+        r.full_name ? fetch(`/api/clients?name=${encodeURIComponent(r.full_name.trim())}`).then((res) => res.json()) : Promise.resolve([]),
+      ]);
+      const byId = new Map();
+      for (const c of [...(Array.isArray(byPhone) ? byPhone : []), ...(Array.isArray(byName) ? byName : [])]) {
+        byId.set(c.id, c);
+      }
+      setPossibleMatches((prev) => ({ ...prev, [r.id]: [...byId.values()] }));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests]);
 
   function portalUrl(id) {
     return `${window.location.origin}/portal/intake/${id}`;
@@ -113,12 +138,18 @@ export default function IntakePage() {
     load();
   }
 
-  async function review(id, action) {
+  async function review(id, action, clientId) {
+    if (action === 'approve' && clientId) {
+      const match = (possibleMatches[id] || []).find((c) => c.id === clientId);
+      if (!confirm(`Attach this submission's pet(s) to the existing client "${match?.full_name}" instead of creating a new one?`)) {
+        return;
+      }
+    }
     setError(null);
     const res = await fetch(`/api/intake-requests/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ action, ...(clientId ? { client_id: clientId } : {}) }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -219,9 +250,32 @@ export default function IntakePage() {
               </ul>
               {r.notes && <p className="visit-meta">Notes: {r.notes}</p>}
               <p className="visit-meta">Submitted {formatDateTime(r.submitted_at)}</p>
+
+              {possibleMatches[r.id]?.length > 0 && (
+                <div className="intake-possible-match">
+                  <p>
+                    ⚠️ Possibly already a client — matched by phone or name:
+                  </p>
+                  <ul>
+                    {possibleMatches[r.id].map((c) => (
+                      <li key={c.id}>
+                        <a href={`/clients/${c.id}`} target="_blank" rel="noreferrer">
+                          {c.full_name}
+                        </a>{' '}
+                        · {c.phone || 'no phone on file'}
+                        {c.email && ` · ${c.email}`}
+                        <button type="button" onClick={() => review(r.id, 'approve', c.id)}>
+                          Attach pet(s) to this client
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <div className="intake-review-actions">
                 <button type="button" onClick={() => review(r.id, 'approve')}>
-                  Approve
+                  {possibleMatches[r.id]?.length > 0 ? 'Create as New Client Anyway' : 'Approve'}
                 </button>
                 <button type="button" className="secondary" onClick={() => review(r.id, 'reject')}>
                   Reject

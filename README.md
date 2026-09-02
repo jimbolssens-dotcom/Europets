@@ -194,7 +194,14 @@ appointments, full consult medical records, hospitalization, and invoicing.
    `/portal/intake/[id]`. Submissions land in a review queue, not
    straight into `clients`/`patients` — Approve creates the real client
    and patient record(s); Reject just discards it. Same "unguessable
-   link, not login" security model as the hospitalization portal
+   link, not login" security model as the hospitalization portal.
+   Before showing Approve/Reject, a submission's phone and name are
+   checked against existing clients (`lib/phoneMatch.js` normalizes
+   phone formatting differences like missing spaces/country code so a
+   duplicate can't hide behind them) — a match surfaces a warning with
+   an "Attach pet(s) to this client" option per candidate, so a
+   returning caller's new pet lands on their existing record instead of
+   spawning a duplicate client
 9. ✅ Consent Forms — signed when a pet is left in the clinic's care.
    Four types: Surgery (split into Standard Neutering vs. Complex /
    High-Risk), Hospitalization, and Dental — each with its own canonical
@@ -331,7 +338,11 @@ lib/
 │                                            the shared liability clause; isomorphic, so the same
 │                                            text renders as a live preview client-side and gets
 │                                            regenerated server-side as the signed record
-└── consentFormPdf.js                     → builds the signed consent form PDF (pdf-lib)
+├── consentFormPdf.js                     → builds the signed consent form PDF (pdf-lib)
+└── phoneMatch.js                         → normalizes a phone number down to its trailing digits
+                                             so formatting differences (spaces, missing/extra
+                                             country code) don't hide a duplicate client — used
+                                             by the intake review page's possible-match check
 schema.sql                                → full database schema
 migrations/                               → incremental SQL for already-deployed databases
 ```

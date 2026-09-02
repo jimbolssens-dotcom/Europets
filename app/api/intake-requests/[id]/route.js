@@ -73,7 +73,7 @@ async function submit(id, body) {
   return NextResponse.json(data);
 }
 
-async function review(id, action) {
+async function review(id, action, existingClientId) {
   const { data: intake, error: fetchError } = await supabase
     .from('intake_requests')
     .select('*')
@@ -97,21 +97,37 @@ async function review(id, action) {
     return NextResponse.json(data);
   }
 
-  // Approve: create the client, then a patient per pet they listed, then
-  // link the intake request to the new client.
-  const { data: client, error: clientError } = await supabase
-    .from('clients')
-    .insert([{
-      full_name: intake.full_name,
-      phone: intake.phone,
-      email: intake.email,
-      address: intake.address,
-      emirates_id: intake.emirates_id,
-    }])
-    .select()
-    .single();
-  if (clientError) {
-    return NextResponse.json({ error: clientError.message }, { status: 500 });
+  // Approve: either attach this submission's pet(s) to a client staff
+  // identified as already existing (a likely duplicate flagged in the
+  // review UI), or create a new client, then a patient per pet they
+  // listed, then link the intake request to that client.
+  let client;
+  if (existingClientId) {
+    const { data: found, error: findError } = await supabase
+      .from('clients')
+      .select()
+      .eq('id', existingClientId)
+      .single();
+    if (findError || !found) {
+      return NextResponse.json({ error: 'the selected existing client could not be found' }, { status: 404 });
+    }
+    client = found;
+  } else {
+    const { data: created, error: clientError } = await supabase
+      .from('clients')
+      .insert([{
+        full_name: intake.full_name,
+        phone: intake.phone,
+        email: intake.email,
+        address: intake.address,
+        emirates_id: intake.emirates_id,
+      }])
+      .select()
+      .single();
+    if (clientError) {
+      return NextResponse.json({ error: clientError.message }, { status: 500 });
+    }
+    client = created;
   }
 
   const patientRows = (intake.patients || []).map((p) => ({
@@ -128,7 +144,11 @@ async function review(id, action) {
     // Roll back the client we just created — there's no cross-table
     // transaction here, so this stays a clean retry instead of leaving an
     // orphaned client behind (and a duplicate on the next approve attempt).
-    await supabase.from('clients').delete().eq('id', client.id);
+    // Only if we created it ourselves — never delete a pre-existing client
+    // this submission was just being attached to.
+    if (!existingClientId) {
+      await supabase.from('clients').delete().eq('id', client.id);
+    }
     const message =
       patientsError.code === '23505'
         ? "one of these pets' microchip numbers is already registered to another patient — check and fix it before approving"
@@ -152,7 +172,7 @@ export async function PATCH(request, { params }) {
   const body = await request.json();
 
   if (body.action === 'submit') return submit(params.id, body);
-  if (body.action === 'approve' || body.action === 'reject') return review(params.id, body.action);
+  if (body.action === 'approve' || body.action === 'reject') return review(params.id, body.action, body.client_id);
 
   // Editing/resending the number staff sent an unsubmitted link to —
   // updates the record shown in the "Sent, Awaiting Submission" list.
