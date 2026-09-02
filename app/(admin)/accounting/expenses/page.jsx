@@ -65,6 +65,8 @@ export default function ExpensesPage() {
   const [receiptFile, setReceiptFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [possibleDuplicates, setPossibleDuplicates] = useState(null);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
 
   const loadExpenses = () =>
     fetch(`/api/expenses${showAllMonths ? '' : `?month=${month}`}`)
@@ -89,20 +91,58 @@ export default function ExpensesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month, showAllMonths]);
 
+  // Any edit to the form invalidates whatever duplicate check ran against
+  // the previous values — same pattern as the Clients page's duplicate
+  // check (app/(admin)/clients/page.jsx).
+  function updateForm(patch) {
+    setForm((prev) => ({ ...prev, ...patch }));
+    setPossibleDuplicates(null);
+  }
+
   function handleScanned(data) {
-    setForm((prev) => ({
-      ...prev,
-      vendor_name: data.vendor_name || prev.vendor_name,
-      expense_date: data.expense_date || prev.expense_date,
-      amount: data.amount !== null && data.amount !== undefined ? String(data.amount) : prev.amount,
-      vat_amount: data.vat_amount !== null && data.vat_amount !== undefined ? String(data.vat_amount) : prev.vat_amount,
-      category: data.category || prev.category,
-    }));
+    updateForm({
+      vendor_name: data.vendor_name || form.vendor_name,
+      expense_date: data.expense_date || form.expense_date,
+      amount: data.amount !== null && data.amount !== undefined ? String(data.amount) : form.amount,
+      vat_amount: data.vat_amount !== null && data.vat_amount !== undefined ? String(data.vat_amount) : form.vat_amount,
+      category: data.category || form.category,
+    });
     setReceiptFile(data.file || null);
+  }
+
+  // Catches a receipt getting scanned (or typed in) twice — same date and
+  // same pre-VAT amount is a strong sign it's already logged, since that's
+  // exactly what a duplicate scan of the same paper receipt would produce.
+  async function findPossibleDuplicateExpenses() {
+    if (!form.expense_date || !form.amount) return [];
+    const monthKey = form.expense_date.slice(0, 7);
+    const res = await fetch(`/api/expenses?month=${monthKey}`);
+    const data = await res.json();
+    const amountNum = Number(form.amount);
+
+    return (Array.isArray(data) ? data : []).filter(
+      (ex) => ex.expense_date === form.expense_date && Math.abs(Number(ex.amount) - amountNum) < 0.01
+    );
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setError(null);
+
+    if (!possibleDuplicates) {
+      setCheckingDuplicates(true);
+      const matches = await findPossibleDuplicateExpenses();
+      setCheckingDuplicates(false);
+      if (matches.length > 0) {
+        setPossibleDuplicates(matches);
+        return;
+      }
+    }
+
+    await createExpense();
+  }
+
+  async function createExpense() {
     setSubmitting(true);
     setError(null);
 
@@ -134,6 +174,7 @@ export default function ExpensesPage() {
 
     setForm(emptyForm);
     setReceiptFile(null);
+    setPossibleDuplicates(null);
     loadExpenses();
     setSubmitting(false);
   }
@@ -229,19 +270,19 @@ export default function ExpensesPage() {
               type="date"
               required
               value={form.expense_date}
-              onChange={(e) => setForm({ ...form, expense_date: e.target.value })}
+              onChange={(e) => updateForm({ expense_date: e.target.value })}
             />
             <input
               placeholder="Vendor"
               value={form.vendor_name}
-              onChange={(e) => setForm({ ...form, vendor_name: e.target.value })}
+              onChange={(e) => updateForm({ vendor_name: e.target.value })}
             />
             <input
               placeholder="Description"
               value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              onChange={(e) => updateForm({ description: e.target.value })}
             />
-            <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+            <select value={form.category} onChange={(e) => updateForm({ category: e.target.value })}>
               {CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {CATEGORY_LABELS[c]}
@@ -255,7 +296,7 @@ export default function ExpensesPage() {
               required
               placeholder="Amount (pre-VAT)"
               value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              onChange={(e) => updateForm({ amount: e.target.value })}
             />
             <input
               type="number"
@@ -263,11 +304,11 @@ export default function ExpensesPage() {
               min="0"
               placeholder="VAT amount"
               value={form.vat_amount}
-              onChange={(e) => setForm({ ...form, vat_amount: e.target.value })}
+              onChange={(e) => updateForm({ vat_amount: e.target.value })}
             />
             <select
               value={form.payment_method}
-              onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
+              onChange={(e) => updateForm({ payment_method: e.target.value })}
             >
               <option value="">Paid via (optional)...</option>
               <option value="cash">Cash</option>
@@ -275,8 +316,29 @@ export default function ExpensesPage() {
               <option value="bank_transfer">Bank Transfer</option>
               <option value="payment_link">Payment Link</option>
             </select>
-            <button type="submit" disabled={submitting || !form.amount}>
-              {submitting ? 'Saving...' : 'Log Expense'}
+
+            {possibleDuplicates?.length > 0 && (
+              <div className="possible-duplicate-warning">
+                <p>⚠️ This might already be logged — same date and amount:</p>
+                <ul>
+                  {possibleDuplicates.map((ex) => (
+                    <li key={ex.id}>
+                      {ex.expense_date} · {ex.vendor_name || 'no vendor'} · AED {money(ex.amount)}
+                      {ex.category && ` · ${CATEGORY_LABELS[ex.category] || ex.category}`}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <button type="submit" disabled={submitting || checkingDuplicates || !form.amount}>
+              {checkingDuplicates
+                ? 'Checking for duplicates...'
+                : submitting
+                  ? 'Saving...'
+                  : possibleDuplicates?.length > 0
+                    ? 'Log Anyway'
+                    : 'Log Expense'}
             </button>
           </form>
         </div>
