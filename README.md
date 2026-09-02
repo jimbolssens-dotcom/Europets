@@ -143,11 +143,13 @@ appointments, full consult medical records, hospitalization, and invoicing.
    Pointer Events, not the HTML5 DnD API, since iOS Safari doesn't support
    that) — drop onto an empty cage to move the patient there, or onto an
    occupied one to swap the two. A cage can only hold one admitted case at
-   a time (DB-enforced). Medications, goods/services, and tests given
-   during the stay are logged the same way as a consult's treatment plan
-   (catalog item + instructions + quantity) — "Create Invoice from Items"
-   at discharge consolidates everything logged into one invoice, the same
-   way a consult's treatment plan does
+   a time (DB-enforced). Every worksheet entry can also log medications,
+   goods/services, and tests given at that check-in (catalog item +
+   instructions + quantity, staged on the Add Worksheet Entry form and
+   saved together with the entry in one submission) and record the
+   patient's weight — "Create Invoice from Worksheet" at discharge
+   consolidates everything logged across every entry into one invoice, the
+   same way a consult's treatment plan does
 6. ✅ AI layer — record a consult or surgery in the browser, AssemblyAI
    transcribes it, Claude summarizes it, and the summary is folded into
    consult notes / the surgical report automatically. A small 🎤 button on
@@ -196,12 +198,15 @@ app/
 │   ├── visits/[id]/route.js              → consult record (GET/PATCH), completing
 │   ├── consult-notes/route.js            → per-consult live note thread
 │   ├── diagnostics/, treatment-items/    → per-consult diagnostics & treatment plan —
-│   │                                        treatment-items also serves a hospitalization's
-│   │                                        medications/goods/tests (hospitalization_id instead
-│   │                                        of visit_id; exactly one is required)
+│   │                                        treatment-items also serves a hospitalization
+│   │                                        worksheet entry's medications/goods/tests
+│   │                                        (hospitalization_note_id instead of visit_id;
+│   │                                        exactly one is required)
 │   ├── surgical-reports/, dental-reports/ → per-consult advanced-treatment reports
 │   ├── hospitalizations/                 → admissions + day-to-day worksheet notes
-│   │                                        (append-only — no edit endpoint)
+│   │                                        (append-only — no edit endpoint; each entry can
+│   │                                        include a weight and its own treatment_items,
+│   │                                        submitted together in one POST)
 │   ├── hospitalizations/[id]/summary-pdf → PDF summary for sharing with the client
 │   ├── hospitalizations/[id]/invoice     → create (or reuse) an invoice for an admission,
 │   │                                        importing its logged items as line items — the

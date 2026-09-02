@@ -162,9 +162,10 @@ create table goods_services (
 -- ============ TREATMENT PLAN ITEMS ============
 -- Planned treatment referencing the catalog (medications, procedures, ...).
 -- Not linked to invoicing yet.
--- hospitalization_id is added further down (once the hospitalizations
--- table exists) — a treatment item belongs to exactly one of visit_id
--- (a consult) or hospitalization_id (a day of an admission), never both.
+-- hospitalization_note_id is added further down (once the
+-- hospitalization_notes table exists) — a treatment item belongs to
+-- exactly one of visit_id (a consult) or hospitalization_note_id (logged
+-- as part of one day's worksheet entry during an admission), never both.
 create table treatment_items (
     id uuid primary key default gen_random_uuid(),
     visit_id uuid references visits(id) on delete cascade,
@@ -291,11 +292,6 @@ create table hospitalizations (
     created_at timestamptz default now()
 );
 
--- Deferred from treatment_items' own definition above, since it needs
--- this table to exist first — medications, goods/services, and tests
--- logged during a stay, consolidated into an invoice at discharge.
-alter table treatment_items add column hospitalization_id uuid references hospitalizations(id) on delete cascade;
-
 -- Day-to-day worksheet entries for an admitted patient.
 create table hospitalization_notes (
     id uuid primary key default gen_random_uuid(),
@@ -305,10 +301,18 @@ create table hospitalization_notes (
     appetite text,                   -- e.g. 'good', 'reduced', 'none'
     condition text,                  -- general condition summary
     temperature_c numeric(4,1),
+    weight_kg numeric(6,2),
     notes text,
     created_at timestamptz default now(),
     updated_at timestamptz default now()   -- bumped on every edit, so multiple touches in a day are visible
 );
+
+-- Deferred from treatment_items' own definition above, since it needs
+-- this table to exist first — medications, goods/services, and tests
+-- logged as part of a specific worksheet entry, consolidated into an
+-- invoice (across every entry of the admission) at discharge.
+alter table treatment_items add column hospitalization_note_id uuid
+    references hospitalization_notes(id) on delete cascade;
 
 -- ============ ATTACHMENTS ============
 -- Generic file attachment, reusable across diagnostics, reports, and

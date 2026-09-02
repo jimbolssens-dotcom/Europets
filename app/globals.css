@@ -682,6 +682,89 @@ button.secondary:hover {
   margin-bottom: 0.75rem;
 }
 
+.worksheet-entry-items {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.worksheet-entry-items li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: var(--pink-tint);
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+.worksheet-entry-items li button {
+  justify-self: end;
+  padding: 0.15rem 0.55rem !important;
+  font-size: 0.75rem !important;
+  background: transparent;
+  color: #b00020;
+  border: 1px solid #b00020;
+}
+
+.worksheet-entry-items li button:hover {
+  background: #b00020;
+  color: white;
+}
+
+.pending-items {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.6rem 0.75rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.pending-items legend {
+  padding: 0 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pending-items-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.pending-items-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+.pending-items-list li button {
+  padding: 0.1rem 0.5rem !important;
+  font-size: 0.9rem !important;
+  line-height: 1;
+  background: transparent;
+  color: #b00020;
+  border: 1px solid #b00020;
+  border-radius: 4px;
+}
+
+.pending-items-list li button:hover {
+  background: #b00020;
+  color: white;
+}
+
 .visit-meta {
   color: #555;
   font-size: 0.9rem;

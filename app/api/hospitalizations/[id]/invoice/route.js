@@ -43,10 +43,22 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: invoiceError.message }, { status: 500 });
   }
 
-  const { data: treatmentItems } = await supabase
-    .from('treatment_items')
-    .select('*, goods_services(id, name, base_price)')
+  // Items are logged against a worksheet entry, not the admission
+  // directly (see migration 019) — find every entry for this admission
+  // first, then every item logged under any of them.
+  const { data: noteRows } = await supabase
+    .from('hospitalization_notes')
+    .select('id')
     .eq('hospitalization_id', hospitalizationId);
+  const noteIds = (noteRows || []).map((n) => n.id);
+
+  const { data: treatmentItems } =
+    noteIds.length > 0
+      ? await supabase
+          .from('treatment_items')
+          .select('*, goods_services(id, name, base_price)')
+          .in('hospitalization_note_id', noteIds)
+      : { data: [] };
 
   const lineItems = (treatmentItems || [])
     .filter((item) => item.goods_services)
