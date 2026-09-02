@@ -115,8 +115,18 @@ appointments, full consult medical records, hospitalization, and invoicing.
    intake approval (below) — both share `lib/phoneMatch.js`
 2. ✅ Appointments (15-min consult / 10-min surgery increments, conflict checked)
 3. ✅ Consults — full medical record (vitals, anamnesis, findings, prognosis),
-   real-time notes, diagnostics with file attachments, a treatment plan drawn
-   from the catalog, and surgical/dental reports. Also embeds the same
+   real-time notes, diagnostics, a treatment plan drawn from the catalog, and
+   surgical/dental reports. Ordering a diagnostic picks straight from the
+   catalog's Test items (grouped by subcategory, same as every other catalog
+   picker) rather than a fixed type list, and automatically adds a matching
+   treatment_items line — so it shows on the Treatment Plan and flows into
+   the invoice without a separate manual step; deleting the diagnostic
+   removes that line too, but deleting the line straight from the Treatment
+   Plan just unbills it, leaving the diagnostic and its results/attachments
+   alone (migration 023). Each diagnostic has its own file attachments —
+   any file type, so blood work PDFs, x-rays, and ultrasound scans
+   (photographed or uploaded straight from an iPad) all work, not just
+   images. Also embeds the same
    Vaccination History + Add Vaccination module as the patient page (under
    Notes, in the same column), so a vaccination given during the visit can
    be recorded without leaving the consult. A "Long-Term Patient Notes"
@@ -254,10 +264,12 @@ app/
 │   ├── patient-alerts/route.js           → a patient's long-term notes (dated, persist across
 │   │                                        their whole record) — deliberately not consult-notes
 │   ├── diagnostics/, treatment-items/    → per-consult diagnostics & treatment plan —
-│   │                                        treatment-items also serves a hospitalization
-│   │                                        worksheet entry's medications/goods/tests
-│   │                                        (hospitalization_note_id instead of visit_id;
-│   │                                        exactly one is required)
+│   │                                        ordering a diagnostic (must be a Test catalog
+│   │                                        item) auto-creates its treatment_items line too
+│   │                                        (diagnostics.treatment_item_id); treatment-items
+│   │                                        also serves a hospitalization worksheet entry's
+│   │                                        medications/goods/tests (hospitalization_note_id
+│   │                                        instead of visit_id; exactly one is required)
 │   ├── surgical-reports/, dental-reports/ → per-consult advanced-treatment reports
 │   ├── consent-forms/route.js            → sign a consent form — text is always generated
 │   │                                        server-side from lib/consentTemplates.js, never

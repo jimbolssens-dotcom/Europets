@@ -20,12 +20,14 @@ import { groupCatalogBySubcategory, subcategoryName, MAIN_CATEGORIES, MAIN_CATEG
 import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
 
-const DIAGNOSTIC_TYPES = [
-  { value: 'blood_test', label: 'Blood test' },
-  { value: 'xray', label: 'X-ray' },
-  { value: 'ultrasound', label: 'Ultrasound' },
-  { value: 'other', label: 'Other' },
-];
+// Diagnostics predating migration 023 have a free-text type instead of a
+// catalog link — kept only to label those old rows.
+const LEGACY_DIAGNOSTIC_TYPE_LABELS = {
+  blood_test: 'Blood test',
+  xray: 'X-ray',
+  ultrasound: 'Ultrasound',
+  other: 'Other',
+};
 
 function NoteThread({ visitId, staff }) {
   const [notes, setNotes] = useState([]);
@@ -105,7 +107,8 @@ export default function ConsultDetailPage() {
   const [recordError, setRecordError] = useState(null);
 
   const [diagnostics, setDiagnostics] = useState([]);
-  const [diagForm, setDiagForm] = useState({ type: 'blood_test', description: '', result: '' });
+  const [diagForm, setDiagForm] = useState({ goods_service_id: '', description: '', result: '' });
+  const [diagError, setDiagError] = useState(null);
 
   const [treatmentItems, setTreatmentItems] = useState([]);
   const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1' });
@@ -287,18 +290,27 @@ export default function ConsultDetailPage() {
 
   async function addDiagnostic(e) {
     e.preventDefault();
-    await fetch('/api/diagnostics', {
+    if (!diagForm.goods_service_id) return;
+    setDiagError(null);
+    const res = await fetch('/api/diagnostics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ visit_id: id, ...diagForm }),
     });
-    setDiagForm({ type: 'blood_test', description: '', result: '' });
+    const data = await res.json();
+    if (!res.ok) {
+      setDiagError(data.error || 'Failed to add diagnostic');
+      return;
+    }
+    setDiagForm({ goods_service_id: '', description: '', result: '' });
     loadDiagnostics();
+    loadTreatmentItems();
   }
 
   async function deleteDiagnostic(diagId) {
     await fetch(`/api/diagnostics/${diagId}`, { method: 'DELETE' });
     loadDiagnostics();
+    loadTreatmentItems();
   }
 
   async function addTreatmentItem(e) {
@@ -541,7 +553,11 @@ export default function ConsultDetailPage() {
       {diagnostics.map((d) => (
         <div key={d.id} className="visit-card">
           <div className="visit-header">
-            <strong>{DIAGNOSTIC_TYPES.find((t) => t.value === d.type)?.label || d.type}</strong>
+            <strong>
+              {d.goods_service_id
+                ? catalog.find((c) => c.id === d.goods_service_id)?.name || 'Test'
+                : LEGACY_DIAGNOSTIC_TYPE_LABELS[d.type] || d.type}
+            </strong>
             <button type="button" onClick={() => deleteDiagnostic(d.id)}>
               Remove
             </button>
@@ -557,15 +573,28 @@ export default function ConsultDetailPage() {
       ))}
       <form className="card" onSubmit={addDiagnostic}>
         <h3>Add Diagnostic</h3>
-        <select value={diagForm.type} onChange={(e) => setDiagForm({ ...diagForm, type: e.target.value })}>
-          {DIAGNOSTIC_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
+        {diagError && <p className="error">{diagError}</p>}
+        <select
+          required
+          value={diagForm.goods_service_id}
+          onChange={(e) => setDiagForm({ ...diagForm, goods_service_id: e.target.value })}
+        >
+          <option value="">Select test from catalog...</option>
+          {groupCatalogBySubcategory(
+            catalog.filter((c) => c.main_category === 'test'),
+            subcategories
+          ).map((group) => (
+            <optgroup key={group.key} label={group.subcategoryName || group.label}>
+              {group.items.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
         <input
-          placeholder="Description (what was ordered)"
+          placeholder="Description (what was ordered — e.g. left front leg)"
           value={diagForm.description}
           onChange={(e) => setDiagForm({ ...diagForm, description: e.target.value })}
         />
@@ -575,6 +604,10 @@ export default function ConsultDetailPage() {
           onChange={(e) => setDiagForm({ ...diagForm, result: e.target.value })}
         />
         <button type="submit">Add Diagnostic</button>
+        <p className="visit-meta">
+          Also adds this test to the Treatment Plan, ready to invoice. Upload blood work PDFs,
+          x-rays, or ultrasound scans on each entry above once it's added.
+        </p>
       </form>
       </div>
 

@@ -135,10 +135,14 @@ create table visits (
 );
 
 -- ============ DIAGNOSTICS ============
+-- goods_service_id and treatment_item_id are added further down (once
+-- goods_services and treatment_items exist) — picking a catalog test here
+-- automatically adds it to the treatment plan too.
 create table diagnostics (
     id uuid primary key default gen_random_uuid(),
     visit_id uuid references visits(id) on delete cascade not null,
-    type text not null,              -- 'blood_test', 'xray', 'ultrasound', 'other'
+    type text,                       -- legacy free-text ('blood_test', 'xray', ...); superseded
+                                      -- by goods_service_id for new rows
     description text,
     result text,
     created_at timestamptz default now()
@@ -350,6 +354,19 @@ create table hospitalization_notes (
 -- invoice (across every entry of the admission) at discharge.
 alter table treatment_items add column hospitalization_note_id uuid
     references hospitalization_notes(id) on delete cascade;
+
+-- Deferred from diagnostics' own definition above, since it needs
+-- goods_services and treatment_items to exist first — a diagnostic can
+-- link to the catalog test that was ordered, which automatically creates
+-- a matching treatment_items line so it flows straight into the
+-- treatment plan and invoice without a separate manual step. type stays
+-- for legacy rows predating this; new diagnostics use goods_service_id
+-- instead. on delete set null (not cascade) on treatment_item_id — if the
+-- line is removed straight from the treatment plan, the diagnostic and
+-- its results/attachments stay, just unbilled.
+alter table diagnostics alter column type drop not null;
+alter table diagnostics add column goods_service_id uuid references goods_services(id);
+alter table diagnostics add column treatment_item_id uuid references treatment_items(id) on delete set null;
 
 -- ============ CONSENT FORMS ============
 -- Signed when a pet is left in the clinic's care — surgery (standard
