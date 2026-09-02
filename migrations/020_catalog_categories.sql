@@ -91,3 +91,9 @@ end $$;
 
 create index if not exists idx_goods_services_main_category on goods_services(main_category);
 create index if not exists idx_goods_services_subcategory on goods_services(subcategory_id);
+
+-- Newer Supabase projects auto-enable RLS by default on new tables, which
+-- blocks all access for the publishable/anon key until policies are added.
+-- This app has no staff auth yet, so — like every other table (see
+-- migrations/003_disable_rls.sql) — RLS is intentionally off for now.
+alter table catalog_subcategories disable row level security;

@@ -25,3 +25,9 @@ create table if not exists consent_forms (
 create index if not exists idx_consent_forms_visit on consent_forms(visit_id);
 create index if not exists idx_consent_forms_hospitalization on consent_forms(hospitalization_id);
 create index if not exists idx_consent_forms_patient on consent_forms(patient_id);
+
+-- Newer Supabase projects auto-enable RLS by default on new tables, which
+-- blocks all access for the publishable/anon key until policies are added.
+-- This app has no staff auth yet, so — like every other table (see
+-- migrations/003_disable_rls.sql) — RLS is intentionally off for now.
+alter table consent_forms disable row level security;

@@ -544,3 +544,5 @@ alter table clinic_settings disable row level security;
 alter table vaccine_protocols disable row level security;
 alter table vaccinations disable row level security;
 alter table intake_requests disable row level security;
+alter table catalog_subcategories disable row level security;
+alter table consent_forms disable row level security;
