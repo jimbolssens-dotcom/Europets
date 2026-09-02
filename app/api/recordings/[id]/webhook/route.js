@@ -5,16 +5,19 @@
 // call) using the AssemblyAI job id we stored ourselves when submitting it.
 //
 // On success: for a consult recording, break the transcript down into the
-// Vitals & Exam fields (anamnesis/findings/diagnosis/prognosis/
-// treatment_notes) and write those onto the visit directly — a field
-// already filled in by the vet is appended to (with a timestamp marker)
-// rather than overwritten, so nothing typed before the recording finished
-// is ever lost. Diagnostic tests and treatments/medications mentioned as
-// actually ordered/given are matched against the goods_services catalog
-// and added to the Diagnostics/Treatment Plan lists directly, the same as
-// picking them from CatalogPicker would. For a surgery recording, fold a
-// freeform summary into surgical_reports.ai_summary as before. Either way,
-// mark the recording done.
+// Vitals & Exam fields — weight/temperature/body condition score plus
+// anamnesis/findings/diagnosis/prognosis/treatment_notes — and write those
+// onto the visit directly. A text field already filled in by the vet is
+// appended to (with a timestamp marker) rather than overwritten; a numeric
+// vital is only set if it's still empty, since there's no sensible way to
+// "append" to a number. Diagnostic tests and treatments/medications
+// mentioned as actually ordered/given are matched against the
+// goods_services catalog (the extraction prompt is given the catalog's
+// own names so the model echoes them verbatim) and added to the
+// Diagnostics/Treatment Plan lists directly, the same as picking them
+// from CatalogPicker would. For a surgery recording, fold a freeform
+// summary into surgical_reports.ai_summary as before. Either way, mark
+// the recording done.
 //
 // AssemblyAI may redeliver this webhook (e.g. on a retry) — recording.status
 // is checked up front so a redelivery is a no-op instead of double-writing
@@ -35,7 +38,8 @@ import { NextResponse } from 'next/server';
 // this for the same reason.
 export const maxDuration = 60;
 
-const CONSULT_RECORD_FIELDS = ['anamnesis', 'findings', 'diagnosis', 'prognosis', 'treatment_notes'];
+const CONSULT_TEXT_FIELDS = ['anamnesis', 'findings', 'diagnosis', 'prognosis', 'treatment_notes'];
+const CONSULT_NUMERIC_FIELDS = ['weight_kg', 'temperature_c', 'body_condition_score'];
 
 export async function POST(request, { params }) {
   const { data: recording, error: fetchError } = await supabase
@@ -82,34 +86,52 @@ export async function POST(request, { params }) {
       .eq('id', recording.id);
 
     if (recording.entity_type === 'visit' && hasSpeech) {
-      const fields = await extractConsultFields(transcript);
+      // Fetch the catalog first — the extraction prompt is grounded with
+      // these exact names so the model echoes them verbatim instead of
+      // paraphrasing (e.g. "Anaemia PCR panel" vs. the catalog's "PCR
+      // Anemia panel"), which a fuzzy match after the fact would miss.
+      const [{ data: tests }, { data: productsAndServices }] = await Promise.all([
+        supabase.from('goods_services').select('id, name').eq('main_category', 'test').eq('active', true),
+        supabase.from('goods_services').select('id, name').in('main_category', ['product', 'service']).eq('active', true),
+      ]);
+
+      const fields = await extractConsultFields(transcript, {
+        testNames: (tests || []).map((t) => t.name),
+        productServiceNames: (productsAndServices || []).map((t) => t.name),
+      });
 
       const { data: visit } = await supabase
         .from('visits')
-        .select(CONSULT_RECORD_FIELDS.join(', '))
+        .select([...CONSULT_TEXT_FIELDS, ...CONSULT_NUMERIC_FIELDS, 'patient_id'].join(', '))
         .eq('id', recording.entity_id)
         .single();
 
       const stamp = `[AI recording, ${new Date().toLocaleString()}]`;
       const update = {};
-      for (const field of CONSULT_RECORD_FIELDS) {
+      for (const field of CONSULT_TEXT_FIELDS) {
         const extracted = fields[field]?.trim();
         if (!extracted) continue;
         const existing = visit?.[field]?.trim();
         update[field] = existing ? `${existing}\n\n${stamp}\n${extracted}` : extracted;
       }
+      // Numeric vitals can't be "appended" the way text can — only set
+      // them if the vet hasn't already recorded a value, so a manual entry
+      // is never silently overwritten.
+      for (const field of CONSULT_NUMERIC_FIELDS) {
+        const value = fields[field];
+        if (value === null || value === undefined) continue;
+        if (visit?.[field] !== null && visit?.[field] !== undefined) continue;
+        update[field] = value;
+      }
 
       if (Object.keys(update).length > 0) {
         await supabase.from('visits').update(update).eq('id', recording.entity_id);
+        if (update.weight_kg !== undefined && visit?.patient_id) {
+          await supabase.from('patients').update({ current_weight_kg: update.weight_kg }).eq('id', visit.patient_id);
+        }
       }
 
       if (fields.diagnostics_ordered?.length) {
-        const { data: tests } = await supabase
-          .from('goods_services')
-          .select('id, name')
-          .eq('main_category', 'test')
-          .eq('active', true);
-
         for (const name of fields.diagnostics_ordered) {
           const match = matchCatalogItem(name, tests || []);
           if (!match) continue;
@@ -131,14 +153,8 @@ export async function POST(request, { params }) {
       }
 
       if (fields.treatments_given?.length) {
-        const { data: items } = await supabase
-          .from('goods_services')
-          .select('id, name')
-          .in('main_category', ['product', 'service'])
-          .eq('active', true);
-
         for (const t of fields.treatments_given) {
-          const match = matchCatalogItem(t.name, items || []);
+          const match = matchCatalogItem(t.name, productsAndServices || []);
           if (!match) continue;
 
           await supabase.from('treatment_items').insert([
