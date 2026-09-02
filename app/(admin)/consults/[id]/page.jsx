@@ -30,66 +30,9 @@ const LEGACY_DIAGNOSTIC_TYPE_LABELS = {
   other: 'Other',
 };
 
-function NoteThread({ visitId, staff }) {
-  const [notes, setNotes] = useState([]);
-  const [text, setText] = useState('');
-  const [authorId, setAuthorId] = useState('');
-
-  const load = () =>
-    fetch(`/api/consult-notes?visit_id=${visitId}`)
-      .then((res) => res.json())
-      .then((data) => setNotes(Array.isArray(data) ? data : []));
-
-  useEffect(() => {
-    load();
-    const channel = supabase
-      .channel(`consult-notes-${visitId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'consult_notes', filter: `visit_id=eq.${visitId}` },
-        () => load()
-      )
-      .subscribe();
-    return () => supabase.removeChannel(channel);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visitId]);
-
-  async function addNote(e) {
-    e.preventDefault();
-    if (!text.trim()) return;
-    await fetch('/api/consult-notes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: visitId, author_id: authorId || null, note_text: text }),
-    });
-    setText('');
-    load();
-  }
-
-  return (
-    <div className="notes">
-      <ul className="note-list">
-        {notes.map((n) => (
-          <li key={n.id}>
-            <span className="note-author">{n.staff?.full_name || 'Unknown'}:</span> {n.note_text}
-          </li>
-        ))}
-        {notes.length === 0 && <li className="note-empty">No notes yet.</li>}
-      </ul>
-      <form onSubmit={addNote} className="note-form">
-        <select value={authorId} onChange={(e) => setAuthorId(e.target.value)}>
-          <option value="">Author...</option>
-          {staff.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.full_name}
-            </option>
-          ))}
-        </select>
-        <input placeholder="Add a note..." value={text} onChange={(e) => setText(e.target.value)} />
-        <button type="submit">Add</button>
-      </form>
-    </div>
-  );
+function truncate(str, max = 160) {
+  const s = str.trim();
+  return s.length > max ? `${s.slice(0, max).trim()}…` : s;
 }
 
 export default function ConsultDetailPage() {
@@ -140,6 +83,8 @@ export default function ConsultDetailPage() {
 
   const [invoiceInfo, setInvoiceInfo] = useState(null); // { id, status } of the active invoice, if any
   const [creatingInvoice, setCreatingInvoice] = useState(false);
+
+  const [previousVisits, setPreviousVisits] = useState([]);
 
   const loadConsult = () =>
     fetch(`/api/visits/${id}`)
@@ -226,6 +171,18 @@ export default function ConsultDetailPage() {
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (!consult?.patient_id) return;
+    fetch(`/api/visits?patient_id=${consult.patient_id}&status=complete`)
+      .then((res) => res.json())
+      .then((data) => {
+        const list = (Array.isArray(data) ? data : [])
+          .filter((v) => v.id !== id)
+          .sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+        setPreviousVisits(list);
+      });
+  }, [consult?.patient_id, id]);
 
   function appendRecordField(field, text) {
     setRecord((prev) => ({ ...prev, [field]: prev[field] ? `${prev[field]}\n${text}` : text }));
@@ -434,6 +391,40 @@ export default function ConsultDetailPage() {
         </details>
       )}
 
+      {previousVisits.length > 0 && (
+        <details className="consult-history-panel">
+          <summary>🕓 Previous Consults ({previousVisits.length})</summary>
+          <ul className="consult-history-list">
+            {previousVisits.map((v) => (
+              <li key={v.id} className="consult-history-item">
+                <p className="visit-meta">
+                  <a href={`/consults/${v.id}`}>{new Date(v.started_at).toLocaleDateString()}</a>
+                  {v.staff?.full_name && ` · ${v.staff.full_name}`}
+                </p>
+                {v.anamnesis && (
+                  <p>
+                    <strong>Anamnesis:</strong> {truncate(v.anamnesis)}
+                  </p>
+                )}
+                {v.findings && (
+                  <p>
+                    <strong>Findings:</strong> {truncate(v.findings)}
+                  </p>
+                )}
+                {v.treatment_notes && (
+                  <p>
+                    <strong>Treatment:</strong> {truncate(v.treatment_notes)}
+                  </p>
+                )}
+                {!v.anamnesis && !v.findings && !v.treatment_notes && (
+                  <p className="note-empty">No record notes for this consult.</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
       {consult.status === 'in_progress' && (
         <button type="button" onClick={completeConsult}>
           Complete Consult
@@ -530,17 +521,17 @@ export default function ConsultDetailPage() {
           {savingRecord ? 'Saving...' : 'Save Record'}
         </button>
       </form>
+
+      <h3>Record Consult</h3>
+      <p className="visit-meta">
+        Record the consult and Claude will break it down and fill in the Anamnesis, Findings,
+        Prognosis, and Treatment plan fields above — anything already filled in is kept, with the
+        recording's version appended below it.
+      </p>
+      <AudioRecorder entityType="visit" entityId={id} />
       </div>
 
       <div>
-      <h2>Notes</h2>
-      <NoteThread visitId={id} staff={staff} />
-      <h3>Record Consult</h3>
-      <p className="visit-meta">
-        Record the consult and Claude will transcribe and summarize it into a note above.
-      </p>
-      <AudioRecorder entityType="visit" entityId={id} />
-
       <h2>Vaccinations</h2>
       <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
       <VaccinationForm {...vac} species={consult.patients?.species} staff={staff} />

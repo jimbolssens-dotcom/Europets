@@ -1,7 +1,7 @@
 // app/api/patient-alerts/route.js
 // GET  /api/patient-alerts?patient_id=X  -> a patient's long-term notes,
 //        newest first — persists across the patient's whole record, not
-//        tied to any one visit (see consult-notes for the per-visit thread)
+//        tied to any one visit
 // POST /api/patient-alerts               -> add one
 
 import { supabase } from '@/lib/supabaseClient';

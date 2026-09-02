@@ -676,6 +676,50 @@ button.secondary:hover {
   color: #8a6116;
 }
 
+/* Quick-glance link to a patient's past consults on the consult page —
+   neutral/pink (not the amber of .patient-alerts-panel) since it's
+   reference material, not a standing warning. Collapsed by default so it
+   doesn't compete with the current consult. */
+.consult-history-panel {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-left: 4px solid var(--pink-dark);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
+.consult-history-panel summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--pink-dark);
+}
+
+.consult-history-panel[open] summary {
+  margin-bottom: 0.6rem;
+}
+
+.consult-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.consult-history-item {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+}
+
+.consult-history-item p {
+  margin: 0.2rem 0;
+  font-size: 0.85rem;
+}
+
 .patient-alerts-list {
   list-style: none;
   margin: 0 0 0.75rem;
@@ -1005,24 +1049,6 @@ button.secondary:hover {
   font-size: 0.85rem;
   line-height: 1.5;
   color: #333;
-}
-
-.note-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 0.75rem;
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.note-list li {
-  padding: 0.35rem 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.note-author {
-  font-weight: 600;
-  color: var(--pink-dark);
 }
 
 .note-empty {

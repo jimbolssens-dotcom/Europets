@@ -3,8 +3,8 @@
 // handling", "allergic to penicillin", ...) — used by both the consult
 // page (where a vet would first notice something worth flagging) and the
 // patient detail page (where it's shown prominently). Deliberately
-// separate from consult_notes (per-visit) and the patient's own free-text
-// notes field.
+// separate from the per-visit consult record and the patient's own
+// free-text notes field.
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
