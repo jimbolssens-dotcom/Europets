@@ -847,6 +847,20 @@ button.secondary:hover {
   margin: 0.25rem 0 0.75rem;
 }
 
+.consent-text-box {
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #333;
+}
+
 .note-list {
   list-style: none;
   padding: 0;

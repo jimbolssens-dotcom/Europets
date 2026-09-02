@@ -193,7 +193,24 @@ appointments, full consult medical records, hospitalization, and invoicing.
    straight into `clients`/`patients` — Approve creates the real client
    and patient record(s); Reject just discards it. Same "unguessable
    link, not login" security model as the hospitalization portal
-9. FileMaker migration
+9. ✅ Consent Forms — signed when a pet is left in the clinic's care.
+   Four types: Surgery (split into Standard Neutering vs. Complex /
+   High-Risk), Hospitalization, and Dental — each with its own canonical
+   wording (`lib/consentTemplates.js`), previewed live before signing on
+   the consult page (surgery/dental) or the hospitalization page
+   (hospitalization). Standard Neutering explicitly covers the left-ear
+   tattoo placed on a spayed female; Complex/High-Risk spells out the
+   anesthesia and surgical risks and that outcomes can't be guaranteed.
+   Every type carries a shared liability clause: no guaranteed outcome,
+   the clinic may proceed with whatever care it judges to be in the
+   pet's best interest (after trying to reach the owner first), and the
+   owner accepts financial responsibility for it. The client "signs" by
+   typing their name; the exact text shown is snapshotted onto the
+   record at signing time so it stays accurate even if the template
+   wording changes later, and a signed PDF (`/api/consent-forms/:id/pdf`)
+   is available to download. Not legal advice — have this wording
+   reviewed by a lawyer before relying on it for a real clinic
+10. FileMaker migration
 
 ## Folder layout
 ```
@@ -212,6 +229,11 @@ app/
 │   │                                        (hospitalization_note_id instead of visit_id;
 │   │                                        exactly one is required)
 │   ├── surgical-reports/, dental-reports/ → per-consult advanced-treatment reports
+│   ├── consent-forms/route.js            → sign a consent form — text is always generated
+│   │                                        server-side from lib/consentTemplates.js, never
+│   │                                        trusted from the client; attaches to a visit_id
+│   │                                        (surgery/dental) or hospitalization_id
+│   ├── consent-forms/[id]/pdf/route.js   → the signed record as a downloadable PDF
 │   ├── hospitalizations/                 → admissions + day-to-day worksheet notes
 │   │                                        (append-only — no edit endpoint; each entry can
 │   │                                        include a weight and its own treatment_items,
@@ -299,10 +321,15 @@ lib/
 ├── taxInvoicePdf.js                      → builds the FTA-compliant Tax Invoice PDF (pdf-lib)
 ├── species.js                            → loose cat/dog classification for vaccine filtering
 ├── invoicing.js                          → subtotal/VAT/total calculation
-└── catalogGrouping.js                    → groups goods_services items by subcategory for
-                                             <optgroup>-based catalog dropdowns (Product/Test/
-                                             Service order), shared across every "add item from
-                                             catalog" form
+├── catalogGrouping.js                    → groups goods_services items by subcategory for
+│                                            <optgroup>-based catalog dropdowns (Product/Test/
+│                                            Service order), shared across every "add item from
+│                                            catalog" form
+├── consentTemplates.js                   → the canonical wording for each consent form type +
+│                                            the shared liability clause; isomorphic, so the same
+│                                            text renders as a live preview client-side and gets
+│                                            regenerated server-side as the signed record
+└── consentFormPdf.js                     → builds the signed consent form PDF (pdf-lib)
 schema.sql                                → full database schema
 migrations/                               → incremental SQL for already-deployed databases
 ```

@@ -15,6 +15,7 @@ import { useVaccinations } from '@/app/_components/useVaccinations';
 import VaccinationForm from '@/app/_components/VaccinationForm';
 import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { groupCatalogBySubcategory, subcategoryName } from '@/lib/catalogGrouping';
+import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 
 const DIAGNOSTIC_TYPES = [
   { value: 'blood_test', label: 'Blood test' },
@@ -117,6 +118,16 @@ export default function ConsultDetailPage() {
     notes: '',
   });
 
+  const [consentForms, setConsentForms] = useState([]);
+  const [consentForm, setConsentForm] = useState({
+    form_type: '',
+    signed_by_name: '',
+    signed_by_relationship: '',
+    staff_witness_id: '',
+  });
+  const [consentSubmitting, setConsentSubmitting] = useState(false);
+  const [consentError, setConsentError] = useState(null);
+
   const [hospReason, setHospReason] = useState('');
   const [admitting, setAdmitting] = useState(false);
 
@@ -168,6 +179,11 @@ export default function ConsultDetailPage() {
         setInvoiceInfo(list.find((inv) => inv.status !== 'void') || null);
       });
 
+  const loadConsentForms = () =>
+    fetch(`/api/consent-forms?visit_id=${id}`)
+      .then((res) => res.json())
+      .then((data) => setConsentForms(Array.isArray(data) ? data : []));
+
   useEffect(() => {
     loadConsult();
     loadDiagnostics();
@@ -175,6 +191,7 @@ export default function ConsultDetailPage() {
     loadSurgicalReports();
     loadDentalReports();
     loadInvoiceInfo();
+    loadConsentForms();
 
     Promise.all([
       fetch('/api/staff').then((res) => res.json()),
@@ -196,6 +213,7 @@ export default function ConsultDetailPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'surgical_reports', filter: `visit_id=eq.${id}` }, loadSurgicalReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dental_reports', filter: `visit_id=eq.${id}` }, loadDentalReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices', filter: `visit_id=eq.${id}` }, loadInvoiceInfo)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'consent_forms', filter: `visit_id=eq.${id}` }, loadConsentForms)
       .subscribe();
 
     return () => supabase.removeChannel(channel);
@@ -289,6 +307,28 @@ export default function ConsultDetailPage() {
     });
     setTreatForm({ goods_service_id: '', instructions: '', quantity: '1' });
     loadTreatmentItems();
+  }
+
+  async function addConsentForm(e) {
+    e.preventDefault();
+    if (!consentForm.form_type || !consentForm.signed_by_name.trim()) return;
+    setConsentSubmitting(true);
+    setConsentError(null);
+
+    const res = await fetch('/api/consent-forms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visit_id: id, ...consentForm }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setConsentError(data.error || 'Failed to save consent form');
+    } else {
+      setConsentForm({ form_type: '', signed_by_name: '', signed_by_relationship: '', staff_witness_id: '' });
+      loadConsentForms();
+    }
+    setConsentSubmitting(false);
   }
 
   async function deleteTreatmentItem(itemId) {
@@ -608,6 +648,72 @@ export default function ConsultDetailPage() {
       )}
       </div>
       </div>
+
+      <h2>Consent Forms</h2>
+      {consentForms.length === 0 && <p>No consent forms signed yet.</p>}
+      {consentForms.map((cf) => (
+        <div key={cf.id} className="visit-card">
+          <strong>{CONSENT_FORM_LABELS[cf.form_type] || cf.form_type}</strong>
+          <p>
+            Signed by {cf.signed_by_name}
+            {cf.signed_by_relationship && ` (${cf.signed_by_relationship})`} ·{' '}
+            {new Date(cf.signed_at).toLocaleString()}
+            {cf.staff?.full_name && ` · Witnessed by ${cf.staff.full_name}`}
+          </p>
+          <a href={`/api/consent-forms/${cf.id}/pdf`} target="_blank" rel="noreferrer">
+            📄 Download signed PDF
+          </a>
+        </div>
+      ))}
+      <form className="card" onSubmit={addConsentForm}>
+        <h3>Sign a Consent Form</h3>
+        {consentError && <p className="error">{consentError}</p>}
+        <select
+          required
+          value={consentForm.form_type}
+          onChange={(e) => setConsentForm({ ...consentForm, form_type: e.target.value })}
+        >
+          <option value="">Select consent form...</option>
+          {CONSENT_FORM_TYPES.filter((t) => t !== 'hospitalization').map((t) => (
+            <option key={t} value={t}>
+              {CONSENT_FORM_LABELS[t]}
+            </option>
+          ))}
+        </select>
+        {consentForm.form_type && (
+          <div className="consent-text-box">
+            {buildConsentFormText(consentForm.form_type, {
+              name: consult.patients?.name,
+              sex: consult.patients?.sex,
+            })}
+          </div>
+        )}
+        <input
+          placeholder="Signed by (full name)"
+          required
+          value={consentForm.signed_by_name}
+          onChange={(e) => setConsentForm({ ...consentForm, signed_by_name: e.target.value })}
+        />
+        <input
+          placeholder="Relationship to pet (e.g. Owner) — optional"
+          value={consentForm.signed_by_relationship}
+          onChange={(e) => setConsentForm({ ...consentForm, signed_by_relationship: e.target.value })}
+        />
+        <select
+          value={consentForm.staff_witness_id}
+          onChange={(e) => setConsentForm({ ...consentForm, staff_witness_id: e.target.value })}
+        >
+          <option value="">Witnessed by (staff)...</option>
+          {staff.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.full_name}
+            </option>
+          ))}
+        </select>
+        <button type="submit" disabled={consentSubmitting}>
+          {consentSubmitting ? 'Saving...' : 'Sign & Save Consent Form'}
+        </button>
+      </form>
 
       <div className="two-col">
       <div>

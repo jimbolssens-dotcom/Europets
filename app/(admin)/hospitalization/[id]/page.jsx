@@ -15,6 +15,7 @@ import AttachmentSection from '@/app/_components/AttachmentSection';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import { groupCatalogBySubcategory } from '@/lib/catalogGrouping';
+import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -50,6 +51,14 @@ export default function HospitalizationDetailPage() {
   const [subcategories, setSubcategories] = useState([]);
   const [invoiceInfo, setInvoiceInfo] = useState(null);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
+  const [consentForms, setConsentForms] = useState([]);
+  const [consentForm, setConsentForm] = useState({
+    signed_by_name: '',
+    signed_by_relationship: '',
+    staff_witness_id: '',
+  });
+  const [consentSubmitting, setConsentSubmitting] = useState(false);
+  const [consentError, setConsentError] = useState(null);
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`)
@@ -72,10 +81,16 @@ export default function HospitalizationDetailPage() {
         setInvoiceInfo(list.find((inv) => inv.status !== 'void') || null);
       });
 
+  const loadConsentForms = () =>
+    fetch(`/api/consent-forms?hospitalization_id=${id}`)
+      .then((res) => res.json())
+      .then((data) => setConsentForms(Array.isArray(data) ? data : []));
+
   useEffect(() => {
     loadAdmission();
     loadNotes();
     loadInvoiceInfo();
+    loadConsentForms();
     fetch('/api/staff')
       .then((res) => res.json())
       .then((data) => setStaff(Array.isArray(data) ? data : []));
@@ -97,6 +112,11 @@ export default function HospitalizationDetailPage() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hospitalization_notes', filter: `hospitalization_id=eq.${id}` },
         loadNotes
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'consent_forms', filter: `hospitalization_id=eq.${id}` },
+        loadConsentForms
       )
       .subscribe();
     return () => supabase.removeChannel(channel);
@@ -135,6 +155,28 @@ export default function HospitalizationDetailPage() {
   async function deleteTreatmentItem(itemId) {
     await fetch(`/api/treatment-items/${itemId}`, { method: 'DELETE' });
     loadNotes();
+  }
+
+  async function addConsentForm(e) {
+    e.preventDefault();
+    if (!consentForm.signed_by_name.trim()) return;
+    setConsentSubmitting(true);
+    setConsentError(null);
+
+    const res = await fetch('/api/consent-forms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hospitalization_id: id, form_type: 'hospitalization', ...consentForm }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setConsentError(data.error || 'Failed to save consent form');
+    } else {
+      setConsentForm({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '' });
+      loadConsentForms();
+    }
+    setConsentSubmitting(false);
   }
 
   async function createInvoice() {
@@ -258,6 +300,56 @@ export default function HospitalizationDetailPage() {
           <a href={`/consults/${admission.originating_visit_id}`}>View originating consult</a>
         </p>
       )}
+
+      <details className="case-files" open={consentForms.length === 0}>
+        <summary>📝 Consent Forms {consentForms.length > 0 && `(${consentForms.length} signed)`}</summary>
+        {consentForms.map((cf) => (
+          <div key={cf.id} className="visit-card">
+            <strong>{CONSENT_FORM_LABELS[cf.form_type] || cf.form_type}</strong>
+            <p>
+              Signed by {cf.signed_by_name}
+              {cf.signed_by_relationship && ` (${cf.signed_by_relationship})`} ·{' '}
+              {new Date(cf.signed_at).toLocaleString()}
+              {cf.staff?.full_name && ` · Witnessed by ${cf.staff.full_name}`}
+            </p>
+            <a href={`/api/consent-forms/${cf.id}/pdf`} target="_blank" rel="noreferrer">
+              📄 Download signed PDF
+            </a>
+          </div>
+        ))}
+        <form className="card" onSubmit={addConsentForm}>
+          <h3>Sign Hospitalization Consent</h3>
+          {consentError && <p className="error">{consentError}</p>}
+          <div className="consent-text-box">
+            {buildConsentFormText('hospitalization', { name: admission.patients?.name })}
+          </div>
+          <input
+            placeholder="Signed by (full name)"
+            required
+            value={consentForm.signed_by_name}
+            onChange={(e) => setConsentForm({ ...consentForm, signed_by_name: e.target.value })}
+          />
+          <input
+            placeholder="Relationship to pet (e.g. Owner) — optional"
+            value={consentForm.signed_by_relationship}
+            onChange={(e) => setConsentForm({ ...consentForm, signed_by_relationship: e.target.value })}
+          />
+          <select
+            value={consentForm.staff_witness_id}
+            onChange={(e) => setConsentForm({ ...consentForm, staff_witness_id: e.target.value })}
+          >
+            <option value="">Witnessed by (staff)...</option>
+            {staff.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.full_name}
+              </option>
+            ))}
+          </select>
+          <button type="submit" disabled={consentSubmitting}>
+            {consentSubmitting ? 'Saving...' : 'Sign & Save Consent Form'}
+          </button>
+        </form>
+      </details>
 
       <div className="split">
       <div className="split-main">

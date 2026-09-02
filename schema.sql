@@ -351,6 +351,33 @@ create table hospitalization_notes (
 alter table treatment_items add column hospitalization_note_id uuid
     references hospitalization_notes(id) on delete cascade;
 
+-- ============ CONSENT FORMS ============
+-- Signed when a pet is left in the clinic's care — surgery (standard
+-- neutering vs. complex/high-risk), hospitalization, or dental. Each
+-- signed form's exact text is snapshotted at signing time (form_text), so
+-- it stays legally accurate to what the client actually agreed to even if
+-- the canonical template wording changes later. See lib/consentTemplates.js.
+create table consent_forms (
+    id uuid primary key default gen_random_uuid(),
+    patient_id uuid references patients(id) not null,
+    client_id uuid references clients(id) not null,
+    visit_id uuid references visits(id),                    -- surgery/dental forms
+    hospitalization_id uuid references hospitalizations(id), -- hospitalization forms
+    form_type text not null check (
+        form_type in ('surgery_standard_neuter', 'surgery_complex', 'hospitalization', 'dental')
+    ),
+    form_text text not null,
+    signed_by_name text not null,
+    signed_by_relationship text,          -- e.g. 'Owner', 'Authorized Agent' — optional
+    staff_witness_id uuid references staff(id),
+    signed_at timestamptz not null default now(),
+    created_at timestamptz default now()
+);
+
+create index idx_consent_forms_visit on consent_forms(visit_id);
+create index idx_consent_forms_hospitalization on consent_forms(hospitalization_id);
+create index idx_consent_forms_patient on consent_forms(patient_id);
+
 -- ============ ATTACHMENTS ============
 -- Generic file attachment, reusable across diagnostics, reports, and
 -- hospitalization notes. Files live in the "consult-files" Storage bucket.

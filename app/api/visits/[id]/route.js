@@ -27,7 +27,7 @@ export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('visits')
     .select(
-      '*, patients(id, name, species, breed, current_weight_kg), clients(id, full_name, phone), rooms(name), staff(full_name)'
+      '*, patients(id, name, species, breed, sex, current_weight_kg), clients(id, full_name, phone), rooms(name), staff(full_name)'
     )
     .eq('id', params.id)
     .single();
