@@ -1,8 +1,13 @@
 // app/_components/AudioRecorder.jsx
-// Record ambient audio for a consult or surgery, upload it, and show
-// transcription/summary progress. Once AssemblyAI + Claude finish (via a
-// webhook), the summary is folded into consult notes / the surgical
-// report automatically — this just surfaces status and the result.
+// Record ambient audio for a consult, surgery, or hospitalization
+// worksheet entry, upload it, and show transcription/summary progress.
+// Once AssemblyAI + Claude finish (via a webhook), the summary is folded
+// into the relevant record automatically — this just surfaces status and
+// the result. For entityType "hospitalization" there's no existing row
+// to write to (the worksheet entry is an unsaved draft form) — the
+// webhook stores its extraction on the recording itself instead, and
+// `onExtractedFields` reports it here so the page can fill in that
+// draft's still-empty fields.
 
 'use client';
 
@@ -16,7 +21,7 @@ const STATUS_LABEL = {
   error: 'Failed',
 };
 
-export default function AudioRecorder({ entityType, entityId }) {
+export default function AudioRecorder({ entityType, entityId, onExtractedFields }) {
   const [recording, setRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -24,13 +29,33 @@ export default function AudioRecorder({ entityType, entityId }) {
   const [expanded, setExpanded] = useState({});
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
+  // Recordings already finished as of the initial load (or already
+  // reported) — so onExtractedFields only fires for a recording that
+  // finishes while this page is open, not every past one on every mount.
+  const seenDoneIdsRef = useRef(null);
 
   const load = () =>
     fetch(`/api/recordings?entity_type=${entityType}&entity_id=${entityId}`)
       .then((res) => res.json())
-      .then((data) => setItems(Array.isArray(data) ? data : []));
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setItems(list);
+
+        if (seenDoneIdsRef.current === null) {
+          seenDoneIdsRef.current = new Set(list.filter((r) => r.status !== 'processing').map((r) => r.id));
+          return;
+        }
+        if (!onExtractedFields) return;
+        for (const r of list) {
+          if (r.status === 'done' && r.extracted_fields && !seenDoneIdsRef.current.has(r.id)) {
+            seenDoneIdsRef.current.add(r.id);
+            onExtractedFields(r.extracted_fields);
+          }
+        }
+      });
 
   useEffect(() => {
+    seenDoneIdsRef.current = null;
     load();
     const channel = supabase
       .channel(`recordings-${entityType}-${entityId}`)
@@ -118,7 +143,11 @@ export default function AudioRecorder({ entityType, entityId }) {
               )}
               {r.status === 'done' && r.summary && (
                 <div className="recorder-summary">
-                  <strong>{entityType === 'visit' ? 'AI summary (fields below were filled in automatically)' : 'AI summary'}</strong>
+                  <strong>
+                    {entityType === 'visit' || entityType === 'hospitalization'
+                      ? 'AI summary (fields below were filled in automatically)'
+                      : 'AI summary'}
+                  </strong>
                   <p>{r.summary}</p>
                   <button
                     type="button"

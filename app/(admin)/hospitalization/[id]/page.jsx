@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
+import AudioRecorder from '@/app/_components/AudioRecorder';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import CatalogPicker from '@/app/_components/CatalogPicker';
@@ -127,6 +128,39 @@ export default function HospitalizationDetailPage() {
 
   function appendNoteText(text) {
     setNoteForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }));
+  }
+
+  // Applies a recording's extracted fields to the still-unsaved "Add
+  // Worksheet Entry" draft — appetite/weight/temperature/condition only
+  // fill in if still empty (there's no sensible way to "append" to a
+  // select or a number), notes appends the same way a consult's text
+  // fields do, and matched catalog items are added to the pending list
+  // exactly as if "+ Add Item" had been clicked for each.
+  function applyExtractedFields(fields) {
+    setNoteForm((prev) => {
+      const next = { ...prev };
+      if (fields.appetite && !next.appetite) next.appetite = fields.appetite;
+      if (fields.weight_kg != null && !next.weight_kg) next.weight_kg = fields.weight_kg;
+      if (fields.temperature_c != null && !next.temperature_c) next.temperature_c = fields.temperature_c;
+      if (fields.condition && !next.condition) next.condition = fields.condition;
+      if (fields.notes) {
+        const stamp = `[AI recording, ${new Date().toLocaleString()}]`;
+        next.notes = next.notes ? `${next.notes}\n\n${stamp}\n${fields.notes}` : fields.notes;
+      }
+      return next;
+    });
+
+    if (fields.items?.length) {
+      setPendingItems((prev) => [
+        ...prev,
+        ...fields.items.map((item) => ({
+          goods_service_id: item.goods_service_id,
+          instructions: item.instructions || '',
+          quantity: item.quantity || 1,
+          name: item.name,
+        })),
+      ]);
+    }
   }
 
   function addPendingItem() {
@@ -434,6 +468,13 @@ export default function HospitalizationDetailPage() {
 
       <form className="card" onSubmit={addNote}>
         <h3>Add Worksheet Entry</h3>
+        <p className="visit-meta">
+          Record an observation and Claude will break it down and fill in Appetite, Weight,
+          Temperature, Condition, and Notes below — anything already filled in is kept. Medications
+          or tests you mention are matched against the catalog and added to the list below
+          automatically when a confident match is found.
+        </p>
+        <AudioRecorder entityType="hospitalization" entityId={id} onExtractedFields={applyExtractedFields} />
         <input
           type="date"
           required

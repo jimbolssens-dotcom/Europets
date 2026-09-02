@@ -16,8 +16,14 @@
 // own names so the model echoes them verbatim) and added to the
 // Diagnostics/Treatment Plan lists directly, the same as picking them
 // from CatalogPicker would. For a surgery recording, fold a freeform
-// summary into surgical_reports.ai_summary as before. Either way, mark
-// the recording done.
+// summary into surgical_reports.ai_summary as before. For a
+// hospitalization recording, break it down into the worksheet-entry
+// fields (appetite/weight/temperature/condition/notes) plus any
+// medications/tests given, matched against the catalog the same way —
+// but since that worksheet entry is an unsaved draft form, not an
+// existing row, the result is stored on recordings.extracted_fields
+// instead of written to a table; the page picks it up from there. Either
+// way, mark the recording done.
 //
 // AssemblyAI may redeliver this webhook (e.g. on a retry) — recording.status
 // is checked up front so a redelivery is a no-op instead of double-writing
@@ -26,7 +32,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { getTranscript } from '@/lib/assemblyai';
-import { summarizeTranscript, extractConsultFields } from '@/lib/anthropicClient';
+import { summarizeTranscript, extractConsultFields, extractHospitalizationNoteFields } from '@/lib/anthropicClient';
 import { matchCatalogItem } from '@/lib/catalogMatch';
 import { NextResponse } from 'next/server';
 
@@ -172,6 +178,47 @@ export async function POST(request, { params }) {
         .from('surgical_reports')
         .update({ ai_summary: summary })
         .eq('id', recording.entity_id);
+    } else if (recording.entity_type === 'hospitalization' && hasSpeech) {
+      // The worksheet entry this is for doesn't exist as a row yet (it's
+      // an unsaved draft form) — store the extraction on the recording
+      // itself; the page reads it back to fill in that draft's still-
+      // empty fields instead of us writing to a hospitalization_notes row.
+      const { data: catalogItems } = await supabase
+        .from('goods_services')
+        .select('id, name')
+        .eq('active', true);
+
+      const fields = await extractHospitalizationNoteFields(
+        transcript,
+        (catalogItems || []).map((c) => c.name)
+      );
+
+      const matchedItems = (fields.items_given || [])
+        .map((item) => {
+          const match = matchCatalogItem(item.name, catalogItems || []);
+          if (!match) return null;
+          return {
+            goods_service_id: match.id,
+            name: match.name,
+            instructions: item.instructions || null,
+            quantity: item.quantity || 1,
+          };
+        })
+        .filter(Boolean);
+
+      await supabase
+        .from('recordings')
+        .update({
+          extracted_fields: {
+            appetite: fields.appetite || null,
+            weight_kg: fields.weight_kg ?? null,
+            temperature_c: fields.temperature_c ?? null,
+            condition: fields.condition || null,
+            notes: fields.notes || null,
+            items: matchedItems,
+          },
+        })
+        .eq('id', recording.id);
     }
 
     return NextResponse.json({ ok: true });

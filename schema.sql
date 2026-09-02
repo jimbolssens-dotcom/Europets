@@ -446,13 +446,21 @@ create index idx_patient_alerts_patient on patient_alerts(patient_id);
 -- surgical_reports.ai_summary (for a surgery).
 create table recordings (
     id uuid primary key default gen_random_uuid(),
-    entity_type text not null,       -- 'visit' or 'surgical_report'
+    entity_type text not null,       -- 'visit', 'surgical_report', or 'hospitalization'
     entity_id uuid not null,
     file_path text not null,         -- path within the consult-files bucket
     file_name text,
     status text not null default 'processing',  -- 'processing', 'done', 'error'
     transcript text,
     summary text,
+    -- Structured fields extracted from a 'hospitalization' recording
+    -- (appetite/weight/temperature/condition/notes + matched catalog
+    -- items) — that worksheet entry doesn't exist as a row yet at
+    -- recording time, so this is where the extraction lands instead;
+    -- the page reads it back into the still-unsaved draft form. Null for
+    -- 'visit'/'surgical_report' recordings, which write straight onto
+    -- their (already-existing) row instead.
+    extracted_fields jsonb,
     error_message text,
     assemblyai_transcript_id text,
     created_at timestamptz default now()
