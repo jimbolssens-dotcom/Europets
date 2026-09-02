@@ -2,11 +2,13 @@
 // Arranges a list of cages into clusters that roughly mirror the clinic's
 // real floor plan — the 12 standard cages in the middle (2 rows of 6)
 // flanked by the long-term bungalows (2 left, 3 right); on the other side
-// recovery cages stacked in a column of 4, dog cages 2x2, and isolation
-// as 2 stacked plus 1 beside; post-op in its own row below. Doesn't know
-// how to render a single cage — pass `renderTile(cage)` for that, so the
-// full Cage Layout page and a compact picker (e.g. on Admit Patient) can
-// share this same physical layout with completely different tiles.
+// recovery cages stacked in a column of 4, dog cages 2x2, isolation as 2
+// stacked plus 1 beside, and post-op alongside those rather than its own
+// row below (kept everything on two rows instead of spilling a third
+// below the fold). Doesn't know how to render a single cage — pass
+// `renderTile(cage)` for that, so the full Cage Layout page and a compact
+// picker (e.g. on Admit Patient) can share this same physical layout with
+// completely different tiles.
 
 function byGroup(cages, group) {
   return cages.filter((c) => c.group_name === group).sort((a, b) => a.sort_order - b.sort_order);
@@ -58,9 +60,8 @@ export default function CageFloorPlan({ cages, renderTile, compact = false }) {
             </div>
           </div>
         )}
+        {renderCluster(compact ? 'Post-Op' : 'Post-Op Cages', postOpCages, 5)}
       </div>
-
-      {renderCluster(compact ? 'Post-Op' : 'Post-Op Cages', postOpCages, 5)}
     </div>
   );
 }
