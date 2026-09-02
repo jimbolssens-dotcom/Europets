@@ -136,10 +136,14 @@ appointments, full consult medical records, hospitalization, and invoicing.
    page (`/hospitalization/cages`) shows the clinic's fixed physical cage
    map — 12 standard cages, 5 long-term bungalows, 4 recovery, 4 dog, 3
    isolation, 5 post-op (one doubling as the oxygen room) — grouped and
-   color-coded by occupancy; click an occupied cage to jump straight to
+   color-coded by occupancy; tap/click an occupied cage to jump straight to
    that case's file, or assign a currently-admitted, unassigned patient to
-   an empty one from a dropdown right on the tile. A cage can only hold
-   one admitted case at a time (DB-enforced)
+   an empty one from a dropdown right on the tile. Occupied cages are also
+   draggable — mouse-drag on desktop or touch-drag on iPad (built on
+   Pointer Events, not the HTML5 DnD API, since iOS Safari doesn't support
+   that) — drop onto an empty cage to move the patient there, or onto an
+   occupied one to swap the two. A cage can only hold one admitted case at
+   a time (DB-enforced)
 6. ✅ AI layer — record a consult or surgery in the browser, AssemblyAI
    transcribes it, Claude summarizes it, and the summary is folded into
    consult notes / the surgical report automatically. A small 🎤 button on

@@ -1,27 +1,51 @@
 // app/hospitalization/cages/page.jsx
 // Cage Layout: a visual map of the clinic's physical cages (see
-// CageFloorPlan for the arrangement). An occupied cage shows who's in it
-// and opens straight to that hospitalization file on click; an empty
-// cage offers a dropdown to assign one of the currently-admitted-but-
-// unassigned patients to it. Assigning a cage at admission time itself
-// happens on the Admit Patient form (Hospitalization list page), via the
-// same floor plan in miniature.
+// CageFloorPlan for the arrangement). Tap/click an occupied cage to open
+// that case's file; an empty cage offers a dropdown to assign one of the
+// currently-admitted-but-unassigned patients to it. Assigning a cage at
+// admission time itself happens on the Admit Patient form (Hospitalization
+// list page), via the same floor plan in miniature.
+//
+// Occupied cages are also draggable — press and drag (mouse) or touch and
+// drag (iPad) a patient onto another cage to move them there, or onto an
+// already-occupied cage to swap the two. Built on Pointer Events rather
+// than the HTML5 drag-and-drop API, which iOS Safari doesn't support, so
+// the same code path handles mouse and touch. A drag is distinguished
+// from a tap/click by movement past a small threshold.
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import CageFloorPlan from '@/app/_components/CageFloorPlan';
 
-function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onOpen }) {
+const DRAG_THRESHOLD = 6;
+
+function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDragStart, dragSourceId, dropTargetId }) {
+  const isDragSource = dragSourceId === cage.id;
+  const isDropTarget = dropTargetId === cage.id;
+
   if (hosp) {
     return (
-      <div className="cage-tile cage-occupied" onClick={() => onOpen(hosp.id)}>
+      <div
+        className={[
+          'cage-tile',
+          'cage-occupied',
+          isDragSource ? 'cage-drag-source' : '',
+          isDropTarget ? 'cage-drop-target' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        data-cage-id={cage.id}
+        onPointerDown={(e) => onDragStart(e, cage, hosp)}
+        title="Drag to move to another cage, or tap to open"
+      >
         <button
           type="button"
           className="cage-unassign"
           title="Free up this cage"
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             onUnassign(hosp.id);
@@ -40,7 +64,10 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onOpen
   }
 
   return (
-    <div className={`cage-tile cage-empty cage-group-${cage.group_name}`}>
+    <div
+      className={`cage-tile cage-empty cage-group-${cage.group_name}${isDropTarget ? ' cage-drop-target' : ''}`}
+      data-cage-id={cage.id}
+    >
       <div className="cage-tile-header">
         <span className="cage-name">{cage.name}</span>
         {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
@@ -71,6 +98,8 @@ export default function CageLayoutPage() {
   const [admitted, setAdmitted] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [drag, setDrag] = useState(null); // { hospId, patientName, fromCageId, x, y, moved, overCageId }
+  const dragRef = useRef(null); // mirrors `drag` for use inside event handlers without stale closures
 
   const loadAdmitted = () =>
     fetch('/api/hospitalizations?status=admitted')
@@ -97,16 +126,21 @@ export default function CageLayoutPage() {
     return () => supabase.removeChannel(channel);
   }, []);
 
-  async function assignCage(cageId, hospitalizationId) {
-    setError(null);
-    const res = await fetch(`/api/hospitalizations/${hospitalizationId}`, {
+  async function patchHosp(id, body) {
+    const res = await fetch(`/api/hospitalizations/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cage_id: cageId }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || 'Failed to assign that cage');
+    return { ok: res.ok, error: data.error };
+  }
+
+  async function assignCage(cageId, hospitalizationId) {
+    setError(null);
+    const result = await patchHosp(hospitalizationId, { cage_id: cageId });
+    if (!result.ok) {
+      setError(result.error || 'Failed to assign that cage');
       return;
     }
     loadAdmitted();
@@ -114,12 +148,93 @@ export default function CageLayoutPage() {
 
   async function unassignCage(hospitalizationId) {
     if (!confirm('Free up this cage? The case stays admitted, just unassigned from a cage.')) return;
-    await fetch(`/api/hospitalizations/${hospitalizationId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cage_id: null }),
-    });
+    await patchHosp(hospitalizationId, { cage_id: null });
     loadAdmitted();
+  }
+
+  // Moving onto an empty cage is one update. Moving onto an occupied one
+  // swaps the two — done as three sequential updates (vacate the source,
+  // move the occupant into it, then move the dragged patient into their
+  // old spot) so the partial unique index on (cage_id) for admitted cases
+  // never sees two rows pointing at the same cage at once.
+  async function dropOnCage(hospId, fromCageId, toCageId, occupancy) {
+    setError(null);
+    const targetHosp = occupancy[toCageId];
+
+    if (!targetHosp) {
+      const result = await patchHosp(hospId, { cage_id: toCageId });
+      if (!result.ok) setError(result.error || 'Failed to move that patient');
+      loadAdmitted();
+      return;
+    }
+
+    const vacate = await patchHosp(hospId, { cage_id: null });
+    if (!vacate.ok) {
+      setError(vacate.error || 'Failed to move that patient');
+      return;
+    }
+    const moveOther = await patchHosp(targetHosp.id, { cage_id: fromCageId });
+    if (!moveOther.ok) {
+      await patchHosp(hospId, { cage_id: fromCageId }); // best-effort revert
+      setError(moveOther.error || 'Failed to swap those patients');
+      loadAdmitted();
+      return;
+    }
+    const moveDragged = await patchHosp(hospId, { cage_id: toCageId });
+    if (!moveDragged.ok) setError(moveDragged.error || 'Failed to swap those patients');
+    loadAdmitted();
+  }
+
+  function handleDragStart(e, cage, hosp, occupancy) {
+    if (e.target.closest('button, select')) return; // let the unassign button handle its own click
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const state = {
+      pointerId: e.pointerId,
+      hospId: hosp.id,
+      patientName: hosp.patients?.name,
+      fromCageId: cage.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      x: e.clientX,
+      y: e.clientY,
+      moved: false,
+      overCageId: null,
+      occupancy,
+    };
+    dragRef.current = state;
+    setDrag(state);
+
+    const el = e.currentTarget;
+    function onMove(ev) {
+      const s = dragRef.current;
+      if (!s) return;
+      const moved = s.moved || Math.hypot(ev.clientX - s.startX, ev.clientY - s.startY) > DRAG_THRESHOLD;
+      const under = document.elementFromPoint(ev.clientX, ev.clientY);
+      const tileEl = under?.closest('[data-cage-id]');
+      const overCageId = tileEl ? tileEl.getAttribute('data-cage-id') : null;
+      const next = { ...s, x: ev.clientX, y: ev.clientY, moved, overCageId };
+      dragRef.current = next;
+      setDrag(next);
+    }
+    function onUp() {
+      const s = dragRef.current;
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+      dragRef.current = null;
+      setDrag(null);
+      if (!s) return;
+      if (!s.moved) {
+        router.push(`/hospitalization/${s.hospId}`);
+        return;
+      }
+      if (s.overCageId && s.overCageId !== s.fromCageId) {
+        dropOnCage(s.hospId, s.fromCageId, s.overCageId, s.occupancy);
+      }
+    }
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
   }
 
   if (loading) return <p>Loading cage layout...</p>;
@@ -130,7 +245,9 @@ export default function CageLayoutPage() {
     unassignedAdmitted,
     onAssign: assignCage,
     onUnassign: unassignCage,
-    onOpen: (id) => router.push(`/hospitalization/${id}`),
+    onDragStart: (e, cage, hosp) => handleDragStart(e, cage, hosp, occupancy),
+    dragSourceId: drag?.moved ? drag.fromCageId : null,
+    dropTargetId: drag?.moved ? drag.overCageId : null,
   };
 
   return (
@@ -140,9 +257,11 @@ export default function CageLayoutPage() {
       </p>
       <h1>Cage Layout</h1>
       <p className="visit-meta">
-        Click an occupied cage to open that case&apos;s file. An empty cage can be assigned one of
-        the currently admitted, unassigned patients. To assign a cage while admitting a new
-        patient, use the picker on the Admit Patient form instead.
+        Tap or click an occupied cage to open that case&apos;s file, or drag it onto another cage to
+        move that patient there (drag onto an occupied cage to swap the two). An empty cage can
+        also be assigned one of the currently admitted, unassigned patients from its dropdown. To
+        assign a cage while admitting a new patient, use the picker on the Admit Patient form
+        instead.
       </p>
 
       {error && <p className="error">{error}</p>}
@@ -153,6 +272,12 @@ export default function CageLayoutPage() {
           <CageTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} {...tileHandlers} />
         )}
       />
+
+      {drag?.moved && (
+        <div className="cage-drag-ghost" style={{ left: drag.x, top: drag.y }}>
+          {drag.patientName}
+        </div>
+      )}
     </div>
   );
 }

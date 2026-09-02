@@ -1425,7 +1425,38 @@ button.secondary:hover {
 .cage-occupied {
   background: var(--pink-tint);
   border-color: var(--pink);
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+/* Drag-and-drop cage reassignment on the full Cage Layout page — built on
+   Pointer Events so the same code handles mouse (grab) and touch (iPad)
+   drags. The dragged tile dims; whatever tile is currently under the
+   pointer gets a dashed ring; a small pink label follows the pointer. */
+.cage-drag-source {
+  opacity: 0.35;
+  cursor: grabbing;
+}
+
+.cage-drop-target {
+  outline: 3px dashed var(--pink-dark);
+  outline-offset: 2px;
+}
+
+.cage-drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  transform: translate(-50%, -140%);
+  padding: 0.35rem 0.7rem;
+  background: var(--pink);
+  color: white;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
 }
 
 /* Leaves room for the absolutely-positioned unassign button so it doesn't
