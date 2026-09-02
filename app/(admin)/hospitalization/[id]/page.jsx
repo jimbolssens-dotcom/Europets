@@ -6,7 +6,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
@@ -25,9 +25,11 @@ const emptyNoteForm = {
   notes: '',
 };
 
+const emptyTreatForm = { goods_service_id: '', instructions: '', quantity: '1' };
 
 export default function HospitalizationDetailPage() {
   const { id } = useParams();
+  const router = useRouter();
   const [admission, setAdmission] = useState(null);
   const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState([]);
@@ -37,6 +39,11 @@ export default function HospitalizationDetailPage() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [editingReason, setEditingReason] = useState(false);
   const [reasonDraft, setReasonDraft] = useState('');
+  const [catalog, setCatalog] = useState([]);
+  const [treatmentItems, setTreatmentItems] = useState([]);
+  const [treatForm, setTreatForm] = useState(emptyTreatForm);
+  const [invoiceInfo, setInvoiceInfo] = useState(null);
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`)
@@ -51,12 +58,30 @@ export default function HospitalizationDetailPage() {
       .then((res) => res.json())
       .then((data) => setNotes(Array.isArray(data) ? data : []));
 
+  const loadTreatmentItems = () =>
+    fetch(`/api/treatment-items?hospitalization_id=${id}`)
+      .then((res) => res.json())
+      .then((data) => setTreatmentItems(Array.isArray(data) ? data : []));
+
+  const loadInvoiceInfo = () =>
+    fetch(`/api/invoices?hospitalization_id=${id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setInvoiceInfo(list.find((inv) => inv.status !== 'void') || null);
+      });
+
   useEffect(() => {
     loadAdmission();
     loadNotes();
+    loadTreatmentItems();
+    loadInvoiceInfo();
     fetch('/api/staff')
       .then((res) => res.json())
       .then((data) => setStaff(Array.isArray(data) ? data : []));
+    fetch('/api/goods-services?active=true')
+      .then((res) => res.json())
+      .then((data) => setCatalog(Array.isArray(data) ? data : []));
 
     const channel = supabase
       .channel(`hospitalization-${id}`)
@@ -69,6 +94,11 @@ export default function HospitalizationDetailPage() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hospitalization_notes', filter: `hospitalization_id=eq.${id}` },
         loadNotes
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'treatment_items', filter: `hospitalization_id=eq.${id}` },
+        loadTreatmentItems
       )
       .subscribe();
     return () => supabase.removeChannel(channel);
@@ -136,6 +166,33 @@ export default function HospitalizationDetailPage() {
     });
     setEditingReason(false);
     loadAdmission();
+  }
+
+  async function addTreatmentItem(e) {
+    e.preventDefault();
+    if (!treatForm.goods_service_id) return;
+    await fetch('/api/treatment-items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hospitalization_id: id, ...treatForm }),
+    });
+    setTreatForm(emptyTreatForm);
+    loadTreatmentItems();
+  }
+
+  async function deleteTreatmentItem(itemId) {
+    await fetch(`/api/treatment-items/${itemId}`, { method: 'DELETE' });
+    loadTreatmentItems();
+  }
+
+  async function createInvoice() {
+    setCreatingInvoice(true);
+    const res = await fetch(`/api/hospitalizations/${id}/invoice`, { method: 'POST' });
+    const data = await res.json();
+    setCreatingInvoice(false);
+    if (res.ok) {
+      router.push(`/invoices/${data.id}`);
+    }
   }
 
   async function discharge() {
@@ -313,6 +370,85 @@ export default function HospitalizationDetailPage() {
       </form>
       </div>
       </div>
+
+      <h2>Medications, Goods &amp; Services</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Instructions</th>
+            <th>Qty</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {treatmentItems.length === 0 && (
+            <tr>
+              <td colSpan={4}>No items logged yet.</td>
+            </tr>
+          )}
+          {treatmentItems.map((t) => (
+            <tr key={t.id}>
+              <td>
+                {t.goods_services?.name} ({t.goods_services?.category})
+              </td>
+              <td>{t.instructions}</td>
+              <td>{t.quantity}</td>
+              <td>
+                <button type="button" onClick={() => deleteTreatmentItem(t.id)}>
+                  Remove
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <form className="card" onSubmit={addTreatmentItem}>
+        <h3>Add Item</h3>
+        <select
+          required
+          value={treatForm.goods_service_id}
+          onChange={(e) => setTreatForm({ ...treatForm, goods_service_id: e.target.value })}
+        >
+          <option value="">Select from catalog...</option>
+          {catalog.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name} ({c.category})
+            </option>
+          ))}
+        </select>
+        <input
+          placeholder="Instructions (dosage, frequency, duration)"
+          value={treatForm.instructions}
+          onChange={(e) => setTreatForm({ ...treatForm, instructions: e.target.value })}
+        />
+        <input
+          type="number"
+          step="0.01"
+          placeholder="Quantity"
+          value={treatForm.quantity}
+          onChange={(e) => setTreatForm({ ...treatForm, quantity: e.target.value })}
+        />
+        <button type="submit">Add Item</button>
+      </form>
+
+      <h3>Invoice</h3>
+      {invoiceInfo ? (
+        <p>
+          <a href={`/invoices/${invoiceInfo.id}`}>View Invoice</a> ({invoiceInfo.status})
+        </p>
+      ) : (
+        <>
+          <button type="button" onClick={createInvoice} disabled={creatingInvoice}>
+            {creatingInvoice ? 'Creating...' : '🧾 Create Invoice from Items'}
+          </button>
+          <p className="visit-meta">
+            Opens a new invoice and imports every item above as a line item — typically done at
+            discharge, once everything given during the stay has been logged. You can still add
+            more items to the invoice afterward.
+          </p>
+        </>
+      )}
 
       <div className="share-actions">
         <button type="button" className="share-btn" onClick={downloadSummaryPdf}>

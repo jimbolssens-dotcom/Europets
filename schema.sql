@@ -144,12 +144,30 @@ create table diagnostics (
     created_at timestamptz default now()
 );
 
+-- ============ GOODS & SERVICES ============
+-- Defined here (ahead of its usual place near invoices) since
+-- treatment_items references it — Postgres needs the referenced table to
+-- already exist.
+create table goods_services (
+    id uuid primary key default gen_random_uuid(),
+    name text not null,
+    category text not null,          -- 'medication', 'food', 'toy', 'product', 'service', 'procedure'
+    pricing_type text not null default 'flat',  -- 'flat', 'per_kg', 'per_unit'
+    base_price numeric(10,2) not null,
+    unit text,                       -- e.g. 'mg', 'ml', 'kg' (used when pricing_type != flat)
+    active boolean default true,
+    created_at timestamptz default now()
+);
+
 -- ============ TREATMENT PLAN ITEMS ============
 -- Planned treatment referencing the catalog (medications, procedures, ...).
 -- Not linked to invoicing yet.
+-- hospitalization_id is added further down (once the hospitalizations
+-- table exists) — a treatment item belongs to exactly one of visit_id
+-- (a consult) or hospitalization_id (a day of an admission), never both.
 create table treatment_items (
     id uuid primary key default gen_random_uuid(),
-    visit_id uuid references visits(id) on delete cascade not null,
+    visit_id uuid references visits(id) on delete cascade,
     goods_service_id uuid references goods_services(id),
     instructions text,               -- dosage / frequency / duration
     quantity numeric(10,2) default 1,
@@ -273,6 +291,11 @@ create table hospitalizations (
     created_at timestamptz default now()
 );
 
+-- Deferred from treatment_items' own definition above, since it needs
+-- this table to exist first — medications, goods/services, and tests
+-- logged during a stay, consolidated into an invoice at discharge.
+alter table treatment_items add column hospitalization_id uuid references hospitalizations(id) on delete cascade;
+
 -- Day-to-day worksheet entries for an admitted patient.
 create table hospitalization_notes (
     id uuid primary key default gen_random_uuid(),
@@ -346,23 +369,12 @@ create table clinic_settings (
 );
 insert into clinic_settings (id) values (true) on conflict do nothing;
 
--- ============ GOODS & SERVICES ============
-create table goods_services (
-    id uuid primary key default gen_random_uuid(),
-    name text not null,
-    category text not null,          -- 'medication', 'food', 'toy', 'product', 'service', 'procedure'
-    pricing_type text not null default 'flat',  -- 'flat', 'per_kg', 'per_unit'
-    base_price numeric(10,2) not null,
-    unit text,                       -- e.g. 'mg', 'ml', 'kg' (used when pricing_type != flat)
-    active boolean default true,
-    created_at timestamptz default now()
-);
-
 -- ============ INVOICES ============
 create table invoices (
     id uuid primary key default gen_random_uuid(),
     invoice_number bigint generated always as identity unique,  -- sequential, for FTA tax invoices
     visit_id uuid references visits(id),
+    hospitalization_id uuid references hospitalizations(id),
     client_id uuid references clients(id) not null,
     subtotal numeric(10,2) not null default 0,
     vat_amount numeric(10,2) not null default 0,   -- 5% UAE VAT

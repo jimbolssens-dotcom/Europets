@@ -1,10 +1,11 @@
 // app/api/invoices/route.js
-// GET  /api/invoices?client_id=X&status=unpaid&visit_id=Y  -> list invoices
+// GET  /api/invoices?client_id=X&status=unpaid&visit_id=Y&hospitalization_id=Z  -> list invoices
 // POST /api/invoices                            -> open a new (empty) invoice
 //
-// An invoice can be tied to a visit (visit_id) for context, or stand alone
-// (e.g. a product-only sale). Line items are added afterwards via
-// /api/invoices/:id/line-items, which recompute the totals.
+// An invoice can be tied to a visit (visit_id) or a hospitalization
+// (hospitalization_id) for context, or stand alone (e.g. a product-only
+// sale). Line items are added afterwards via /api/invoices/:id/line-items,
+// which recompute the totals.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -14,6 +15,7 @@ export async function GET(request) {
   const clientId = searchParams.get('client_id');
   const status = searchParams.get('status');
   const visitId = searchParams.get('visit_id');
+  const hospitalizationId = searchParams.get('hospitalization_id');
 
   let query = supabase
     .from('invoices')
@@ -23,6 +25,7 @@ export async function GET(request) {
   if (clientId) query = query.eq('client_id', clientId);
   if (status) query = query.eq('status', status);
   if (visitId) query = query.eq('visit_id', visitId);
+  if (hospitalizationId) query = query.eq('hospitalization_id', hospitalizationId);
 
   const { data, error } = await query;
 
