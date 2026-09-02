@@ -155,9 +155,14 @@ export default function HospitalizationDetailPage() {
       <p>
         <a href="/hospitalization">&larr; All admissions</a>
       </p>
-      <h1>
-        {admission.patients?.name} <span>({admission.status})</span>
-      </h1>
+      <div className="page-header">
+        <h1>
+          {admission.patients?.name} <span>({admission.status})</span>
+        </h1>
+        <a href="/hospitalization/cages" className="button-link">
+          🗺️ Cage Layout
+        </a>
+      </div>
       <p>
         Owner: <a href={`/clients/${admission.clients?.id}`}>{admission.clients?.full_name}</a> ·
         Cage: {admission.cages?.name || '—'} · Admitted:{' '}
