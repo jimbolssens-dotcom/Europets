@@ -52,6 +52,7 @@ export default function HospitalizationDetailPage() {
   const [subcategories, setSubcategories] = useState([]);
   const [invoiceInfo, setInvoiceInfo] = useState(null);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
+  const [invoiceError, setInvoiceError] = useState(null);
   const [consentForms, setConsentForms] = useState([]);
   const [consentForm, setConsentForm] = useState({
     signed_by_name: '',
@@ -183,12 +184,19 @@ export default function HospitalizationDetailPage() {
 
   async function createInvoice() {
     setCreatingInvoice(true);
-    const res = await fetch(`/api/hospitalizations/${id}/invoice`, { method: 'POST' });
-    const data = await res.json();
-    setCreatingInvoice(false);
-    if (res.ok) {
-      router.push(`/invoices/${data.id}`);
+    setInvoiceError(null);
+    try {
+      const res = await fetch(`/api/hospitalizations/${id}/invoice`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        router.push(`/invoices/${data.id}`);
+      } else {
+        setInvoiceError(data.error || 'Failed to create invoice');
+      }
+    } catch (err) {
+      setInvoiceError(err.message || 'Failed to create invoice');
     }
+    setCreatingInvoice(false);
   }
 
   function downloadSummaryPdf() {
@@ -537,6 +545,7 @@ export default function HospitalizationDetailPage() {
         </p>
       ) : (
         <>
+          {invoiceError && <p className="error">{invoiceError}</p>}
           <button type="button" onClick={createInvoice} disabled={creatingInvoice}>
             {creatingInvoice ? 'Creating...' : '🧾 Create Invoice from Worksheet'}
           </button>
