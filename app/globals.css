@@ -2141,3 +2141,50 @@ form.card.admit-patient-form {
   border: 1px solid var(--pink-tint);
 }
 
+/* Cage layout, reflowed for a phone: same clusters and per-group colors
+   as the desktop Cage Layout page (.floor-plan-row already wraps a whole
+   cluster onto its own line via flex-wrap when there's no room beside
+   it), but each cluster's own grid switches from a fixed wide column
+   count to auto-fill so it wraps into more, narrower rows instead of
+   forcing horizontal scroll — portrait instead of landscape. Occupied
+   tiles get their own class rather than reusing .cage-occupied, which
+   carries touch-action: none and cursor: grab for the desktop drag-to-
+   move feature — not wanted here, this is a plain tap-to-record link. */
+.mobile-app .cage-cluster {
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 0.4rem;
+}
+
+.mobile-app .cage-cluster-flex {
+  gap: 0.4rem;
+}
+
+.mobile-app .floor-plan-row {
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.mobile-app .cage-tile {
+  min-height: 58px;
+  padding: 0.4rem 0.5rem;
+}
+
+.mobile-app .cage-name {
+  font-size: 0.7rem;
+}
+
+.mobile-app .cage-patient {
+  font-size: 0.7rem;
+}
+
+.mobile-app .cage-status {
+  font-size: 0.65rem;
+}
+
+.mobile-app .cage-tile-mobile-occupied {
+  background: var(--pink-tint);
+  border-color: var(--pink);
+  text-decoration: none;
+  color: inherit;
+}
+
