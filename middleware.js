@@ -4,11 +4,24 @@
 // real security. /api/accounting-login is deliberately its own top-level
 // path, outside /api/accounting/, so logging in isn't itself blocked by
 // this same check.
+//
+// One deliberate carve-out: POST /api/expenses and POST /api/expenses/scan
+// stay open (no password) so the mobile app's Scan Receipt page (see
+// app/mobile/scan-receipt) lets any staff member add an expense from the
+// field — but browsing, editing, or deleting expenses (GET/PATCH/DELETE)
+// still requires the password, same as the rest of /accounting.
 
 import { NextResponse } from 'next/server';
 import { ACCOUNTING_COOKIE, sha256Hex } from '@/lib/accountingAuth';
 
 export async function middleware(request) {
+  const { pathname } = request.nextUrl;
+  const isOpenExpenseWrite =
+    request.method === 'POST' && (pathname === '/api/expenses' || pathname === '/api/expenses/scan');
+  if (isOpenExpenseWrite) {
+    return NextResponse.next();
+  }
+
   const password = process.env.ACCOUNTING_PASSWORD;
   if (!password) {
     return new NextResponse(
