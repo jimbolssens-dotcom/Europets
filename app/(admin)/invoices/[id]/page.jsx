@@ -25,6 +25,7 @@ export default function InvoiceDetailPage() {
   const [quantity, setQuantity] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('');
 
   const loadInvoice = () =>
     fetch(`/api/invoices/${id}`)
@@ -92,12 +93,18 @@ export default function InvoiceDetailPage() {
     loadInvoice();
   }
 
-  async function setStatus(status) {
-    await fetch(`/api/invoices/${id}`, {
+  async function setStatus(status, extra) {
+    setError(null);
+    const res = await fetch(`/api/invoices/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...extra }),
     });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || 'Failed to update invoice');
+      return;
+    }
     loadInvoice();
   }
 
@@ -124,7 +131,11 @@ export default function InvoiceDetailPage() {
       <h1>
         Invoice {invoice.invoice_number ? `#INV-${String(invoice.invoice_number).padStart(6, '0')}` : ''} —{' '}
         {invoice.clients?.full_name}
-        {patientName ? ` — ${patientName}` : ''} <span>({invoice.status})</span>
+        {patientName ? ` — ${patientName}` : ''}{' '}
+        <span>
+          ({invoice.status}
+          {invoice.status === 'paid' && invoice.payment_method && `, ${invoice.payment_method.replace('_', ' ')}`})
+        </span>
       </h1>
       <p className="visit-meta">
         {invoice.clients?.phone} · {invoice.clients?.email}
@@ -215,7 +226,18 @@ export default function InvoiceDetailPage() {
             </div>
           </form>
           <div className="home-links" style={{ marginTop: '0.75rem' }}>
-            <button type="button" onClick={() => setStatus('paid')}>
+            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+              <option value="">Paid via...</option>
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="payment_link">Payment Link</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => setStatus('paid', { payment_method: paymentMethod })}
+              disabled={!paymentMethod}
+            >
               Mark Paid
             </button>
             <button type="button" onClick={() => setStatus('void')}>

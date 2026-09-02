@@ -871,6 +871,44 @@ button.secondary:hover {
   color: #b00020;
 }
 
+/* Accounting overview (app/accounting) — a row of small stat boxes per
+   section (P&L, VAT), each just a label/value/one-line hint. */
+.accounting-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.accounting-stat {
+  background: white;
+  border: 1px solid #eee;
+  border-top: 3px solid var(--pink);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.accounting-stat-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.accounting-stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.accounting-stat-hint {
+  font-size: 0.78rem;
+  color: #888;
+}
+
 /* A staff member's weekly schedule grid (app/staff/[id]/schedule) — kept
    narrow rather than stretching to the page's full width like other
    tables, since it's only 3 columns of mostly checkboxes. */

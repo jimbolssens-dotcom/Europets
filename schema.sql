@@ -505,6 +505,8 @@ create table invoices (
     vat_amount numeric(10,2) not null default 0,   -- 5% UAE VAT
     total numeric(10,2) not null default 0,
     status text not null default 'unpaid',  -- unpaid, paid, void
+    payment_method text check (payment_method in ('cash', 'card', 'bank_transfer', 'payment_link')),
+    paid_at timestamptz,
     created_at timestamptz default now()
 );
 
@@ -517,6 +519,25 @@ create table invoice_line_items (
     unit_price numeric(10,2) not null,
     line_total numeric(10,2) not null            -- pre-VAT
 );
+
+-- ============ ACCOUNTING: EXPENSES ============
+-- The other half of a basic P&L/VAT picture, alongside invoices (revenue/
+-- output VAT). Receipt photos reuse the existing `attachments` table
+-- (entity_type = 'expense') rather than a dedicated image column — see
+-- migrations/029_accounting.sql.
+create table expenses (
+    id uuid primary key default gen_random_uuid(),
+    expense_date date not null default current_date,
+    vendor_name text,
+    description text,
+    category text not null default 'other',  -- 'supplies', 'rent', 'utilities', 'salaries', 'equipment', 'marketing', 'professional_fees', 'other'
+    amount numeric(10,2) not null,                 -- pre-VAT
+    vat_amount numeric(10,2) not null default 0,   -- input VAT paid on this purchase (reclaimable)
+    total numeric(10,2) not null,                  -- amount + vat_amount
+    payment_method text check (payment_method in ('cash', 'card', 'bank_transfer', 'payment_link')),
+    created_at timestamptz default now()
+);
+create index idx_expenses_date on expenses(expense_date);
 
 -- ============ VAT CONSTANT ============
 -- Kept simple as an app-level constant for now: UAE standard VAT = 5%
@@ -568,7 +589,7 @@ alter publication supabase_realtime add table
     clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items,
     diagnostics, treatment_items, surgical_reports, dental_reports,
     hospitalizations, hospitalization_notes, attachments, recordings, clinic_settings,
-    vaccine_protocols, vaccinations, intake_requests;
+    vaccine_protocols, vaccinations, intake_requests, expenses;
 
 -- ============ ROW LEVEL SECURITY ============
 -- RLS is intentionally left disabled: the app has no staff auth yet and
@@ -588,6 +609,7 @@ alter table visits disable row level security;
 alter table consult_notes disable row level security;
 alter table goods_services disable row level security;
 alter table invoices disable row level security;
+alter table expenses disable row level security;
 alter table invoice_line_items disable row level security;
 alter table diagnostics disable row level security;
 alter table treatment_items disable row level security;

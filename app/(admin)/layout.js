@@ -20,6 +20,7 @@ export default function AdminLayout({ children }) {
           <a href="/hospitalization">Hospitalization</a>
           <a href="/vaccinations">Vaccinations</a>
           <a href="/invoices">Invoices</a>
+          <a href="/accounting">Accounting</a>
           <a href="/catalog">Catalog</a>
           <a href="/mobile" title="Mobile recording app" aria-label="Mobile recording app" className="settings-link">
             📱
