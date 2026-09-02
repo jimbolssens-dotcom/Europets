@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
   const { data: invoice, error } = await supabase
     .from('invoices')
     .select(
-      '*, clients(full_name, phone, email, address, trn), visits(patients(name)), hospitalizations(patients(name))'
+      '*, clients(client_number, full_name, phone, email, address, trn), visits(patients(patient_number, name, species, microchip_number)), hospitalizations(patients(patient_number, name, species, microchip_number))'
     )
     .eq('id', params.id)
     .single();
@@ -35,7 +35,7 @@ export async function GET(request, { params }) {
     lineItems: lineItems || [],
     clinic,
     client: invoice.clients,
-    patientName: invoice.visits?.patients?.name || invoice.hospitalizations?.patients?.name,
+    patient: invoice.visits?.patients || invoice.hospitalizations?.patients || null,
   });
 
   return new NextResponse(Buffer.from(pdfBytes), {
