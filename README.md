@@ -149,12 +149,18 @@ appointments, full consult medical records, hospitalization, and invoicing.
    Ultrasound, PCR, Blood Test - CBC, Blood Test - GHP, Urine, ...) that
    staff can keep extending as the clinic starts offering new ones,
    without a code change. Every item belongs to exactly one subcategory,
-   which fixes its main category automatically. Catalog dropdowns
-   elsewhere (a consult's treatment plan, a worksheet entry's items) carry
-   a compact Product/Test/Service tab filter above the item `<select>`,
-   so picking a category narrows a long catalog down before a `<optgroup>`
-   per subcategory is even shown — switching tabs clears whatever item was
-   selected
+   which fixes its main category automatically. Every catalog item picker
+   in the app — a consult's treatment plan and diagnostics, a
+   hospitalization worksheet entry's items, an invoice's line items — is
+   the same shared `CatalogPicker` component
+   (`app/_components/CatalogPicker.jsx`): a compact Product/Test/Service
+   tab filter above the item `<select>` (skipped where the picker is
+   pinned to one category, like diagnostics → Tests only) narrows a long
+   catalog down before a grouped `<optgroup>` per subcategory is even
+   shown, switching tabs clears whatever item was selected, and a
+   "+ Add New" toggle opens an inline mini add-item form so a missing
+   item doesn't mean a trip to the Catalog page and back — saving it
+   there auto-selects it right where you were
 5. ✅ Hospitalization — standalone multi-day admissions with a day-to-day
    worksheet grouped by day (every entry for a day sits together under
    one heading with its own timestamp, so nothing looks lost as new
@@ -353,8 +359,12 @@ app/
 │                                            page stacks history then form under Notes
 ├── _components/usePatientAlerts.js       → shared state/logic behind a patient's long-term notes —
 │                                            same split as useVaccinations, used by both pages
-└── _components/PatientAlerts.jsx         → the dated note list + add form, takes usePatientAlerts'
-                                             state as props
+├── _components/PatientAlerts.jsx         → the dated note list + add form, takes usePatientAlerts'
+│                                            state as props
+└── _components/CatalogPicker.jsx         → the shared catalog item <select> — category tabs
+                                             (or none, if pinned to one), grouped optgroups, and
+                                             an inline "+ Add New" form — used by every "pick an
+                                             item from the catalog" spot in the app
 └── layout.js                             → bare root shell (html/body only — see security note)
 lib/
 ├── supabaseClient.js                     → shared Supabase connection

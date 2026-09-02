@@ -7,12 +7,13 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import CatalogPicker from '@/app/_components/CatalogPicker';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
 }
 
-function InvoiceCard({ summary, catalog, onChanged }) {
+function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChanged }) {
   const [invoice, setInvoice] = useState(null);
   const [goodsServiceId, setGoodsServiceId] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -154,14 +155,13 @@ function InvoiceCard({ summary, catalog, onChanged }) {
         <>
           <form className="note-form" onSubmit={addLineItem}>
             {error && <p className="error">{error}</p>}
-            <select value={goodsServiceId} onChange={(e) => setGoodsServiceId(e.target.value)}>
-              <option value="">Add item...</option>
-              {catalog.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({money(c.base_price)}{c.pricing_type === 'per_kg' ? '/kg' : ''})
-                </option>
-              ))}
-            </select>
+            <CatalogPicker
+              catalog={catalog}
+              subcategories={subcategories}
+              value={goodsServiceId}
+              onChange={setGoodsServiceId}
+              onItemCreated={onCatalogChange}
+            />
             <input
               type="number"
               step="0.01"
@@ -194,6 +194,7 @@ export default function InvoicesPage() {
   const [clients, setClients] = useState([]);
   const [visits, setVisits] = useState([]);
   const [catalog, setCatalog] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
@@ -218,12 +219,18 @@ export default function InvoicesPage() {
       fetch('/api/clients').then((res) => res.json()),
       fetch('/api/visits').then((res) => res.json()),
       fetch('/api/goods-services?active=true').then((res) => res.json()),
-    ]).then(([clientsData, visitsData, catalogData]) => {
+      fetch('/api/catalog-subcategories').then((res) => res.json()),
+    ]).then(([clientsData, visitsData, catalogData, subcategoriesData]) => {
       setClients(Array.isArray(clientsData) ? clientsData : []);
       setVisits(Array.isArray(visitsData) ? visitsData : []);
       setCatalog(Array.isArray(catalogData) ? catalogData : []);
+      setSubcategories(Array.isArray(subcategoriesData) ? subcategoriesData : []);
     });
   }, []);
+
+  function addCatalogItem(item) {
+    setCatalog((prev) => [...prev, item]);
+  }
 
   const visitsForClient = visits.filter((v) => v.client_id === form.client_id);
 
@@ -275,6 +282,8 @@ export default function InvoicesPage() {
               key={inv.id}
               summary={inv}
               catalog={catalog}
+              subcategories={subcategories}
+              onCatalogChange={addCatalogItem}
               onChanged={() => loadInvoices(statusFilter)}
             />
           ))}

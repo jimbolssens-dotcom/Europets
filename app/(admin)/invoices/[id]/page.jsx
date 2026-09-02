@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import CatalogPicker from '@/app/_components/CatalogPicker';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -18,6 +19,7 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [catalog, setCatalog] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [goodsServiceId, setGoodsServiceId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [error, setError] = useState(null);
@@ -36,6 +38,9 @@ export default function InvoiceDetailPage() {
     fetch('/api/goods-services?active=true')
       .then((res) => res.json())
       .then((data) => setCatalog(Array.isArray(data) ? data : []));
+    fetch('/api/catalog-subcategories')
+      .then((res) => res.json())
+      .then((data) => setSubcategories(Array.isArray(data) ? data : []));
 
     const channel = supabase
       .channel(`invoice-detail-${id}`)
@@ -176,15 +181,13 @@ export default function InvoiceDetailPage() {
         <>
           <form className="note-form" onSubmit={addLineItem}>
             {error && <p className="error">{error}</p>}
-            <select value={goodsServiceId} onChange={(e) => setGoodsServiceId(e.target.value)}>
-              <option value="">Add item...</option>
-              {catalog.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({money(c.base_price)}
-                  {c.pricing_type === 'per_kg' ? '/kg' : ''})
-                </option>
-              ))}
-            </select>
+            <CatalogPicker
+              catalog={catalog}
+              subcategories={subcategories}
+              value={goodsServiceId}
+              onChange={setGoodsServiceId}
+              onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+            />
             <input
               type="number"
               step="0.01"

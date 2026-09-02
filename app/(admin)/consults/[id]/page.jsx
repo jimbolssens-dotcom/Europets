@@ -16,7 +16,8 @@ import VaccinationForm from '@/app/_components/VaccinationForm';
 import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
-import { groupCatalogBySubcategory, subcategoryName, MAIN_CATEGORIES, MAIN_CATEGORY_LABELS } from '@/lib/catalogGrouping';
+import CatalogPicker from '@/app/_components/CatalogPicker';
+import { subcategoryName } from '@/lib/catalogGrouping';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
 
@@ -112,7 +113,6 @@ export default function ConsultDetailPage() {
 
   const [treatmentItems, setTreatmentItems] = useState([]);
   const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1' });
-  const [treatCategoryFilter, setTreatCategoryFilter] = useState('product');
 
   const [surgicalReports, setSurgicalReports] = useState([]);
   const [surgForm, setSurgForm] = useState({ surgeon_id: '', procedure_name: '', notes: '' });
@@ -574,25 +574,14 @@ export default function ConsultDetailPage() {
       <form className="card" onSubmit={addDiagnostic}>
         <h3>Add Diagnostic</h3>
         {diagError && <p className="error">{diagError}</p>}
-        <select
-          required
+        <CatalogPicker
+          catalog={catalog}
+          subcategories={subcategories}
           value={diagForm.goods_service_id}
-          onChange={(e) => setDiagForm({ ...diagForm, goods_service_id: e.target.value })}
-        >
-          <option value="">Select test from catalog...</option>
-          {groupCatalogBySubcategory(
-            catalog.filter((c) => c.main_category === 'test'),
-            subcategories
-          ).map((group) => (
-            <optgroup key={group.key} label={group.subcategoryName || group.label}>
-              {group.items.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+          onChange={(value) => setDiagForm({ ...diagForm, goods_service_id: value })}
+          onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+          fixedMainCategory="test"
+        />
         <input
           placeholder="Description (what was ordered — e.g. left front leg)"
           value={diagForm.description}
@@ -648,40 +637,13 @@ export default function ConsultDetailPage() {
       </table>
       <form className="card" onSubmit={addTreatmentItem}>
         <h3>Add Treatment Item</h3>
-        <div className="catalog-tabs catalog-tabs-compact">
-          {MAIN_CATEGORIES.map((mc) => (
-            <button
-              key={mc}
-              type="button"
-              className={mc === treatCategoryFilter ? 'catalog-tab active' : 'catalog-tab'}
-              onClick={() => {
-                setTreatCategoryFilter(mc);
-                setTreatForm({ ...treatForm, goods_service_id: '' });
-              }}
-            >
-              {MAIN_CATEGORY_LABELS[mc]}s
-            </button>
-          ))}
-        </div>
-        <select
-          required
+        <CatalogPicker
+          catalog={catalog}
+          subcategories={subcategories}
           value={treatForm.goods_service_id}
-          onChange={(e) => setTreatForm({ ...treatForm, goods_service_id: e.target.value })}
-        >
-          <option value="">Select from catalog...</option>
-          {groupCatalogBySubcategory(
-            catalog.filter((c) => c.main_category === treatCategoryFilter),
-            subcategories
-          ).map((group) => (
-            <optgroup key={group.key} label={group.subcategoryName || group.label}>
-              {group.items.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+          onChange={(value) => setTreatForm({ ...treatForm, goods_service_id: value })}
+          onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+        />
         <input
           placeholder="Instructions (dosage, frequency, duration)"
           value={treatForm.instructions}
