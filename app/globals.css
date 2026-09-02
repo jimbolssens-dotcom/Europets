@@ -1991,3 +1991,153 @@ form.card.admit-patient-form {
   outline-offset: 1px;
 }
 
+/* ============ MOBILE RECORDING APP (app/mobile/) ============
+   Phone-first: single column, large tap targets, minimal chrome. */
+
+.mobile-app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 3rem;
+}
+
+.mobile-home {
+  text-align: center;
+  padding-top: 1.5rem;
+}
+
+.mobile-logo {
+  height: 56px;
+  margin-bottom: 0.5rem;
+}
+
+.mobile-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: white;
+  border: 1px solid #eee;
+  border-top: 3px solid var(--pink);
+  border-radius: 12px;
+  padding: 1.5rem 1.25rem;
+  margin: 1rem 0;
+  text-decoration: none;
+  color: var(--ink);
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.mobile-tile-icon {
+  font-size: 1.8rem;
+}
+
+.mobile-tile-hint {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #777;
+}
+
+.mobile-back {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  color: var(--pink-dark);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.mobile-page h1 {
+  margin: 0 0 0.15rem;
+  font-size: 1.4rem;
+}
+
+.mobile-subtitle {
+  margin: 0 0 0.75rem;
+  color: #666;
+}
+
+.mobile-hint {
+  font-size: 0.85rem;
+  color: #666;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.mobile-section-header {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--pink-dark);
+  margin: 1.25rem 0 0.5rem;
+}
+
+.mobile-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.mobile-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  text-align: left;
+  text-decoration: none;
+  color: var(--ink);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.mobile-list-item-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mobile-list-title {
+  font-weight: 700;
+}
+
+.mobile-list-meta {
+  font-size: 0.8rem;
+  color: #777;
+}
+
+.mobile-desktop-link {
+  display: block;
+  margin-top: 1.5rem;
+  text-align: center;
+  color: var(--pink-dark);
+  font-weight: 600;
+}
+
+.mobile-worksheet-form {
+  margin-top: 1.25rem;
+}
+
+.mobile-worksheet-form textarea {
+  width: 100%;
+}
+
+.mobile-saved {
+  color: #1a7a1a;
+  font-weight: 600;
+}
+
+.mobile-secondary-action {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  background: transparent;
+  color: var(--pink-dark);
+  border: 1px solid var(--pink-tint);
+}
+
