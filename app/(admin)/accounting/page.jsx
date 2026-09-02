@@ -49,10 +49,17 @@ export default function AccountingOverviewPage() {
 
   return (
     <div>
-      <h1>Accounting</h1>
-      <p className="visit-meta">
-        <a href="/accounting/unpaid">Unpaid Invoices</a> · <a href="/accounting/expenses">Expenses</a>
-      </p>
+      <div className="page-header">
+        <h1>Accounting</h1>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <a href="/accounting/unpaid" className="button-link">
+            ⚠️ Unpaid Invoices
+          </a>
+          <a href="/accounting/expenses" className="button-link">
+            🧾 Expenses
+          </a>
+        </div>
+      </div>
 
       <label>
         Month:{' '}

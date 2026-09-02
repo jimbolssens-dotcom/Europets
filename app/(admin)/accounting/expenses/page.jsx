@@ -189,10 +189,12 @@ export default function ExpensesPage() {
 
   return (
     <div>
-      <p>
-        <a href="/accounting">&larr; Accounting</a>
-      </p>
-      <h1>Expenses</h1>
+      <div className="page-header">
+        <h1>Expenses</h1>
+        <a href="/accounting" className="button-link">
+          &larr; Accounting
+        </a>
+      </div>
 
       <div className="split">
         <div className="split-main">

@@ -48,10 +48,12 @@ export default function UnpaidInvoicesPage() {
 
   return (
     <div>
-      <p>
-        <a href="/accounting">&larr; Accounting</a>
-      </p>
-      <h1>Unpaid Invoices</h1>
+      <div className="page-header">
+        <h1>Unpaid Invoices</h1>
+        <a href="/accounting" className="button-link">
+          &larr; Accounting
+        </a>
+      </div>
       <p className="visit-meta">
         {invoices.length} unpaid, AED {money(total)} outstanding, oldest first.
       </p>
