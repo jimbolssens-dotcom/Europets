@@ -118,7 +118,7 @@ export default function AudioRecorder({ entityType, entityId }) {
               )}
               {r.status === 'done' && r.summary && (
                 <div className="recorder-summary">
-                  <strong>AI summary</strong>
+                  <strong>{entityType === 'visit' ? 'AI summary (fields below were filled in automatically)' : 'AI summary'}</strong>
                   <p>{r.summary}</p>
                   <button
                     type="button"
