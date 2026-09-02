@@ -17,6 +17,12 @@ export default function MobileHomePage() {
         <span>Hospitalization</span>
         <span className="mobile-tile-hint">Admitted patients — tap one to record an observation</span>
       </a>
+
+      <p className="mobile-hint">
+        Add this to your home screen for one-tap access: on iPhone, tap Share, then &quot;Add to
+        Home Screen&quot;. On Android, tap the ⋮ menu, then &quot;Add to Home screen&quot; or
+        &quot;Install app&quot;.
+      </p>
     </div>
   );
 }
