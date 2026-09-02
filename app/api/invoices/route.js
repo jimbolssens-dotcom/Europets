@@ -19,7 +19,9 @@ export async function GET(request) {
 
   let query = supabase
     .from('invoices')
-    .select('*, clients(full_name), visits(patient_id, patients(name))')
+    .select(
+      '*, clients(full_name), visits(patient_id, patients(name)), hospitalizations(patient_id, patients(name))'
+    )
     .order('created_at', { ascending: false });
 
   if (clientId) query = query.eq('client_id', clientId);

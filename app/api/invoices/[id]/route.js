@@ -10,7 +10,9 @@ const VALID_STATUSES = ['unpaid', 'paid', 'void'];
 export async function GET(request, { params }) {
   const { data: invoice, error } = await supabase
     .from('invoices')
-    .select('*, clients(full_name, phone, email)')
+    .select(
+      '*, clients(full_name, phone, email), visits(patients(name)), hospitalizations(patients(name))'
+    )
     .eq('id', params.id)
     .single();
 
@@ -20,7 +22,7 @@ export async function GET(request, { params }) {
 
   const { data: lineItems, error: itemsError } = await supabase
     .from('invoice_line_items')
-    .select('*, goods_services(name, pricing_type, unit)')
+    .select('*, goods_services(name, pricing_type, unit, main_category)')
     .eq('invoice_id', params.id);
 
   if (itemsError) {

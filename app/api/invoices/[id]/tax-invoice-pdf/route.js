@@ -15,7 +15,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(request, { params }) {
   const { data: invoice, error } = await supabase
     .from('invoices')
-    .select('*, clients(full_name, phone, email, address, trn)')
+    .select(
+      '*, clients(full_name, phone, email, address, trn), visits(patients(name)), hospitalizations(patients(name))'
+    )
     .eq('id', params.id)
     .single();
 
@@ -33,6 +35,7 @@ export async function GET(request, { params }) {
     lineItems: lineItems || [],
     clinic,
     client: invoice.clients,
+    patientName: invoice.visits?.patients?.name || invoice.hospitalizations?.patients?.name,
   });
 
   return new NextResponse(Buffer.from(pdfBytes), {

@@ -302,6 +302,21 @@ td select {
   border-radius: 4px;
 }
 
+/* Category subheader row splitting an invoice's line items into Products /
+   Tests / Services sections — deliberately muted (not the pink used by the
+   table's own th) so it reads as a divider between sections, not a second
+   header stacked on the first. */
+.invoice-category-row td {
+  background: #f5f5f5;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.75rem;
+  border-top: 2px solid #eee;
+}
+
 .catalog-row {
   cursor: pointer;
 }

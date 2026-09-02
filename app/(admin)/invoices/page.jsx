@@ -5,9 +5,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import { groupLineItemsByCategory } from '@/lib/catalogGrouping';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -95,6 +96,9 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
   if (!invoice) return null;
 
   const selected = catalog.find((c) => c.id === goodsServiceId);
+  const patientName = invoice.visits?.patients?.name || invoice.hospitalizations?.patients?.name;
+  const lineItemGroups = groupLineItemsByCategory(invoice.line_items);
+  const columnCount = invoice.status === 'unpaid' ? 5 : 4;
 
   return (
     <div className="visit-card">
@@ -106,7 +110,7 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
           <strong>
             <a href={`/invoices/${summary.id}`}>{invoice.clients?.full_name}</a>
           </strong>
-          {summary.visits?.patients?.name ? ` — ${summary.visits.patients.name}` : ''}
+          {patientName ? ` — ${patientName}` : ''}
         </div>
         <span>{invoice.status}</span>
       </div>
@@ -122,22 +126,29 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
           </tr>
         </thead>
         <tbody>
-          {invoice.line_items.map((li) => (
-            <tr key={li.id}>
-              <td>{li.description}</td>
-              <td>
-                {li.quantity} {li.goods_services?.unit || ''}
-              </td>
-              <td>{money(li.unit_price)}</td>
-              <td>{money(li.line_total)}</td>
-              {invoice.status === 'unpaid' && (
-                <td>
-                  <button type="button" onClick={() => removeLineItem(li.id)}>
-                    Remove
-                  </button>
-                </td>
-              )}
-            </tr>
+          {lineItemGroups.map((group) => (
+            <Fragment key={group.mainCategory || 'other'}>
+              <tr className="invoice-category-row">
+                <td colSpan={columnCount}>{group.label}</td>
+              </tr>
+              {group.items.map((li) => (
+                <tr key={li.id}>
+                  <td>{li.description}</td>
+                  <td>
+                    {li.quantity} {li.goods_services?.unit || ''}
+                  </td>
+                  <td>{money(li.unit_price)}</td>
+                  <td>{money(li.line_total)}</td>
+                  {invoice.status === 'unpaid' && (
+                    <td>
+                      <button type="button" onClick={() => removeLineItem(li.id)}>
+                        Remove
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </Fragment>
           ))}
           {invoice.line_items.length === 0 && (
             <tr>
