@@ -489,6 +489,7 @@ create table clinic_settings (
     trn text,
     address text,
     phone text,
+    phone2 text,       -- a second clinic landline
     email text,
     updated_at timestamptz default now()
 );

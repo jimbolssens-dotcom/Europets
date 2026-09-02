@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 
-const emptyForm = { legal_name: '', trn: '', address: '', phone: '', email: '' };
+const emptyForm = { legal_name: '', trn: '', address: '', phone: '', phone2: '', email: '' };
 
 export default function SettingsPage() {
   const [form, setForm] = useState(emptyForm);
@@ -24,6 +24,7 @@ export default function SettingsPage() {
           trn: data.trn || '',
           address: data.address || '',
           phone: data.phone || '',
+          phone2: data.phone2 || '',
           email: data.email || '',
         });
         setLoading(false);
@@ -83,8 +84,12 @@ export default function SettingsPage() {
           <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
         </label>
         <label>
-          Phone
+          Phone (landline)
           <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        </label>
+        <label>
+          Phone 2 (landline)
+          <input value={form.phone2} onChange={(e) => setForm({ ...form, phone2: e.target.value })} />
         </label>
         <label>
           Email
