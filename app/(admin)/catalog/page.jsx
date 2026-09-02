@@ -1,6 +1,8 @@
 // app/catalog/page.jsx
 // Goods & services catalog: list + create form, with an active/inactive
 // toggle so retired items stay out of new invoices without deleting history.
+// Click a row (or its Edit button) to edit its name/category/pricing/price/
+// unit in place.
 
 'use client';
 
@@ -14,6 +16,10 @@ export default function CatalogPage() {
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(emptyForm);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState(null);
 
   const loadItems = () =>
     fetch('/api/goods-services')
@@ -57,6 +63,43 @@ export default function CatalogPage() {
     loadItems();
   }
 
+  function startEdit(item) {
+    setEditingId(item.id);
+    setEditForm({
+      name: item.name,
+      category: item.category,
+      pricing_type: item.pricing_type,
+      base_price: item.base_price,
+      unit: item.unit || '',
+    });
+    setEditError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditError(null);
+  }
+
+  async function saveEdit(id) {
+    setSavingEdit(true);
+    setEditError(null);
+
+    const res = await fetch(`/api/goods-services/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...editForm, base_price: Number(editForm.base_price) }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setEditError(data.error || 'Failed to save changes');
+    } else {
+      setEditingId(null);
+      loadItems();
+    }
+    setSavingEdit(false);
+  }
+
   if (loading) return <p>Loading catalog...</p>;
 
   return (
@@ -64,6 +107,7 @@ export default function CatalogPage() {
       <h1>Goods & Services</h1>
       <div className="split">
       <div className="split-main">
+      <div className="catalog-table-wrap">
       <table>
         <thead>
           <tr>
@@ -77,23 +121,98 @@ export default function CatalogPage() {
           </tr>
         </thead>
         <tbody>
-          {items.map((item) => (
-            <tr key={item.id}>
-              <td>{item.name}</td>
-              <td>{item.category}</td>
-              <td>{item.pricing_type}</td>
-              <td>{Number(item.base_price).toFixed(2)}</td>
-              <td>{item.unit}</td>
-              <td>{item.active ? 'active' : 'inactive'}</td>
-              <td>
-                <button type="button" onClick={() => toggleActive(item)}>
-                  {item.active ? 'Deactivate' : 'Activate'}
-                </button>
-              </td>
-            </tr>
-          ))}
+          {items.map((item) =>
+            editingId === item.id ? (
+              <tr key={item.id} className="catalog-row-editing">
+                <td>
+                  <input
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <select
+                    value={editForm.category}
+                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                  >
+                    <option value="medication">Medication</option>
+                    <option value="food">Food</option>
+                    <option value="toy">Toy</option>
+                    <option value="product">Product (other)</option>
+                    <option value="service">Service</option>
+                    <option value="procedure">Procedure</option>
+                  </select>
+                </td>
+                <td>
+                  <select
+                    value={editForm.pricing_type}
+                    onChange={(e) => setEditForm({ ...editForm, pricing_type: e.target.value })}
+                  >
+                    <option value="flat">Flat</option>
+                    <option value="per_kg">Per kg</option>
+                    <option value="per_unit">Per unit</option>
+                  </select>
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.base_price}
+                    onChange={(e) => setEditForm({ ...editForm, base_price: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    placeholder="unit"
+                    value={editForm.unit}
+                    onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
+                  />
+                </td>
+                <td>{item.active ? 'active' : 'inactive'}</td>
+                <td>
+                  <button type="button" onClick={() => saveEdit(item.id)} disabled={savingEdit}>
+                    {savingEdit ? 'Saving...' : 'Save'}
+                  </button>
+                  <button type="button" onClick={cancelEdit} disabled={savingEdit}>
+                    Cancel
+                  </button>
+                  {editError && <p className="error">{editError}</p>}
+                </td>
+              </tr>
+            ) : (
+              <tr key={item.id} className="catalog-row" onClick={() => startEdit(item)}>
+                <td>{item.name}</td>
+                <td>{item.category}</td>
+                <td>{item.pricing_type}</td>
+                <td>{Number(item.base_price).toFixed(2)}</td>
+                <td>{item.unit}</td>
+                <td>{item.active ? 'active' : 'inactive'}</td>
+                <td>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEdit(item);
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleActive(item);
+                    }}
+                  >
+                    {item.active ? 'Deactivate' : 'Activate'}
+                  </button>
+                </td>
+              </tr>
+            )
+          )}
         </tbody>
       </table>
+      </div>
       </div>
 
       <div className="split-aside">

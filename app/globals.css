@@ -302,6 +302,21 @@ td select {
   border-radius: 4px;
 }
 
+.catalog-row {
+  cursor: pointer;
+}
+
+.catalog-row:hover {
+  background: var(--pink-tint);
+}
+
+/* The editing row's inputs/selects make the table wider than its grid
+   column — scroll it internally instead of overflowing onto the Add Item
+   card beside it. */
+.catalog-table-wrap {
+  overflow-x: auto;
+}
+
 th {
   background: var(--pink-tint);
   color: var(--pink-dark);
