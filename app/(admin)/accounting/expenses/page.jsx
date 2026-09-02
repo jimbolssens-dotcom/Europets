@@ -60,13 +60,14 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(currentMonth());
+  const [showAllMonths, setShowAllMonths] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [receiptFile, setReceiptFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   const loadExpenses = () =>
-    fetch(`/api/expenses?month=${month}`)
+    fetch(`/api/expenses${showAllMonths ? '' : `?month=${month}`}`)
       .then((res) => res.json())
       .then((data) => {
         setExpenses(Array.isArray(data) ? data : []);
@@ -77,7 +78,7 @@ export default function ExpensesPage() {
     setLoading(true);
     loadExpenses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month]);
+  }, [month, showAllMonths]);
 
   useEffect(() => {
     const channel = supabase
@@ -86,7 +87,7 @@ export default function ExpensesPage() {
       .subscribe();
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month]);
+  }, [month, showAllMonths]);
 
   function handleScanned(data) {
     setForm((prev) => ({
@@ -156,10 +157,24 @@ export default function ExpensesPage() {
         <div className="split-main">
           <label>
             Month:{' '}
-            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+            <input
+              type="month"
+              value={month}
+              disabled={showAllMonths}
+              onChange={(e) => setMonth(e.target.value)}
+            />
+          </label>{' '}
+          <label>
+            <input
+              type="checkbox"
+              checked={showAllMonths}
+              onChange={(e) => setShowAllMonths(e.target.checked)}
+            />{' '}
+            Show all months
           </label>
           <p className="visit-meta">
-            {expenses.length} expense{expenses.length === 1 ? '' : 's'}, AED {money(monthTotal)} total (incl. VAT)
+            {expenses.length} expense{expenses.length === 1 ? '' : 's'}
+            {showAllMonths ? '' : ' this month'}, AED {money(monthTotal)} total (incl. VAT)
           </p>
 
           {loading ? (
