@@ -184,6 +184,9 @@ export default function HospitalizationPage() {
               value={form.reason}
               onChange={(e) => setForm({ ...form, reason: e.target.value })}
             />
+            <button type="submit" disabled={submitting}>
+              {submitting ? 'Admitting...' : 'Admit Patient'}
+            </button>
           </div>
 
           <div className="admit-patient-cages">
@@ -196,10 +199,6 @@ export default function HospitalizationPage() {
             />
           </div>
         </div>
-
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Admitting...' : 'Admit Patient'}
-        </button>
       </form>
     </div>
   );
