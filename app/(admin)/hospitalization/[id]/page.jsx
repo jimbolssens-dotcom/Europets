@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
-import { groupCatalogBySubcategory } from '@/lib/catalogGrouping';
+import { groupCatalogBySubcategory, MAIN_CATEGORIES, MAIN_CATEGORY_LABELS } from '@/lib/catalogGrouping';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 
 function todayISODate() {
@@ -43,6 +43,7 @@ export default function HospitalizationDetailPage() {
   const [noteForm, setNoteForm] = useState(emptyNoteForm);
   const [pendingItems, setPendingItems] = useState([]);
   const [pendingItemForm, setPendingItemForm] = useState(emptyPendingItem);
+  const [pendingItemCategoryFilter, setPendingItemCategoryFilter] = useState('product');
   const [submitting, setSubmitting] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [editingReason, setEditingReason] = useState(false);
@@ -497,13 +498,31 @@ export default function HospitalizationDetailPage() {
               ))}
             </ul>
           )}
+          <div className="catalog-tabs catalog-tabs-compact">
+            {MAIN_CATEGORIES.map((mc) => (
+              <button
+                key={mc}
+                type="button"
+                className={mc === pendingItemCategoryFilter ? 'catalog-tab active' : 'catalog-tab'}
+                onClick={() => {
+                  setPendingItemCategoryFilter(mc);
+                  setPendingItemForm({ ...pendingItemForm, goods_service_id: '' });
+                }}
+              >
+                {MAIN_CATEGORY_LABELS[mc]}s
+              </button>
+            ))}
+          </div>
           <select
             value={pendingItemForm.goods_service_id}
             onChange={(e) => setPendingItemForm({ ...pendingItemForm, goods_service_id: e.target.value })}
           >
             <option value="">Select from catalog...</option>
-            {groupCatalogBySubcategory(catalog, subcategories).map((group) => (
-              <optgroup key={group.key} label={group.label}>
+            {groupCatalogBySubcategory(
+              catalog.filter((c) => c.main_category === pendingItemCategoryFilter),
+              subcategories
+            ).map((group) => (
+              <optgroup key={group.key} label={group.subcategoryName || group.label}>
                 {group.items.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}

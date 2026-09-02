@@ -126,9 +126,11 @@ appointments, full consult medical records, hospitalization, and invoicing.
    staff can keep extending as the clinic starts offering new ones,
    without a code change. Every item belongs to exactly one subcategory,
    which fixes its main category automatically. Catalog dropdowns
-   elsewhere (a consult's treatment plan, a worksheet entry's items) group
-   the item list the same way, via `<optgroup>`s ordered Product / Test /
-   Service
+   elsewhere (a consult's treatment plan, a worksheet entry's items) carry
+   a compact Product/Test/Service tab filter above the item `<select>`,
+   so picking a category narrows a long catalog down before a `<optgroup>`
+   per subcategory is even shown — switching tabs clears whatever item was
+   selected
 5. ✅ Hospitalization — standalone multi-day admissions with a day-to-day
    worksheet grouped by day (every entry for a day sits together under
    one heading with its own timestamp, so nothing looks lost as new
