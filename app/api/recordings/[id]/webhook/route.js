@@ -5,19 +5,29 @@
 // call) using the AssemblyAI job id we stored ourselves when submitting it.
 //
 // On success: for a consult recording, break the transcript down into the
-// Vitals & Exam fields (anamnesis/findings/prognosis/treatment_notes) and
-// write those onto the visit directly — a field already filled in by the
-// vet is appended to (with a timestamp marker) rather than overwritten, so
-// nothing typed before the recording finished is ever lost. For a surgery
-// recording, fold a freeform summary into surgical_reports.ai_summary as
-// before. Either way, mark the recording done.
+// Vitals & Exam fields (anamnesis/findings/diagnosis/prognosis/
+// treatment_notes) and write those onto the visit directly — a field
+// already filled in by the vet is appended to (with a timestamp marker)
+// rather than overwritten, so nothing typed before the recording finished
+// is ever lost. Diagnostic tests and treatments/medications mentioned as
+// actually ordered/given are matched against the goods_services catalog
+// and added to the Diagnostics/Treatment Plan lists directly, the same as
+// picking them from CatalogPicker would. For a surgery recording, fold a
+// freeform summary into surgical_reports.ai_summary as before. Either way,
+// mark the recording done.
+//
+// AssemblyAI may redeliver this webhook (e.g. on a retry) — recording.status
+// is checked up front so a redelivery is a no-op instead of double-writing
+// the visit record or, worse, double-billing by re-adding the same
+// diagnostics/treatments a second time.
 
 import { supabase } from '@/lib/supabaseClient';
 import { getTranscript } from '@/lib/assemblyai';
 import { summarizeTranscript, extractConsultFields } from '@/lib/anthropicClient';
+import { matchCatalogItem } from '@/lib/catalogMatch';
 import { NextResponse } from 'next/server';
 
-const CONSULT_RECORD_FIELDS = ['anamnesis', 'findings', 'prognosis', 'treatment_notes'];
+const CONSULT_RECORD_FIELDS = ['anamnesis', 'findings', 'diagnosis', 'prognosis', 'treatment_notes'];
 
 export async function POST(request, { params }) {
   const { data: recording, error: fetchError } = await supabase
@@ -28,6 +38,10 @@ export async function POST(request, { params }) {
 
   if (fetchError || !recording) {
     return NextResponse.json({ error: 'recording not found' }, { status: 404 });
+  }
+  if (recording.status === 'done') {
+    // Already processed — a redelivered webhook is a no-op, not a re-run.
+    return NextResponse.json({ ok: true });
   }
   if (!recording.assemblyai_transcript_id) {
     return NextResponse.json({ error: 'no transcription job on record' }, { status: 409 });
@@ -79,6 +93,55 @@ export async function POST(request, { params }) {
 
       if (Object.keys(update).length > 0) {
         await supabase.from('visits').update(update).eq('id', recording.entity_id);
+      }
+
+      if (fields.diagnostics_ordered?.length) {
+        const { data: tests } = await supabase
+          .from('goods_services')
+          .select('id, name')
+          .eq('main_category', 'test')
+          .eq('active', true);
+
+        for (const name of fields.diagnostics_ordered) {
+          const match = matchCatalogItem(name, tests || []);
+          if (!match) continue;
+
+          const { data: treatmentItem, error: itemError } = await supabase
+            .from('treatment_items')
+            .insert([{ visit_id: recording.entity_id, goods_service_id: match.id, quantity: 1 }])
+            .select()
+            .single();
+          if (itemError) continue;
+
+          const { error: diagError } = await supabase
+            .from('diagnostics')
+            .insert([{ visit_id: recording.entity_id, goods_service_id: match.id, treatment_item_id: treatmentItem.id }]);
+          if (diagError) {
+            await supabase.from('treatment_items').delete().eq('id', treatmentItem.id);
+          }
+        }
+      }
+
+      if (fields.treatments_given?.length) {
+        const { data: items } = await supabase
+          .from('goods_services')
+          .select('id, name')
+          .in('main_category', ['product', 'service'])
+          .eq('active', true);
+
+        for (const t of fields.treatments_given) {
+          const match = matchCatalogItem(t.name, items || []);
+          if (!match) continue;
+
+          await supabase.from('treatment_items').insert([
+            {
+              visit_id: recording.entity_id,
+              goods_service_id: match.id,
+              instructions: t.instructions || null,
+              quantity: t.quantity || 1,
+            },
+          ]);
+        }
       }
     } else if (recording.entity_type === 'surgical_report' && hasSpeech) {
       await supabase

@@ -19,6 +19,7 @@ const RECORD_FIELDS = [
   'body_condition_score',
   'anamnesis',
   'findings',
+  'diagnosis',
   'prognosis',
   'treatment_notes',
 ];

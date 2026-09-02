@@ -97,6 +97,7 @@ export default function ConsultDetailPage() {
           body_condition_score: data.body_condition_score ?? '',
           anamnesis: data.anamnesis ?? '',
           findings: data.findings ?? '',
+          diagnosis: data.diagnosis ?? '',
           prognosis: data.prognosis ?? '',
           treatment_notes: data.treatment_notes ?? '',
         });
@@ -207,6 +208,7 @@ export default function ConsultDetailPage() {
       body_condition_score: record.body_condition_score === '' ? null : Number(record.body_condition_score),
       anamnesis: record.anamnesis,
       findings: record.findings,
+      diagnosis: record.diagnosis,
       prognosis: record.prognosis,
       treatment_notes: record.treatment_notes,
     };
@@ -496,6 +498,20 @@ export default function ConsultDetailPage() {
           />
         </label>
         <label>
+          <span className="field-label-row">
+            Diagnosis
+            <VoiceToTextButton
+              kind="diagnosis"
+              onResult={(text) => appendRecordField('diagnosis', text)}
+            />
+          </span>
+          <textarea
+            rows={2}
+            value={record.diagnosis}
+            onChange={(e) => setRecord({ ...record, diagnosis: e.target.value })}
+          />
+        </label>
+        <label>
           Prognosis
           <textarea
             rows={2}
@@ -525,22 +541,14 @@ export default function ConsultDetailPage() {
       <h3>Record Consult</h3>
       <p className="visit-meta">
         Record the consult and Claude will break it down and fill in the Anamnesis, Findings,
-        Prognosis, and Treatment plan fields above — anything already filled in is kept, with the
-        recording's version appended below it.
+        Diagnosis, Prognosis, and Treatment plan fields above — anything already filled in is
+        kept, with the recording's version appended below it. Diagnostic tests and medications you
+        mention are also matched against the catalog and added to the Diagnostics and Treatment
+        Plan lists below automatically when a confident match is found.
       </p>
       <AudioRecorder entityType="visit" entityId={id} />
-      </div>
 
-      <div>
-      <h2>Vaccinations</h2>
-      <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
-      <VaccinationForm {...vac} species={consult.patients?.species} staff={staff} />
-      </div>
-      </div>
-
-      <div className="two-col">
-      <div>
-      <h2>Diagnostics</h2>
+      <h3>Diagnostics</h3>
       {diagnostics.map((d) => (
         <div key={d.id} className="visit-card">
           <div className="visit-header">
@@ -589,10 +597,8 @@ export default function ConsultDetailPage() {
           x-rays, or ultrasound scans on each entry above once it's added.
         </p>
       </form>
-      </div>
 
-      <div>
-      <h2>Treatment Plan</h2>
+      <h3>Treatment Plan</h3>
       <table>
         <thead>
           <tr>
@@ -666,6 +672,12 @@ export default function ConsultDetailPage() {
           </p>
         </>
       )}
+      </div>
+
+      <div>
+      <h2>Vaccinations</h2>
+      <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
+      <VaccinationForm {...vac} species={consult.patients?.species} staff={staff} />
       </div>
       </div>
 

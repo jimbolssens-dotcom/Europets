@@ -130,6 +130,7 @@ create table visits (
     body_condition_score smallint check (body_condition_score between 1 and 9),
     anamnesis text,                  -- client-reported history / complaint
     findings text,                   -- physical exam findings
+    diagnosis text,
     prognosis text,
     treatment_notes text
 );
