@@ -993,6 +993,7 @@ button.secondary:hover {
   font-size: 0.68rem;
   font-family: inherit;
   background: transparent;
+  color: var(--ink);
   border: 1px solid transparent;
   border-radius: 4px;
   cursor: pointer;
