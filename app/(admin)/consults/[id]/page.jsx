@@ -163,6 +163,19 @@ export default function ConsultDetailPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'visits', filter: `id=eq.${id}` }, loadConsult)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'diagnostics', filter: `visit_id=eq.${id}` }, loadDiagnostics)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'treatment_items', filter: `visit_id=eq.${id}` }, loadTreatmentItems)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'recordings', filter: `entity_id=eq.${id}` },
+        () => {
+          // A recording finishing is what fills in the fields above (and
+          // possibly Diagnostics/Treatment Plan) — reload all three
+          // directly rather than relying only on postgres_changes on
+          // visits/diagnostics/treatment_items picking it up.
+          loadConsult();
+          loadDiagnostics();
+          loadTreatmentItems();
+        }
+      )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'surgical_reports', filter: `visit_id=eq.${id}` }, loadSurgicalReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dental_reports', filter: `visit_id=eq.${id}` }, loadDentalReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices', filter: `visit_id=eq.${id}` }, loadInvoiceInfo)
