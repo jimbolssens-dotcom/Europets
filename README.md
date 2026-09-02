@@ -119,7 +119,15 @@ appointments, full consult medical records, hospitalization, and invoicing.
    from the catalog, and surgical/dental reports. Also embeds the same
    Vaccination History + Add Vaccination module as the patient page (under
    Notes, in the same column), so a vaccination given during the visit can
-   be recorded without leaving the consult
+   be recorded without leaving the consult. A "Long-Term Patient Notes"
+   panel near the top ("aggressive with handling", "allergic to
+   penicillin", ...) is deliberately separate from that per-visit note
+   thread — it's tied to the patient, not the visit, dated, and persists
+   across their whole record; the same panel shows on the patient's own
+   page too (always expanded there, and auto-expanded here whenever the
+   patient already has notes) so it's visible the moment anyone pulls up
+   that patient, from either place (`app/_components/PatientAlerts.jsx` +
+   `usePatientAlerts.js`, shared by both pages)
 4. ✅ Goods/services & invoicing (flat + per-kg pricing, 5% UAE VAT) — a
    consult can open an invoice that imports its whole treatment plan as
    line items in one click, then take more items added afterward.
@@ -243,6 +251,8 @@ app/
 │   ├── visits/route.js                   → start a consult (from appointment or walk-in)
 │   ├── visits/[id]/route.js              → consult record (GET/PATCH), completing
 │   ├── consult-notes/route.js            → per-consult live note thread
+│   ├── patient-alerts/route.js           → a patient's long-term notes (dated, persist across
+│   │                                        their whole record) — deliberately not consult-notes
 │   ├── diagnostics/, treatment-items/    → per-consult diagnostics & treatment plan —
 │   │                                        treatment-items also serves a hospitalization
 │   │                                        worksheet entry's medications/goods/tests
@@ -325,10 +335,14 @@ app/
 │                                            used by both patients/[id] and consults/[id]
 ├── _components/VaccinationForm.jsx       → the Add Vaccination card (species-filtered checklist,
 │                                            Annual/Primary Booster) — takes useVaccinations' state as props
-└── _components/VaccinationHistory.jsx    → read-only vaccination table with Delete. Each page lays
-                                             the two out differently: the patient page puts the form
-                                             beside its info panel with history below; the consult
-                                             page stacks history then form under Notes
+├── _components/VaccinationHistory.jsx    → read-only vaccination table with Delete. Each page lays
+│                                            the two out differently: the patient page puts the form
+│                                            beside its info panel with history below; the consult
+│                                            page stacks history then form under Notes
+├── _components/usePatientAlerts.js       → shared state/logic behind a patient's long-term notes —
+│                                            same split as useVaccinations, used by both pages
+└── _components/PatientAlerts.jsx         → the dated note list + add form, takes usePatientAlerts'
+                                             state as props
 └── layout.js                             → bare root shell (html/body only — see security note)
 lib/
 ├── supabaseClient.js                     → shared Supabase connection

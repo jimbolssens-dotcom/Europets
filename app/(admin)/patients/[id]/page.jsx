@@ -13,6 +13,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { useVaccinations } from '@/app/_components/useVaccinations';
 import VaccinationForm from '@/app/_components/VaccinationForm';
 import VaccinationHistory from '@/app/_components/VaccinationHistory';
+import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
+import PatientAlerts from '@/app/_components/PatientAlerts';
 
 const SEX_LABELS = {
   male: 'Male',
@@ -57,6 +59,7 @@ export default function PatientDetailPage() {
   }, [id]);
 
   const vac = useVaccinations(id, patient?.species);
+  const patientAlerts = usePatientAlerts(id);
 
   if (loading) return <p>Loading patient...</p>;
   if (!patient || patient.error) return <p>Patient not found.</p>;
@@ -70,6 +73,11 @@ export default function PatientDetailPage() {
         {patient.name} <span>(Patient #{patient.patient_number})</span>
         {patient.deceased && <span className="error"> · Deceased</span>}
       </h1>
+
+      <div className="patient-alerts-panel patient-alerts-panel-static">
+        <h2>⚠️ Long-Term Patient Notes</h2>
+        <PatientAlerts {...patientAlerts} staff={staff} />
+      </div>
 
       <div className="split">
         <div className="split-main">

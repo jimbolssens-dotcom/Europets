@@ -606,6 +606,97 @@ button.secondary:hover {
   margin-bottom: 0.5rem;
 }
 
+/* Long-term, patient-level notes ("aggressive with handling", "allergic
+   to penicillin") — warm/amber to read as a standing alert, distinct from
+   the neutral .case-files styling and the yellow .possible-duplicate-warning
+   (a one-off prompt, not a persistent record). */
+.patient-alerts-panel {
+  background: #fff8ec;
+  border: 1px solid #f0c674;
+  border-left: 4px solid #d99a1b;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
+.patient-alerts-panel summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #8a6116;
+}
+
+.patient-alerts-panel[open] summary {
+  margin-bottom: 0.6rem;
+}
+
+.patient-alerts-panel-static h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.1rem;
+  color: #8a6116;
+}
+
+.patient-alerts-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.patient-alerts-list li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  background: white;
+  border: 1px solid #f0c674;
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+.patient-alert-date {
+  font-size: 0.75rem;
+  color: #999;
+  white-space: nowrap;
+}
+
+.patient-alert-text {
+  flex: 1;
+  min-width: 150px;
+}
+
+.patient-alert-author {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.patient-alerts-list li button {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.patient-alerts-form {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.patient-alerts-form input {
+  flex: 1;
+  min-width: 220px;
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.patient-alerts-form select {
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
 /* Compact, low-emphasis sharing controls — tucked below the main
    workflow (e.g. the day-to-day worksheet) rather than competing with it
    for attention at the top of the page. */

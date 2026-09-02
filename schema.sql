@@ -402,6 +402,24 @@ create table consult_notes (
     created_at timestamptz default now()
 );
 
+-- ============ PATIENT ALERTS ============
+-- Long-term, patient-level notes — "aggressive with handling", "allergic
+-- to penicillin", "reacted badly to the rabies vaccine" — that persist
+-- across the patient's whole record, not tied to any one visit. Entered
+-- from a consult (where a vet would first notice something worth
+-- flagging) but shown on the patient's own page too, so it's visible the
+-- moment anyone pulls up that patient. Deliberately separate from
+-- consult_notes (per-visit) and patients.notes (a single free-text field).
+create table patient_alerts (
+    id uuid primary key default gen_random_uuid(),
+    patient_id uuid references patients(id) on delete cascade not null,
+    author_id uuid references staff(id),
+    note_text text not null,
+    created_at timestamptz default now()
+);
+
+create index idx_patient_alerts_patient on patient_alerts(patient_id);
+
 -- ============ AI RECORDINGS ============
 -- Ambient audio captured during a consult or surgery. Recorded in the
 -- browser, uploaded to the consult-files bucket, then transcribed
@@ -546,3 +564,4 @@ alter table vaccinations disable row level security;
 alter table intake_requests disable row level security;
 alter table catalog_subcategories disable row level security;
 alter table consent_forms disable row level security;
+alter table patient_alerts disable row level security;
