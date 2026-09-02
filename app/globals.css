@@ -1730,6 +1730,21 @@ button.secondary:hover {
   margin-bottom: 1.75rem;
 }
 
+/* Dog + Isolation on top, Post-Op tucked underneath — this whole block
+   sits as one flex child beside Recovery in the row above. */
+.cage-lower-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cage-lower-top-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
 .cage-cluster-label {
   font-size: 0.75rem;
   font-weight: 700;
@@ -1958,6 +1973,14 @@ form.card.admit-patient-form {
   gap: 0.3rem;
 }
 
+.cage-floorplan-compact .cage-lower-block {
+  gap: 0.6rem;
+}
+
+.cage-floorplan-compact .cage-lower-top-row {
+  gap: 1rem;
+}
+
 .cage-mini-tile {
   box-sizing: border-box;
   display: flex;
@@ -1995,9 +2018,21 @@ form.card.admit-patient-form {
    Phone-first: single column, large tap targets, minimal chrome. */
 
 .mobile-app {
+  padding: 1.25rem 1rem 3rem;
+}
+
+/* Most mobile pages stay narrow/portrait-friendly (480px). The cage
+   layout is the one exception — .mobile-page-wide keeps it landscape,
+   matching the desktop Cage Layout page's own arrangement exactly rather
+   than reflowing it, since staff view it with the phone turned sideways. */
+.mobile-page,
+.mobile-home {
   max-width: 480px;
   margin: 0 auto;
-  padding: 1.25rem 1rem 3rem;
+}
+
+.mobile-page.mobile-page-wide {
+  max-width: 1200px;
 }
 
 .mobile-home {
@@ -2141,46 +2176,14 @@ form.card.admit-patient-form {
   border: 1px solid var(--pink-tint);
 }
 
-/* Cage layout, reflowed for a phone: same clusters and per-group colors
-   as the desktop Cage Layout page (.floor-plan-row already wraps a whole
-   cluster onto its own line via flex-wrap when there's no room beside
-   it), but each cluster's own grid switches from a fixed wide column
-   count to auto-fill so it wraps into more, narrower rows instead of
-   forcing horizontal scroll — portrait instead of landscape. Occupied
-   tiles get their own class rather than reusing .cage-occupied, which
-   carries touch-action: none and cursor: grab for the desktop drag-to-
-   move feature — not wanted here, this is a plain tap-to-record link. */
-.mobile-app .cage-cluster {
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-  gap: 0.4rem;
-}
-
-.mobile-app .cage-cluster-flex {
-  gap: 0.4rem;
-}
-
-.mobile-app .floor-plan-row {
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.mobile-app .cage-tile {
-  min-height: 58px;
-  padding: 0.4rem 0.5rem;
-}
-
-.mobile-app .cage-name {
-  font-size: 0.7rem;
-}
-
-.mobile-app .cage-patient {
-  font-size: 0.7rem;
-}
-
-.mobile-app .cage-status {
-  font-size: 0.65rem;
-}
-
+/* Cage layout on mobile: deliberately identical to the desktop Cage
+   Layout page's own grid (same clusters, same column counts, same per-
+   group colors, same physical arrangement) rather than reflowed —
+   viewed with the phone turned to landscape, via .mobile-page-wide
+   above. Occupied tiles get their own color class rather than reusing
+   .cage-occupied, which carries touch-action: none and cursor: grab for
+   the desktop drag-to-move feature — not wanted here, this is a plain
+   tap-to-record link, not a drag source. */
 .mobile-app .cage-tile-mobile-occupied {
   background: var(--pink-tint);
   border-color: var(--pink);

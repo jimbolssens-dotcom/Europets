@@ -2,13 +2,14 @@
 // Arranges a list of cages into clusters that roughly mirror the clinic's
 // real floor plan — the 12 standard cages in the middle (2 rows of 6)
 // flanked by the long-term bungalows (2 left, 3 right); on the other side
-// recovery cages stacked in a column of 4, dog cages 2x2, isolation as 2
-// stacked plus 1 beside, and post-op alongside those rather than its own
-// row below (kept everything on two rows instead of spilling a third
-// below the fold). Doesn't know how to render a single cage — pass
-// `renderTile(cage)` for that, so the full Cage Layout page and a compact
-// picker (e.g. on Admit Patient) can share this same physical layout with
-// completely different tiles.
+// recovery cages stacked in a column of 4, and to the right of those a
+// block with dog cages (2x2) and isolation (2 stacked plus 1 beside) on
+// top, post-op cages underneath — so post-op sits tucked under dog/
+// isolation instead of sprawling out to the right of them. Doesn't know
+// how to render a single cage — pass `renderTile(cage)` for that, so the
+// full Cage Layout page, the compact picker (e.g. on Admit Patient), and
+// the mobile app can share this same physical layout with completely
+// different tiles.
 
 function byGroup(cages, group) {
   return cages.filter((c) => c.group_name === group).sort((a, b) => a.sort_order - b.sort_order);
@@ -46,21 +47,25 @@ export default function CageFloorPlan({ cages, renderTile, compact = false }) {
 
       <div className="floor-plan-row">
         {renderCluster(compact ? 'Recovery' : 'Recovery Cages', recoveryCages, 1)}
-        {renderCluster(compact ? 'Dog' : 'Dog Cages', dogCages, 2)}
-        {isoCages.length > 0 && (
-          <div>
-            <h3 className="cage-cluster-label">{compact ? 'Iso' : 'Isolation Cages'}</h3>
-            <div className="cage-cluster-flex">
-              <div className="cage-cluster" style={{ '--cols': 1 }}>
-                {isoCages.slice(0, 2).map((cage) => renderTile(cage))}
+        <div className="cage-lower-block">
+          <div className="cage-lower-top-row">
+            {renderCluster(compact ? 'Dog' : 'Dog Cages', dogCages, 2)}
+            {isoCages.length > 0 && (
+              <div>
+                <h3 className="cage-cluster-label">{compact ? 'Iso' : 'Isolation Cages'}</h3>
+                <div className="cage-cluster-flex">
+                  <div className="cage-cluster" style={{ '--cols': 1 }}>
+                    {isoCages.slice(0, 2).map((cage) => renderTile(cage))}
+                  </div>
+                  <div className="cage-cluster" style={{ '--cols': 1 }}>
+                    {isoCages.slice(2).map((cage) => renderTile(cage))}
+                  </div>
+                </div>
               </div>
-              <div className="cage-cluster" style={{ '--cols': 1 }}>
-                {isoCages.slice(2).map((cage) => renderTile(cage))}
-              </div>
-            </div>
+            )}
           </div>
-        )}
-        {renderCluster(compact ? 'Post-Op' : 'Post-Op Cages', postOpCages, 5)}
+          {renderCluster(compact ? 'Post-Op' : 'Post-Op Cages', postOpCages, 3)}
+        </div>
       </div>
     </div>
   );

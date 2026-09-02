@@ -1,9 +1,9 @@
 // app/mobile/hospitalization/page.js
-// The full cage layout (same clusters, same per-group color coding as
-// the desktop Cage Layout page) so a cage's real physical position is
-// still recognizable — just re-flowed for a narrow phone screen (more
-// rows, fewer columns per row) instead of the desktop's wide grid, and
-// with no drag/assign — tap an occupied cage straight into recording.
+// The full cage layout, identical to the desktop Cage Layout page's own
+// arrangement (same clusters, same columns, same per-group colors) —
+// meant to be viewed with the phone turned to landscape, not reflowed
+// into a portrait grid. No drag/assign here; tap an occupied cage
+// straight into recording.
 
 'use client';
 
@@ -60,11 +60,12 @@ export default function MobileHospitalizationListPage() {
   const occupancy = Object.fromEntries(admitted.filter((a) => a.cage_id).map((a) => [a.cage_id, a]));
 
   return (
-    <div className="mobile-page">
+    <div className="mobile-page mobile-page-wide">
       <a href="/mobile" className="mobile-back">
         &larr; Record
       </a>
       <h1>Hospitalization</h1>
+      <p className="mobile-hint">Turn your phone sideways for the full layout.</p>
 
       {loading ? (
         <p>Loading...</p>
