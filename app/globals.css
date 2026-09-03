@@ -2319,13 +2319,18 @@ form.card.admit-patient-form {
   margin-bottom: 0.5rem;
 }
 
-.mobile-home-header {
-  text-align: left;
-  margin-bottom: 0.75rem;
+/* Logo sits inline with the "Who are you?"/"Hello, <name>!" heading —
+   sized against the greeting's line-height so it doesn't add its own row. */
+.mobile-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
 }
 
 .mobile-home-logo {
-  height: 32px;
+  height: 48px;
+  flex-shrink: 0;
 }
 
 .mobile-tile {

@@ -52,13 +52,12 @@ export default function MobileHomePage() {
 
   return (
     <div className="mobile-home">
-      <div className="mobile-home-header">
-        <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
-      </div>
-
       {!ready ? null : !staffId ? (
         <>
-          <p className="mobile-subtitle mobile-whoareyou">Who are you?</p>
+          <div className="mobile-heading-row">
+            <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
+            <p className="mobile-subtitle mobile-whoareyou">Who are you?</p>
+          </div>
           {staff.length === 0 ? (
             <p>No staff set up yet.</p>
           ) : (
@@ -76,7 +75,10 @@ export default function MobileHomePage() {
         </>
       ) : (
         <>
-          <h1 className="mobile-greeting">Hello, {firstName || 'there'}!</h1>
+          <div className="mobile-heading-row">
+            <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
+            <h1 className="mobile-greeting">Hello, {firstName || 'there'}!</h1>
+          </div>
           <button type="button" className="mobile-link-btn" onClick={switchStaff}>
             Not you? Switch
           </button>
