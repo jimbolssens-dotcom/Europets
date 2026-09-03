@@ -1,17 +1,17 @@
 // app/api/dental-reports/[id]/route.js
 // GET   /api/dental-reports/:id  -> one dental report, with the visit's
 //                                   patient/client joined (needed for the
-//                                   post-op release PDF/share links).
-// PATCH /api/dental-reports/:id  -> edit any of its fields — used both for
-//                                   the existing fields and for saving the
-//                                   vet-reviewed postop_instructions once
-//                                   they've approved an AI draft (see
-//                                   app/api/dental-reports/[id]/generate-postop).
+//                                   report PDF/share links).
+// PATCH /api/dental-reports/:id  -> edit any of its fields — including
+//                                   ai_summary, the AI-drafted client
+//                                   report (see ClientReportEditor),
+//                                   which a vet can correct before it's
+//                                   shared with the owner.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 
-const EDITABLE_FIELDS = ['performed_by', 'findings', 'procedures_performed', 'notes', 'postop_instructions'];
+const EDITABLE_FIELDS = ['performed_by', 'findings', 'procedures_performed', 'notes', 'ai_summary'];
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase

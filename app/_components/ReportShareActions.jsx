@@ -1,9 +1,8 @@
 // app/_components/ReportShareActions.jsx
-// Download/WhatsApp/email buttons for a report's own PDF (e.g. the
-// surgical/dental report itself, as opposed to the separate owner-facing
-// post-op instructions — see PostOpInstructionsPanel). The report is
-// always "live" (no separate draft/save step), so these just link
-// straight to the report-pdf route.
+// Download/WhatsApp/email buttons for a surgical/dental report's PDF —
+// the AI-drafted client report (see ClientReportEditor) plus, for
+// dental, the chart. These just link straight to the report-pdf route,
+// which always reads the last-saved ai_summary.
 
 'use client';
 

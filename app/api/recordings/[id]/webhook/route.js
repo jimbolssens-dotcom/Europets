@@ -15,9 +15,12 @@
 // goods_services catalog (the extraction prompt is given the catalog's
 // own names so the model echoes them verbatim) and added to the
 // Diagnostics/Treatment Plan lists directly, the same as picking them
-// from CatalogPicker would. For a surgery or dental recording, fold a
-// freeform summary into surgical_reports.ai_summary / dental_reports.ai_summary
-// as before. For a
+// from CatalogPicker would. For a surgery or dental recording, one call
+// drafts the whole client-facing report (what was done + home-care
+// instructions, grounded in the clinic's baseline and, for dental, the
+// patient's chart — see generateClientReport) straight into
+// surgical_reports.ai_summary / dental_reports.ai_summary — no separate
+// "generate post-op instructions" step. For a
 // hospitalization recording, break it down into the worksheet-entry
 // fields (appetite/weight/temperature/condition/notes) plus any
 // medications/tests given, matched against the catalog the same way —
@@ -33,7 +36,12 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { getTranscript } from '@/lib/assemblyai';
-import { summarizeTranscript, extractConsultFields, extractHospitalizationNoteFields } from '@/lib/anthropicClient';
+import {
+  summarizeTranscript,
+  generateClientReport,
+  extractConsultFields,
+  extractHospitalizationNoteFields,
+} from '@/lib/anthropicClient';
 import { matchCatalogItem } from '@/lib/catalogMatch';
 import { describeDentalChart } from '@/lib/dentalChartLayout';
 import { NextResponse } from 'next/server';
@@ -84,27 +92,41 @@ export async function POST(request, { params }) {
 
     const transcript = job.text || '';
     const hasSpeech = transcript.trim().length > 0;
+    const isProcedureReport = recording.entity_type === 'surgical_report' || recording.entity_type === 'dental_report';
 
-    // For a dental recording, ground the summary in the patient's current
-    // dental chart (see app/_components/DentalChart.jsx) so extractions/
-    // missing teeth the vet marked there — but may not narrate tooth-by-
-    // tooth — still end up reflected in the written note.
-    let dentalChartContext;
-    if (recording.entity_type === 'dental_report' && hasSpeech) {
-      const { data: dentalReport } = await supabase
-        .from('dental_reports')
-        .select('visits(patients(species, dental_chart))')
-        .eq('id', recording.entity_id)
-        .single();
-      const patient = dentalReport?.visits?.patients;
-      if (patient) {
-        dentalChartContext = describeDentalChart(patient.species, patient.dental_chart) || undefined;
-      }
+    let summary;
+    if (!hasSpeech) {
+      summary = '(No speech detected in recording.)';
+    } else if (isProcedureReport) {
+      // One dictation produces the whole client-facing report — what was
+      // done today plus home-care instructions — grounded in the clinic's
+      // approved baseline (Settings) and, for dental, the patient's
+      // current dental chart (see app/_components/DentalChart.jsx), so
+      // extractions/missing teeth marked there but not necessarily
+      // narrated tooth-by-tooth still end up named in the report.
+      const table = recording.entity_type === 'surgical_report' ? 'surgical_reports' : 'dental_reports';
+      const baselineColumn =
+        recording.entity_type === 'surgical_report' ? 'surgical_postop_baseline' : 'dental_postop_baseline';
+      const procedureType = recording.entity_type === 'surgical_report' ? 'surgical' : 'dental';
+
+      const [{ data: report }, { data: clinic }] = await Promise.all([
+        supabase.from(table).select('visits(patients(name, species, dental_chart))').eq('id', recording.entity_id).single(),
+        supabase.from('clinic_settings').select(baselineColumn).eq('id', true).maybeSingle(),
+      ]);
+      const patient = report?.visits?.patients;
+
+      summary = await generateClientReport({
+        procedureType,
+        transcript,
+        patientName: patient?.name,
+        species: patient?.species,
+        baseline: clinic?.[baselineColumn],
+        dentalChartContext:
+          procedureType === 'dental' && patient ? describeDentalChart(patient.species, patient.dental_chart) : null,
+      });
+    } else {
+      summary = await summarizeTranscript(transcript, recording.entity_type);
     }
-
-    const summary = hasSpeech
-      ? await summarizeTranscript(transcript, recording.entity_type, dentalChartContext)
-      : '(No speech detected in recording.)';
 
     await supabase
       .from('recordings')

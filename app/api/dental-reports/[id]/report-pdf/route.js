@@ -1,10 +1,11 @@
 // app/api/dental-reports/[id]/report-pdf/route.js
-// GET /api/dental-reports/:id/report-pdf -> the dental report itself
-// (findings, procedures performed, notes, AI summary) as a PDF — for
-// staff to download/print, or linked directly in the WhatsApp/email
-// "send to owner" buttons on the consult page (this route needs no auth,
-// same as the post-op release PDF route, since the app has no staff auth
-// to begin with).
+// GET /api/dental-reports/:id/report-pdf -> the client report (what was
+// done — including the dental chart's extractions — + home-care
+// instructions, drafted by generateClientReport) as a PDF — for staff to
+// download/print, or linked directly in the WhatsApp/email "send to
+// owner" buttons on the consult page (this route needs no auth, same as
+// the rest of this app's PDF routes, since there's no staff auth to
+// begin with).
 
 import { supabase } from '@/lib/supabaseClient';
 import { buildProcedureReportPdf } from '@/lib/procedureReportPdf';
@@ -16,7 +17,7 @@ export async function GET(request, { params }) {
   const { data: report, error } = await supabase
     .from('dental_reports')
     .select(
-      'findings, procedures_performed, notes, ai_summary, performed_at, staff(full_name), visits(patients(name, species, dental_chart), clients(full_name))'
+      'ai_summary, performed_at, staff(full_name), visits(patients(name, species, dental_chart), clients(full_name))'
     )
     .eq('id', params.id)
     .single();
@@ -35,12 +36,7 @@ export async function GET(request, { params }) {
     performedAt: report.performed_at,
     staffName: report.staff?.full_name,
     dentalChart: report.visits?.patients?.dental_chart,
-    sections: [
-      { label: 'Findings', text: report.findings },
-      { label: 'Procedures Performed', text: report.procedures_performed },
-      { label: 'Notes', text: report.notes },
-      { label: 'AI Summary', text: report.ai_summary },
-    ],
+    sections: [{ text: report.ai_summary }],
   });
 
   return new NextResponse(Buffer.from(pdfBytes), {

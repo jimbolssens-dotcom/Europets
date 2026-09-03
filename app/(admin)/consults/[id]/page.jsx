@@ -17,8 +17,8 @@ import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
 import CatalogPicker from '@/app/_components/CatalogPicker';
-import PostOpInstructionsPanel from '@/app/_components/PostOpInstructionsPanel';
 import ReportShareActions from '@/app/_components/ReportShareActions';
+import ClientReportEditor from '@/app/_components/ClientReportEditor';
 import DentalChart from '@/app/_components/DentalChart';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { subcategoryName } from '@/lib/catalogGrouping';
@@ -854,16 +854,17 @@ export default function ConsultDetailPage() {
             {r.performed_at ? new Date(r.performed_at).toLocaleString() : ''}
           </p>
           {r.notes && <p>{r.notes}</p>}
-          {r.ai_summary && (
-            <p>
-              <strong>AI summary:</strong> {r.ai_summary}
-            </p>
-          )}
           <AttachmentSection entityType="surgical_report" entityId={r.id} />
           <AudioRecorder
             entityType="surgical_report"
             entityId={r.id}
             autoStart={r.id === autoRecordSurgicalId}
+          />
+          <ClientReportEditor
+            reportId={r.id}
+            apiBase="/api/surgical-reports"
+            savedReport={r.ai_summary}
+            onSaved={loadSurgicalReports}
           />
           <h4>Share Surgical Report</h4>
           <ReportShareActions
@@ -872,14 +873,6 @@ export default function ConsultDetailPage() {
             client={consult.clients}
             patient={consult.patients}
             reportLabel="surgical report"
-          />
-          <PostOpInstructionsPanel
-            reportId={r.id}
-            apiBase="/api/surgical-reports"
-            savedInstructions={r.postop_instructions}
-            onSaved={loadSurgicalReports}
-            client={consult.clients}
-            patient={consult.patients}
           />
         </div>
       ))}
@@ -945,16 +938,17 @@ export default function ConsultDetailPage() {
             </p>
           )}
           {r.notes && <p>{r.notes}</p>}
-          {r.ai_summary && (
-            <p>
-              <strong>AI summary:</strong> {r.ai_summary}
-            </p>
-          )}
           <AttachmentSection entityType="dental_report" entityId={r.id} />
           <AudioRecorder
             entityType="dental_report"
             entityId={r.id}
             autoStart={r.id === autoRecordDentalId}
+          />
+          <ClientReportEditor
+            reportId={r.id}
+            apiBase="/api/dental-reports"
+            savedReport={r.ai_summary}
+            onSaved={loadDentalReports}
           />
           <h4>Share Dental Report</h4>
           <ReportShareActions
@@ -963,14 +957,6 @@ export default function ConsultDetailPage() {
             client={consult.clients}
             patient={consult.patients}
             reportLabel="dental report"
-          />
-          <PostOpInstructionsPanel
-            reportId={r.id}
-            apiBase="/api/dental-reports"
-            savedInstructions={r.postop_instructions}
-            onSaved={loadDentalReports}
-            client={consult.clients}
-            patient={consult.patients}
           />
         </div>
       ))}
