@@ -208,9 +208,10 @@ create table goods_services (
     base_price numeric(10,2) not null,
     unit text,                       -- e.g. 'mg', 'ml', 'kg' (used when pricing_type != flat)
     active boolean default true,
-    allow_dispense boolean not null default false,  -- medication admin methods this item supports —
-    allow_sc boolean not null default false,        -- each adds its own fee (clinic_settings) as a
-    allow_im boolean not null default false,        -- second invoice line when chosen (see lib/invoicing.js)
+    administration_method text check (administration_method in ('dispense', 'sc', 'im')),
+        -- for a medication: how it's given, if it carries its own fee —
+        -- applied automatically wherever the medication is added, as a
+        -- second invoice line (see lib/invoicing.js)
     created_at timestamptz default now()
 );
 

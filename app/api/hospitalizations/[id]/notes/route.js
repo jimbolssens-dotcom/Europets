@@ -68,15 +68,28 @@ export async function POST(request, { params }) {
   }
 
   let insertedItems = [];
-  const itemRows = (Array.isArray(treatment_items) ? treatment_items : [])
-    .filter((t) => t.goods_service_id)
-    .map((t) => ({
-      hospitalization_note_id: note.id,
-      goods_service_id: t.goods_service_id,
-      instructions: t.instructions || null,
-      quantity: t.quantity !== undefined && t.quantity !== '' ? Number(t.quantity) : 1,
-      administration_method: t.administration_method || null,
-    }));
+  const pendingItems = (Array.isArray(treatment_items) ? treatment_items : []).filter((t) => t.goods_service_id);
+
+  // A medication's administration method (and its fee) is applied
+  // automatically from its catalog entry, not chosen per booking — look
+  // up whichever items are being added here so it can be copied onto
+  // each row (see lib/invoicing.js for where the fee itself gets added).
+  let methodByGoodsServiceId = {};
+  if (pendingItems.length > 0) {
+    const { data: catalogItems } = await supabase
+      .from('goods_services')
+      .select('id, administration_method')
+      .in('id', [...new Set(pendingItems.map((t) => t.goods_service_id))]);
+    methodByGoodsServiceId = Object.fromEntries((catalogItems || []).map((c) => [c.id, c.administration_method]));
+  }
+
+  const itemRows = pendingItems.map((t) => ({
+    hospitalization_note_id: note.id,
+    goods_service_id: t.goods_service_id,
+    instructions: t.instructions || null,
+    quantity: t.quantity !== undefined && t.quantity !== '' ? Number(t.quantity) : 1,
+    administration_method: methodByGoodsServiceId[t.goods_service_id] || null,
+  }));
 
   if (itemRows.length > 0) {
     const { data: items, error: itemsError } = await supabase

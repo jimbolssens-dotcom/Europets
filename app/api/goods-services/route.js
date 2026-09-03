@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 
 const PRICING_TYPES = ['flat', 'per_kg', 'per_unit'];
+const ADMINISTRATION_METHODS = ['dispense', 'sc', 'im'];
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -36,7 +37,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { name, subcategory_id, pricing_type, base_price, unit, allow_dispense, allow_sc, allow_im } = body;
+  const { name, subcategory_id, pricing_type, base_price, unit, administration_method } = body;
 
   if (!name || !subcategory_id || base_price === undefined || base_price === null) {
     return NextResponse.json(
@@ -53,6 +54,12 @@ export async function POST(request) {
   }
   if (Number.isNaN(Number(base_price)) || Number(base_price) < 0) {
     return NextResponse.json({ error: 'base_price must be a non-negative number' }, { status: 400 });
+  }
+  if (administration_method && !ADMINISTRATION_METHODS.includes(administration_method)) {
+    return NextResponse.json(
+      { error: `administration_method must be one of ${ADMINISTRATION_METHODS.join(', ')}` },
+      { status: 400 }
+    );
   }
 
   const { data: subcategory, error: subcategoryError } = await supabase
@@ -75,9 +82,7 @@ export async function POST(request) {
         pricing_type: type,
         base_price: Number(base_price),
         unit: unit || null,
-        allow_dispense: !!allow_dispense,
-        allow_sc: !!allow_sc,
-        allow_im: !!allow_im,
+        administration_method: administration_method || null,
       },
     ])
     .select()

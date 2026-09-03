@@ -5,29 +5,23 @@
 // 'per_kg' pricing. If the invoice is linked to a visit and quantity is
 // omitted for a per_kg item, the patient's current weight is used.
 //
-// For a medication added straight to an invoice (bypassing the treatment
-// plan), administration_method (dispense/sc/im) adds a second line for
-// that method's fee, same as the treatment-plan -> invoice flow — see
-// lib/invoicing.js.
+// A medication with an administration method configured
+// (goods_services.administration_method — dispense/sc/im) automatically
+// gets a second line for that method's fee, same as the treatment-plan ->
+// invoice flow — see lib/invoicing.js. Not something the caller chooses;
+// waiving it in the rare exceptional case is just removing that line
+// from the invoice afterward.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 import { recomputeInvoiceTotals, administrationFeeLineItem } from '@/lib/invoicing';
 
-const ADMINISTRATION_METHODS = ['dispense', 'sc', 'im'];
-
 export async function POST(request, { params }) {
   const body = await request.json();
-  const { goods_service_id, quantity, description, administration_method } = body;
+  const { goods_service_id, quantity, description } = body;
 
   if (!goods_service_id) {
     return NextResponse.json({ error: 'goods_service_id is required' }, { status: 400 });
-  }
-  if (administration_method && !ADMINISTRATION_METHODS.includes(administration_method)) {
-    return NextResponse.json(
-      { error: `administration_method must be one of ${ADMINISTRATION_METHODS.join(', ')}` },
-      { status: 400 }
-    );
   }
 
   const { data: item, error: itemError } = await supabase
@@ -38,12 +32,6 @@ export async function POST(request, { params }) {
 
   if (itemError || !item) {
     return NextResponse.json({ error: 'goods/service not found' }, { status: 400 });
-  }
-  if (administration_method && !item[`allow_${administration_method}`]) {
-    return NextResponse.json(
-      { error: 'this catalog item does not support that administration method' },
-      { status: 400 }
-    );
   }
 
   let qty = quantity !== undefined && quantity !== null ? Number(quantity) : null;
@@ -76,13 +64,13 @@ export async function POST(request, { params }) {
     },
   ];
 
-  if (administration_method) {
+  if (item.administration_method) {
     const { data: clinicSettings } = await supabase
       .from('clinic_settings')
       .select('*')
       .eq('id', true)
       .maybeSingle();
-    const feeLine = administrationFeeLineItem({ administration_method }, clinicSettings, params.id);
+    const feeLine = administrationFeeLineItem(item, clinicSettings, params.id);
     if (feeLine) rows.push(feeLine);
   }
 

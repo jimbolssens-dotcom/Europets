@@ -17,9 +17,7 @@ import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
 import CatalogPicker from '@/app/_components/CatalogPicker';
-import AdministrationMethodSelect, {
-  ADMINISTRATION_METHOD_LABELS,
-} from '@/app/_components/AdministrationMethodSelect';
+import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { subcategoryName } from '@/lib/catalogGrouping';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
@@ -58,12 +56,7 @@ export default function ConsultDetailPage() {
   const [diagError, setDiagError] = useState(null);
 
   const [treatmentItems, setTreatmentItems] = useState([]);
-  const [treatForm, setTreatForm] = useState({
-    goods_service_id: '',
-    instructions: '',
-    quantity: '1',
-    administration_method: '',
-  });
+  const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1' });
 
   const [surgicalReports, setSurgicalReports] = useState([]);
   const [surgForm, setSurgForm] = useState({ surgeon_id: '', procedure_name: '', notes: '' });
@@ -301,7 +294,7 @@ export default function ConsultDetailPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ visit_id: id, ...treatForm }),
     });
-    setTreatForm({ goods_service_id: '', instructions: '', quantity: '1', administration_method: '' });
+    setTreatForm({ goods_service_id: '', instructions: '', quantity: '1' });
     loadTreatmentItems();
   }
 
@@ -661,13 +654,8 @@ export default function ConsultDetailPage() {
           catalog={catalog}
           subcategories={subcategories}
           value={treatForm.goods_service_id}
-          onChange={(value) => setTreatForm({ ...treatForm, goods_service_id: value, administration_method: '' })}
+          onChange={(value) => setTreatForm({ ...treatForm, goods_service_id: value })}
           onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
-        />
-        <AdministrationMethodSelect
-          catalogItem={catalog.find((c) => c.id === treatForm.goods_service_id)}
-          value={treatForm.administration_method}
-          onChange={(value) => setTreatForm({ ...treatForm, administration_method: value })}
         />
         <input
           placeholder="Instructions (dosage, frequency, duration)"

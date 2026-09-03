@@ -8,7 +8,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
-import AdministrationMethodSelect from '@/app/_components/AdministrationMethodSelect';
 import { groupLineItemsByCategory } from '@/lib/catalogGrouping';
 
 function money(n) {
@@ -19,7 +18,6 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
   const [invoice, setInvoice] = useState(null);
   const [goodsServiceId, setGoodsServiceId] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [administrationMethod, setAdministrationMethod] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -67,7 +65,6 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
       body: JSON.stringify({
         goods_service_id: goodsServiceId,
         quantity: quantity ? Number(quantity) : undefined,
-        administration_method: administrationMethod || undefined,
       }),
     });
     const data = await res.json();
@@ -77,7 +74,6 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
     } else {
       setGoodsServiceId('');
       setQuantity('');
-      setAdministrationMethod('');
       loadInvoice();
     }
     setSubmitting(false);
@@ -184,16 +180,8 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
               catalog={catalog}
               subcategories={subcategories}
               value={goodsServiceId}
-              onChange={(value) => {
-                setGoodsServiceId(value);
-                setAdministrationMethod('');
-              }}
+              onChange={setGoodsServiceId}
               onItemCreated={onCatalogChange}
-            />
-            <AdministrationMethodSelect
-              catalogItem={catalog.find((c) => c.id === goodsServiceId)}
-              value={administrationMethod}
-              onChange={setAdministrationMethod}
             />
             <div className="catalog-add-form-row">
               <input

@@ -16,9 +16,7 @@ import AudioRecorder from '@/app/_components/AudioRecorder';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import CatalogPicker from '@/app/_components/CatalogPicker';
-import AdministrationMethodSelect, {
-  ADMINISTRATION_METHOD_LABELS,
-} from '@/app/_components/AdministrationMethodSelect';
+import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
 
@@ -36,7 +34,7 @@ const emptyNoteForm = {
   notes: '',
 };
 
-const emptyPendingItem = { goods_service_id: '', instructions: '', quantity: '1', administration_method: '' };
+const emptyPendingItem = { goods_service_id: '', instructions: '', quantity: '1' };
 
 export default function HospitalizationDetailPage() {
   const { id } = useParams();
@@ -161,6 +159,7 @@ export default function HospitalizationDetailPage() {
           instructions: item.instructions || '',
           quantity: item.quantity || 1,
           name: item.name,
+          administration_method: catalog.find((c) => c.id === item.goods_service_id)?.administration_method,
         })),
       ]);
     }
@@ -169,7 +168,10 @@ export default function HospitalizationDetailPage() {
   function addPendingItem() {
     if (!pendingItemForm.goods_service_id) return;
     const catalogItem = catalog.find((c) => c.id === pendingItemForm.goods_service_id);
-    setPendingItems((prev) => [...prev, { ...pendingItemForm, name: catalogItem?.name }]);
+    setPendingItems((prev) => [
+      ...prev,
+      { ...pendingItemForm, name: catalogItem?.name, administration_method: catalogItem?.administration_method },
+    ]);
     setPendingItemForm(emptyPendingItem);
   }
 
@@ -556,15 +558,8 @@ export default function HospitalizationDetailPage() {
             catalog={catalog}
             subcategories={subcategories}
             value={pendingItemForm.goods_service_id}
-            onChange={(value) =>
-              setPendingItemForm({ ...pendingItemForm, goods_service_id: value, administration_method: '' })
-            }
+            onChange={(value) => setPendingItemForm({ ...pendingItemForm, goods_service_id: value })}
             onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
-          />
-          <AdministrationMethodSelect
-            catalogItem={catalog.find((c) => c.id === pendingItemForm.goods_service_id)}
-            value={pendingItemForm.administration_method}
-            onChange={(value) => setPendingItemForm({ ...pendingItemForm, administration_method: value })}
           />
           <input
             placeholder="Instructions (dosage, frequency, duration)"

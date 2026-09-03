@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS } from '@/lib/catalogGrouping';
+import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 
 const emptyForm = {
   name: '',
@@ -17,12 +18,8 @@ const emptyForm = {
   pricing_type: 'flat',
   base_price: '',
   unit: '',
-  allow_dispense: false,
-  allow_sc: false,
-  allow_im: false,
+  administration_method: '',
 };
-
-const ADMINISTRATION_METHOD_LABELS = { allow_dispense: 'Dispense', allow_sc: 'SC', allow_im: 'IM' };
 
 export default function CatalogPage() {
   const [items, setItems] = useState([]);
@@ -108,9 +105,7 @@ export default function CatalogPage() {
       pricing_type: item.pricing_type,
       base_price: item.base_price,
       unit: item.unit || '',
-      allow_dispense: !!item.allow_dispense,
-      allow_sc: !!item.allow_sc,
-      allow_im: !!item.allow_im,
+      administration_method: item.administration_method || '',
     });
     setEditError(null);
   }
@@ -309,31 +304,16 @@ export default function CatalogPage() {
                   />
                 </td>
                 {activeTab === 'product' && (
-                  <td className="catalog-admin-methods-edit" onClick={(e) => e.stopPropagation()}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={editForm.allow_dispense}
-                        onChange={(e) => setEditForm({ ...editForm, allow_dispense: e.target.checked })}
-                      />{' '}
-                      Dispense
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={editForm.allow_sc}
-                        onChange={(e) => setEditForm({ ...editForm, allow_sc: e.target.checked })}
-                      />{' '}
-                      SC
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={editForm.allow_im}
-                        onChange={(e) => setEditForm({ ...editForm, allow_im: e.target.checked })}
-                      />{' '}
-                      IM
-                    </label>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <select
+                      value={editForm.administration_method}
+                      onChange={(e) => setEditForm({ ...editForm, administration_method: e.target.value })}
+                    >
+                      <option value="">Not a medication</option>
+                      <option value="dispense">Dispense</option>
+                      <option value="sc">SC</option>
+                      <option value="im">IM</option>
+                    </select>
                   </td>
                 )}
                 <td>{item.active ? 'active' : 'inactive'}</td>
@@ -356,10 +336,7 @@ export default function CatalogPage() {
                 <td>{item.unit}</td>
                 {activeTab === 'product' && (
                   <td>
-                    {['allow_dispense', 'allow_sc', 'allow_im']
-                      .filter((f) => item[f])
-                      .map((f) => ADMINISTRATION_METHOD_LABELS[f])
-                      .join(', ') || '—'}
+                    {item.administration_method ? ADMINISTRATION_METHOD_LABELS[item.administration_method] : '—'}
                   </td>
                 )}
                 <td>{item.active ? 'active' : 'inactive'}</td>
@@ -435,33 +412,19 @@ export default function CatalogPage() {
           onChange={(e) => setForm({ ...form, unit: e.target.value })}
         />
         {activeTab === 'product' && (
-          <div className="catalog-admin-methods-add">
-            <span className="visit-meta">Administration methods (each has its own fee, set in Settings):</span>
-            <label>
-              <input
-                type="checkbox"
-                checked={form.allow_dispense}
-                onChange={(e) => setForm({ ...form, allow_dispense: e.target.checked })}
-              />{' '}
-              Dispense
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={form.allow_sc}
-                onChange={(e) => setForm({ ...form, allow_sc: e.target.checked })}
-              />{' '}
-              SC (subcutaneous)
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={form.allow_im}
-                onChange={(e) => setForm({ ...form, allow_im: e.target.checked })}
-              />{' '}
-              IM (intramuscular)
-            </label>
-          </div>
+          <label>
+            Administration method (if a medication — its fee, set in Settings, applies automatically
+            wherever it's added)
+            <select
+              value={form.administration_method}
+              onChange={(e) => setForm({ ...form, administration_method: e.target.value })}
+            >
+              <option value="">Not a medication</option>
+              <option value="dispense">Dispense</option>
+              <option value="sc">SC (subcutaneous)</option>
+              <option value="im">IM (intramuscular)</option>
+            </select>
+          </label>
         )}
         <button type="submit" disabled={submitting}>
           {submitting ? 'Saving...' : `Add ${MAIN_CATEGORY_LABELS[activeTab]}`}
