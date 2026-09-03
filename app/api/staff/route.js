@@ -25,7 +25,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { full_name, role, email } = body;
+  const { full_name, role, email, color } = body;
 
   if (!full_name || !role) {
     return NextResponse.json({ error: 'full_name and role are required' }, { status: 400 });
@@ -39,7 +39,7 @@ export async function POST(request) {
 
   const { data, error } = await supabase
     .from('staff')
-    .insert([{ full_name, role, email }])
+    .insert([{ full_name, role, email, color: color || null }])
     .select()
     .single();
 

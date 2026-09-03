@@ -19,7 +19,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { full_name, role, email } = body;
+  const { full_name, role, email, color } = body;
 
   if (role && !VALID_ROLES.includes(role)) {
     return NextResponse.json(
@@ -32,6 +32,7 @@ export async function PATCH(request, { params }) {
   if (full_name !== undefined) update.full_name = full_name;
   if (role !== undefined) update.role = role;
   if (email !== undefined) update.email = email;
+  if (color !== undefined) update.color = color || null;
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });

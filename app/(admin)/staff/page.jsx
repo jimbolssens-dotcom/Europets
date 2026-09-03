@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 
-const emptyForm = { full_name: '', role: 'vet', email: '' };
+const emptyForm = { full_name: '', role: 'vet', email: '', color: '' };
 
 export default function StaffPage() {
   const [staff, setStaff] = useState([]);
@@ -52,7 +52,12 @@ export default function StaffPage() {
 
   function startEdit(member) {
     setEditingId(member.id);
-    setEditForm({ full_name: member.full_name, role: member.role, email: member.email || '' });
+    setEditForm({
+      full_name: member.full_name,
+      role: member.role,
+      email: member.email || '',
+      color: member.color || '',
+    });
     setRowError(null);
   }
 
@@ -108,6 +113,7 @@ export default function StaffPage() {
             <th>Name</th>
             <th>Role</th>
             <th>Email</th>
+            <th>Color</th>
             <th></th>
           </tr>
         </thead>
@@ -140,6 +146,14 @@ export default function StaffPage() {
                   />
                 </td>
                 <td>
+                  <input
+                    type="color"
+                    title="Appointment schedule color"
+                    value={editForm.color || '#e6186d'}
+                    onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
+                  />
+                </td>
+                <td>
                   <button type="button" onClick={() => saveEdit(s.id)}>
                     Save
                   </button>
@@ -153,6 +167,15 @@ export default function StaffPage() {
                 <td>{s.full_name}</td>
                 <td>{s.role}</td>
                 <td>{s.email}</td>
+                <td>
+                  {s.color && (
+                    <span
+                      className="staff-color-swatch"
+                      style={{ background: s.color }}
+                      title={s.color}
+                    />
+                  )}
+                </td>
                 <td>
                   <a href={`/staff/${s.id}/schedule`}>Schedule</a>{' '}
                   <button type="button" onClick={() => startEdit(s)}>
@@ -194,6 +217,14 @@ export default function StaffPage() {
           value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
         />
+        <label>
+          Appointment schedule color
+          <input
+            type="color"
+            value={form.color || '#e6186d'}
+            onChange={(e) => setForm({ ...form, color: e.target.value })}
+          />
+        </label>
         <button type="submit" disabled={submitting}>
           {submitting ? 'Saving...' : 'Add Staff'}
         </button>

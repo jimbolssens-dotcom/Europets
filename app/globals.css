@@ -883,6 +883,15 @@ button.secondary:hover {
   color: #b00020;
 }
 
+/* Staff page — the chosen appointment-schedule color swatch. */
+.staff-color-swatch {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
 /* PdfPreviewModal — an in-page PDF preview (see printPdfUrl's onFallback)
    used instead of navigating to the PDF, so there's always a Close button
    to get back rather than a dead end on iOS/PWA. */

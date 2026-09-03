@@ -7,6 +7,8 @@ create table staff (
     full_name text not null,
     role text not null,              -- 'vet', 'tech', 'reception', 'admin'
     email text unique,
+    color text,                      -- chosen appointment-schedule color (hex);
+                                      -- null falls back to the auto palette (migration 035)
     created_at timestamptz default now()
 );
 

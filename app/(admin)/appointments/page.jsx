@@ -180,7 +180,12 @@ export default function AppointmentsPage() {
   const vetColor = useMemo(() => {
     const map = {};
     vets.forEach((v, i) => {
-      map[v.id] = VET_PALETTE[i % VET_PALETTE.length];
+      // A vet's own chosen color (Staff page) wins; the auto palette is
+      // only a fallback for anyone who hasn't picked one yet. The bg tint
+      // is derived from the chosen color itself (hex + alpha) rather than
+      // asking for two colors, matching how the palette's own bg/fg pairs
+      // read (a pale tint behind a solid border/text color).
+      map[v.id] = v.color ? { bg: `${v.color}22`, fg: v.color } : VET_PALETTE[i % VET_PALETTE.length];
     });
     return map;
   }, [vets]);
