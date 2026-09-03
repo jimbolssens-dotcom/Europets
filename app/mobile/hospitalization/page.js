@@ -68,8 +68,29 @@ function IsoCluster({ cages, renderTile }) {
   );
 }
 
+// The 12 Hospitalization Cages render as a 2-column grid that fills
+// row-major (left, right, left, right...) — see .cage-cluster in
+// globals.css. byGroup already sorts them by sort_order (Cage 1-12 in
+// order), which would put 1,3,5,7,9,11 down the left column and
+// 2,4,6,8,10,12 down the right. Staff want it the other way in spirit but
+// split differently: the left column reading 7-12 top to bottom and the
+// right column reading 1-6 top to bottom. This only reorders how they're
+// sequenced into this mobile grid — sort_order itself (and desktop's own,
+// differently-shaped arrangement of the same cages) is untouched.
+function reorderForMobileHospitalizationCages(cages) {
+  const half = Math.ceil(cages.length / 2);
+  const firstHalf = cages.slice(0, half); // Cage 1-6
+  const secondHalf = cages.slice(half); // Cage 7-12
+  const reordered = [];
+  for (let i = 0; i < half; i++) {
+    if (secondHalf[i]) reordered.push(secondHalf[i]);
+    if (firstHalf[i]) reordered.push(firstHalf[i]);
+  }
+  return reordered;
+}
+
 function MobileCageColumns({ cages, renderTile }) {
-  const standardCages = byGroup(cages, 'standard');
+  const standardCages = reorderForMobileHospitalizationCages(byGroup(cages, 'standard'));
   const ltCages = byGroup(cages, 'long_term');
   const ltLower = ltCages.slice(0, 3); // LT 1-3, at the bottom of the right column
   const ltUpper = ltCages.slice(3); // LT 4-5, at the top of the right column
