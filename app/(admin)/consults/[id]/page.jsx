@@ -443,6 +443,10 @@ export default function ConsultDetailPage() {
         Patient: <a href={`/patients/${consult.patients?.id}`}>record</a> · Room:{' '}
         {consult.rooms?.name} · Vet: {consult.staff?.full_name || 'unassigned'}
       </p>
+      <p className="visit-meta">
+        Jump to: <a href="#consent-forms">Consent Form</a> · <a href="#surgical-reports">Surgical Report</a> ·{' '}
+        <a href="#dental-reports">Dental Report</a>
+      </p>
 
       {(patientAlerts.alerts.length > 0 || consult?.patients?.id) && (
         <details className="patient-alerts-panel" open={patientAlerts.alerts.length > 0}>
@@ -658,6 +662,13 @@ export default function ConsultDetailPage() {
         </p>
       </form>
 
+      </div>
+
+      <div>
+      <h2>Vaccinations</h2>
+      <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
+      <VaccinationForm {...vac} species={consult.patients?.species} staff={staff} />
+
       <h3>Treatment Plan</h3>
       <table>
         <thead>
@@ -735,15 +746,9 @@ export default function ConsultDetailPage() {
         </>
       )}
       </div>
-
-      <div>
-      <h2>Vaccinations</h2>
-      <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
-      <VaccinationForm {...vac} species={consult.patients?.species} staff={staff} />
-      </div>
       </div>
 
-      <h2>Consent Forms</h2>
+      <h2 id="consent-forms">Consent Forms</h2>
       {consentForms.length === 0 && <p>No consent forms signed yet.</p>}
       {consentForms.map((cf) => (
         <div key={cf.id} className="visit-card">
@@ -811,7 +816,7 @@ export default function ConsultDetailPage() {
 
       <div className="two-col">
       <div>
-      <h2>Surgical Reports</h2>
+      <h2 id="surgical-reports">Surgical Reports</h2>
       {surgicalReports.map((r) => (
         <div key={r.id} className="visit-card">
           <strong>{r.procedure_name || 'Procedure'}</strong>
@@ -881,7 +886,7 @@ export default function ConsultDetailPage() {
       </div>
 
       <div>
-      <h2>Dental Reports</h2>
+      <h2 id="dental-reports">Dental Reports</h2>
       {dentalReports.map((r) => (
         <div key={r.id} className="visit-card">
           <strong>{r.staff?.full_name || 'unassigned'}</strong>
