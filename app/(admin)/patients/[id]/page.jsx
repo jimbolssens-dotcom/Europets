@@ -15,6 +15,7 @@ import VaccinationForm from '@/app/_components/VaccinationForm';
 import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
+import DentalChart from '@/app/_components/DentalChart';
 
 const SEX_LABELS = {
   male: 'Male',
@@ -28,6 +29,7 @@ export default function PatientDetailPage() {
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState([]);
+  const [savingDentalChart, setSavingDentalChart] = useState(false);
 
   const load = () =>
     fetch(`/api/patients/${id}`)
@@ -60,6 +62,20 @@ export default function PatientDetailPage() {
 
   const vac = useVaccinations(id, patient?.species);
   const patientAlerts = usePatientAlerts(id);
+
+  async function updateDentalChart(newChart) {
+    setSavingDentalChart(true);
+    const res = await fetch(`/api/patients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dental_chart: newChart }),
+    });
+    const data = await res.json();
+    setSavingDentalChart(false);
+    if (res.ok) {
+      setPatient((prev) => ({ ...prev, dental_chart: data.dental_chart }));
+    }
+  }
 
   if (loading) return <p>Loading patient...</p>;
   if (!patient || patient.error) return <p>Patient not found.</p>;
@@ -126,6 +142,14 @@ export default function PatientDetailPage() {
 
       <h2>Vaccination History</h2>
       <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
+
+      <h2>Dental Chart</h2>
+      <DentalChart
+        species={patient.species}
+        value={patient.dental_chart}
+        onChange={updateDentalChart}
+        saving={savingDentalChart}
+      />
     </div>
   );
 }
