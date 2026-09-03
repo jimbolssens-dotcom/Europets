@@ -17,9 +17,18 @@ function daysSince(iso) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
 }
 
+function balanceDue(inv) {
+  return Math.max(0, Number(inv.total || 0) - Number(inv.amount_paid || 0));
+}
+
 function reminderMessage(inv) {
   const number = inv.invoice_number ? `INV-${String(inv.invoice_number).padStart(6, '0')}` : 'your invoice';
-  return `Hi ${inv.clients?.full_name || ''}, this is a friendly reminder from Europets Clinic that ${number} for AED ${money(inv.total)} is still outstanding. Please let us know if you have any questions. Thank you!`;
+  const due = balanceDue(inv);
+  const amountBit =
+    inv.status === 'partially_paid'
+      ? `a remaining balance of AED ${money(due)} on ${number} (AED ${money(inv.amount_paid)} already received — thank you!)`
+      : `${number} for AED ${money(due)}`;
+  return `Hi ${inv.clients?.full_name || ''}, this is a friendly reminder from Europets Clinic that ${amountBit} is still outstanding. Please let us know if you have any questions. Thank you!`;
 }
 
 export default function UnpaidInvoicesPage() {
@@ -27,7 +36,7 @@ export default function UnpaidInvoicesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/invoices?status=unpaid')
+    fetch('/api/invoices?status=unpaid,partially_paid')
       .then((res) => res.json())
       .then((data) => {
         const sorted = Array.isArray(data)
@@ -44,7 +53,7 @@ export default function UnpaidInvoicesPage() {
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(reminderMessage(inv))}`, '_blank');
   }
 
-  const total = invoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0);
+  const total = invoices.reduce((sum, inv) => sum + balanceDue(inv), 0);
 
   return (
     <div>
@@ -55,13 +64,13 @@ export default function UnpaidInvoicesPage() {
         </a>
       </div>
       <p className="visit-meta">
-        {invoices.length} unpaid, AED {money(total)} outstanding, oldest first.
+        {invoices.length} unpaid or partially paid, AED {money(total)} outstanding, oldest first.
       </p>
 
       {loading ? (
         <p>Loading...</p>
       ) : invoices.length === 0 ? (
-        <p>No unpaid invoices.</p>
+        <p>No unpaid or partially paid invoices.</p>
       ) : (
         <table>
           <thead>
@@ -69,7 +78,8 @@ export default function UnpaidInvoicesPage() {
               <th>Invoice</th>
               <th>Client</th>
               <th>Phone</th>
-              <th>Total</th>
+              <th>Status</th>
+              <th>Balance Due</th>
               <th>Days Outstanding</th>
               <th></th>
             </tr>
@@ -84,7 +94,13 @@ export default function UnpaidInvoicesPage() {
                 </td>
                 <td>{inv.clients?.full_name}</td>
                 <td>{inv.clients?.phone || '—'}</td>
-                <td>AED {money(inv.total)}</td>
+                <td>{inv.status === 'partially_paid' ? 'partially paid' : 'unpaid'}</td>
+                <td>
+                  AED {money(balanceDue(inv))}
+                  {inv.status === 'partially_paid' && (
+                    <span className="visit-meta"> (of {money(inv.total)})</span>
+                  )}
+                </td>
                 <td>{daysSince(inv.created_at)}</td>
                 <td>
                   <button type="button" onClick={() => remind(inv)} disabled={!inv.clients?.phone}>

@@ -1,16 +1,16 @@
 // app/api/invoices/[id]/route.js
-// GET   /api/invoices/:id  -> invoice with line items
-// PATCH /api/invoices/:id  -> update status (unpaid, paid, void); marking
-//                             paid requires payment_method (cash, card,
-//                             bank_transfer, payment_link) so the
-//                             accounting overview can break down receipts
-//                             by how they came in.
+// GET   /api/invoices/:id  -> invoice with line items and its payment log
+// PATCH /api/invoices/:id  -> void an invoice. Marking one paid isn't a
+//                             directly settable status anymore — it's
+//                             derived automatically once logged payments
+//                             (POST /api/invoices/:id/payments) add up to
+//                             the total, so status can't drift from what
+//                             was actually collected.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 
-const VALID_STATUSES = ['unpaid', 'paid', 'void'];
-const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'payment_link'];
+const VALID_STATUSES = ['void'];
 
 export async function GET(request, { params }) {
   const { data: invoice, error } = await supabase
@@ -34,12 +34,22 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: itemsError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ...invoice, line_items: lineItems });
+  const { data: payments, error: paymentsError } = await supabase
+    .from('invoice_payments')
+    .select('*, staff(full_name)')
+    .eq('invoice_id', params.id)
+    .order('paid_at', { ascending: false });
+
+  if (paymentsError) {
+    return NextResponse.json({ error: paymentsError.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ...invoice, line_items: lineItems, payments });
 }
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { status, payment_method } = body;
+  const { status } = body;
 
   if (!status || !VALID_STATUSES.includes(status)) {
     return NextResponse.json(
@@ -48,21 +58,9 @@ export async function PATCH(request, { params }) {
     );
   }
 
-  const update = { status };
-  if (status === 'paid') {
-    if (!payment_method || !PAYMENT_METHODS.includes(payment_method)) {
-      return NextResponse.json(
-        { error: `marking an invoice paid requires payment_method to be one of ${PAYMENT_METHODS.join(', ')}` },
-        { status: 400 }
-      );
-    }
-    update.payment_method = payment_method;
-    update.paid_at = new Date().toISOString();
-  }
-
   const { data, error } = await supabase
     .from('invoices')
-    .update(update)
+    .update({ status })
     .eq('id', params.id)
     .select()
     .single();

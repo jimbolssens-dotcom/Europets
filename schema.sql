@@ -541,9 +541,10 @@ create table invoices (
     subtotal numeric(10,2) not null default 0,
     vat_amount numeric(10,2) not null default 0,   -- 5% UAE VAT
     total numeric(10,2) not null default 0,
-    status text not null default 'unpaid',  -- unpaid, paid, void
+    status text not null default 'unpaid',  -- unpaid, partially_paid, paid, void
     payment_method text check (payment_method in ('cash', 'card', 'bank_transfer', 'payment_link')),
     paid_at timestamptz,
+    amount_paid numeric(10,2) not null default 0,  -- kept in sync from invoice_payments, see lib/invoicing.js
     created_at timestamptz default now()
 );
 
@@ -556,6 +557,22 @@ create table invoice_line_items (
     unit_price numeric(10,2) not null,
     line_total numeric(10,2) not null            -- pre-VAT
 );
+
+-- A log of every individual payment received against an invoice — lets a
+-- bill be paid in installments, possibly by different methods, without
+-- losing the trail. invoices.amount_paid/status are derived from this
+-- table (see lib/invoicing.js recomputeInvoicePayments).
+create table invoice_payments (
+    id uuid primary key default gen_random_uuid(),
+    invoice_id uuid references invoices(id) on delete cascade not null,
+    amount numeric(10,2) not null check (amount > 0),
+    payment_method text not null check (payment_method in ('cash', 'card', 'bank_transfer', 'payment_link')),
+    received_by uuid references staff(id),
+    paid_at timestamptz not null default now(),
+    created_at timestamptz default now()
+);
+
+create index invoice_payments_invoice_id_idx on invoice_payments(invoice_id);
 
 -- ============ ACCOUNTING: EXPENSES ============
 -- The other half of a basic P&L/VAT picture, alongside invoices (revenue/

@@ -1,5 +1,6 @@
 // app/api/invoices/route.js
 // GET  /api/invoices?client_id=X&status=unpaid&visit_id=Y&hospitalization_id=Z  -> list invoices
+//      status accepts a comma-separated list (e.g. status=unpaid,partially_paid)
 // POST /api/invoices                            -> open a new (empty) invoice
 //
 // An invoice can be tied to a visit (visit_id) or a hospitalization
@@ -25,7 +26,10 @@ export async function GET(request) {
     .order('created_at', { ascending: false });
 
   if (clientId) query = query.eq('client_id', clientId);
-  if (status) query = query.eq('status', status);
+  if (status) {
+    const statuses = status.split(',').map((s) => s.trim()).filter(Boolean);
+    query = statuses.length > 1 ? query.in('status', statuses) : query.eq('status', statuses[0]);
+  }
   if (visitId) query = query.eq('visit_id', visitId);
   if (hospitalizationId) query = query.eq('hospitalization_id', hospitalizationId);
 

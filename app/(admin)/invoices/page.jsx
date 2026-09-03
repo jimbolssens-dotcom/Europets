@@ -9,19 +9,26 @@ import { Fragment, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import SearchSelect from '@/app/_components/SearchSelect';
+import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import { groupLineItemsByCategory } from '@/lib/catalogGrouping';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
 }
 
-function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChanged }) {
+const STATUS_LABELS = {
+  unpaid: 'unpaid',
+  partially_paid: 'partially paid',
+  paid: 'paid',
+  void: 'void',
+};
+
+function InvoiceCard({ summary, catalog, subcategories, staff, onCatalogChange, onChanged }) {
   const [invoice, setInvoice] = useState(null);
   const [goodsServiceId, setGoodsServiceId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('');
 
   const loadInvoice = () =>
     fetch(`/api/invoices/${summary.id}`)
@@ -45,6 +52,11 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
           loadInvoice();
           onChanged();
         }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'invoice_payments', filter: `invoice_id=eq.${summary.id}` },
+        () => loadInvoice()
       )
       .subscribe();
 
@@ -81,24 +93,14 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
   }
 
   async function removeLineItem(itemId) {
-    await fetch(`/api/invoices/${summary.id}/line-items/${itemId}`, { method: 'DELETE' });
-    loadInvoice();
-  }
-
-  async function setStatus(status, extra) {
     setError(null);
-    const res = await fetch(`/api/invoices/${summary.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, ...extra }),
-    });
+    const res = await fetch(`/api/invoices/${summary.id}/line-items/${itemId}`, { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || 'Failed to update invoice');
+      setError(data.error || 'Failed to remove item');
       return;
     }
     loadInvoice();
-    onChanged();
   }
 
   if (!invoice) return null;
@@ -106,7 +108,8 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
   const selected = catalog.find((c) => c.id === goodsServiceId);
   const patientName = invoice.visits?.patients?.name || invoice.hospitalizations?.patients?.name;
   const lineItemGroups = groupLineItemsByCategory(invoice.line_items);
-  const columnCount = invoice.status === 'unpaid' ? 5 : 4;
+  const editable = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
+  const columnCount = editable ? 5 : 4;
 
   return (
     <div className="visit-card">
@@ -120,10 +123,7 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
           </strong>
           {patientName ? ` — ${patientName}` : ''}
         </div>
-        <span>
-          {invoice.status}
-          {invoice.status === 'paid' && invoice.payment_method && ` (${invoice.payment_method.replace('_', ' ')})`}
-        </span>
+        <span>{STATUS_LABELS[invoice.status] || invoice.status}</span>
       </div>
 
       <table>
@@ -133,7 +133,7 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
             <th>Qty</th>
             <th>Unit price</th>
             <th>Line total</th>
-            {invoice.status === 'unpaid' && <th></th>}
+            {editable && <th></th>}
           </tr>
         </thead>
         <tbody>
@@ -150,7 +150,7 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
                   </td>
                   <td>{money(li.unit_price)}</td>
                   <td>{money(li.line_total)}</td>
-                  {invoice.status === 'unpaid' && (
+                  {editable && (
                     <td>
                       <button type="button" onClick={() => removeLineItem(li.id)}>
                         Remove
@@ -173,52 +173,40 @@ function InvoiceCard({ summary, catalog, subcategories, onCatalogChange, onChang
         Subtotal: {money(invoice.subtotal)} · VAT (5%): {money(invoice.vat_amount)} · <strong>Total: {money(invoice.total)}</strong>
       </p>
 
-      {invoice.status === 'unpaid' && (
-        <>
-          <form className="note-form catalog-add-form" onSubmit={addLineItem}>
-            {error && <p className="error">{error}</p>}
-            <CatalogPicker
-              catalog={catalog}
-              subcategories={subcategories}
-              value={goodsServiceId}
-              onChange={setGoodsServiceId}
-              onItemCreated={onCatalogChange}
+      {editable && (
+        <form className="note-form catalog-add-form" onSubmit={addLineItem}>
+          {error && <p className="error">{error}</p>}
+          <CatalogPicker
+            catalog={catalog}
+            subcategories={subcategories}
+            value={goodsServiceId}
+            onChange={setGoodsServiceId}
+            onItemCreated={onCatalogChange}
+          />
+          <div className="catalog-add-form-row">
+            <input
+              className="qty-input"
+              type="number"
+              step="0.01"
+              placeholder={selected?.pricing_type === 'per_kg' ? 'kg (blank = patient weight)' : 'qty (default 1)'}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
             />
-            <div className="catalog-add-form-row">
-              <input
-                className="qty-input"
-                type="number"
-                step="0.01"
-                placeholder={selected?.pricing_type === 'per_kg' ? 'kg (blank = patient weight)' : 'qty (default 1)'}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-              />
-              <button type="submit" disabled={submitting || !goodsServiceId}>
-                Add
-              </button>
-            </div>
-          </form>
-          <div className="home-links" style={{ marginTop: '0.75rem' }}>
-            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-              <option value="">Paid via...</option>
-              <option value="cash">Cash</option>
-              <option value="card">Card</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="payment_link">Payment Link</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => setStatus('paid', { payment_method: paymentMethod })}
-              disabled={!paymentMethod}
-            >
-              Mark Paid
-            </button>
-            <button type="button" onClick={() => setStatus('void')}>
-              Void
+            <button type="submit" disabled={submitting || !goodsServiceId}>
+              Add
             </button>
           </div>
-        </>
+        </form>
       )}
+
+      <InvoicePaymentPanel
+        invoice={invoice}
+        staff={staff}
+        onChanged={() => {
+          loadInvoice();
+          onChanged();
+        }}
+      />
     </div>
   );
 }
@@ -231,11 +219,12 @@ export default function InvoicesPage() {
   const [visits, setVisits] = useState([]);
   const [catalog, setCatalog] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
+  const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('unpaid');
+  const [statusFilter, setStatusFilter] = useState('unpaid,partially_paid');
 
   const loadInvoices = (status) =>
     fetch(`/api/invoices${status ? `?status=${status}` : ''}`)
@@ -256,11 +245,13 @@ export default function InvoicesPage() {
       fetch('/api/visits').then((res) => res.json()),
       fetch('/api/goods-services?active=true').then((res) => res.json()),
       fetch('/api/catalog-subcategories').then((res) => res.json()),
-    ]).then(([clientsData, visitsData, catalogData, subcategoriesData]) => {
+      fetch('/api/staff').then((res) => res.json()),
+    ]).then(([clientsData, visitsData, catalogData, subcategoriesData, staffData]) => {
       setClients(Array.isArray(clientsData) ? clientsData : []);
       setVisits(Array.isArray(visitsData) ? visitsData : []);
       setCatalog(Array.isArray(catalogData) ? catalogData : []);
       setSubcategories(Array.isArray(subcategoriesData) ? subcategoriesData : []);
+      setStaff(Array.isArray(staffData) ? staffData : []);
     });
   }, []);
 
@@ -304,7 +295,9 @@ export default function InvoicesPage() {
       <label>
         Filter:{' '}
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="unpaid,partially_paid">Unpaid + Partially Paid</option>
           <option value="unpaid">Unpaid</option>
+          <option value="partially_paid">Partially Paid</option>
           <option value="paid">Paid</option>
           <option value="void">Void</option>
           <option value="">All</option>
@@ -323,6 +316,7 @@ export default function InvoicesPage() {
               summary={inv}
               catalog={catalog}
               subcategories={subcategories}
+              staff={staff}
               onCatalogChange={addCatalogItem}
               onChanged={() => loadInvoices(statusFilter)}
             />

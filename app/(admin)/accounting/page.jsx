@@ -81,7 +81,7 @@ export default function AccountingOverviewPage() {
             <div className="accounting-stat">
               <span className="accounting-stat-label">Revenue Collected</span>
               <span className="accounting-stat-value">AED {money(summary.revenue.collected)}</span>
-              <span className="accounting-stat-hint">Ex-VAT, invoices actually paid this month</span>
+              <span className="accounting-stat-hint">Ex-VAT, payments actually received this month (incl. partial payments)</span>
             </div>
             <div className="accounting-stat">
               <span className="accounting-stat-label">Expenses</span>
