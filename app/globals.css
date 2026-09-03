@@ -484,6 +484,14 @@ td select {
   overflow-x: auto;
 }
 
+/* Generic horizontal-scroll wrapper for any table with enough columns to
+   overflow a narrow screen (e.g. the shift tally payment log) — the page
+   itself must never scroll sideways, so the table scrolls internally
+   instead. */
+.table-wrap {
+  overflow-x: auto;
+}
+
 th {
   background: var(--pink-tint);
   color: var(--pink-dark);
