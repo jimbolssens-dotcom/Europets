@@ -46,6 +46,8 @@ export default function MobileSchedulePage() {
   const [entries, setEntries] = useState([]);
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [error, setError] = useState(null);
+  const [repeating, setRepeating] = useState(false);
+  const [repeatMessage, setRepeatMessage] = useState(null);
 
   useEffect(() => {
     setStaffId(localStorage.getItem(STORAGE_KEY));
@@ -130,6 +132,34 @@ export default function MobileSchedulePage() {
     loadEntries();
   }
 
+  async function repeatLastWeek() {
+    setError(null);
+    setRepeatMessage(null);
+    setRepeating(true);
+    try {
+      const res = await fetch('/api/staff-roster/repeat-week', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staff_id: staffId, week_start: weekStartISO }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.error || 'Failed to repeat last week');
+        return;
+      }
+      setRepeatMessage(
+        data.copied > 0
+          ? `Added ${data.copied} shift${data.copied === 1 ? '' : 's'} from last week.`
+          : 'No shifts last week to repeat.'
+      );
+      loadEntries();
+    } catch (err) {
+      setError(err.message || 'Failed to repeat last week');
+    } finally {
+      setRepeating(false);
+    }
+  }
+
   const me = staff.find((s) => s.id === staffId);
   const weekLabel = `${weekDates[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${weekDates[6].toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
 
@@ -171,14 +201,36 @@ export default function MobileSchedulePage() {
           </p>
 
           <div className="mobile-week-nav">
-            <button type="button" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+            <button
+              type="button"
+              onClick={() => {
+                setWeekStart(addDays(weekStart, -7));
+                setRepeatMessage(null);
+              }}
+            >
               &lsaquo;
             </button>
             <strong>{weekLabel}</strong>
-            <button type="button" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+            <button
+              type="button"
+              onClick={() => {
+                setWeekStart(addDays(weekStart, 7));
+                setRepeatMessage(null);
+              }}
+            >
               &rsaquo;
             </button>
           </div>
+
+          <button
+            type="button"
+            className="mobile-repeat-week-btn"
+            onClick={repeatLastWeek}
+            disabled={repeating || loadingEntries}
+          >
+            {repeating ? 'Repeating...' : '🔁 Repeat Last Week'}
+          </button>
+          {repeatMessage && <p className="mobile-subtitle">{repeatMessage}</p>}
 
           {loadingEntries ? (
             <p>Loading...</p>

@@ -2679,6 +2679,21 @@ form.card.admit-patient-form {
   margin: 0.75rem 0;
 }
 
+.mobile-repeat-week-btn {
+  width: 100%;
+  padding: 0.7rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--pink);
+  border-radius: 8px;
+  background: white;
+  color: var(--pink-dark);
+  font-weight: 700;
+}
+
+.mobile-repeat-week-btn:disabled {
+  opacity: 0.6;
+}
+
 .mobile-schedule-days {
   list-style: none;
   margin: 0;
