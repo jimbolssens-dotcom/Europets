@@ -1,7 +1,11 @@
-// app/api/accounting/shift-summary/route.js
-// GET /api/accounting/shift-summary?date=YYYY-MM-DD&shift=morning|afternoon&cutoff=HH:MM
+// app/api/shift-summary/route.js
+// GET /api/shift-summary?date=YYYY-MM-DD&shift=morning|afternoon&cutoff=HH:MM
 //   -> every payment logged in that half-day window, so reception can
 //      count their till against what the system says came in.
+//
+// Deliberately outside /api/accounting — reception runs this every
+// shift and doesn't have the accounting password (see middleware.js),
+// so this stays unauthenticated like the rest of the staff app.
 //
 // "date"/"shift"/"cutoff" are all interpreted in UAE local time (UTC+4,
 // no DST) regardless of what timezone the server process itself runs in

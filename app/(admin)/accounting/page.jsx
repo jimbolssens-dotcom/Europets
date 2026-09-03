@@ -52,7 +52,7 @@ export default function AccountingOverviewPage() {
       <div className="page-header">
         <h1>Accounting</h1>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <a href="/accounting/shift-tally" className="button-link">
+          <a href="/shift-tally" className="button-link">
             💰 Shift Tally
           </a>
           <a href="/accounting/unpaid" className="button-link">

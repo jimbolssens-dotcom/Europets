@@ -1,8 +1,13 @@
-// app/accounting/shift-tally/page.jsx
+// app/shift-tally/page.jsx
 // Reception's end-of-shift till count: every payment logged this morning
 // or this afternoon, broken down by payment method (so cash in the
 // drawer can be checked against what the system says came in), plus the
 // full list to catch anything missed or overcharged.
+//
+// Deliberately outside /accounting — reception runs this every shift and
+// doesn't have the accounting password (see middleware.js), so this page
+// and its API route (/api/shift-summary) stay unauthenticated, same as
+// every other staff page in the app.
 
 'use client';
 
@@ -42,7 +47,7 @@ export default function ShiftTallyPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/accounting/shift-summary?date=${date}&shift=${shift}&cutoff=${cutoff}`)
+    fetch(`/api/shift-summary?date=${date}&shift=${shift}&cutoff=${cutoff}`)
       .then((res) => res.json())
       .then((data) => {
         setSummary(data);
@@ -52,12 +57,7 @@ export default function ShiftTallyPage() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Shift Tally</h1>
-        <a href="/accounting" className="button-link">
-          &larr; Accounting
-        </a>
-      </div>
+      <h1>Shift Tally</h1>
       <p className="visit-meta">
         Every payment logged in the selected half-day — count it against the till before handover.
       </p>
