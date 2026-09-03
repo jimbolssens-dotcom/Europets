@@ -37,7 +37,8 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { name, subcategory_id, pricing_type, base_price, unit, administration_method } = body;
+  const { name, subcategory_id, pricing_type, base_price, unit, administration_method, buying_price, supplier } =
+    body;
 
   if (!name || !subcategory_id || base_price === undefined || base_price === null) {
     return NextResponse.json(
@@ -83,6 +84,8 @@ export async function POST(request) {
         base_price: Number(base_price),
         unit: unit || null,
         administration_method: administration_method || null,
+        buying_price: buying_price !== undefined && buying_price !== '' ? Number(buying_price) : null,
+        supplier: supplier || null,
       },
     ])
     .select()

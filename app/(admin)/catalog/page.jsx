@@ -19,6 +19,8 @@ const emptyForm = {
   base_price: '',
   unit: '',
   administration_method: '',
+  buying_price: '',
+  supplier: '',
 };
 
 export default function CatalogPage() {
@@ -75,7 +77,11 @@ export default function CatalogPage() {
     const res = await fetch('/api/goods-services', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, base_price: Number(form.base_price) }),
+      body: JSON.stringify({
+        ...form,
+        base_price: Number(form.base_price),
+        buying_price: form.buying_price === '' ? null : Number(form.buying_price),
+      }),
     });
     const data = await res.json();
 
@@ -106,6 +112,8 @@ export default function CatalogPage() {
       base_price: item.base_price,
       unit: item.unit || '',
       administration_method: item.administration_method || '',
+      buying_price: item.buying_price ?? '',
+      supplier: item.supplier || '',
     });
     setEditError(null);
   }
@@ -122,7 +130,11 @@ export default function CatalogPage() {
     const res = await fetch(`/api/goods-services/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...editForm, base_price: Number(editForm.base_price) }),
+      body: JSON.stringify({
+        ...editForm,
+        base_price: Number(editForm.base_price),
+        buying_price: editForm.buying_price === '' ? null : Number(editForm.buying_price),
+      }),
     });
     const data = await res.json();
 
@@ -236,6 +248,8 @@ export default function CatalogPage() {
             <th>Subcategory</th>
             <th>Pricing</th>
             <th>Price</th>
+            <th>Buying Price</th>
+            <th>Supplier</th>
             <th>Unit</th>
             {activeTab === 'product' && <th>Admin Methods</th>}
             <th>Status</th>
@@ -245,7 +259,7 @@ export default function CatalogPage() {
         <tbody>
           {tabItems.length === 0 && (
             <tr>
-              <td colSpan={activeTab === 'product' ? 8 : 7}>
+              <td colSpan={activeTab === 'product' ? 10 : 9}>
                 No {MAIN_CATEGORY_LABELS[activeTab].toLowerCase()} items yet.
               </td>
             </tr>
@@ -298,6 +312,22 @@ export default function CatalogPage() {
                 </td>
                 <td>
                   <input
+                    type="number"
+                    step="0.01"
+                    placeholder="cost"
+                    value={editForm.buying_price}
+                    onChange={(e) => setEditForm({ ...editForm, buying_price: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    placeholder="supplier"
+                    value={editForm.supplier}
+                    onChange={(e) => setEditForm({ ...editForm, supplier: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
                     placeholder="unit"
                     value={editForm.unit}
                     onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
@@ -333,6 +363,8 @@ export default function CatalogPage() {
                 <td>{subcategoryNameFor(item)}</td>
                 <td>{item.pricing_type}</td>
                 <td>{Number(item.base_price).toFixed(2)}</td>
+                <td>{item.buying_price != null ? Number(item.buying_price).toFixed(2) : '—'}</td>
+                <td>{item.supplier || '—'}</td>
                 <td>{item.unit}</td>
                 {activeTab === 'product' && (
                   <td>
@@ -405,6 +437,18 @@ export default function CatalogPage() {
           required
           value={form.base_price}
           onChange={(e) => setForm({ ...form, base_price: e.target.value })}
+        />
+        <input
+          placeholder="Buying price (cost) — optional"
+          type="number"
+          step="0.01"
+          value={form.buying_price}
+          onChange={(e) => setForm({ ...form, buying_price: e.target.value })}
+        />
+        <input
+          placeholder="Supplier — optional"
+          value={form.supplier}
+          onChange={(e) => setForm({ ...form, supplier: e.target.value })}
         />
         <input
           placeholder="Unit (e.g. mg, ml, kg) — optional"
