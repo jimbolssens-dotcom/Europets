@@ -10,6 +10,7 @@
 // via entity_type/entity_id), so those are cleaned up explicitly here.
 
 import { supabase } from '@/lib/supabaseClient';
+import { lockExtractedTeeth } from '@/lib/dentalChartLayout';
 import { NextResponse } from 'next/server';
 
 const VALID_STATUSES = ['in_progress', 'complete'];
@@ -88,6 +89,30 @@ export async function PATCH(request, { params }) {
       .from('appointments')
       .update({ status: 'complete' })
       .eq('id', data.appointment_id);
+  }
+
+  // Completing a consult "locks in" this visit's dental work — any tooth
+  // just marked extracted (documented as such on the report already sent)
+  // becomes a plain missing tooth for every future visit, same as one
+  // that was already gone. Only touches patients with an actual dental
+  // report on this visit, and only if there's something to convert.
+  if (status === 'complete') {
+    const { data: dentalReports } = await supabase
+      .from('dental_reports')
+      .select('id')
+      .eq('visit_id', params.id)
+      .limit(1);
+    if (dentalReports?.length) {
+      const { data: patient } = await supabase
+        .from('patients')
+        .select('dental_chart')
+        .eq('id', data.patient_id)
+        .single();
+      const locked = lockExtractedTeeth(patient?.dental_chart);
+      if (locked && JSON.stringify(locked) !== JSON.stringify(patient.dental_chart)) {
+        await supabase.from('patients').update({ dental_chart: locked }).eq('id', data.patient_id);
+      }
+    }
   }
 
   return NextResponse.json(data);
