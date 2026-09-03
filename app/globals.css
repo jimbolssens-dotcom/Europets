@@ -1387,13 +1387,15 @@ button.secondary:hover {
   border: 1px solid #ddd;
   border-radius: 4px;
   background: #fafafa;
-  color: transparent;
+  color: #bbb;
   font-weight: 700;
   cursor: pointer;
 }
 
 .roster-toggle:hover {
   border-color: var(--pink);
+  color: var(--pink);
+  background: var(--pink-tint);
 }
 
 .roster-toggle-on {

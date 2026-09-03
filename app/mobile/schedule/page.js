@@ -45,6 +45,7 @@ export default function MobileSchedulePage() {
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
   const [entries, setEntries] = useState([]);
   const [loadingEntries, setLoadingEntries] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     setStaffId(localStorage.getItem(STORAGE_KEY));
@@ -65,9 +66,15 @@ export default function MobileSchedulePage() {
     if (!staffId) return;
     setLoadingEntries(true);
     fetch(`/api/staff-roster?start=${weekStartISO}&end=${weekEndISO}&staff_id=${staffId}`)
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.error || 'Failed to load your schedule');
+        setError(null);
         setEntries(Array.isArray(data) ? data : []);
+        setLoadingEntries(false);
+      })
+      .catch((err) => {
+        setError(err.message);
         setLoadingEntries(false);
       });
   };
@@ -101,15 +108,24 @@ export default function MobileSchedulePage() {
   }
 
   async function toggleShift(dateISO, shift) {
+    setError(null);
     const existing = entries.find((e) => e.date === dateISO && e.shift === shift);
-    if (existing) {
-      await fetch(`/api/staff-roster/${existing.id}`, { method: 'DELETE' });
-    } else {
-      await fetch('/api/staff-roster', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staff_id: staffId, date: dateISO, shift }),
-      });
+    try {
+      const res = existing
+        ? await fetch(`/api/staff-roster/${existing.id}`, { method: 'DELETE' })
+        : await fetch('/api/staff-roster', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ staff_id: staffId, date: dateISO, shift }),
+          });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || 'Failed to update your schedule');
+        return;
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to update your schedule');
+      return;
     }
     loadEntries();
   }
@@ -125,6 +141,7 @@ export default function MobileSchedulePage() {
         &larr; Record
       </a>
       <h1>My Schedule</h1>
+      {error && <p className="error">{error}</p>}
 
       {!staffId ? (
         <>

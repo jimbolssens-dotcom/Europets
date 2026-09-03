@@ -68,6 +68,7 @@ export default function StaffRosterPage() {
   const [staff, setStaff] = useState([]);
   const [entries, setEntries] = useState([]); // every entry across the visible 42-day mini-cal grid
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonthIndex), [viewYear, viewMonthIndex]);
   const gridStartISO = toISODate(monthGrid[0]);
@@ -75,9 +76,19 @@ export default function StaffRosterPage() {
 
   const loadEntries = () =>
     fetch(`/api/staff-roster?start=${gridStartISO}&end=${gridEndISO}`)
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(data?.error || 'Failed to load the roster');
+        }
+        setError(null);
         setEntries(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(
+          `${err.message} — if you just added this feature, make sure migration 034_staff_roster.sql has been run and RLS is disabled on staff_roster_entries.`
+        );
         setLoading(false);
       });
 
@@ -139,15 +150,24 @@ export default function StaffRosterPage() {
   }
 
   async function toggleCell(staffMember, dateISO, shift) {
+    setError(null);
     const existing = entries.find((e) => e.staff_id === staffMember.id && e.date === dateISO && e.shift === shift);
-    if (existing) {
-      await fetch(`/api/staff-roster/${existing.id}`, { method: 'DELETE' });
-    } else {
-      await fetch('/api/staff-roster', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staff_id: staffMember.id, date: dateISO, shift }),
-      });
+    try {
+      const res = existing
+        ? await fetch(`/api/staff-roster/${existing.id}`, { method: 'DELETE' })
+        : await fetch('/api/staff-roster', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ staff_id: staffMember.id, date: dateISO, shift }),
+          });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || 'Failed to update the roster');
+        return;
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to update the roster');
+      return;
     }
     loadEntries();
   }
@@ -165,6 +185,7 @@ export default function StaffRosterPage() {
         Click a cell to add or remove a staff member from that morning/afternoon. Staff can also do
         this themselves from the mobile app&apos;s My Schedule page.
       </p>
+      {error && <p className="error">{error}</p>}
 
       <div className="roster-layout">
         <div className="date-nav">
@@ -274,9 +295,9 @@ export default function StaffRosterPage() {
                                     type="button"
                                     className={`roster-toggle${on ? ' roster-toggle-on' : ''}`}
                                     onClick={() => toggleCell(s, iso, shift)}
-                                    title={`${s.full_name} — ${d.toLocaleDateString()} ${SHIFT_LABELS[shift]}`}
+                                    title={`${s.full_name} — ${d.toLocaleDateString()} ${SHIFT_LABELS[shift]} — click to ${on ? 'remove' : 'add'}`}
                                   >
-                                    {on ? '✓' : ''}
+                                    {on ? '✓' : '+'}
                                   </button>
                                 </td>
                               );
