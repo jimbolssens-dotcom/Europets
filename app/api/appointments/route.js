@@ -169,7 +169,12 @@ export async function POST(request) {
       const { data: vet } = await supabase.from('staff').select('full_name').eq('id', vet_id).single();
       return NextResponse.json(
         {
-          error: `${vet?.full_name || 'This vet'} isn't on the staff roster for that ${shift} (${date}). Add them on the Staff Roster page first, or pick a different vet.`,
+          error: `${vet?.full_name || 'This vet'} isn't on the staff roster for that ${shift} (${date}).`,
+          code: 'not_on_roster',
+          vet_id,
+          vet_name: vet?.full_name || 'This vet',
+          date,
+          shift,
         },
         { status: 409 }
       );

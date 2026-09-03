@@ -96,6 +96,28 @@ const SCHEDULE_HEIGHT = (CLOSE_HOUR - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE;
 const TIME_COL_WIDTH = 64; // matches .schedule-time-col's flex-basis
 const ROOM_COL_WIDTH = 130; // matches .schedule-room-col's flex-basis
 
+// Short attention-getting beep for the not-on-roster alert — synthesized
+// rather than an audio file, so there's nothing to fetch/host. Never lets a
+// blocked AudioContext (autoplay policy, no speakers) break the booking flow.
+function playAlertBeep() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.35);
+  } catch {
+    // sound is a nice-to-have; the visual alert still shows either way
+  }
+}
+
 // Time (as a 12-hour label, e.g. "2:15 PM") for a snapped "HH:MM" 24-hour string.
 function formatSlotLabel(time24) {
   const [h, m] = time24.split(':').map(Number);
@@ -132,6 +154,8 @@ export default function AppointmentsPage() {
   const [error, setError] = useState(null);
   const [hoverSlot, setHoverSlot] = useState(null);
   const [openingConsultId, setOpeningConsultId] = useState(null);
+  const [rosterBlock, setRosterBlock] = useState(null); // { message, vetId, vetName, date, shift, payload } while showing the not-on-roster alert
+  const [resolvingRosterBlock, setResolvingRosterBlock] = useState(false);
   const bookingFormRef = useRef(null);
 
   const monthKey = toMonthKey(new Date(viewYear, viewMonthIndex, 1));
@@ -190,6 +214,10 @@ export default function AppointmentsPage() {
   }, [vets]);
 
   const colorForVet = (vetId) => (vetId && vetColor[vetId]) || UNASSIGNED_COLOR;
+
+  useEffect(() => {
+    if (rosterBlock) playAlertBeep();
+  }, [rosterBlock]);
 
   const countsByDate = useMemo(() => {
     const counts = {};
@@ -252,6 +280,7 @@ export default function AppointmentsPage() {
     const type = room?.type === 'surgery' ? 'surgery' : 'consult';
     setForm({ ...form, time, room_id: roomId, type, duration_minutes: '10' });
     setError(null);
+    setRosterBlock(null);
     // Jump straight to the booking form so a click on the schedule is enough
     // to continue — no manual scrolling down to find where the pick landed.
     bookingFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -271,12 +300,58 @@ export default function AppointmentsPage() {
     const data = await res.json();
 
     if (!res.ok) {
-      setError(data.error || 'Failed to book appointment');
+      if (data.code === 'not_on_roster') {
+        setRosterBlock({
+          message: `${data.vet_name} isn't on the staff roster for that ${data.shift} (${data.date}).`,
+          vetId: data.vet_id,
+          vetName: data.vet_name,
+          date: data.date,
+          shift: data.shift,
+          payload,
+        });
+      } else {
+        setError(data.error || 'Failed to book appointment');
+      }
     } else {
+      setRosterBlock(null);
       setForm({ ...emptyForm, client_id: form.client_id });
       loadMonth();
     }
     return res.ok;
+  }
+
+  // "Add to Roster" on the not-on-roster alert: add the vet to the roster
+  // for that exact date+shift (idempotent — see /api/staff-roster), then
+  // immediately retry the same booking, which should now pass the check.
+  async function addToRosterAndBook() {
+    if (!rosterBlock) return;
+    setResolvingRosterBlock(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/staff-roster', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staff_id: rosterBlock.vetId, date: rosterBlock.date, shift: rosterBlock.shift }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || 'Failed to add to the staff roster');
+        return;
+      }
+      const payload = rosterBlock.payload;
+      setRosterBlock(null);
+      await submitAppointment(payload);
+    } finally {
+      setResolvingRosterBlock(false);
+    }
+  }
+
+  // "Rebook with Other Vet": dismiss the alert and clear the vet field so
+  // the booking form nudges toward picking someone who's actually on for
+  // that shift, without losing the rest of what was already filled in.
+  function rebookWithOtherVet() {
+    setRosterBlock(null);
+    setForm((f) => ({ ...f, vet_id: '' }));
   }
 
   async function handleSubmit(e) {
@@ -291,6 +366,7 @@ export default function AppointmentsPage() {
     }
     setSubmitting(true);
     setError(null);
+    setRosterBlock(null);
 
     const startTime = new Date(`${selectedDate}T${form.time}:00`);
 
@@ -611,7 +687,10 @@ export default function AppointmentsPage() {
 
             <select
               value={form.vet_id}
-              onChange={(e) => setForm({ ...form, vet_id: e.target.value })}
+              onChange={(e) => {
+                setForm({ ...form, vet_id: e.target.value });
+                setRosterBlock(null);
+              }}
             >
               <option value="">Select vet (optional)...</option>
               {vets.map((v) => (
@@ -682,6 +761,24 @@ export default function AppointmentsPage() {
           </tbody>
         </table>
       </div>
+
+      {rosterBlock && (
+        <div className="roster-block-backdrop">
+          <div className="roster-block-modal" role="alertdialog" aria-live="assertive">
+            <div className="roster-block-icon">⚠️</div>
+            <p className="roster-block-message">{rosterBlock.message}</p>
+            {error && <p className="error">{error}</p>}
+            <div className="roster-block-actions">
+              <button type="button" onClick={addToRosterAndBook} disabled={resolvingRosterBlock}>
+                {resolvingRosterBlock ? 'Adding...' : `✅ Add ${rosterBlock.vetName} & Book`}
+              </button>
+              <button type="button" className="secondary" onClick={rebookWithOtherVet} disabled={resolvingRosterBlock}>
+                🔄 Rebook with Other Vet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1028,6 +1028,97 @@ button.secondary:hover {
   width: 100%;
 }
 
+/* Not-on-roster booking alert (app/appointments) — deliberately loud: a
+   vet who isn't on the staff roster for that date+shift is a hard block,
+   so this needs to actually stop reception rather than read as one more
+   inline red line easy to skim past. Full-screen, center of the viewport,
+   paired with a short beep (see playAlertBeep). */
+.roster-block-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.roster-block-modal {
+  background: var(--pink);
+  color: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 420px;
+  padding: 2rem 1.75rem;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  animation: roster-block-pop 0.2s ease-out;
+}
+
+@keyframes roster-block-pop {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.roster-block-icon {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 0.75rem;
+}
+
+.roster-block-message {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0 0 1.5rem;
+}
+
+.roster-block-modal .error {
+  background: white;
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.roster-block-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.roster-block-actions button {
+  width: 100%;
+  padding: 0.9rem;
+  font-size: 1rem;
+  border-radius: 10px;
+}
+
+.roster-block-actions button:not(.secondary) {
+  background: white;
+  color: var(--pink-dark);
+}
+
+.roster-block-actions button:not(.secondary):hover {
+  background: #fff0f6;
+}
+
+.roster-block-actions button.secondary {
+  background: transparent;
+  color: white;
+  border: 1px solid white;
+}
+
+.roster-block-actions button.secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
 /* Accounting overview (app/accounting) — a row of small stat boxes per
    section (P&L, VAT), each just a label/value/one-line hint. */
 .accounting-stat-grid {
