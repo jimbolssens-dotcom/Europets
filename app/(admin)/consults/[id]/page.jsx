@@ -249,6 +249,10 @@ export default function ConsultDetailPage() {
     setSavingRecord(false);
   }
 
+  function scrollToSection(sectionId) {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   async function completeConsult() {
     await fetch(`/api/visits/${id}`, {
       method: 'PATCH',
@@ -443,11 +447,6 @@ export default function ConsultDetailPage() {
         Patient: <a href={`/patients/${consult.patients?.id}`}>record</a> · Room:{' '}
         {consult.rooms?.name} · Vet: {consult.staff?.full_name || 'unassigned'}
       </p>
-      <p className="visit-meta">
-        Jump to: <a href="#consent-forms">Consent Form</a> · <a href="#surgical-reports">Surgical Report</a> ·{' '}
-        <a href="#dental-reports">Dental Report</a>
-      </p>
-
       {(patientAlerts.alerts.length > 0 || consult?.patients?.id) && (
         <details className="patient-alerts-panel" open={patientAlerts.alerts.length > 0}>
           <summary>
@@ -498,6 +497,15 @@ export default function ConsultDetailPage() {
       )}{' '}
       <button type="button" onClick={deleteConsult}>
         Delete Consult
+      </button>{' '}
+      <button type="button" onClick={() => scrollToSection('consent-forms')}>
+        Consent Form
+      </button>{' '}
+      <button type="button" onClick={() => scrollToSection('surgical-reports')}>
+        Surgical Report
+      </button>{' '}
+      <button type="button" onClick={() => scrollToSection('dental-reports')}>
+        Dental Report
       </button>
 
       <div className="two-col">

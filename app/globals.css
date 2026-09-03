@@ -478,6 +478,11 @@ form.card textarea {
   border-radius: 4px;
   font-size: 1rem;
   font-family: inherit;
+  /* A <select> can otherwise size itself to its longest option's text
+     (e.g. a long consent-form name) and force the whole grid track —
+     and with it the page — wider than the screen on mobile. */
+  width: 100%;
+  min-width: 0;
 }
 
 form.card button {
