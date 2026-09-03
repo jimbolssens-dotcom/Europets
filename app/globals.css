@@ -2319,6 +2319,15 @@ form.card.admit-patient-form {
   margin-bottom: 0.5rem;
 }
 
+.mobile-home-header {
+  text-align: left;
+  margin-bottom: 0.75rem;
+}
+
+.mobile-home-logo {
+  height: 32px;
+}
+
 .mobile-tile {
   display: flex;
   flex-direction: column;

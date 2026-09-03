@@ -52,7 +52,9 @@ export default function MobileHomePage() {
 
   return (
     <div className="mobile-home">
-      <img src="/logo.png" alt="Europets Clinic" className="mobile-logo" />
+      <div className="mobile-home-header">
+        <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
+      </div>
 
       {!ready ? null : !staffId ? (
         <>
