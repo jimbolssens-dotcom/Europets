@@ -18,6 +18,7 @@ import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import PostOpInstructionsPanel from '@/app/_components/PostOpInstructionsPanel';
+import ReportShareActions from '@/app/_components/ReportShareActions';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { subcategoryName } from '@/lib/catalogGrouping';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
@@ -847,6 +848,14 @@ export default function ConsultDetailPage() {
             entityId={r.id}
             autoStart={r.id === autoRecordSurgicalId}
           />
+          <h4>Share Surgical Report</h4>
+          <ReportShareActions
+            reportId={r.id}
+            apiBase="/api/surgical-reports"
+            client={consult.clients}
+            patient={consult.patients}
+            reportLabel="surgical report"
+          />
           <PostOpInstructionsPanel
             reportId={r.id}
             apiBase="/api/surgical-reports"
@@ -923,6 +932,14 @@ export default function ConsultDetailPage() {
             entityType="dental_report"
             entityId={r.id}
             autoStart={r.id === autoRecordDentalId}
+          />
+          <h4>Share Dental Report</h4>
+          <ReportShareActions
+            reportId={r.id}
+            apiBase="/api/dental-reports"
+            client={consult.clients}
+            patient={consult.patients}
+            reportLabel="dental report"
           />
           <PostOpInstructionsPanel
             reportId={r.id}
