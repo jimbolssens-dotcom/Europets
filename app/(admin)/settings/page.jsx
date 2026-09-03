@@ -74,6 +74,17 @@ export default function SettingsPage() {
   return (
     <div>
       <h1>Clinic Settings</h1>
+
+      <h2>Rooms &amp; Staff</h2>
+      <p className="visit-meta">Managed occasionally, not day to day — tucked in here instead of the main nav.</p>
+      <div className="home-links">
+        <a href="/rooms">Rooms</a>
+        <a href="/staff">Staff</a>
+        <a href="/staff/roster">Staff Roster</a>
+        <a href="/vaccine-protocols">Vaccine Protocols</a>
+      </div>
+
+      <h2>Clinic Identity</h2>
       <p className="visit-meta">
         This appears on every Tax Invoice PDF — required for UAE FTA VAT compliance.
       </p>
@@ -183,15 +194,6 @@ export default function SettingsPage() {
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
       </form>
-
-      <h2>Rooms &amp; Staff</h2>
-      <p className="visit-meta">Managed occasionally, not day to day — tucked in here instead of the main nav.</p>
-      <div className="home-links">
-        <a href="/rooms">Rooms</a>
-        <a href="/staff">Staff</a>
-        <a href="/staff/roster">Staff Roster</a>
-        <a href="/vaccine-protocols">Vaccine Protocols</a>
-      </div>
     </div>
   );
 }
