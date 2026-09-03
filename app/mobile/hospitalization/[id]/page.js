@@ -4,24 +4,33 @@
 // "Add Worksheet Entry" card — so recording fills in this page's own
 // draft fields (and pending items list) rather than writing directly to
 // the database; tap Save Entry to actually log it. Trimmed down from the
-// desktop card: no author picker, no consent forms, no invoice section —
-// just record, check the boxes look right, save.
+// desktop card: no consent forms, no invoice section — just record, check
+// the boxes look right, save.
 //
 // Photos: AttachmentSection's "Take Photo" button opens the phone camera
 // directly (capture="environment"). Case Photos (entity type
-// 'hospitalization') are always available at the top of the page; once a
-// worksheet entry is saved, a second AttachmentSection appears scoped to
-// that specific note (entity type 'hospitalization_note') so a photo taken
-// right after logging an observation attaches to that entry, not just the
-// case in general — same two-tier split as the desktop hospitalization page.
+// 'hospitalization') are always available at the top of the page. Photos
+// for the entry itself are staged locally (picked/taken but not uploaded)
+// while the entry is still a draft — a note doesn't exist as a row yet, so
+// there's nothing to attach to — then uploaded together with the note the
+// moment Save Entry is tapped, so photo + observation commit as one action
+// instead of a separate step after saving. A second AttachmentSection
+// still appears after saving too, for adding more afterward.
+//
+// Author: defaults to whichever staff member is remembered on this phone
+// from My Schedule (app/mobile/schedule) if any, but stays a normal picker
+// so anyone using a shared device can pick themselves instead.
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import AttachmentSection from '@/app/_components/AttachmentSection';
+import { uploadAttachment } from '@/lib/attachments';
+
+const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -29,6 +38,7 @@ function todayISODate() {
 
 const emptyForm = {
   note_date: todayISODate(),
+  author_id: '',
   appetite: '',
   condition: '',
   temperature_c: '',
@@ -42,25 +52,37 @@ export default function MobileHospitalizationPage() {
   const { id } = useParams();
   const router = useRouter();
   const [admission, setAdmission] = useState(null);
+  const [staff, setStaff] = useState([]);
   const [catalog, setCatalog] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [pendingItems, setPendingItems] = useState([]);
   const [pendingItemForm, setPendingItemForm] = useState(emptyPendingItem);
+  const [stagedPhotos, setStagedPhotos] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [savedNoteId, setSavedNoteId] = useState(null);
+  const stagedCameraInputRef = useRef(null);
+  const stagedFileInputRef = useRef(null);
 
   useEffect(() => {
     fetch(`/api/hospitalizations/${id}`)
       .then((res) => res.json())
       .then(setAdmission);
+    fetch('/api/staff')
+      .then((res) => res.json())
+      .then((data) => setStaff(Array.isArray(data) ? data : []));
     fetch('/api/goods-services?active=true')
       .then((res) => res.json())
       .then((data) => setCatalog(Array.isArray(data) ? data : []));
     fetch('/api/catalog-subcategories')
       .then((res) => res.json())
       .then((data) => setSubcategories(Array.isArray(data) ? data : []));
+
+    const rememberedStaffId = localStorage.getItem(MOBILE_STAFF_STORAGE_KEY);
+    if (rememberedStaffId) {
+      setForm((prev) => ({ ...prev, author_id: rememberedStaffId }));
+    }
   }, [id]);
 
   // Same merge rules as the desktop card: appetite/weight/temperature/
@@ -106,6 +128,20 @@ export default function MobileHospitalizationPage() {
     setPendingItems((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function addStagedPhoto(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setStagedPhotos((prev) => [...prev, { file, previewUrl: URL.createObjectURL(file) }]);
+    e.target.value = '';
+  }
+
+  function removeStagedPhoto(index) {
+    setStagedPhotos((prev) => {
+      URL.revokeObjectURL(prev[index].previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
   async function saveEntry(e) {
     e.preventDefault();
     setSubmitting(true);
@@ -115,7 +151,23 @@ export default function MobileHospitalizationPage() {
       body: JSON.stringify({ ...form, treatment_items: pendingItems }),
     });
     const data = await res.json();
-    setForm({ ...emptyForm, note_date: todayISODate() });
+
+    if (res.ok && stagedPhotos.length > 0) {
+      await Promise.all(
+        stagedPhotos.map(({ file }) =>
+          uploadAttachment({
+            entityType: 'hospitalization_note',
+            entityId: data.id,
+            file,
+            uploadedBy: form.author_id || null,
+          }).catch(() => {})
+        )
+      );
+      stagedPhotos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      setStagedPhotos([]);
+    }
+
+    setForm({ ...emptyForm, note_date: todayISODate(), author_id: form.author_id });
     setPendingItems([]);
     setSubmitting(false);
     setSaved(true);
@@ -145,12 +197,20 @@ export default function MobileHospitalizationPage() {
           {saved && savedNoteId && (
             <div className="mobile-worksheet-form">
               <p className="mobile-saved">Entry saved.</p>
-              <h2 className="mobile-section-header">Photos for this entry</h2>
+              <h2 className="mobile-section-header">Add more photos to that entry</h2>
               <AttachmentSection entityType="hospitalization_note" entityId={savedNoteId} />
             </div>
           )}
 
           <form className="card mobile-worksheet-form" onSubmit={saveEntry}>
+            <select value={form.author_id} onChange={(e) => setForm({ ...form, author_id: e.target.value })}>
+              <option value="">Logged by...</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.full_name}
+                </option>
+              ))}
+            </select>
             <select value={form.appetite} onChange={(e) => setForm({ ...form, appetite: e.target.value })}>
               <option value="">Appetite...</option>
               <option value="good">Good</option>
@@ -182,6 +242,40 @@ export default function MobileHospitalizationPage() {
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
+
+            <fieldset className="pending-items">
+              <legend>Photos for this entry</legend>
+              {stagedPhotos.length > 0 && (
+                <ul className="attachment-list">
+                  {stagedPhotos.map((p, i) => (
+                    <li key={i}>
+                      <img className="attachment-thumb" src={p.previewUrl} alt="staged photo" />
+                      <button type="button" onClick={() => removeStagedPhoto(i)}>
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="attachment-actions">
+                <button type="button" onClick={() => stagedCameraInputRef.current?.click()}>
+                  📷 Take Photo
+                </button>
+                <button type="button" onClick={() => stagedFileInputRef.current?.click()}>
+                  📎 Add File
+                </button>
+              </div>
+              <input
+                ref={stagedCameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={addStagedPhoto}
+                hidden
+              />
+              <input ref={stagedFileInputRef} type="file" accept="image/*" onChange={addStagedPhoto} hidden />
+              <p className="mobile-hint">Photos here upload together with the entry when you tap Save Entry.</p>
+            </fieldset>
 
             <fieldset className="pending-items">
               <legend>Medications / Goods / Services given</legend>
