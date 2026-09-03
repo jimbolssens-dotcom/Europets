@@ -2328,6 +2328,12 @@ form.card.admit-patient-form {
   gap: 0.6rem;
 }
 
+.mobile-home-logo-link {
+  display: inline-flex;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
 .mobile-home-logo {
   height: 48px;
   flex-shrink: 0;

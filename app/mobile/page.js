@@ -55,7 +55,9 @@ export default function MobileHomePage() {
       {!ready ? null : !staffId ? (
         <>
           <div className="mobile-heading-row">
-            <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
+            <a href="/" className="mobile-home-logo-link">
+              <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
+            </a>
             <p className="mobile-subtitle mobile-whoareyou">Who are you?</p>
           </div>
           {staff.length === 0 ? (
@@ -76,7 +78,9 @@ export default function MobileHomePage() {
       ) : (
         <>
           <div className="mobile-heading-row">
-            <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
+            <a href="/" className="mobile-home-logo-link">
+              <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
+            </a>
             <h1 className="mobile-greeting">Hello, {firstName || 'there'}!</h1>
           </div>
           <button type="button" className="mobile-link-btn" onClick={switchStaff}>
