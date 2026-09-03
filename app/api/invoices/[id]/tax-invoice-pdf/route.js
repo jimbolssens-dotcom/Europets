@@ -26,7 +26,11 @@ export async function GET(request, { params }) {
   }
 
   const [{ data: lineItems }, { data: clinic }] = await Promise.all([
-    supabase.from('invoice_line_items').select('*').eq('invoice_id', params.id).order('id'),
+    supabase
+      .from('invoice_line_items')
+      .select('*, goods_services(main_category)')
+      .eq('invoice_id', params.id)
+      .order('id'),
     supabase.from('clinic_settings').select('*').eq('id', true).single(),
   ]);
 
