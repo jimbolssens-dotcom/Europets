@@ -38,7 +38,7 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
 
   async function logPayment(e) {
     e.preventDefault();
-    if (!amount || !paymentMethod) return;
+    if (!amount || !paymentMethod || !receivedBy) return;
     setSubmitting(true);
     setError(null);
 
@@ -48,7 +48,7 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
       body: JSON.stringify({
         amount: Number(amount),
         payment_method: paymentMethod,
-        received_by: receivedBy || null,
+        received_by: receivedBy,
       }),
     });
     const data = await res.json();
@@ -134,15 +134,15 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
               <option value="bank_transfer">Bank Transfer</option>
               <option value="payment_link">Payment Link</option>
             </select>
-            <select value={receivedBy} onChange={(e) => setReceivedBy(e.target.value)}>
-              <option value="">Received by (optional)...</option>
+            <select value={receivedBy} onChange={(e) => setReceivedBy(e.target.value)} required>
+              <option value="">Received by...</option>
               {staff.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.full_name}
                 </option>
               ))}
             </select>
-            <button type="submit" disabled={submitting || !amount || !paymentMethod}>
+            <button type="submit" disabled={submitting || !amount || !paymentMethod || !receivedBy}>
               {submitting ? 'Logging...' : 'Log Payment'}
             </button>
           </form>

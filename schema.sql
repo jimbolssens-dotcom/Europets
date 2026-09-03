@@ -567,7 +567,7 @@ create table invoice_payments (
     invoice_id uuid references invoices(id) on delete cascade not null,
     amount numeric(10,2) not null check (amount > 0),
     payment_method text not null check (payment_method in ('cash', 'card', 'bank_transfer', 'payment_link')),
-    received_by uuid references staff(id),
+    received_by uuid references staff(id) not null,
     paid_at timestamptz not null default now(),
     created_at timestamptz default now()
 );

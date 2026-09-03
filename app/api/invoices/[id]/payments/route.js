@@ -5,6 +5,9 @@
 // accumulate — there's no way to mark an invoice paid without the amount
 // actually adding up (see app/api/invoices/[id]/route.js, which no
 // longer accepts status: 'paid' directly).
+//
+// received_by is required — every payment must be attributed to the
+// staff member who took it (see migrations/042).
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -23,6 +26,12 @@ export async function POST(request, { params }) {
   if (!payment_method || !PAYMENT_METHODS.includes(payment_method)) {
     return NextResponse.json(
       { error: `payment_method must be one of ${PAYMENT_METHODS.join(', ')}` },
+      { status: 400 }
+    );
+  }
+  if (!received_by) {
+    return NextResponse.json(
+      { error: 'received_by is required — select the staff member who took this payment' },
       { status: 400 }
     );
   }
@@ -60,7 +69,7 @@ export async function POST(request, { params }) {
         invoice_id: params.id,
         amount: Math.round(numericAmount * 100) / 100,
         payment_method,
-        received_by: received_by || null,
+        received_by,
       },
     ])
     .select('*, staff(full_name)')
