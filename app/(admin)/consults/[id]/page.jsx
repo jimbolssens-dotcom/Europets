@@ -22,6 +22,7 @@ import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { subcategoryName } from '@/lib/catalogGrouping';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
+import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
 // catalog link — kept only to label those old rows.
@@ -73,6 +74,8 @@ export default function ConsultDetailPage() {
   });
   const [dictatingDental, setDictatingDental] = useState(false);
   const [autoRecordDentalId, setAutoRecordDentalId] = useState(null);
+
+  const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
 
   const [consentForms, setConsentForms] = useState([]);
   const [consentForm, setConsentForm] = useState({
@@ -321,7 +324,9 @@ export default function ConsultDetailPage() {
     } else {
       setConsentForm({ form_type: '', signed_by_name: '', signed_by_relationship: '', staff_witness_id: '' });
       loadConsentForms();
-      printPdfUrl(`/api/consent-forms/${data.id}/pdf`);
+      printPdfUrl(`/api/consent-forms/${data.id}/pdf`, {
+        onFallback: () => setPreviewPdfUrl(`/api/consent-forms/${data.id}/pdf`),
+      });
     }
     setConsentSubmitting(false);
   }
@@ -970,6 +975,8 @@ export default function ConsultDetailPage() {
           {admitting ? 'Admitting...' : 'Admit'}
         </button>
       </form>
+
+      <PdfPreviewModal url={previewPdfUrl} onClose={() => setPreviewPdfUrl(null)} />
     </div>
   );
 }

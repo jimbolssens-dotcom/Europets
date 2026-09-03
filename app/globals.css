@@ -883,6 +883,46 @@ button.secondary:hover {
   color: #b00020;
 }
 
+/* PdfPreviewModal — an in-page PDF preview (see printPdfUrl's onFallback)
+   used instead of navigating to the PDF, so there's always a Close button
+   to get back rather than a dead end on iOS/PWA. */
+.pdf-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.pdf-preview-panel {
+  background: white;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 800px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pdf-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid #eee;
+  font-weight: 600;
+}
+
+.pdf-preview-frame {
+  flex: 1;
+  border: 0;
+  width: 100%;
+}
+
 /* Accounting overview (app/accounting) — a row of small stat boxes per
    section (P&L, VAT), each just a label/value/one-line hint. */
 .accounting-stat-grid {

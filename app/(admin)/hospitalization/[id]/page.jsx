@@ -19,6 +19,7 @@ import CatalogPicker from '@/app/_components/CatalogPicker';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
+import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -55,6 +56,7 @@ export default function HospitalizationDetailPage() {
   const [invoiceInfo, setInvoiceInfo] = useState(null);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
   const [invoiceError, setInvoiceError] = useState(null);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
   const [consentForms, setConsentForms] = useState([]);
   const [consentForm, setConsentForm] = useState({
     signed_by_name: '',
@@ -216,7 +218,9 @@ export default function HospitalizationDetailPage() {
     } else {
       setConsentForm({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '' });
       loadConsentForms();
-      printPdfUrl(`/api/consent-forms/${data.id}/pdf`);
+      printPdfUrl(`/api/consent-forms/${data.id}/pdf`, {
+        onFallback: () => setPreviewPdfUrl(`/api/consent-forms/${data.id}/pdf`),
+      });
     }
     setConsentSubmitting(false);
   }
@@ -622,6 +626,8 @@ export default function HospitalizationDetailPage() {
         PDF sharing needs a manual attach step in WhatsApp; the portal link doesn&apos;t — it's a
         live, read-only page that updates automatically until discharge.
       </p>
+
+      <PdfPreviewModal url={previewPdfUrl} onClose={() => setPreviewPdfUrl(null)} />
     </div>
   );
 }
