@@ -17,7 +17,12 @@ export function byGroup(cages, group) {
 
 export default function CageFloorPlan({ cages, renderTile, compact = false }) {
   const standardCages = byGroup(cages, 'standard');
-  const ltCages = byGroup(cages, 'long_term');
+  // byGroup sorts ascending (LT1..LT5) — reversed here so the left column
+  // (2 cages) reads LT5, LT4 top to bottom and the right column (3 cages)
+  // reads LT3, LT2, LT1 top to bottom, matching how the clinic actually
+  // numbers these on the floor. Same physical split/arrangement as
+  // before (2 left, 3 right, stacked); only which number lands where changed.
+  const ltCages = [...byGroup(cages, 'long_term')].reverse();
   const ltLeft = ltCages.slice(0, 2);
   const ltRight = ltCages.slice(2);
   const recoveryCages = byGroup(cages, 'recovery');
