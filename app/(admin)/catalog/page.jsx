@@ -36,6 +36,7 @@ export default function CatalogPage() {
   const [editForm, setEditForm] = useState(emptyForm);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [subcategorySubmitting, setSubcategorySubmitting] = useState(false);
@@ -94,13 +95,17 @@ export default function CatalogPage() {
     setSubmitting(false);
   }
 
-  async function toggleActive(item) {
-    await fetch(`/api/goods-services/${item.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ active: !item.active }),
-    });
-    loadItems();
+  async function deleteItem(item) {
+    if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
+    setDeleteError(null);
+
+    const res = await fetch(`/api/goods-services/${item.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json();
+      setDeleteError(data.error || 'Failed to delete item');
+    } else {
+      loadItems();
+    }
   }
 
   function startEdit(item) {
@@ -237,6 +242,8 @@ export default function CatalogPage() {
           </button>
         ))}
       </div>
+
+      {deleteError && <p className="error">{deleteError}</p>}
 
       <div className="split">
       <div className="split-main">
@@ -386,10 +393,10 @@ export default function CatalogPage() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleActive(item);
+                      deleteItem(item);
                     }}
                   >
-                    {item.active ? 'Deactivate' : 'Activate'}
+                    Delete
                   </button>
                 </td>
               </tr>

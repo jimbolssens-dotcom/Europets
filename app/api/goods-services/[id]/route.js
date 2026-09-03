@@ -1,7 +1,10 @@
 // app/api/goods-services/[id]/route.js
-// PATCH /api/goods-services/:id  -> update name/subcategory/price/active/etc
-//        on a catalog item — changing subcategory_id re-derives main_category
-//        from the new subcategory, same as on create
+// PATCH  /api/goods-services/:id  -> update name/subcategory/price/active/etc
+//         on a catalog item — changing subcategory_id re-derives main_category
+//         from the new subcategory, same as on create
+// DELETE /api/goods-services/:id  -> remove one (blocked if it's been used
+//         in a treatment item, invoice line, or diagnostic — those keep
+//         referencing it for historical records)
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -62,4 +65,22 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json(data);
+}
+
+export async function DELETE(request, { params }) {
+  const { error } = await supabase.from('goods_services').delete().eq('id', params.id);
+
+  if (error) {
+    if (error.code === '23503') {
+      return NextResponse.json(
+        {
+          error:
+            "cannot delete this item — it's already used in a treatment, invoice, or diagnostic; deactivate it instead",
+        },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
 }
