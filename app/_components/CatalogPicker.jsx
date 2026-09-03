@@ -1,5 +1,7 @@
 // app/_components/CatalogPicker.jsx
-// A catalog item <select>, grouped by subcategory, with the Product/Test/
+// A live type-to-search catalog item picker (SearchSelect, same as the
+// client/patient pickers — the catalog list, medications especially, gets
+// long enough that a plain <select> isn't usable), with the Product/Test/
 // Service tab filter (or none, if fixedMainCategory pins it to one) and an
 // inline "+ Add New" mini-form for when the item staff want isn't in the
 // catalog yet — used everywhere a catalog item gets picked (consult
@@ -11,6 +13,7 @@
 
 import { useState } from 'react';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, groupCatalogBySubcategory } from '@/lib/catalogGrouping';
+import SearchSelect from '@/app/_components/SearchSelect';
 
 const emptyNewItem = { name: '', subcategory_id: '', pricing_type: 'flat', base_price: '', unit: '' };
 
@@ -90,18 +93,16 @@ export default function CatalogPicker({
         </div>
       )}
 
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">Select from catalog...</option>
-        {groups.map((group) => (
-          <optgroup key={group.key} label={group.subcategoryName || group.label}>
-            {group.items.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
+      <SearchSelect
+        items={groups.flatMap((group) =>
+          group.items.map((item) => ({ ...item, groupLabel: group.subcategoryName || group.label }))
+        )}
+        value={value}
+        onChange={onChange}
+        getLabel={(item) => item.name}
+        getSubLabel={(item) => item.groupLabel}
+        placeholder="Type to search the catalog..."
+      />
 
       {!adding ? (
         <button type="button" className="secondary catalog-picker-add-toggle" onClick={startAdding}>
