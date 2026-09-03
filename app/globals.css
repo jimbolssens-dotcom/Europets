@@ -222,7 +222,7 @@ button:disabled {
 }
 
 .content {
-  padding: 2rem;
+  padding: 0.75rem 2rem 2rem;
   max-width: 1440px;
   margin: 0 auto;
 }
@@ -233,7 +233,7 @@ button:disabled {
 .split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
-  gap: 2rem;
+  gap: 1.5rem;
   align-items: start;
 }
 
@@ -258,7 +258,7 @@ button:disabled {
 .two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  gap: 1.5rem;
   align-items: start;
 }
 
@@ -283,6 +283,41 @@ button:disabled {
 
 h1, h2 {
   color: var(--ink);
+}
+
+/* Every page relied on the browser's default heading/paragraph margins
+   (h1 ~1.3rem, h2 ~1.2rem, h3 ~1.1rem top+bottom, p ~1rem), which stack
+   up fast on a long record page — this is the single change that pulls
+   every page's content up and tightens the vertical rhythm throughout. */
+h1 {
+  margin: 0 0 0.5rem;
+}
+
+h2 {
+  margin: 1.5rem 0 0.6rem;
+}
+
+h3 {
+  margin: 1.1rem 0 0.5rem;
+}
+
+h4 {
+  margin: 0.9rem 0 0.4rem;
+}
+
+p {
+  margin: 0.4rem 0;
+}
+
+/* First heading/paragraph in a page or card shouldn't carry the "space
+   before" half of the rhythm above — it already sits right under the nav
+   or a card's top edge. */
+h1:first-child,
+h2:first-child,
+h3:first-child,
+h4:first-child,
+p:first-child {
+  margin-top: 0;
 }
 
 table {
@@ -458,16 +493,41 @@ th {
   letter-spacing: 0.03em;
 }
 
+.card,
 form.card {
   background: white;
   border: 1px solid #eee;
   border-top: 3px solid var(--pink);
   border-radius: 8px;
-  padding: 1.5rem;
-  margin-top: 1.5rem;
-  display: grid;
-  gap: 0.75rem;
+  padding: 1.25rem;
+  margin-top: 1rem;
   max-width: 480px;
+}
+
+form.card {
+  display: grid;
+  gap: 0.6rem;
+}
+
+/* A plain (non-card) grid of form fields nested inside a .card that
+   already supplies the pink-topped box — e.g. the collapsed "Or add
+   manually" form under a Dictate button — so it isn't a card-in-a-card. */
+.form-grid {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.form-grid input,
+.form-grid select,
+.form-grid textarea {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: inherit;
+  width: 100%;
+  min-width: 0;
 }
 
 form.card input,
@@ -1046,6 +1106,81 @@ button.secondary:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+/* .visit-card entries (diagnostics, surgical/dental reports, consent
+   forms) otherwise sit flush against whatever precedes them — a heading,
+   or (on the Exam tab) the Add Diagnostic form right above the list. */
+.visit-card {
+  margin-top: 0.75rem;
+}
+
+/* A row of related action buttons (Complete/Delete Consult, etc.) —
+   replaces strings of buttons separated by a literal space character,
+   which don't wrap cleanly on a narrow screen. */
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.75rem 0;
+}
+
+/* Workflow-stage tabs on the consult page (Exam & Notes / Treatment /
+   Procedures / Consent & Admission) — same look as .catalog-tabs, kept as
+   its own class since the two aren't the same concern. */
+.consult-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0 1.25rem;
+  border-bottom: 2px solid var(--pink-tint);
+  flex-wrap: wrap;
+}
+
+.consult-tab {
+  background: transparent;
+  color: var(--pink-dark);
+  border: none;
+  border-radius: 4px 4px 0 0;
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+}
+
+.consult-tab:hover {
+  background: var(--pink-tint);
+}
+
+.consult-tab.active {
+  background: var(--pink);
+  color: white;
+}
+
+/* Pairs the consult page's <h1> with the Long-Term Patient Notes toggle,
+   top-right next to the patient name instead of its own full-width line
+   below — like .page-header, but flex-start aligned since the notes panel
+   can expand much taller than the heading when open. */
+.consult-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.consult-header-row .patient-alerts-panel {
+  margin-bottom: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Muted note tucked inline after a heading (e.g. "Vaccinations — No
+   vaccinations recorded yet.") instead of its own line below — keeps
+   headings with an empty-state message the same height as a sibling
+   heading in a two-col pairing, so their cards' top borders line up. */
+.heading-hint {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: #666;
 }
 
 /* Day-grouped worksheet entries (hospitalization) — every entry for a day

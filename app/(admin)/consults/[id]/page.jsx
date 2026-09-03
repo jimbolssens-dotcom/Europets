@@ -35,6 +35,16 @@ const LEGACY_DIAGNOSTIC_TYPE_LABELS = {
   other: 'Other',
 };
 
+// Groups the consult record into the workflow stages a vet actually moves
+// through, instead of the old side-by-side column layout — see the
+// activeTab state below for why the inactive tabs stay mounted.
+const CONSULT_TABS = [
+  { id: 'exam', label: '🩺 Exam & Notes' },
+  { id: 'treatment', label: '💊 Treatment' },
+  { id: 'procedures', label: '🩹 Procedures' },
+  { id: 'admin', label: '📋 Consent & Admission' },
+];
+
 function truncate(str, max = 160) {
   const s = str.trim();
   return s.length > max ? `${s.slice(0, max).trim()}…` : s;
@@ -97,6 +107,12 @@ export default function ConsultDetailPage() {
   const [creatingInvoice, setCreatingInvoice] = useState(false);
 
   const [previousVisits, setPreviousVisits] = useState([]);
+
+  // Everything below groups into one of these four workflow stages instead
+  // of the old side-by-side column pairing — each tab stays mounted (just
+  // hidden) when inactive, so nothing loses in-progress state (a running
+  // recording, an unsaved draft) when the vet switches tabs.
+  const [activeTab, setActiveTab] = useState('exam');
 
   const loadConsult = () =>
     fetch(`/api/visits/${id}`)
@@ -250,10 +266,6 @@ export default function ConsultDetailPage() {
       loadConsult();
     }
     setSavingRecord(false);
-  }
-
-  function scrollToSection(sectionId) {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   async function completeConsult() {
@@ -454,25 +466,27 @@ export default function ConsultDetailPage() {
       <p>
         <a href="/consults">&larr; All consults</a>
       </p>
-      <h1>
-        {consult.patients?.name}{' '}
-        <span>
-          ({consult.patients?.species}) — {consult.status}
-        </span>
-      </h1>
+      <div className="consult-header-row">
+        <h1>
+          {consult.patients?.name}{' '}
+          <span>
+            ({consult.patients?.species}) — {consult.status}
+          </span>
+        </h1>
+        {(patientAlerts.alerts.length > 0 || consult?.patients?.id) && (
+          <details className="patient-alerts-panel" open={patientAlerts.alerts.length > 0}>
+            <summary>
+              ⚠️ Long-Term Patient Notes {patientAlerts.alerts.length > 0 && `(${patientAlerts.alerts.length})`}
+            </summary>
+            <PatientAlerts {...patientAlerts} staff={staff} />
+          </details>
+        )}
+      </div>
       <p>
         Owner: <a href={`/clients/${consult.clients?.id}`}>{consult.clients?.full_name}</a> ·
         Patient: <a href={`/patients/${consult.patients?.id}`}>record</a> · Room:{' '}
         {consult.rooms?.name} · Vet: {consult.staff?.full_name || 'unassigned'}
       </p>
-      {(patientAlerts.alerts.length > 0 || consult?.patients?.id) && (
-        <details className="patient-alerts-panel" open={patientAlerts.alerts.length > 0}>
-          <summary>
-            ⚠️ Long-Term Patient Notes {patientAlerts.alerts.length > 0 && `(${patientAlerts.alerts.length})`}
-          </summary>
-          <PatientAlerts {...patientAlerts} staff={staff} />
-        </details>
-      )}
 
       {previousVisits.length > 0 && (
         <details className="consult-history-panel">
@@ -508,515 +522,547 @@ export default function ConsultDetailPage() {
         </details>
       )}
 
-      {consult.status === 'in_progress' && (
-        <button type="button" onClick={completeConsult}>
-          Complete Consult
+      <div className="action-row">
+        {consult.status === 'in_progress' && (
+          <button type="button" onClick={completeConsult}>
+            Complete Consult
+          </button>
+        )}
+        <button type="button" onClick={deleteConsult}>
+          Delete Consult
         </button>
-      )}{' '}
-      <button type="button" onClick={deleteConsult}>
-        Delete Consult
-      </button>{' '}
-      <button type="button" onClick={() => scrollToSection('consent-forms')}>
-        Consent Form
-      </button>{' '}
-      <button type="button" onClick={() => scrollToSection('surgical-reports')}>
-        Surgical Report
-      </button>{' '}
-      <button type="button" onClick={() => scrollToSection('dental-reports')}>
-        Dental Report
-      </button>{' '}
-      <button type="button" onClick={() => scrollToSection('hospitalization')}>
-        Hospitalization
-      </button>
+      </div>
 
-      <div className="two-col">
-      <div>
-      <h2>Vitals & Exam</h2>
-      <form className="card" onSubmit={saveRecord}>
-        {recordError && <p className="error">{recordError}</p>}
-        <label>
-          Weight (kg)
+      <div className="consult-tabs">
+        {CONSULT_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`consult-tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Exam & Notes — the vet's own record: vitals, exam findings, the
+          consult dictation, and any diagnostics ordered off the back of it. */}
+      <div hidden={activeTab !== 'exam'}>
+        <div className="two-col">
+        <div>
+        <h3>Vitals & Exam</h3>
+        <form className="card" onSubmit={saveRecord}>
+          {recordError && <p className="error">{recordError}</p>}
+          <label>
+            Weight (kg)
+            <input
+              type="number"
+              step="0.01"
+              value={record.weight_kg}
+              onChange={(e) => setRecord({ ...record, weight_kg: e.target.value })}
+            />
+          </label>
+          <label>
+            Temperature (°C)
+            <input
+              type="number"
+              step="0.1"
+              value={record.temperature_c}
+              onChange={(e) => setRecord({ ...record, temperature_c: e.target.value })}
+            />
+          </label>
+          <label>
+            Body condition score (1–9)
+            <input
+              type="number"
+              min="1"
+              max="9"
+              value={record.body_condition_score}
+              onChange={(e) => setRecord({ ...record, body_condition_score: e.target.value })}
+            />
+          </label>
+          <label>
+            <span className="field-label-row">
+              Anamnesis (history / owner-reported complaint)
+              <VoiceToTextButton
+                kind="anamnesis"
+                onResult={(text) => appendRecordField('anamnesis', text)}
+              />
+            </span>
+            <textarea
+              rows={2}
+              value={record.anamnesis}
+              onChange={(e) => setRecord({ ...record, anamnesis: e.target.value })}
+            />
+          </label>
+          <label>
+            <span className="field-label-row">
+              Findings (physical exam)
+              <VoiceToTextButton
+                kind="findings"
+                onResult={(text) => appendRecordField('findings', text)}
+              />
+            </span>
+            <textarea
+              rows={2}
+              value={record.findings}
+              onChange={(e) => setRecord({ ...record, findings: e.target.value })}
+            />
+          </label>
+          <label>
+            <span className="field-label-row">
+              Diagnosis
+              <VoiceToTextButton
+                kind="diagnosis"
+                onResult={(text) => appendRecordField('diagnosis', text)}
+              />
+            </span>
+            <textarea
+              rows={2}
+              value={record.diagnosis}
+              onChange={(e) => setRecord({ ...record, diagnosis: e.target.value })}
+            />
+          </label>
+          <label>
+            Prognosis
+            <textarea
+              rows={2}
+              value={record.prognosis}
+              onChange={(e) => setRecord({ ...record, prognosis: e.target.value })}
+            />
+          </label>
+          <label>
+            <span className="field-label-row">
+              Treatment plan notes
+              <VoiceToTextButton
+                kind="treatment_notes"
+                onResult={(text) => appendRecordField('treatment_notes', text)}
+              />
+            </span>
+            <textarea
+              rows={2}
+              value={record.treatment_notes}
+              onChange={(e) => setRecord({ ...record, treatment_notes: e.target.value })}
+            />
+          </label>
+          <button type="submit" disabled={savingRecord}>
+            {savingRecord ? 'Saving...' : 'Save Record'}
+          </button>
+        </form>
+
+        <h3>Record Consult</h3>
+        <AudioRecorder entityType="visit" entityId={id} />
+        </div>
+
+        <div>
+        <h3>Diagnostics</h3>
+        <form className="card" onSubmit={addDiagnostic}>
+          {diagError && <p className="error">{diagError}</p>}
+          <CatalogPicker
+            catalog={catalog}
+            subcategories={subcategories}
+            value={diagForm.goods_service_id}
+            onChange={(value) => setDiagForm({ ...diagForm, goods_service_id: value })}
+            onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+            fixedMainCategory="test"
+          />
+          <input
+            placeholder="Description (what was ordered — e.g. left front leg)"
+            value={diagForm.description}
+            onChange={(e) => setDiagForm({ ...diagForm, description: e.target.value })}
+          />
+          <input
+            placeholder="Result"
+            value={diagForm.result}
+            onChange={(e) => setDiagForm({ ...diagForm, result: e.target.value })}
+          />
+          <button type="submit">Add Diagnostic</button>
+          <p className="visit-meta">
+            Also adds this test to the Treatment Plan, ready to invoice. Upload blood work PDFs,
+            x-rays, or ultrasound scans on each entry above once it's added.
+          </p>
+        </form>
+
+        {diagnostics.map((d) => (
+          <div key={d.id} className="visit-card">
+            <div className="visit-header">
+              <strong>
+                {d.goods_service_id
+                  ? catalog.find((c) => c.id === d.goods_service_id)?.name || 'Test'
+                  : LEGACY_DIAGNOSTIC_TYPE_LABELS[d.type] || d.type}
+              </strong>
+              <button type="button" onClick={() => deleteDiagnostic(d.id)}>
+                Remove
+              </button>
+            </div>
+            {d.description && <p>{d.description}</p>}
+            {d.result && (
+              <p>
+                <strong>Result:</strong> {d.result}
+              </p>
+            )}
+            <AttachmentSection entityType="diagnostic" entityId={d.id} />
+          </div>
+        ))}
+        </div>
+        </div>
+      </div>
+
+      {/* Treatment — what the patient is actually getting: vaccines, the
+          treatment plan drawn from the catalog, and the invoice it feeds. */}
+      <div hidden={activeTab !== 'treatment'}>
+        <div className="two-col">
+        <div>
+        <h3>
+          Vaccinations
+          {vac.vaccinations.length === 0 && (
+            <span className="heading-hint"> — No vaccinations recorded yet.</span>
+          )}
+        </h3>
+        {vac.vaccinations.length > 0 && (
+          <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
+        )}
+        <VaccinationForm {...vac} species={consult.patients?.species} staff={staff} />
+        </div>
+
+        <div>
+        <h3>Treatment Plan</h3>
+        <form className="card" onSubmit={addTreatmentItem}>
+          <CatalogPicker
+            catalog={catalog}
+            subcategories={subcategories}
+            value={treatForm.goods_service_id}
+            onChange={(value) => setTreatForm({ ...treatForm, goods_service_id: value })}
+            onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+          />
+          <input
+            placeholder="Instructions (dosage, frequency, duration)"
+            value={treatForm.instructions}
+            onChange={(e) => setTreatForm({ ...treatForm, instructions: e.target.value })}
+          />
           <input
             type="number"
             step="0.01"
-            value={record.weight_kg}
-            onChange={(e) => setRecord({ ...record, weight_kg: e.target.value })}
+            placeholder="Quantity"
+            value={treatForm.quantity}
+            onChange={(e) => setTreatForm({ ...treatForm, quantity: e.target.value })}
           />
-        </label>
-        <label>
-          Temperature (°C)
-          <input
-            type="number"
-            step="0.1"
-            value={record.temperature_c}
-            onChange={(e) => setRecord({ ...record, temperature_c: e.target.value })}
-          />
-        </label>
-        <label>
-          Body condition score (1–9)
-          <input
-            type="number"
-            min="1"
-            max="9"
-            value={record.body_condition_score}
-            onChange={(e) => setRecord({ ...record, body_condition_score: e.target.value })}
-          />
-        </label>
-        <label>
-          <span className="field-label-row">
-            Anamnesis (history / owner-reported complaint)
-            <VoiceToTextButton
-              kind="anamnesis"
-              onResult={(text) => appendRecordField('anamnesis', text)}
-            />
-          </span>
-          <textarea
-            rows={2}
-            value={record.anamnesis}
-            onChange={(e) => setRecord({ ...record, anamnesis: e.target.value })}
-          />
-        </label>
-        <label>
-          <span className="field-label-row">
-            Findings (physical exam)
-            <VoiceToTextButton
-              kind="findings"
-              onResult={(text) => appendRecordField('findings', text)}
-            />
-          </span>
-          <textarea
-            rows={2}
-            value={record.findings}
-            onChange={(e) => setRecord({ ...record, findings: e.target.value })}
-          />
-        </label>
-        <label>
-          <span className="field-label-row">
-            Diagnosis
-            <VoiceToTextButton
-              kind="diagnosis"
-              onResult={(text) => appendRecordField('diagnosis', text)}
-            />
-          </span>
-          <textarea
-            rows={2}
-            value={record.diagnosis}
-            onChange={(e) => setRecord({ ...record, diagnosis: e.target.value })}
-          />
-        </label>
-        <label>
-          Prognosis
-          <textarea
-            rows={2}
-            value={record.prognosis}
-            onChange={(e) => setRecord({ ...record, prognosis: e.target.value })}
-          />
-        </label>
-        <label>
-          <span className="field-label-row">
-            Treatment plan notes
-            <VoiceToTextButton
-              kind="treatment_notes"
-              onResult={(text) => appendRecordField('treatment_notes', text)}
-            />
-          </span>
-          <textarea
-            rows={2}
-            value={record.treatment_notes}
-            onChange={(e) => setRecord({ ...record, treatment_notes: e.target.value })}
-          />
-        </label>
-        <button type="submit" disabled={savingRecord}>
-          {savingRecord ? 'Saving...' : 'Save Record'}
-        </button>
-      </form>
+          <button type="submit">Add to Plan</button>
+        </form>
 
-      <h3>Record Consult</h3>
-      <p className="visit-meta">
-        Record the consult and Claude will break it down and fill in the Anamnesis, Findings,
-        Diagnosis, Prognosis, and Treatment plan fields above — anything already filled in is
-        kept, with the recording's version appended below it. Diagnostic tests and medications you
-        mention are also matched against the catalog and added to the Diagnostics and Treatment
-        Plan lists below automatically when a confident match is found.
-      </p>
-      <AudioRecorder entityType="visit" entityId={id} />
-
-      <h3>Diagnostics</h3>
-      {diagnostics.map((d) => (
-        <div key={d.id} className="visit-card">
-          <div className="visit-header">
-            <strong>
-              {d.goods_service_id
-                ? catalog.find((c) => c.id === d.goods_service_id)?.name || 'Test'
-                : LEGACY_DIAGNOSTIC_TYPE_LABELS[d.type] || d.type}
-            </strong>
-            <button type="button" onClick={() => deleteDiagnostic(d.id)}>
-              Remove
-            </button>
-          </div>
-          {d.description && <p>{d.description}</p>}
-          {d.result && (
-            <p>
-              <strong>Result:</strong> {d.result}
-            </p>
-          )}
-          <AttachmentSection entityType="diagnostic" entityId={d.id} />
-        </div>
-      ))}
-      <form className="card" onSubmit={addDiagnostic}>
-        <h3>Add Diagnostic</h3>
-        {diagError && <p className="error">{diagError}</p>}
-        <CatalogPicker
-          catalog={catalog}
-          subcategories={subcategories}
-          value={diagForm.goods_service_id}
-          onChange={(value) => setDiagForm({ ...diagForm, goods_service_id: value })}
-          onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
-          fixedMainCategory="test"
-        />
-        <input
-          placeholder="Description (what was ordered — e.g. left front leg)"
-          value={diagForm.description}
-          onChange={(e) => setDiagForm({ ...diagForm, description: e.target.value })}
-        />
-        <input
-          placeholder="Result"
-          value={diagForm.result}
-          onChange={(e) => setDiagForm({ ...diagForm, result: e.target.value })}
-        />
-        <button type="submit">Add Diagnostic</button>
-        <p className="visit-meta">
-          Also adds this test to the Treatment Plan, ready to invoice. Upload blood work PDFs,
-          x-rays, or ultrasound scans on each entry above once it's added.
-        </p>
-      </form>
-
-      </div>
-
-      <div>
-      <h2>Vaccinations</h2>
-      <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
-      <VaccinationForm {...vac} species={consult.patients?.species} staff={staff} />
-
-      <h3>Treatment Plan</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Instructions</th>
-            <th>Qty</th>
-            <th>Given</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {treatmentItems.length === 0 && (
+        <table>
+          <thead>
             <tr>
-              <td colSpan={5}>No treatment items yet.</td>
+              <th>Item</th>
+              <th>Instructions</th>
+              <th>Qty</th>
+              <th>Given</th>
+              <th></th>
             </tr>
-          )}
-          {treatmentItems.map((t) => (
-            <tr key={t.id}>
-              <td>
-                {t.goods_services?.name}
-                {subcategoryName(subcategories, t.goods_services?.subcategory_id) &&
-                  ` (${subcategoryName(subcategories, t.goods_services?.subcategory_id)})`}
-              </td>
-              <td>{t.instructions}</td>
-              <td>{t.quantity}</td>
-              <td>{t.administration_method ? ADMINISTRATION_METHOD_LABELS[t.administration_method] : '—'}</td>
-              <td>
-                <button type="button" onClick={() => deleteTreatmentItem(t.id)}>
-                  Remove
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <form className="card" onSubmit={addTreatmentItem}>
-        <h3>Add Treatment Item</h3>
-        <CatalogPicker
-          catalog={catalog}
-          subcategories={subcategories}
-          value={treatForm.goods_service_id}
-          onChange={(value) => setTreatForm({ ...treatForm, goods_service_id: value })}
-          onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
-        />
-        <input
-          placeholder="Instructions (dosage, frequency, duration)"
-          value={treatForm.instructions}
-          onChange={(e) => setTreatForm({ ...treatForm, instructions: e.target.value })}
-        />
-        <input
-          type="number"
-          step="0.01"
-          placeholder="Quantity"
-          value={treatForm.quantity}
-          onChange={(e) => setTreatForm({ ...treatForm, quantity: e.target.value })}
-        />
-        <button type="submit">Add to Plan</button>
-      </form>
-
-      <h3>Invoice</h3>
-      {invoiceInfo ? (
-        <p>
-          <a href={`/invoices/${invoiceInfo.id}`}>View Invoice</a> ({invoiceInfo.status})
-        </p>
-      ) : (
-        <>
-          <button type="button" onClick={createInvoice} disabled={creatingInvoice}>
-            {creatingInvoice ? 'Creating...' : '🧾 Create Invoice from Treatment Plan'}
-          </button>
-          <p className="visit-meta">
-            Opens a new invoice and imports every item above as a line item. You can still add
-            more items on the invoice itself afterward.
-          </p>
-        </>
-      )}
-      </div>
-      </div>
-
-      <h2 id="consent-forms">Consent Forms</h2>
-      {consentForms.length === 0 && <p>No consent forms signed yet.</p>}
-      {consentForms.map((cf) => (
-        <div key={cf.id} className="visit-card">
-          <strong>{CONSENT_FORM_LABELS[cf.form_type] || cf.form_type}</strong>
-          <p>
-            Signed by {cf.signed_by_name}
-            {cf.signed_by_relationship && ` (${cf.signed_by_relationship})`} ·{' '}
-            {new Date(cf.signed_at).toLocaleString()}
-            {cf.staff?.full_name && ` · Witnessed by ${cf.staff.full_name}`}
-          </p>
-          <a href={`/api/consent-forms/${cf.id}/pdf`} target="_blank" rel="noreferrer">
-            📄 Download signed PDF
-          </a>
+          </thead>
+          <tbody>
+            {treatmentItems.length === 0 && (
+              <tr>
+                <td colSpan={5}>No treatment items yet.</td>
+              </tr>
+            )}
+            {treatmentItems.map((t) => (
+              <tr key={t.id}>
+                <td>
+                  {t.goods_services?.name}
+                  {subcategoryName(subcategories, t.goods_services?.subcategory_id) &&
+                    ` (${subcategoryName(subcategories, t.goods_services?.subcategory_id)})`}
+                </td>
+                <td>{t.instructions}</td>
+                <td>{t.quantity}</td>
+                <td>{t.administration_method ? ADMINISTRATION_METHOD_LABELS[t.administration_method] : '—'}</td>
+                <td>
+                  <button type="button" onClick={() => deleteTreatmentItem(t.id)}>
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
         </div>
-      ))}
-      <form className="card" onSubmit={addConsentForm}>
-        <h3>Sign a Consent Form</h3>
-        {consentError && <p className="error">{consentError}</p>}
-        <select
-          required
-          value={consentForm.form_type}
-          onChange={(e) => setConsentForm({ ...consentForm, form_type: e.target.value })}
-        >
-          <option value="">Select consent form...</option>
-          {CONSENT_FORM_TYPES.filter((t) => t !== 'hospitalization').map((t) => (
-            <option key={t} value={t}>
-              {CONSENT_FORM_LABELS[t]}
-            </option>
-          ))}
-        </select>
-        {consentForm.form_type && (
-          <div className="consent-text-box">
-            {buildConsentFormText(consentForm.form_type, {
-              name: consult.patients?.name,
-              sex: consult.patients?.sex,
-            })}
-          </div>
+        </div>
+
+        <h3>Invoice</h3>
+        {invoiceInfo ? (
+          <p>
+            <a href={`/invoices/${invoiceInfo.id}`}>View Invoice</a> ({invoiceInfo.status})
+          </p>
+        ) : (
+          <>
+            <button type="button" onClick={createInvoice} disabled={creatingInvoice}>
+              {creatingInvoice ? 'Creating...' : '🧾 Create Invoice from Treatment Plan'}
+            </button>
+            <p className="visit-meta">
+              Opens a new invoice and imports every item above as a line item. You can still add
+              more items on the invoice itself afterward.
+            </p>
+          </>
         )}
-        <input
-          placeholder="Signed by (full name)"
-          required
-          value={consentForm.signed_by_name}
-          onChange={(e) => setConsentForm({ ...consentForm, signed_by_name: e.target.value })}
-        />
-        <input
-          placeholder="Relationship to pet (e.g. Owner) — optional"
-          value={consentForm.signed_by_relationship}
-          onChange={(e) => setConsentForm({ ...consentForm, signed_by_relationship: e.target.value })}
-        />
-        <select
-          value={consentForm.staff_witness_id}
-          onChange={(e) => setConsentForm({ ...consentForm, staff_witness_id: e.target.value })}
-        >
-          <option value="">Witnessed by (staff)...</option>
-          {staff.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.full_name}
-            </option>
-          ))}
-        </select>
-        <button type="submit" disabled={consentSubmitting}>
-          {consentSubmitting ? 'Saving...' : 'Sign & Save Consent Form'}
-        </button>
-      </form>
+      </div>
 
-      <div className="two-col">
-      <div>
-      <h2 id="surgical-reports">Surgical Reports</h2>
-      {surgicalReports.map((r) => (
-        <div key={r.id} className="visit-card">
-          <strong>{r.procedure_name || 'Procedure'}</strong>
-          <p>
-            {r.staff?.full_name || 'unassigned'} ·{' '}
-            {r.performed_at ? new Date(r.performed_at).toLocaleString() : ''}
-          </p>
-          {r.notes && <p>{r.notes}</p>}
-          <AttachmentSection entityType="surgical_report" entityId={r.id} />
-          <AudioRecorder
-            entityType="surgical_report"
-            entityId={r.id}
-            autoStart={r.id === autoRecordSurgicalId}
-          />
-          <ClientReportEditor
-            reportId={r.id}
-            apiBase="/api/surgical-reports"
-            savedReport={r.ai_summary}
-            onSaved={loadSurgicalReports}
-          />
-          <h4>Share Surgical Report</h4>
-          <ReportShareActions
-            reportId={r.id}
-            apiBase="/api/surgical-reports"
-            client={consult.clients}
-            patient={consult.patients}
-            reportLabel="surgical report"
-          />
+      {/* Procedures — surgical and dental work, including the dental chart,
+          each full-width now instead of squeezed into a half-width column. */}
+      <div hidden={activeTab !== 'procedures'}>
+        <div className="two-col">
+        <div>
+        <h3>Dental Reports</h3>
+        <div className="card">
+          <button type="button" onClick={startDictateDentalReport} disabled={dictatingDental}>
+            🎤 {dictatingDental ? 'Starting...' : 'Dictate New Dental Report'}
+          </button>
+          <details>
+            <summary>Or add manually</summary>
+            <form className="form-grid" onSubmit={addDentalReport}>
+              <select
+                value={dentalForm.performed_by}
+                onChange={(e) => setDentalForm({ ...dentalForm, performed_by: e.target.value })}
+              >
+                <option value="">Performed by...</option>
+                {vets.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.full_name}
+                  </option>
+                ))}
+              </select>
+              <input
+                placeholder="Findings"
+                value={dentalForm.findings}
+                onChange={(e) => setDentalForm({ ...dentalForm, findings: e.target.value })}
+              />
+              <input
+                placeholder="Procedures performed"
+                value={dentalForm.procedures_performed}
+                onChange={(e) => setDentalForm({ ...dentalForm, procedures_performed: e.target.value })}
+              />
+              <label>
+                <span className="field-label-row">
+                  Notes
+                  <VoiceToTextButton kind="dental_notes" onResult={appendDentalNotes} />
+                </span>
+                <textarea
+                  rows={2}
+                  value={dentalForm.notes}
+                  onChange={(e) => setDentalForm({ ...dentalForm, notes: e.target.value })}
+                />
+              </label>
+              <button type="submit">Add Dental Report</button>
+            </form>
+          </details>
         </div>
-      ))}
-      <button type="button" onClick={startDictateSurgicalReport} disabled={dictatingSurgical}>
-        🎤 {dictatingSurgical ? 'Starting...' : 'Dictate New Surgical Report'}
-      </button>
-      <details>
-        <summary>Or add manually</summary>
-        <form className="card" onSubmit={addSurgicalReport}>
-          <h3>Add Surgical Report</h3>
-          <input
-            placeholder="Procedure"
-            value={surgForm.procedure_name}
-            onChange={(e) => setSurgForm({ ...surgForm, procedure_name: e.target.value })}
-          />
+
+        <DentalChart
+          species={consult.patients?.species}
+          value={consult.patients?.dental_chart}
+          onChange={updateDentalChart}
+          saving={savingDentalChart}
+        />
+        {dentalReports.map((r) => (
+          <div key={r.id} className="visit-card">
+            <strong>{r.staff?.full_name || 'unassigned'}</strong>
+            <p>{r.performed_at ? new Date(r.performed_at).toLocaleString() : ''}</p>
+            {r.findings && (
+              <p>
+                <strong>Findings:</strong> {r.findings}
+              </p>
+            )}
+            {r.procedures_performed && (
+              <p>
+                <strong>Procedures:</strong> {r.procedures_performed}
+              </p>
+            )}
+            {r.notes && <p>{r.notes}</p>}
+            <AttachmentSection entityType="dental_report" entityId={r.id} />
+            <AudioRecorder
+              entityType="dental_report"
+              entityId={r.id}
+              autoStart={r.id === autoRecordDentalId}
+            />
+            <ClientReportEditor
+              reportId={r.id}
+              apiBase="/api/dental-reports"
+              savedReport={r.ai_summary}
+              onSaved={loadDentalReports}
+            />
+            <h4>Share Dental Report</h4>
+            <ReportShareActions
+              reportId={r.id}
+              apiBase="/api/dental-reports"
+              client={consult.clients}
+              patient={consult.patients}
+              reportLabel="dental report"
+            />
+          </div>
+        ))}
+        </div>
+
+        <div>
+        <h3>Surgical Reports</h3>
+        <div className="card">
+          <button type="button" onClick={startDictateSurgicalReport} disabled={dictatingSurgical}>
+            🎤 {dictatingSurgical ? 'Starting...' : 'Dictate New Surgical Report'}
+          </button>
+          <details>
+            <summary>Or add manually</summary>
+            <form className="form-grid" onSubmit={addSurgicalReport}>
+              <input
+                placeholder="Procedure"
+                value={surgForm.procedure_name}
+                onChange={(e) => setSurgForm({ ...surgForm, procedure_name: e.target.value })}
+              />
+              <select
+                value={surgForm.surgeon_id}
+                onChange={(e) => setSurgForm({ ...surgForm, surgeon_id: e.target.value })}
+              >
+                <option value="">Surgeon...</option>
+                {vets.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.full_name}
+                  </option>
+                ))}
+              </select>
+              <label>
+                <span className="field-label-row">
+                  Notes
+                  <VoiceToTextButton kind="surgical_notes" onResult={appendSurgNotes} />
+                </span>
+                <textarea
+                  rows={2}
+                  value={surgForm.notes}
+                  onChange={(e) => setSurgForm({ ...surgForm, notes: e.target.value })}
+                />
+              </label>
+              <button type="submit">Add Surgical Report</button>
+            </form>
+          </details>
+        </div>
+
+        {surgicalReports.map((r) => (
+          <div key={r.id} className="visit-card">
+            <strong>{r.procedure_name || 'Procedure'}</strong>
+            <p>
+              {r.staff?.full_name || 'unassigned'} ·{' '}
+              {r.performed_at ? new Date(r.performed_at).toLocaleString() : ''}
+            </p>
+            {r.notes && <p>{r.notes}</p>}
+            <AttachmentSection entityType="surgical_report" entityId={r.id} />
+            <AudioRecorder
+              entityType="surgical_report"
+              entityId={r.id}
+              autoStart={r.id === autoRecordSurgicalId}
+            />
+            <ClientReportEditor
+              reportId={r.id}
+              apiBase="/api/surgical-reports"
+              savedReport={r.ai_summary}
+              onSaved={loadSurgicalReports}
+            />
+            <h4>Share Surgical Report</h4>
+            <ReportShareActions
+              reportId={r.id}
+              apiBase="/api/surgical-reports"
+              client={consult.clients}
+              patient={consult.patients}
+              reportLabel="surgical report"
+            />
+          </div>
+        ))}
+        </div>
+        </div>
+      </div>
+
+      {/* Consent & Admission — the paperwork/disposition side: signed
+          consent forms, and admitting the patient to hospitalization. */}
+      <div hidden={activeTab !== 'admin'}>
+        <h3>
+          Consent Forms
+          {consentForms.length === 0 && (
+            <span className="heading-hint"> — No consent forms signed yet.</span>
+          )}
+        </h3>
+        {consentForms.map((cf) => (
+          <div key={cf.id} className="visit-card">
+            <strong>{CONSENT_FORM_LABELS[cf.form_type] || cf.form_type}</strong>
+            <p>
+              Signed by {cf.signed_by_name}
+              {cf.signed_by_relationship && ` (${cf.signed_by_relationship})`} ·{' '}
+              {new Date(cf.signed_at).toLocaleString()}
+              {cf.staff?.full_name && ` · Witnessed by ${cf.staff.full_name}`}
+            </p>
+            <a href={`/api/consent-forms/${cf.id}/pdf`} target="_blank" rel="noreferrer">
+              📄 Download signed PDF
+            </a>
+          </div>
+        ))}
+        <form className="card" onSubmit={addConsentForm}>
+          <h3>Sign a Consent Form</h3>
+          {consentError && <p className="error">{consentError}</p>}
           <select
-            value={surgForm.surgeon_id}
-            onChange={(e) => setSurgForm({ ...surgForm, surgeon_id: e.target.value })}
+            required
+            value={consentForm.form_type}
+            onChange={(e) => setConsentForm({ ...consentForm, form_type: e.target.value })}
           >
-            <option value="">Surgeon...</option>
-            {vets.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.full_name}
+            <option value="">Select consent form...</option>
+            {CONSENT_FORM_TYPES.filter((t) => t !== 'hospitalization').map((t) => (
+              <option key={t} value={t}>
+                {CONSENT_FORM_LABELS[t]}
               </option>
             ))}
           </select>
-          <label>
-            <span className="field-label-row">
-              Notes
-              <VoiceToTextButton kind="surgical_notes" onResult={appendSurgNotes} />
-            </span>
-            <textarea
-              rows={2}
-              value={surgForm.notes}
-              onChange={(e) => setSurgForm({ ...surgForm, notes: e.target.value })}
-            />
-          </label>
-          <button type="submit">Add Surgical Report</button>
-        </form>
-      </details>
-      </div>
-
-      <div>
-      <h2 id="dental-reports">Dental Reports</h2>
-      <DentalChart
-        species={consult.patients?.species}
-        value={consult.patients?.dental_chart}
-        onChange={updateDentalChart}
-        saving={savingDentalChart}
-      />
-      {dentalReports.map((r) => (
-        <div key={r.id} className="visit-card">
-          <strong>{r.staff?.full_name || 'unassigned'}</strong>
-          <p>{r.performed_at ? new Date(r.performed_at).toLocaleString() : ''}</p>
-          {r.findings && (
-            <p>
-              <strong>Findings:</strong> {r.findings}
-            </p>
+          {consentForm.form_type && (
+            <div className="consent-text-box">
+              {buildConsentFormText(consentForm.form_type, {
+                name: consult.patients?.name,
+                sex: consult.patients?.sex,
+              })}
+            </div>
           )}
-          {r.procedures_performed && (
-            <p>
-              <strong>Procedures:</strong> {r.procedures_performed}
-            </p>
-          )}
-          {r.notes && <p>{r.notes}</p>}
-          <AttachmentSection entityType="dental_report" entityId={r.id} />
-          <AudioRecorder
-            entityType="dental_report"
-            entityId={r.id}
-            autoStart={r.id === autoRecordDentalId}
+          <input
+            placeholder="Signed by (full name)"
+            required
+            value={consentForm.signed_by_name}
+            onChange={(e) => setConsentForm({ ...consentForm, signed_by_name: e.target.value })}
           />
-          <ClientReportEditor
-            reportId={r.id}
-            apiBase="/api/dental-reports"
-            savedReport={r.ai_summary}
-            onSaved={loadDentalReports}
+          <input
+            placeholder="Relationship to pet (e.g. Owner) — optional"
+            value={consentForm.signed_by_relationship}
+            onChange={(e) => setConsentForm({ ...consentForm, signed_by_relationship: e.target.value })}
           />
-          <h4>Share Dental Report</h4>
-          <ReportShareActions
-            reportId={r.id}
-            apiBase="/api/dental-reports"
-            client={consult.clients}
-            patient={consult.patients}
-            reportLabel="dental report"
-          />
-        </div>
-      ))}
-      <button type="button" onClick={startDictateDentalReport} disabled={dictatingDental}>
-        🎤 {dictatingDental ? 'Starting...' : 'Dictate New Dental Report'}
-      </button>
-      <details>
-        <summary>Or add manually</summary>
-        <form className="card" onSubmit={addDentalReport}>
-          <h3>Add Dental Report</h3>
           <select
-            value={dentalForm.performed_by}
-            onChange={(e) => setDentalForm({ ...dentalForm, performed_by: e.target.value })}
+            value={consentForm.staff_witness_id}
+            onChange={(e) => setConsentForm({ ...consentForm, staff_witness_id: e.target.value })}
           >
-            <option value="">Performed by...</option>
-            {vets.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.full_name}
+            <option value="">Witnessed by (staff)...</option>
+            {staff.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.full_name}
               </option>
             ))}
           </select>
-          <input
-            placeholder="Findings"
-            value={dentalForm.findings}
-            onChange={(e) => setDentalForm({ ...dentalForm, findings: e.target.value })}
-          />
-          <input
-            placeholder="Procedures performed"
-            value={dentalForm.procedures_performed}
-            onChange={(e) => setDentalForm({ ...dentalForm, procedures_performed: e.target.value })}
-          />
-          <label>
-            <span className="field-label-row">
-              Notes
-              <VoiceToTextButton kind="dental_notes" onResult={appendDentalNotes} />
-            </span>
-            <textarea
-              rows={2}
-              value={dentalForm.notes}
-              onChange={(e) => setDentalForm({ ...dentalForm, notes: e.target.value })}
-            />
-          </label>
-          <button type="submit">Add Dental Report</button>
+          <button type="submit" disabled={consentSubmitting}>
+            {consentSubmitting ? 'Saving...' : 'Sign & Save Consent Form'}
+          </button>
         </form>
-      </details>
-      </div>
-      </div>
 
-      <h2 id="hospitalization">Hospitalization</h2>
-      <form className="card" onSubmit={admitToHospital}>
-        <h3>Admit to Hospitalization</h3>
-        <input
-          placeholder="Reason for admission"
-          value={hospReason}
-          onChange={(e) => setHospReason(e.target.value)}
-        />
-        <button type="submit" disabled={admitting}>
-          {admitting ? 'Admitting...' : 'Admit'}
-        </button>
-      </form>
+        <h3>Hospitalization</h3>
+        <form className="card" onSubmit={admitToHospital}>
+          <h3>Admit to Hospitalization</h3>
+          <input
+            placeholder="Reason for admission"
+            value={hospReason}
+            onChange={(e) => setHospReason(e.target.value)}
+          />
+          <button type="submit" disabled={admitting}>
+            {admitting ? 'Admitting...' : 'Admit'}
+          </button>
+        </form>
+      </div>
 
       <PdfPreviewModal url={previewPdfUrl} onClose={() => setPreviewPdfUrl(null)} />
     </div>
