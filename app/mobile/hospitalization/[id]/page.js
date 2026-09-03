@@ -6,6 +6,14 @@
 // the database; tap Save Entry to actually log it. Trimmed down from the
 // desktop card: no author picker, no consent forms, no invoice section —
 // just record, check the boxes look right, save.
+//
+// Photos: AttachmentSection's "Take Photo" button opens the phone camera
+// directly (capture="environment"). Case Photos (entity type
+// 'hospitalization') are always available at the top of the page; once a
+// worksheet entry is saved, a second AttachmentSection appears scoped to
+// that specific note (entity type 'hospitalization_note') so a photo taken
+// right after logging an observation attaches to that entry, not just the
+// case in general — same two-tier split as the desktop hospitalization page.
 
 'use client';
 
@@ -13,6 +21,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import AttachmentSection from '@/app/_components/AttachmentSection';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -40,6 +49,7 @@ export default function MobileHospitalizationPage() {
   const [pendingItemForm, setPendingItemForm] = useState(emptyPendingItem);
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedNoteId, setSavedNoteId] = useState(null);
 
   useEffect(() => {
     fetch(`/api/hospitalizations/${id}`)
@@ -99,15 +109,17 @@ export default function MobileHospitalizationPage() {
   async function saveEntry(e) {
     e.preventDefault();
     setSubmitting(true);
-    await fetch(`/api/hospitalizations/${id}/notes`, {
+    const res = await fetch(`/api/hospitalizations/${id}/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...form, treatment_items: pendingItems }),
     });
+    const data = await res.json();
     setForm({ ...emptyForm, note_date: todayISODate() });
     setPendingItems([]);
     setSubmitting(false);
     setSaved(true);
+    if (res.ok) setSavedNoteId(data.id);
   }
 
   return (
@@ -119,6 +131,10 @@ export default function MobileHospitalizationPage() {
         <>
           <h1>{admission.cages?.name || 'No cage'} — {admission.patients?.name}</h1>
           <p className="mobile-subtitle">{admission.clients?.full_name}</p>
+
+          <h2 className="mobile-section-header">Case Photos</h2>
+          <AttachmentSection entityType="hospitalization" entityId={id} />
+
           <p className="mobile-hint">
             Record an observation and it'll fill in Appetite, Weight, Temperature, Condition, and
             Notes below, plus match any medications/tests you mention against the catalog. Check
@@ -126,8 +142,15 @@ export default function MobileHospitalizationPage() {
           </p>
           <AudioRecorder entityType="hospitalization" entityId={id} onExtractedFields={applyExtractedFields} />
 
+          {saved && savedNoteId && (
+            <div className="mobile-worksheet-form">
+              <p className="mobile-saved">Entry saved.</p>
+              <h2 className="mobile-section-header">Photos for this entry</h2>
+              <AttachmentSection entityType="hospitalization_note" entityId={savedNoteId} />
+            </div>
+          )}
+
           <form className="card mobile-worksheet-form" onSubmit={saveEntry}>
-            {saved && <p className="mobile-saved">Entry saved.</p>}
             <select value={form.appetite} onChange={(e) => setForm({ ...form, appetite: e.target.value })}>
               <option value="">Appetite...</option>
               <option value="good">Good</option>
