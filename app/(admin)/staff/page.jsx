@@ -96,6 +96,9 @@ export default function StaffPage() {
   return (
     <div>
       <h1>Staff</h1>
+      <p>
+        <a href="/staff/roster">📅 Staff Roster</a>
+      </p>
       {rowError && <p className="error">{rowError}</p>}
       <div className="split">
       <div className="split-main">

@@ -1298,6 +1298,110 @@ button.secondary:hover {
   min-width: 0;
 }
 
+/* A small count badge on a mini-cal day showing how many distinct staff
+   are on the roster that day — the Staff Roster page's month-glance view
+   (see .roster-* below for the week grid itself). */
+.mini-cal-day-count {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  font-size: 0.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--pink-dark);
+  background: var(--pink-tint);
+  border-radius: 50%;
+  min-width: 10px;
+  height: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px;
+}
+
+.mini-cal-day-selected .mini-cal-day-count {
+  background: white;
+  color: var(--pink-dark);
+}
+
+/* Staff Roster page (app/(admin)/staff/roster) — mini month calendar
+   (reusing .date-nav/.mini-cal-* from the Appointments page above) beside
+   a week grid: every staff member x every day x morning/afternoon. */
+.roster-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.roster-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.roster-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.roster-table-wrap {
+  overflow-x: auto;
+}
+
+.roster-table {
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+
+.roster-table th,
+.roster-table td {
+  border: 1px solid #eee;
+  padding: 0.35rem 0.5rem;
+  text-align: center;
+}
+
+.roster-staff-col {
+  text-align: left !important;
+  position: sticky;
+  left: 0;
+  background: white;
+  z-index: 1;
+}
+
+.roster-subhead {
+  font-size: 0.7rem;
+  color: #999;
+  font-weight: 600;
+}
+
+.roster-cell {
+  padding: 0.2rem !important;
+}
+
+.roster-toggle {
+  width: 2rem;
+  height: 1.6rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fafafa;
+  color: transparent;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.roster-toggle:hover {
+  border-color: var(--pink);
+}
+
+.roster-toggle-on {
+  background: var(--pink);
+  border-color: var(--pink);
+  color: white;
+}
+
 .vet-legend {
   display: flex;
   flex-wrap: wrap;
@@ -2254,6 +2358,69 @@ form.card.admit-patient-form {
 .mobile-list-meta {
   font-size: 0.8rem;
   color: #777;
+}
+
+/* My Schedule (app/mobile/schedule) — self-service morning/afternoon
+   toggles for the staff member picked on this phone. */
+.mobile-link-btn {
+  display: inline;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--pink-dark);
+  font-weight: 600;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.mobile-week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.75rem 0;
+}
+
+.mobile-schedule-days {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.mobile-schedule-day {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+.mobile-schedule-day-label {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.mobile-schedule-shifts {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mobile-shift-btn {
+  flex: 1;
+  padding: 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fafafa;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.mobile-shift-btn-on {
+  background: var(--pink);
+  border-color: var(--pink);
+  color: white;
 }
 
 .mobile-desktop-link {

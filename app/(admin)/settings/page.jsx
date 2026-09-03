@@ -189,6 +189,7 @@ export default function SettingsPage() {
       <div className="home-links">
         <a href="/rooms">Rooms</a>
         <a href="/staff">Staff</a>
+        <a href="/staff/roster">Staff Roster</a>
         <a href="/vaccine-protocols">Vaccine Protocols</a>
       </div>
     </div>

@@ -1,7 +1,7 @@
 // app/mobile/page.js
-// Landing page for the phone-first recording app: two big taps in for
-// voice recording (consult / hospitalization), plus a third for scanning
-// a receipt straight into the accounting system.
+// Landing page for the phone-first staff app: big taps in for voice
+// recording (consult / hospitalization), scanning a receipt straight into
+// the accounting system, and self-service scheduling.
 
 export default function MobileHomePage() {
   return (
@@ -22,6 +22,11 @@ export default function MobileHomePage() {
         <span className="mobile-tile-icon">🧾</span>
         <span>Scan Receipt</span>
         <span className="mobile-tile-hint">Photograph a supplier receipt to log it as an expense</span>
+      </a>
+      <a href="/mobile/schedule" className="mobile-tile">
+        <span className="mobile-tile-icon">📅</span>
+        <span>My Schedule</span>
+        <span className="mobile-tile-hint">Add or remove yourself from this week's mornings/afternoons</span>
       </a>
 
       <p className="mobile-hint">

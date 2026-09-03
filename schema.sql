@@ -23,6 +23,22 @@ create table staff_schedules (
 );
 create index idx_staff_schedules_staff on staff_schedules(staff_id);
 
+-- Real, date-based roster — "who's actually in on this specific date,
+-- morning/afternoon" — distinct from staff_schedules above (a recurring
+-- weekday template used only to warn on appointment booking). Presence is
+-- row existence: add someone in (insert) or take them off (delete). See
+-- migrations/034_staff_roster.sql.
+create table staff_roster_entries (
+    id uuid primary key default gen_random_uuid(),
+    staff_id uuid references staff(id) on delete cascade not null,
+    date date not null,
+    shift text not null check (shift in ('morning', 'afternoon')),
+    created_at timestamptz default now(),
+    unique (staff_id, date, shift)
+);
+create index idx_staff_roster_entries_date on staff_roster_entries(date);
+create index idx_staff_roster_entries_staff on staff_roster_entries(staff_id);
+
 -- ============ CLIENTS ============
 create table clients (
     id uuid primary key default gen_random_uuid(),
@@ -608,7 +624,7 @@ alter publication supabase_realtime add table
     clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items,
     diagnostics, treatment_items, surgical_reports, dental_reports,
     hospitalizations, hospitalization_notes, attachments, recordings, clinic_settings,
-    vaccine_protocols, vaccinations, intake_requests, expenses;
+    vaccine_protocols, vaccinations, intake_requests, expenses, staff_roster_entries;
 
 -- ============ ROW LEVEL SECURITY ============
 -- RLS is intentionally left disabled: the app has no staff auth yet and
@@ -620,6 +636,7 @@ alter publication supabase_realtime add table
 -- this is explicit rather than relying on Postgres's off-by-default.
 alter table staff disable row level security;
 alter table staff_schedules disable row level security;
+alter table staff_roster_entries disable row level security;
 alter table clients disable row level security;
 alter table patients disable row level security;
 alter table rooms disable row level security;
