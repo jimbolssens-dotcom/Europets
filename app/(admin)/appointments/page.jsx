@@ -13,7 +13,22 @@ import SearchSelect from '@/app/_components/SearchSelect';
 
 const OPEN_HOUR = 8;
 const CLOSE_HOUR = 19;
-const PIXELS_PER_MINUTE = 1.4;
+// The schedule's vertical density (px per minute) is computed at runtime
+// from the actual viewport (see recalcPixelsPerMinute) so the whole
+// 08:00-19:00 grid fits on screen without needing to scroll to reach the
+// last hour — DEFAULT is just the pre-measurement fallback for first
+// paint, clamped between MIN (still clickable on a short window) and MAX
+// (the original, most spacious density — never stretched bigger than that
+// even on a very tall monitor).
+const DEFAULT_PIXELS_PER_MINUTE = 1.4;
+const MIN_PIXELS_PER_MINUTE = 0.75;
+const MAX_PIXELS_PER_MINUTE = 1.4;
+const SCHEDULE_HEADER_HEIGHT = 36; // matches .schedule-header's 2.25rem
+// Hour labels are centered on their line (transform: translateY(-50%)), so
+// the very last one (19:00, sitting exactly at the track's bottom edge)
+// has its lower half hanging below the box — this margin needs enough
+// slack for that descender on top of normal breathing room, or it clips.
+const SCHEDULE_BOTTOM_MARGIN = 36;
 const SNAP_MINUTES = 15;
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -92,7 +107,17 @@ function buildQuarterMarks() {
 }
 const QUARTER_MARKS = buildQuarterMarks();
 
-const SCHEDULE_HEIGHT = (CLOSE_HOUR - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE;
+// wrapTop is the schedule-wrap box's own distance from the top of the
+// viewport (getBoundingClientRect().top) — everything above it (nav,
+// mini-cal, vet legend) is already accounted for just by measuring from
+// there, so this only has to subtract its own header row and a bit of
+// bottom breathing room.
+function recalcPixelsPerMinute(wrapTop) {
+  const totalMinutes = (CLOSE_HOUR - OPEN_HOUR) * 60;
+  const available = window.innerHeight - wrapTop - SCHEDULE_HEADER_HEIGHT - SCHEDULE_BOTTOM_MARGIN;
+  return Math.min(MAX_PIXELS_PER_MINUTE, Math.max(MIN_PIXELS_PER_MINUTE, available / totalMinutes));
+}
+
 const TIME_COL_WIDTH = 64; // matches .schedule-time-col's flex-basis
 const ROOM_COL_WIDTH = 130; // matches .schedule-room-col's flex-basis
 
@@ -156,7 +181,10 @@ export default function AppointmentsPage() {
   const [openingConsultId, setOpeningConsultId] = useState(null);
   const [rosterBlock, setRosterBlock] = useState(null); // { message, vetId, vetName, date, shift, payload } while showing the not-on-roster alert
   const [resolvingRosterBlock, setResolvingRosterBlock] = useState(false);
+  const [pixelsPerMinute, setPixelsPerMinute] = useState(DEFAULT_PIXELS_PER_MINUTE);
   const bookingFormRef = useRef(null);
+  const scheduleWrapRef = useRef(null);
+  const scheduleHeight = (CLOSE_HOUR - OPEN_HOUR) * 60 * pixelsPerMinute;
 
   const monthKey = toMonthKey(new Date(viewYear, viewMonthIndex, 1));
 
@@ -219,6 +247,20 @@ export default function AppointmentsPage() {
     if (rosterBlock) playAlertBeep();
   }, [rosterBlock]);
 
+  // Re-measure whenever something above the schedule could have changed its
+  // height (the vet legend wrapping to a second line, the "Loading..."
+  // placeholder being replaced by the real grid) or the window itself resizes.
+  useEffect(() => {
+    function recalc() {
+      const el = scheduleWrapRef.current;
+      if (!el) return;
+      setPixelsPerMinute(recalcPixelsPerMinute(el.getBoundingClientRect().top));
+    }
+    recalc();
+    window.addEventListener('resize', recalc);
+    return () => window.removeEventListener('resize', recalc);
+  }, [loading, rooms.length, vets.length]);
+
   const countsByDate = useMemo(() => {
     const counts = {};
     for (const a of appointments) {
@@ -263,7 +305,7 @@ export default function AppointmentsPage() {
   function computeSlot(e) {
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
-    const minutesFromOpen = offsetY / PIXELS_PER_MINUTE;
+    const minutesFromOpen = offsetY / pixelsPerMinute;
     const snapped = Math.round(minutesFromOpen / SNAP_MINUTES) * SNAP_MINUTES;
     const clamped = Math.max(0, Math.min(snapped, (CLOSE_HOUR - OPEN_HOUR) * 60 - SNAP_MINUTES));
     const totalMinutes = OPEN_HOUR * 60 + clamped;
@@ -288,7 +330,7 @@ export default function AppointmentsPage() {
 
   function hoverGrid(e, roomId) {
     const { minutesFromOpen, time } = computeSlot(e);
-    setHoverSlot({ roomId, top: minutesFromOpen * PIXELS_PER_MINUTE, label: formatSlotLabel(time) });
+    setHoverSlot({ roomId, top: minutesFromOpen * pixelsPerMinute, label: formatSlotLabel(time) });
   }
 
   async function submitAppointment(payload) {
@@ -532,6 +574,7 @@ export default function AppointmentsPage() {
           ) : (
             <div
               className="schedule-wrap"
+              ref={scheduleWrapRef}
               // Cap it to exactly what the fixed-width columns need — without
               // this, the flex row's leftover space stretches the bordered
               // box out with a big blank area past the last room column.
@@ -539,12 +582,12 @@ export default function AppointmentsPage() {
             >
               <div className="schedule-time-col">
                 <div className="schedule-header schedule-time-header" />
-                <div className="schedule-time-track" style={{ height: SCHEDULE_HEIGHT }}>
+                <div className="schedule-time-track" style={{ height: scheduleHeight }}>
                   {HOUR_MARKS.map((h) => (
                     <div
                       key={h}
                       className="schedule-hour-label"
-                      style={{ top: (h - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE }}
+                      style={{ top: (h - OPEN_HOUR) * 60 * pixelsPerMinute }}
                     >
                       {pad(h)}:00
                     </div>
@@ -556,7 +599,7 @@ export default function AppointmentsPage() {
                   <div className="schedule-header">{room.name}</div>
                   <div
                     className="schedule-room-track"
-                    style={{ height: SCHEDULE_HEIGHT }}
+                    style={{ height: scheduleHeight }}
                     onClick={(e) => pickFromGrid(e, room.id)}
                     onMouseMove={(e) => hoverGrid(e, room.id)}
                     onMouseLeave={() => setHoverSlot(null)}
@@ -565,16 +608,16 @@ export default function AppointmentsPage() {
                       <div
                         key={h}
                         className="schedule-hour-line"
-                        style={{ top: (h - OPEN_HOUR) * 60 * PIXELS_PER_MINUTE }}
+                        style={{ top: (h - OPEN_HOUR) * 60 * pixelsPerMinute }}
                       />
                     ))}
                     {QUARTER_MARKS.map((m) => (
-                      <div key={m} className="schedule-quarter-line" style={{ top: m * PIXELS_PER_MINUTE }} />
+                      <div key={m} className="schedule-quarter-line" style={{ top: m * pixelsPerMinute }} />
                     ))}
                     {hoverSlot && hoverSlot.roomId === room.id && (
                       <div
                         className="schedule-hover-slot"
-                        style={{ top: hoverSlot.top, height: SNAP_MINUTES * PIXELS_PER_MINUTE }}
+                        style={{ top: hoverSlot.top, height: SNAP_MINUTES * pixelsPerMinute }}
                       >
                         <span className="schedule-hover-label">{hoverSlot.label}</span>
                       </div>
@@ -583,8 +626,8 @@ export default function AppointmentsPage() {
                       .filter((a) => a.room_id === room.id)
                       .map((a) => {
                         const color = colorForVet(a.vet_id);
-                        const top = minutesSinceOpen(a.start_time) * PIXELS_PER_MINUTE;
-                        const height = Math.max(a.duration_minutes * PIXELS_PER_MINUTE, 22);
+                        const top = minutesSinceOpen(a.start_time) * pixelsPerMinute;
+                        const height = Math.max(a.duration_minutes * pixelsPerMinute, 22);
                         return (
                           <div
                             key={a.id}
