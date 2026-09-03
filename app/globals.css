@@ -82,6 +82,25 @@ button:disabled {
   background: var(--pink-dark);
 }
 
+/* Big standalone CTA on the Accounting password screen — reception just
+   wants the Shift Tally and shouldn't need the password to get to it, so
+   this is deliberately louder than the ordinary .button-link next to it. */
+.tally-shortcut-button {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 1rem 2.5rem;
+  background: var(--pink);
+  color: white;
+  font-weight: 700;
+  font-size: 1.3rem;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.tally-shortcut-button:hover {
+  background: var(--pink-dark);
+}
+
 .topnav {
   display: flex;
   align-items: center;

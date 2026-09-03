@@ -59,6 +59,15 @@ export default function AccountingLoginPage() {
     <div className="mobile-home">
       <img src="/logo.png" alt="Europets Clinic" className="mobile-logo" />
       <h1>Accounting</h1>
+
+      <a href="/shift-tally" className="tally-shortcut-button">
+        💰 Tally
+      </a>
+      <p className="visit-meta">Just counting the till? No password needed for that.</p>
+
+      <p className="visit-meta" style={{ margin: '1.25rem 0 0' }}>
+        Everything else in Accounting needs the password:
+      </p>
       <Suspense fallback={<p>Loading...</p>}>
         <AccountingLoginForm />
       </Suspense>
