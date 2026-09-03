@@ -9,6 +9,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import AdministrationMethodSelect from '@/app/_components/AdministrationMethodSelect';
 import { groupLineItemsByCategory } from '@/lib/catalogGrouping';
 
 function money(n) {
@@ -23,6 +24,7 @@ export default function InvoiceDetailPage() {
   const [subcategories, setSubcategories] = useState([]);
   const [goodsServiceId, setGoodsServiceId] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [administrationMethod, setAdministrationMethod] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -74,6 +76,7 @@ export default function InvoiceDetailPage() {
       body: JSON.stringify({
         goods_service_id: goodsServiceId,
         quantity: quantity ? Number(quantity) : undefined,
+        administration_method: administrationMethod || undefined,
       }),
     });
     const data = await res.json();
@@ -83,6 +86,7 @@ export default function InvoiceDetailPage() {
     } else {
       setGoodsServiceId('');
       setQuantity('');
+      setAdministrationMethod('');
       loadInvoice();
     }
     setSubmitting(false);
@@ -208,8 +212,16 @@ export default function InvoiceDetailPage() {
               catalog={catalog}
               subcategories={subcategories}
               value={goodsServiceId}
-              onChange={setGoodsServiceId}
+              onChange={(value) => {
+                setGoodsServiceId(value);
+                setAdministrationMethod('');
+              }}
               onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+            />
+            <AdministrationMethodSelect
+              catalogItem={catalog.find((c) => c.id === goodsServiceId)}
+              value={administrationMethod}
+              onChange={setAdministrationMethod}
             />
             <div className="catalog-add-form-row">
               <input
