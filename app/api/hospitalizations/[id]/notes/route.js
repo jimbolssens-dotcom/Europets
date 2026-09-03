@@ -11,6 +11,11 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 
+// See app/api/hospitalizations/[id]/route.js — same caching gotcha, and
+// this is the route the client portal's Temp/Weight/Appetite fields
+// actually come from.
+export const dynamic = 'force-dynamic';
+
 export async function GET(request, { params }) {
   const { data: notes, error } = await supabase
     .from('hospitalization_notes')

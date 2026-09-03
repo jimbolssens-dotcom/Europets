@@ -6,6 +6,13 @@ import { supabase } from '@/lib/supabaseClient';
 import { attachCages } from '@/lib/attachCages';
 import { NextResponse } from 'next/server';
 
+// Next.js can otherwise cache a GET route handler's response (it has no
+// dynamic API calls of its own to signal it shouldn't) — the client
+// portal page polls this on every realtime event to stay "live", and a
+// cached response would just keep returning whatever was true the first
+// time anyone ever hit this URL, no matter how many times it's refetched.
+export const dynamic = 'force-dynamic';
+
 const SELECT_WITH_RELATIONS =
   '*, patients(id, name, species, current_weight_kg), clients(id, full_name, phone), rooms(name)';
 

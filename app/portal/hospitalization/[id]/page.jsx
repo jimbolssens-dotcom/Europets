@@ -20,7 +20,7 @@ export default function HospitalizationPortalPage() {
   const [loading, setLoading] = useState(true);
 
   const loadAdmission = () =>
-    fetch(`/api/hospitalizations/${id}`)
+    fetch(`/api/hospitalizations/${id}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         setAdmission(data);
@@ -28,7 +28,7 @@ export default function HospitalizationPortalPage() {
       });
 
   const loadNotes = () =>
-    fetch(`/api/hospitalizations/${id}/notes`)
+    fetch(`/api/hospitalizations/${id}/notes`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => setNotes(Array.isArray(data) ? data : []));
 
