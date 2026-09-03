@@ -98,9 +98,15 @@ export default function HospitalizationPortalPage() {
                   {formatTime(n.created_at)}
                   {n.staff?.full_name && <span className="portal-note-author"> · {n.staff.full_name}</span>}
                 </div>
-                {n.appetite && (
+                {(n.appetite || n.temperature_c != null || n.weight_kg != null) && (
                   <p>
-                    <strong>Appetite:</strong> {n.appetite}
+                    {[
+                      n.appetite ? `Appetite: ${n.appetite}` : null,
+                      n.temperature_c != null ? `Temp: ${n.temperature_c}°C` : null,
+                      n.weight_kg != null ? `Weight: ${n.weight_kg} kg` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </p>
                 )}
                 {n.condition && (
