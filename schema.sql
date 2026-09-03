@@ -682,3 +682,4 @@ alter table intake_requests disable row level security;
 alter table catalog_subcategories disable row level security;
 alter table consent_forms disable row level security;
 alter table patient_alerts disable row level security;
+alter table invoice_payments disable row level security;

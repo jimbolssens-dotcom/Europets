@@ -36,9 +36,8 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
   const payments = invoice.payments || [];
   const canTakePayment = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
 
-  async function logPayment(e) {
-    e.preventDefault();
-    if (!amount || !paymentMethod || !receivedBy) return;
+  async function submitPayment(amt) {
+    if (!amt || !paymentMethod || !receivedBy) return;
     setSubmitting(true);
     setError(null);
 
@@ -46,7 +45,7 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        amount: Number(amount),
+        amount: amt,
         payment_method: paymentMethod,
         received_by: receivedBy,
       }),
@@ -62,6 +61,17 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
       onChanged();
     }
     setSubmitting(false);
+  }
+
+  function logPayment(e) {
+    e.preventDefault();
+    submitPayment(Number(amount));
+  }
+
+  // The common case — no partial amount to type or work out, just the
+  // whole remaining balance in one click once method/staff are picked.
+  function payInFull() {
+    submitPayment(balanceDue);
   }
 
   async function removePayment(paymentId) {
@@ -144,6 +154,13 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
             </select>
             <button type="submit" disabled={submitting || !amount || !paymentMethod || !receivedBy}>
               {submitting ? 'Logging...' : 'Log Payment'}
+            </button>
+            <button
+              type="button"
+              onClick={payInFull}
+              disabled={submitting || !paymentMethod || !receivedBy}
+            >
+              {submitting ? 'Logging...' : `Pay in Full (AED ${money(balanceDue)})`}
             </button>
           </form>
           <button type="button" onClick={voidInvoice} disabled={voiding}>
