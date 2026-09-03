@@ -1,11 +1,13 @@
 // app/api/hospitalizations/[id]/invoice/route.js
 // POST /api/hospitalizations/:id/invoice -> create an invoice for this
 // admission and import every treatment item (medication/goods/service/test,
-// with the quantity logged) as a line item. If a non-void invoice already
-// exists for this admission, that one is returned instead — no duplicates.
+// with the quantity logged) as a line item — plus an automatic
+// administration fee line for any medication that was dispensed/SC/IM
+// (see lib/invoicing.js). If a non-void invoice already exists for this
+// admission, that one is returned instead — no duplicates.
 
 import { supabase } from '@/lib/supabaseClient';
-import { recomputeInvoiceTotals } from '@/lib/invoicing';
+import { recomputeInvoiceTotals, administrationFeeLineItem } from '@/lib/invoicing';
 import { NextResponse } from 'next/server';
 
 export async function POST(request, { params }) {
@@ -52,21 +54,23 @@ export async function POST(request, { params }) {
     .eq('hospitalization_id', hospitalizationId);
   const noteIds = (noteRows || []).map((n) => n.id);
 
-  const { data: treatmentItems } =
+  const [{ data: treatmentItems }, { data: clinicSettings }] = await Promise.all([
     noteIds.length > 0
-      ? await supabase
+      ? supabase
           .from('treatment_items')
           .select('*, goods_services(id, name, base_price)')
           .in('hospitalization_note_id', noteIds)
-      : { data: [] };
+      : Promise.resolve({ data: [] }),
+    supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
+  ]);
 
   const lineItems = (treatmentItems || [])
     .filter((item) => item.goods_services)
-    .map((item) => {
+    .flatMap((item) => {
       const catalogItem = item.goods_services;
       const qty = Number(item.quantity) || 1;
       const unit_price = Number(catalogItem.base_price);
-      return {
+      const medicationLine = {
         invoice_id: invoice.id,
         goods_service_id: catalogItem.id,
         description: item.instructions ? `${catalogItem.name} — ${item.instructions}` : catalogItem.name,
@@ -74,6 +78,8 @@ export async function POST(request, { params }) {
         unit_price,
         line_total: Math.round(unit_price * qty * 100) / 100,
       };
+      const feeLine = administrationFeeLineItem(item, clinicSettings, invoice.id);
+      return feeLine ? [medicationLine, feeLine] : [medicationLine];
     });
 
   if (lineItems.length > 0) {

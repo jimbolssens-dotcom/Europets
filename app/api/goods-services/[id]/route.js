@@ -6,7 +6,17 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 
-const EDITABLE_FIELDS = ['name', 'subcategory_id', 'pricing_type', 'base_price', 'unit', 'active'];
+const EDITABLE_FIELDS = [
+  'name',
+  'subcategory_id',
+  'pricing_type',
+  'base_price',
+  'unit',
+  'active',
+  'allow_dispense',
+  'allow_sc',
+  'allow_im',
+];
 
 export async function PATCH(request, { params }) {
   const body = await request.json();

@@ -3,10 +3,18 @@
 // GET  /api/treatment-items?hospitalization_note_id=X   -> items logged as part of one
 //                                                           worksheet entry
 // POST /api/treatment-items                             -> add an item from the catalog, to
-//                                                           one or the other (exactly one)
+//                                                           one or the other (exactly one),
+//                                                           optionally with an administration
+//                                                           method (dispense/sc/im) if the
+//                                                           medication supports it — this
+//                                                           drives an automatic fee line when
+//                                                           the treatment plan is invoiced
+//                                                           (see lib/invoicing.js)
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
+
+const ADMINISTRATION_METHODS = ['dispense', 'sc', 'im'];
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -36,7 +44,8 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { visit_id, hospitalization_note_id, goods_service_id, instructions, quantity } = body;
+  const { visit_id, hospitalization_note_id, goods_service_id, instructions, quantity, administration_method } =
+    body;
 
   if (!goods_service_id) {
     return NextResponse.json({ error: 'goods_service_id is required' }, { status: 400 });
@@ -53,6 +62,27 @@ export async function POST(request) {
       { status: 400 }
     );
   }
+  if (administration_method && !ADMINISTRATION_METHODS.includes(administration_method)) {
+    return NextResponse.json(
+      { error: `administration_method must be one of ${ADMINISTRATION_METHODS.join(', ')}` },
+      { status: 400 }
+    );
+  }
+
+  if (administration_method) {
+    const { data: catalogItem, error: catalogError } = await supabase
+      .from('goods_services')
+      .select(`allow_${administration_method}`)
+      .eq('id', goods_service_id)
+      .single();
+
+    if (catalogError || !catalogItem || !catalogItem[`allow_${administration_method}`]) {
+      return NextResponse.json(
+        { error: 'this catalog item does not support that administration method' },
+        { status: 400 }
+      );
+    }
+  }
 
   const { data, error } = await supabase
     .from('treatment_items')
@@ -63,6 +93,7 @@ export async function POST(request) {
         goods_service_id,
         instructions: instructions || null,
         quantity: quantity !== undefined && quantity !== '' ? Number(quantity) : 1,
+        administration_method: administration_method || null,
       },
     ])
     .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price)')

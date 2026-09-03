@@ -321,6 +321,38 @@ td select {
   cursor: pointer;
 }
 
+/* Dispense/SC/IM checkboxes on a product's Admin Methods column (edit
+   row) and the Add Product form — three compact inline checkbox labels
+   rather than a full-width block. */
+.catalog-admin-methods-edit,
+.catalog-admin-methods-add {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
+.catalog-admin-methods-edit label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+/* Same as above, but this one sits inside form.card, whose own
+   `label { flex-direction: column }` (for the usual "label text above
+   input" fields) otherwise wins on specificity. */
+form.card .catalog-admin-methods-add label {
+  flex-direction: row;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
 .catalog-row:hover {
   background: var(--pink-tint);
 }

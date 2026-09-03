@@ -17,6 +17,9 @@ import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import AdministrationMethodSelect, {
+  ADMINISTRATION_METHOD_LABELS,
+} from '@/app/_components/AdministrationMethodSelect';
 import { subcategoryName } from '@/lib/catalogGrouping';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
@@ -55,7 +58,12 @@ export default function ConsultDetailPage() {
   const [diagError, setDiagError] = useState(null);
 
   const [treatmentItems, setTreatmentItems] = useState([]);
-  const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1' });
+  const [treatForm, setTreatForm] = useState({
+    goods_service_id: '',
+    instructions: '',
+    quantity: '1',
+    administration_method: '',
+  });
 
   const [surgicalReports, setSurgicalReports] = useState([]);
   const [surgForm, setSurgForm] = useState({ surgeon_id: '', procedure_name: '', notes: '' });
@@ -293,7 +301,7 @@ export default function ConsultDetailPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ visit_id: id, ...treatForm }),
     });
-    setTreatForm({ goods_service_id: '', instructions: '', quantity: '1' });
+    setTreatForm({ goods_service_id: '', instructions: '', quantity: '1', administration_method: '' });
     loadTreatmentItems();
   }
 
@@ -618,13 +626,14 @@ export default function ConsultDetailPage() {
             <th>Item</th>
             <th>Instructions</th>
             <th>Qty</th>
+            <th>Given</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {treatmentItems.length === 0 && (
             <tr>
-              <td colSpan={4}>No treatment items yet.</td>
+              <td colSpan={5}>No treatment items yet.</td>
             </tr>
           )}
           {treatmentItems.map((t) => (
@@ -636,6 +645,7 @@ export default function ConsultDetailPage() {
               </td>
               <td>{t.instructions}</td>
               <td>{t.quantity}</td>
+              <td>{t.administration_method ? ADMINISTRATION_METHOD_LABELS[t.administration_method] : '—'}</td>
               <td>
                 <button type="button" onClick={() => deleteTreatmentItem(t.id)}>
                   Remove
@@ -651,8 +661,13 @@ export default function ConsultDetailPage() {
           catalog={catalog}
           subcategories={subcategories}
           value={treatForm.goods_service_id}
-          onChange={(value) => setTreatForm({ ...treatForm, goods_service_id: value })}
+          onChange={(value) => setTreatForm({ ...treatForm, goods_service_id: value, administration_method: '' })}
           onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+        />
+        <AdministrationMethodSelect
+          catalogItem={catalog.find((c) => c.id === treatForm.goods_service_id)}
+          value={treatForm.administration_method}
+          onChange={(value) => setTreatForm({ ...treatForm, administration_method: value })}
         />
         <input
           placeholder="Instructions (dosage, frequency, duration)"

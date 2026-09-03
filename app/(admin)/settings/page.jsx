@@ -6,7 +6,17 @@
 
 import { useEffect, useState } from 'react';
 
-const emptyForm = { legal_name: '', trn: '', address: '', phone: '', phone2: '', email: '' };
+const emptyForm = {
+  legal_name: '',
+  trn: '',
+  address: '',
+  phone: '',
+  phone2: '',
+  email: '',
+  dispensing_fee: '',
+  sc_injection_fee: '',
+  im_injection_fee: '',
+};
 
 export default function SettingsPage() {
   const [form, setForm] = useState(emptyForm);
@@ -26,6 +36,9 @@ export default function SettingsPage() {
           phone: data.phone || '',
           phone2: data.phone2 || '',
           email: data.email || '',
+          dispensing_fee: data.dispensing_fee || 0,
+          sc_injection_fee: data.sc_injection_fee || 0,
+          im_injection_fee: data.im_injection_fee || 0,
         });
         setLoading(false);
       });
@@ -99,6 +112,43 @@ export default function SettingsPage() {
             onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
         </label>
+
+        <h3>Medication Administration Fees</h3>
+        <p className="visit-meta">
+          Charged automatically as a second invoice line whenever a medication is invoiced with
+          that method — see the Catalog page to mark which methods each medication supports.
+        </p>
+        <label>
+          Dispensing fee (AED)
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={form.dispensing_fee}
+            onChange={(e) => setForm({ ...form, dispensing_fee: e.target.value })}
+          />
+        </label>
+        <label>
+          Subcutaneous (SC) injection fee (AED)
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={form.sc_injection_fee}
+            onChange={(e) => setForm({ ...form, sc_injection_fee: e.target.value })}
+          />
+        </label>
+        <label>
+          Intramuscular (IM) injection fee (AED)
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={form.im_injection_fee}
+            onChange={(e) => setForm({ ...form, im_injection_fee: e.target.value })}
+          />
+        </label>
+
         <button type="submit" disabled={saving}>
           {saving ? 'Saving...' : 'Save Settings'}
         </button>

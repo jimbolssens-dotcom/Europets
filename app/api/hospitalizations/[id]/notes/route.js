@@ -75,6 +75,7 @@ export async function POST(request, { params }) {
       goods_service_id: t.goods_service_id,
       instructions: t.instructions || null,
       quantity: t.quantity !== undefined && t.quantity !== '' ? Number(t.quantity) : 1,
+      administration_method: t.administration_method || null,
     }));
 
   if (itemRows.length > 0) {

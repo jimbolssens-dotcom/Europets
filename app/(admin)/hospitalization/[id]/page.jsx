@@ -16,6 +16,9 @@ import AudioRecorder from '@/app/_components/AudioRecorder';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import AdministrationMethodSelect, {
+  ADMINISTRATION_METHOD_LABELS,
+} from '@/app/_components/AdministrationMethodSelect';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
 
@@ -33,7 +36,7 @@ const emptyNoteForm = {
   notes: '',
 };
 
-const emptyPendingItem = { goods_service_id: '', instructions: '', quantity: '1' };
+const emptyPendingItem = { goods_service_id: '', instructions: '', quantity: '1', administration_method: '' };
 
 export default function HospitalizationDetailPage() {
   const { id } = useParams();
@@ -541,6 +544,7 @@ export default function HospitalizationDetailPage() {
                   {p.name}
                   {p.quantity > 1 ? ` ×${p.quantity}` : ''}
                   {p.instructions && ` — ${p.instructions}`}
+                  {p.administration_method && ` (${ADMINISTRATION_METHOD_LABELS[p.administration_method]})`}
                   <button type="button" onClick={() => removePendingItem(i)}>
                     ×
                   </button>
@@ -552,8 +556,15 @@ export default function HospitalizationDetailPage() {
             catalog={catalog}
             subcategories={subcategories}
             value={pendingItemForm.goods_service_id}
-            onChange={(value) => setPendingItemForm({ ...pendingItemForm, goods_service_id: value })}
+            onChange={(value) =>
+              setPendingItemForm({ ...pendingItemForm, goods_service_id: value, administration_method: '' })
+            }
             onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+          />
+          <AdministrationMethodSelect
+            catalogItem={catalog.find((c) => c.id === pendingItemForm.goods_service_id)}
+            value={pendingItemForm.administration_method}
+            onChange={(value) => setPendingItemForm({ ...pendingItemForm, administration_method: value })}
           />
           <input
             placeholder="Instructions (dosage, frequency, duration)"

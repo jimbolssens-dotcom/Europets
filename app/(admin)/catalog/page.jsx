@@ -11,7 +11,18 @@
 import { useEffect, useState } from 'react';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS } from '@/lib/catalogGrouping';
 
-const emptyForm = { name: '', subcategory_id: '', pricing_type: 'flat', base_price: '', unit: '' };
+const emptyForm = {
+  name: '',
+  subcategory_id: '',
+  pricing_type: 'flat',
+  base_price: '',
+  unit: '',
+  allow_dispense: false,
+  allow_sc: false,
+  allow_im: false,
+};
+
+const ADMINISTRATION_METHOD_LABELS = { allow_dispense: 'Dispense', allow_sc: 'SC', allow_im: 'IM' };
 
 export default function CatalogPage() {
   const [items, setItems] = useState([]);
@@ -97,6 +108,9 @@ export default function CatalogPage() {
       pricing_type: item.pricing_type,
       base_price: item.base_price,
       unit: item.unit || '',
+      allow_dispense: !!item.allow_dispense,
+      allow_sc: !!item.allow_sc,
+      allow_im: !!item.allow_im,
     });
     setEditError(null);
   }
@@ -228,6 +242,7 @@ export default function CatalogPage() {
             <th>Pricing</th>
             <th>Price</th>
             <th>Unit</th>
+            {activeTab === 'product' && <th>Admin Methods</th>}
             <th>Status</th>
             <th></th>
           </tr>
@@ -235,7 +250,9 @@ export default function CatalogPage() {
         <tbody>
           {tabItems.length === 0 && (
             <tr>
-              <td colSpan={7}>No {MAIN_CATEGORY_LABELS[activeTab].toLowerCase()} items yet.</td>
+              <td colSpan={activeTab === 'product' ? 8 : 7}>
+                No {MAIN_CATEGORY_LABELS[activeTab].toLowerCase()} items yet.
+              </td>
             </tr>
           )}
           {tabItems.map((item) =>
@@ -291,6 +308,34 @@ export default function CatalogPage() {
                     onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
                   />
                 </td>
+                {activeTab === 'product' && (
+                  <td className="catalog-admin-methods-edit" onClick={(e) => e.stopPropagation()}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={editForm.allow_dispense}
+                        onChange={(e) => setEditForm({ ...editForm, allow_dispense: e.target.checked })}
+                      />{' '}
+                      Dispense
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={editForm.allow_sc}
+                        onChange={(e) => setEditForm({ ...editForm, allow_sc: e.target.checked })}
+                      />{' '}
+                      SC
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={editForm.allow_im}
+                        onChange={(e) => setEditForm({ ...editForm, allow_im: e.target.checked })}
+                      />{' '}
+                      IM
+                    </label>
+                  </td>
+                )}
                 <td>{item.active ? 'active' : 'inactive'}</td>
                 <td>
                   <button type="button" onClick={() => saveEdit(item.id)} disabled={savingEdit}>
@@ -309,6 +354,14 @@ export default function CatalogPage() {
                 <td>{item.pricing_type}</td>
                 <td>{Number(item.base_price).toFixed(2)}</td>
                 <td>{item.unit}</td>
+                {activeTab === 'product' && (
+                  <td>
+                    {['allow_dispense', 'allow_sc', 'allow_im']
+                      .filter((f) => item[f])
+                      .map((f) => ADMINISTRATION_METHOD_LABELS[f])
+                      .join(', ') || '—'}
+                  </td>
+                )}
                 <td>{item.active ? 'active' : 'inactive'}</td>
                 <td>
                   <button
@@ -381,6 +434,35 @@ export default function CatalogPage() {
           value={form.unit}
           onChange={(e) => setForm({ ...form, unit: e.target.value })}
         />
+        {activeTab === 'product' && (
+          <div className="catalog-admin-methods-add">
+            <span className="visit-meta">Administration methods (each has its own fee, set in Settings):</span>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.allow_dispense}
+                onChange={(e) => setForm({ ...form, allow_dispense: e.target.checked })}
+              />{' '}
+              Dispense
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.allow_sc}
+                onChange={(e) => setForm({ ...form, allow_sc: e.target.checked })}
+              />{' '}
+              SC (subcutaneous)
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.allow_im}
+                onChange={(e) => setForm({ ...form, allow_im: e.target.checked })}
+              />{' '}
+              IM (intramuscular)
+            </label>
+          </div>
+        )}
         <button type="submit" disabled={submitting}>
           {submitting ? 'Saving...' : `Add ${MAIN_CATEGORY_LABELS[activeTab]}`}
         </button>
