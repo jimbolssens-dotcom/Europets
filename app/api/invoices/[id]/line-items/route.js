@@ -7,14 +7,15 @@
 //
 // A medication with an administration method configured
 // (goods_services.administration_method — dispense/sc/im) automatically
-// gets a second line for that method's fee, same as the treatment-plan ->
-// invoice flow — see lib/invoicing.js. Not something the caller chooses;
-// waiving it in the rare exceptional case is just removing that line
+// gets that method's fee folded into this same line (short code appended
+// to the description, fee added to the total) rather than a separate
+// line — see lib/invoicing.js. Not something the caller chooses; waiving
+// it in the rare exceptional case is just editing/removing that line
 // from the invoice afterward.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
-import { recomputeInvoiceTotals, administrationFeeLineItem } from '@/lib/invoicing';
+import { recomputeInvoiceTotals, applyAdministrationFee } from '@/lib/invoicing';
 
 export async function POST(request, { params }) {
   const body = await request.json();
@@ -53,16 +54,14 @@ export async function POST(request, { params }) {
   const unit_price = Number(item.base_price);
   const line_total = Math.round(unit_price * qty * 100) / 100;
 
-  const rows = [
-    {
-      invoice_id: params.id,
-      goods_service_id,
-      description: description || item.name,
-      quantity: qty,
-      unit_price,
-      line_total,
-    },
-  ];
+  let row = {
+    invoice_id: params.id,
+    goods_service_id,
+    description: description || item.name,
+    quantity: qty,
+    unit_price,
+    line_total,
+  };
 
   if (item.administration_method) {
     const { data: clinicSettings } = await supabase
@@ -70,11 +69,14 @@ export async function POST(request, { params }) {
       .select('*')
       .eq('id', true)
       .maybeSingle();
-    const feeLine = administrationFeeLineItem(item, clinicSettings, params.id);
-    if (feeLine) rows.push(feeLine);
+    row = applyAdministrationFee(row, item.administration_method, clinicSettings);
   }
 
-  const { data: lineItems, error: insertError } = await supabase.from('invoice_line_items').insert(rows).select();
+  const { data: lineItem, error: insertError } = await supabase
+    .from('invoice_line_items')
+    .insert([row])
+    .select()
+    .single();
 
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
@@ -85,5 +87,5 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: totalsError.message }, { status: 500 });
   }
 
-  return NextResponse.json(lineItems[0], { status: 201 });
+  return NextResponse.json(lineItem, { status: 201 });
 }

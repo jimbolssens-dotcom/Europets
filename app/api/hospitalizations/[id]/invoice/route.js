@@ -1,13 +1,14 @@
 // app/api/hospitalizations/[id]/invoice/route.js
 // POST /api/hospitalizations/:id/invoice -> create an invoice for this
 // admission and import every treatment item (medication/goods/service/test,
-// with the quantity logged) as a line item — plus an automatic
-// administration fee line for any medication that was dispensed/SC/IM
-// (see lib/invoicing.js). If a non-void invoice already exists for this
-// admission, that one is returned instead — no duplicates.
+// with the quantity logged) as a line item — a medication that was
+// dispensed/SC/IM has its administration fee folded straight into that
+// line (see lib/invoicing.js), not shown separately. If a non-void
+// invoice already exists for this admission, that one is returned
+// instead — no duplicates.
 
 import { supabase } from '@/lib/supabaseClient';
-import { recomputeInvoiceTotals, administrationFeeLineItem } from '@/lib/invoicing';
+import { recomputeInvoiceTotals, applyAdministrationFee } from '@/lib/invoicing';
 import { NextResponse } from 'next/server';
 
 export async function POST(request, { params }) {
@@ -66,7 +67,7 @@ export async function POST(request, { params }) {
 
   const lineItems = (treatmentItems || [])
     .filter((item) => item.goods_services)
-    .flatMap((item) => {
+    .map((item) => {
       const catalogItem = item.goods_services;
       const qty = Number(item.quantity) || 1;
       const unit_price = Number(catalogItem.base_price);
@@ -78,8 +79,7 @@ export async function POST(request, { params }) {
         unit_price,
         line_total: Math.round(unit_price * qty * 100) / 100,
       };
-      const feeLine = administrationFeeLineItem(item, clinicSettings, invoice.id);
-      return feeLine ? [medicationLine, feeLine] : [medicationLine];
+      return applyAdministrationFee(medicationLine, item.administration_method, clinicSettings);
     });
 
   if (lineItems.length > 0) {
