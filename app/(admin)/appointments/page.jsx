@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import SearchSelect from '@/app/_components/SearchSelect';
 
 const OPEN_HOUR = 8;
 const CLOSE_HOUR = 19;
@@ -291,6 +292,10 @@ export default function AppointmentsPage() {
       setError('Click a spot on the schedule below first to pick a room and time');
       return;
     }
+    if (!form.client_id || !form.patient_id) {
+      setError('Select an owner and patient');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setScheduleWarning(null);
@@ -569,32 +574,24 @@ export default function AppointmentsPage() {
                 : 'Click a spot on the schedule to pick a room and time'}
             </p>
 
-            <select
-              required
+            <SearchSelect
+              items={clients}
               value={form.client_id}
-              onChange={(e) => setForm({ ...form, client_id: e.target.value, patient_id: '' })}
-            >
-              <option value="">Select owner...</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.full_name}
-                </option>
-              ))}
-            </select>
+              onChange={(client_id) => setForm({ ...form, client_id, patient_id: '' })}
+              getLabel={(c) => c.full_name}
+              getSubLabel={(c) => c.phone}
+              placeholder="Select owner..."
+            />
 
-            <select
-              required
-              disabled={!form.client_id}
+            <SearchSelect
+              items={patientsForClient}
               value={form.patient_id}
-              onChange={(e) => setForm({ ...form, patient_id: e.target.value })}
-            >
-              <option value="">Select patient...</option>
-              {patientsForClient.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.species})
-                </option>
-              ))}
-            </select>
+              onChange={(patient_id) => setForm({ ...form, patient_id })}
+              getLabel={(p) => p.name}
+              getSubLabel={(p) => p.species}
+              placeholder="Select patient..."
+              disabled={!form.client_id}
+            />
 
             <select
               value={form.type}

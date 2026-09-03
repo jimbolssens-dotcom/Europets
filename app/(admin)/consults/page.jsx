@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import SearchSelect from '@/app/_components/SearchSelect';
 
 function elapsedMinutes(startedAt) {
   return Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000));
@@ -63,6 +64,10 @@ export default function ConsultsPage() {
 
   async function handleWalkIn(e) {
     e.preventDefault();
+    if (!walkIn.client_id || !walkIn.patient_id || !walkIn.room_id) {
+      setError('Select an owner, patient, and room');
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -189,31 +194,23 @@ export default function ConsultsPage() {
       <form className="card" onSubmit={handleWalkIn}>
         <h2>Start Walk-in Consult</h2>
         {error && <p className="error">{error}</p>}
-        <select
-          required
+        <SearchSelect
+          items={clients}
           value={walkIn.client_id}
-          onChange={(e) => setWalkIn({ ...walkIn, client_id: e.target.value, patient_id: '' })}
-        >
-          <option value="">Select owner...</option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.full_name}
-            </option>
-          ))}
-        </select>
-        <select
-          required
-          disabled={!walkIn.client_id}
+          onChange={(client_id) => setWalkIn({ ...walkIn, client_id, patient_id: '' })}
+          getLabel={(c) => c.full_name}
+          getSubLabel={(c) => c.phone}
+          placeholder="Select owner..."
+        />
+        <SearchSelect
+          items={patientsForClient}
           value={walkIn.patient_id}
-          onChange={(e) => setWalkIn({ ...walkIn, patient_id: e.target.value })}
-        >
-          <option value="">Select patient...</option>
-          {patientsForClient.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} ({p.species})
-            </option>
-          ))}
-        </select>
+          onChange={(patient_id) => setWalkIn({ ...walkIn, patient_id })}
+          getLabel={(p) => p.name}
+          getSubLabel={(p) => p.species}
+          placeholder="Select patient..."
+          disabled={!walkIn.client_id}
+        />
         <select
           required
           value={walkIn.room_id}

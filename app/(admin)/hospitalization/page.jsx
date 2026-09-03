@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import CagePicker from '@/app/_components/CagePicker';
+import SearchSelect from '@/app/_components/SearchSelect';
 
 const emptyForm = { client_id: '', patient_id: '', cage_id: '', reason: '' };
 
@@ -54,6 +55,10 @@ export default function HospitalizationPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!form.client_id || !form.patient_id) {
+      setError('Select an owner and patient');
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -154,31 +159,23 @@ export default function HospitalizationPage() {
         {error && <p className="error">{error}</p>}
         <div className="admit-patient-row">
           <div className="admit-patient-fields">
-            <select
-              required
+            <SearchSelect
+              items={clients}
               value={form.client_id}
-              onChange={(e) => setForm({ ...form, client_id: e.target.value, patient_id: '' })}
-            >
-              <option value="">Select owner...</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.full_name}
-                </option>
-              ))}
-            </select>
-            <select
-              required
-              disabled={!form.client_id}
+              onChange={(client_id) => setForm({ ...form, client_id, patient_id: '' })}
+              getLabel={(c) => c.full_name}
+              getSubLabel={(c) => c.phone}
+              placeholder="Select owner..."
+            />
+            <SearchSelect
+              items={patientsForClient}
               value={form.patient_id}
-              onChange={(e) => setForm({ ...form, patient_id: e.target.value })}
-            >
-              <option value="">Select patient...</option>
-              {patientsForClient.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.species})
-                </option>
-              ))}
-            </select>
+              onChange={(patient_id) => setForm({ ...form, patient_id })}
+              getLabel={(p) => p.name}
+              getSubLabel={(p) => p.species}
+              placeholder="Select patient..."
+              disabled={!form.client_id}
+            />
             <input
               placeholder="Reason for admission"
               value={form.reason}

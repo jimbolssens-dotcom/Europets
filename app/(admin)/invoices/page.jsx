@@ -8,6 +8,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import SearchSelect from '@/app/_components/SearchSelect';
 import { groupLineItemsByCategory } from '@/lib/catalogGrouping';
 
 function money(n) {
@@ -271,6 +272,10 @@ export default function InvoicesPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!form.client_id) {
+      setError('Select a client');
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -330,18 +335,14 @@ export default function InvoicesPage() {
       <form className="card" onSubmit={handleSubmit}>
         <h2>Open Invoice</h2>
         {error && <p className="error">{error}</p>}
-        <select
-          required
+        <SearchSelect
+          items={clients}
           value={form.client_id}
-          onChange={(e) => setForm({ ...form, client_id: e.target.value, visit_id: '' })}
-        >
-          <option value="">Select client...</option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.full_name}
-            </option>
-          ))}
-        </select>
+          onChange={(client_id) => setForm({ ...form, client_id, visit_id: '' })}
+          getLabel={(c) => c.full_name}
+          getSubLabel={(c) => c.phone}
+          placeholder="Select client..."
+        />
         <select
           disabled={!form.client_id}
           value={form.visit_id}

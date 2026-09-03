@@ -10,6 +10,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import SpeciesField from '@/app/_components/SpeciesField';
+import SearchSelect from '@/app/_components/SearchSelect';
 
 const emptyForm = {
   client_id: '',
@@ -113,6 +114,10 @@ function PatientsPageInner() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!form.client_id) {
+      setError('Select an owner');
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -253,18 +258,14 @@ function PatientsPageInner() {
               .
             </p>
           )}
-          <select
-            required
+          <SearchSelect
+            items={clients}
             value={form.client_id}
-            onChange={(e) => setForm({ ...form, client_id: e.target.value })}
-          >
-            <option value="">Select owner...</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.full_name}
-              </option>
-            ))}
-          </select>
+            onChange={(client_id) => setForm({ ...form, client_id })}
+            getLabel={(c) => c.full_name}
+            getSubLabel={(c) => c.phone}
+            placeholder="Select owner..."
+          />
           <input
             placeholder="Patient name"
             required

@@ -205,6 +205,18 @@ button:disabled {
   margin: 0;
 }
 
+/* SearchSelect (app/_components/SearchSelect.jsx) — the same live-search
+   dropdown as the nav SearchBox above, reused as a <select> replacement
+   inside forms (client/patient pickers). */
+.search-select {
+  position: relative;
+  width: 100%;
+}
+
+.search-select input[type='text'] {
+  width: 100%;
+}
+
 .content {
   padding: 2rem;
   max-width: 1440px;
