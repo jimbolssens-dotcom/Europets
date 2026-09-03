@@ -35,6 +35,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { getTranscript } from '@/lib/assemblyai';
 import { summarizeTranscript, extractConsultFields, extractHospitalizationNoteFields } from '@/lib/anthropicClient';
 import { matchCatalogItem } from '@/lib/catalogMatch';
+import { describeDentalChart } from '@/lib/dentalChartLayout';
 import { NextResponse } from 'next/server';
 
 // This route makes two sequential Claude calls (summarizeTranscript, then
@@ -83,8 +84,26 @@ export async function POST(request, { params }) {
 
     const transcript = job.text || '';
     const hasSpeech = transcript.trim().length > 0;
+
+    // For a dental recording, ground the summary in the patient's current
+    // dental chart (see app/_components/DentalChart.jsx) so extractions/
+    // missing teeth the vet marked there — but may not narrate tooth-by-
+    // tooth — still end up reflected in the written note.
+    let dentalChartContext;
+    if (recording.entity_type === 'dental_report' && hasSpeech) {
+      const { data: dentalReport } = await supabase
+        .from('dental_reports')
+        .select('visits(patients(species, dental_chart))')
+        .eq('id', recording.entity_id)
+        .single();
+      const patient = dentalReport?.visits?.patients;
+      if (patient) {
+        dentalChartContext = describeDentalChart(patient.species, patient.dental_chart) || undefined;
+      }
+    }
+
     const summary = hasSpeech
-      ? await summarizeTranscript(transcript, recording.entity_type)
+      ? await summarizeTranscript(transcript, recording.entity_type, dentalChartContext)
       : '(No speech detected in recording.)';
 
     await supabase
