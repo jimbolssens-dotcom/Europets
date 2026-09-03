@@ -16,6 +16,7 @@ const EDITABLE_FIELDS = [
   'microchip_number',
   'deceased',
   'notes',
+  'dental_chart',
 ];
 
 export async function GET(request, { params }) {

@@ -19,6 +19,7 @@ import PatientAlerts from '@/app/_components/PatientAlerts';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import PostOpInstructionsPanel from '@/app/_components/PostOpInstructionsPanel';
 import ReportShareActions from '@/app/_components/ReportShareActions';
+import DentalChart from '@/app/_components/DentalChart';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { subcategoryName } from '@/lib/catalogGrouping';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
@@ -75,6 +76,7 @@ export default function ConsultDetailPage() {
   });
   const [dictatingDental, setDictatingDental] = useState(false);
   const [autoRecordDentalId, setAutoRecordDentalId] = useState(null);
+  const [savingDentalChart, setSavingDentalChart] = useState(false);
 
   const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
 
@@ -350,6 +352,21 @@ export default function ConsultDetailPage() {
     });
     setSurgForm({ surgeon_id: '', procedure_name: '', notes: '' });
     loadSurgicalReports();
+  }
+
+  async function updateDentalChart(newChart) {
+    if (!consult.patients?.id) return;
+    setSavingDentalChart(true);
+    const res = await fetch(`/api/patients/${consult.patients.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dental_chart: newChart }),
+    });
+    const data = await res.json();
+    setSavingDentalChart(false);
+    if (res.ok) {
+      setConsult((prev) => ({ ...prev, patients: { ...prev.patients, dental_chart: data.dental_chart } }));
+    }
   }
 
   async function addDentalReport(e) {
@@ -907,6 +924,12 @@ export default function ConsultDetailPage() {
 
       <div>
       <h2 id="dental-reports">Dental Reports</h2>
+      <DentalChart
+        species={consult.patients?.species}
+        value={consult.patients?.dental_chart}
+        onChange={updateDentalChart}
+        saving={savingDentalChart}
+      />
       {dentalReports.map((r) => (
         <div key={r.id} className="visit-card">
           <strong>{r.staff?.full_name || 'unassigned'}</strong>

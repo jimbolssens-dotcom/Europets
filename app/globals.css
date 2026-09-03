@@ -2582,3 +2582,78 @@ form.card.admit-patient-form {
   color: inherit;
 }
 
+/* Interactive per-patient dental chart — see app/_components/DentalChart.jsx */
+.dental-chart {
+  margin: 0.75rem 0 1.25rem;
+  max-width: 480px;
+}
+
+.dental-chart-modes {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.dental-mode-btn {
+  background: transparent;
+  color: var(--pink-dark);
+  border: 1px solid var(--pink-tint);
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.dental-mode-btn:hover {
+  background: var(--pink-tint);
+}
+
+.dental-mode-btn.active {
+  background: var(--pink);
+  color: white;
+  border-color: var(--pink);
+}
+
+.dental-chart-svg {
+  width: 100%;
+  height: auto;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+.dental-tooth {
+  cursor: pointer;
+}
+
+.dental-tooth:hover ellipse {
+  stroke-width: 2.5;
+}
+
+.dental-chart-legend {
+  margin-top: 0.4rem;
+}
+
+.dental-legend-swatch {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-right: 0.2rem;
+  border: 1px solid #999;
+}
+
+.dental-legend-extracted {
+  background: #f8d7da;
+  border-color: #dc2626;
+}
+
+.dental-legend-missing {
+  background: #d4edda;
+  border-color: #16a34a;
+}
+
+.dental-legend-normal {
+  background: #ffffff;
+}
+

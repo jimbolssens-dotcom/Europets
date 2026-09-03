@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
   const { data: report, error } = await supabase
     .from('dental_reports')
     .select(
-      'findings, procedures_performed, notes, ai_summary, performed_at, staff(full_name), visits(patients(name, species), clients(full_name))'
+      'findings, procedures_performed, notes, ai_summary, performed_at, staff(full_name), visits(patients(name, species, dental_chart), clients(full_name))'
     )
     .eq('id', params.id)
     .single();
@@ -34,6 +34,7 @@ export async function GET(request, { params }) {
     clinic,
     performedAt: report.performed_at,
     staffName: report.staff?.full_name,
+    dentalChart: report.visits?.patients?.dental_chart,
     sections: [
       { label: 'Findings', text: report.findings },
       { label: 'Procedures Performed', text: report.procedures_performed },
