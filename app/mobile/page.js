@@ -83,8 +83,7 @@ export default function MobileHomePage() {
             Not you? Switch
           </button>
 
-          <h2 className="mobile-record-heading">Record</h2>
-          <a href="/mobile/consults" className="mobile-tile">
+          <a href="/mobile/consults" className="mobile-tile mobile-tile-first">
             <span className="mobile-tile-icon">🎙️</span>
             <span>Consults</span>
             <span className="mobile-tile-hint">Today's appointments — tap a patient to record</span>
