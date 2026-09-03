@@ -506,6 +506,9 @@ export default function ConsultDetailPage() {
       </button>{' '}
       <button type="button" onClick={() => scrollToSection('dental-reports')}>
         Dental Report
+      </button>{' '}
+      <button type="button" onClick={() => scrollToSection('hospitalization')}>
+        Hospitalization
       </button>
 
       <div className="two-col">
@@ -976,7 +979,7 @@ export default function ConsultDetailPage() {
       </div>
       </div>
 
-      <h2>Hospitalization</h2>
+      <h2 id="hospitalization">Hospitalization</h2>
       <form className="card" onSubmit={admitToHospital}>
         <h3>Admit to Hospitalization</h3>
         <input
