@@ -4,7 +4,8 @@
 //                                 lib/invoicing.js)
 // PATCH /api/clinic-settings  -> edit it (legal_name, trn, address, phone,
 //                                 phone2, email, dispensing_fee,
-//                                 sc_injection_fee, im_injection_fee)
+//                                 sc_injection_fee, im_injection_fee,
+//                                 surgical_postop_baseline, dental_postop_baseline)
 //
 // Singleton row (id is always `true`) — there's only ever one clinic. Both
 // handlers create the row on the fly if it's missing (e.g. the migration's
@@ -37,8 +38,19 @@ export async function GET() {
 
 export async function PATCH(request) {
   const body = await request.json();
-  const { legal_name, trn, address, phone, phone2, email, dispensing_fee, sc_injection_fee, im_injection_fee } =
-    body;
+  const {
+    legal_name,
+    trn,
+    address,
+    phone,
+    phone2,
+    email,
+    dispensing_fee,
+    sc_injection_fee,
+    im_injection_fee,
+    surgical_postop_baseline,
+    dental_postop_baseline,
+  } = body;
 
   const update = { id: true, updated_at: new Date().toISOString() };
   if (legal_name !== undefined) update.legal_name = legal_name;
@@ -50,6 +62,8 @@ export async function PATCH(request) {
   if (dispensing_fee !== undefined) update.dispensing_fee = Number(dispensing_fee) || 0;
   if (sc_injection_fee !== undefined) update.sc_injection_fee = Number(sc_injection_fee) || 0;
   if (im_injection_fee !== undefined) update.im_injection_fee = Number(im_injection_fee) || 0;
+  if (surgical_postop_baseline !== undefined) update.surgical_postop_baseline = surgical_postop_baseline || null;
+  if (dental_postop_baseline !== undefined) update.dental_postop_baseline = dental_postop_baseline || null;
 
   const { data, error } = await supabase
     .from('clinic_settings')

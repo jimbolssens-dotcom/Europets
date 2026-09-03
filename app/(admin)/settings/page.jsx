@@ -16,6 +16,8 @@ const emptyForm = {
   dispensing_fee: '',
   sc_injection_fee: '',
   im_injection_fee: '',
+  surgical_postop_baseline: '',
+  dental_postop_baseline: '',
 };
 
 export default function SettingsPage() {
@@ -39,6 +41,8 @@ export default function SettingsPage() {
           dispensing_fee: data.dispensing_fee || 0,
           sc_injection_fee: data.sc_injection_fee || 0,
           im_injection_fee: data.im_injection_fee || 0,
+          surgical_postop_baseline: data.surgical_postop_baseline || '',
+          dental_postop_baseline: data.dental_postop_baseline || '',
         });
         setLoading(false);
       });
@@ -146,6 +150,32 @@ export default function SettingsPage() {
             min="0"
             value={form.im_injection_fee}
             onChange={(e) => setForm({ ...form, im_injection_fee: e.target.value })}
+          />
+        </label>
+
+        <h3>Post-Op Care Baselines</h3>
+        <p className="visit-meta">
+          The standard care instructions we hand out after a surgical or dental procedure —
+          approve the wording here once. Whenever a vet drafts a specific patient&apos;s post-op
+          release form with AI on the consult page, this is the baseline it starts from and
+          departs from only where that case&apos;s own notes give a clear reason to.
+        </p>
+        <label>
+          Surgical baseline
+          <textarea
+            rows={6}
+            placeholder="e.g. Keep the incision dry and covered for 10 days. Restrict activity — leash walks only, no running or jumping. Use the e-collar at all times unless supervised..."
+            value={form.surgical_postop_baseline}
+            onChange={(e) => setForm({ ...form, surgical_postop_baseline: e.target.value })}
+          />
+        </label>
+        <label>
+          Dental baseline
+          <textarea
+            rows={6}
+            placeholder="e.g. Soft food only for 3-5 days. No hard chews or toys for 2 weeks. Watch for excessive drooling, bleeding, or reluctance to eat and call us if it persists..."
+            value={form.dental_postop_baseline}
+            onChange={(e) => setForm({ ...form, dental_postop_baseline: e.target.value })}
           />
         </label>
 

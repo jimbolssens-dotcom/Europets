@@ -15,8 +15,9 @@
 // goods_services catalog (the extraction prompt is given the catalog's
 // own names so the model echoes them verbatim) and added to the
 // Diagnostics/Treatment Plan lists directly, the same as picking them
-// from CatalogPicker would. For a surgery recording, fold a freeform
-// summary into surgical_reports.ai_summary as before. For a
+// from CatalogPicker would. For a surgery or dental recording, fold a
+// freeform summary into surgical_reports.ai_summary / dental_reports.ai_summary
+// as before. For a
 // hospitalization recording, break it down into the worksheet-entry
 // fields (appetite/weight/temperature/condition/notes) plus any
 // medications/tests given, matched against the catalog the same way —
@@ -176,6 +177,11 @@ export async function POST(request, { params }) {
     } else if (recording.entity_type === 'surgical_report' && hasSpeech) {
       await supabase
         .from('surgical_reports')
+        .update({ ai_summary: summary })
+        .eq('id', recording.entity_id);
+    } else if (recording.entity_type === 'dental_report' && hasSpeech) {
+      await supabase
+        .from('dental_reports')
         .update({ ai_summary: summary })
         .eq('id', recording.entity_id);
     } else if (recording.entity_type === 'hospitalization' && hasSpeech) {

@@ -320,6 +320,9 @@ create table surgical_reports (
     procedure_name text,
     notes text,
     ai_summary text,          -- populated by AI summarization of a recorded surgery
+    postop_instructions text, -- owner-facing post-op care, AI-drafted from the
+                               -- clinic's baseline + this report, then vet-reviewed
+                               -- and saved before it's ever shared (see migration 033)
     performed_at timestamptz default now(),
     created_at timestamptz default now()
 );
@@ -332,6 +335,8 @@ create table dental_reports (
     findings text,
     procedures_performed text,
     notes text,
+    ai_summary text,          -- populated by AI summarization of a recorded dental procedure
+    postop_instructions text, -- see surgical_reports.postop_instructions above
     performed_at timestamptz default now(),
     created_at timestamptz default now()
 );
@@ -499,6 +504,11 @@ create table clinic_settings (
     dispensing_fee numeric(10,2) not null default 0,
     sc_injection_fee numeric(10,2) not null default 0,
     im_injection_fee numeric(10,2) not null default 0,
+    -- Standard post-op care instructions per procedure type, edited/
+    -- approved on the Settings page — the starting point every AI-drafted
+    -- post-op release form is built from (see migration 033).
+    surgical_postop_baseline text,
+    dental_postop_baseline text,
     updated_at timestamptz default now()
 );
 insert into clinic_settings (id) values (true) on conflict do nothing;

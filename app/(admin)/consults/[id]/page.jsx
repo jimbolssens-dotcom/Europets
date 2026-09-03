@@ -17,6 +17,7 @@ import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import PostOpInstructionsPanel from '@/app/_components/PostOpInstructionsPanel';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { subcategoryName } from '@/lib/catalogGrouping';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
@@ -781,6 +782,14 @@ export default function ConsultDetailPage() {
           )}
           <AttachmentSection entityType="surgical_report" entityId={r.id} />
           <AudioRecorder entityType="surgical_report" entityId={r.id} />
+          <PostOpInstructionsPanel
+            reportId={r.id}
+            apiBase="/api/surgical-reports"
+            savedInstructions={r.postop_instructions}
+            onSaved={loadSurgicalReports}
+            client={consult.clients}
+            patient={consult.patients}
+          />
         </div>
       ))}
       <form className="card" onSubmit={addSurgicalReport}>
@@ -833,7 +842,21 @@ export default function ConsultDetailPage() {
             </p>
           )}
           {r.notes && <p>{r.notes}</p>}
+          {r.ai_summary && (
+            <p>
+              <strong>AI summary:</strong> {r.ai_summary}
+            </p>
+          )}
           <AttachmentSection entityType="dental_report" entityId={r.id} />
+          <AudioRecorder entityType="dental_report" entityId={r.id} />
+          <PostOpInstructionsPanel
+            reportId={r.id}
+            apiBase="/api/dental-reports"
+            savedInstructions={r.postop_instructions}
+            onSaved={loadDentalReports}
+            client={consult.clients}
+            patient={consult.patients}
+          />
         </div>
       ))}
       <form className="card" onSubmit={addDentalReport}>

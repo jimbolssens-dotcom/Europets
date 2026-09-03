@@ -1447,6 +1447,38 @@ button.secondary:hover {
 
 /* Ambient audio recorder (consults & surgeries) */
 
+/* Post-op instructions block on a surgical/dental report card (see
+   app/_components/PostOpInstructionsPanel.jsx) — set apart from the
+   clinical notes above it since this is the owner-facing text. */
+.postop-panel {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed #ddd;
+}
+
+.postop-panel h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+}
+
+.postop-panel textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.postop-panel .home-links {
+  margin-top: 0.5rem;
+}
+
+.postop-panel .share-actions {
+  margin: 0.75rem 0 0.3rem;
+}
+
 .recorder {
   margin-top: 0.75rem;
 }

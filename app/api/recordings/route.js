@@ -43,7 +43,7 @@ export async function POST(request) {
       { status: 400 }
     );
   }
-  if (!['visit', 'surgical_report', 'hospitalization'].includes(entity_type)) {
+  if (!['visit', 'surgical_report', 'dental_report', 'hospitalization'].includes(entity_type)) {
     return NextResponse.json({ error: 'invalid entity_type' }, { status: 400 });
   }
 
