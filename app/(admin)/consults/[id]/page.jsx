@@ -61,6 +61,8 @@ export default function ConsultDetailPage() {
 
   const [surgicalReports, setSurgicalReports] = useState([]);
   const [surgForm, setSurgForm] = useState({ surgeon_id: '', procedure_name: '', notes: '' });
+  const [dictatingSurgical, setDictatingSurgical] = useState(false);
+  const [autoRecordSurgicalId, setAutoRecordSurgicalId] = useState(null);
 
   const [dentalReports, setDentalReports] = useState([]);
   const [dentalForm, setDentalForm] = useState({
@@ -69,6 +71,8 @@ export default function ConsultDetailPage() {
     procedures_performed: '',
     notes: '',
   });
+  const [dictatingDental, setDictatingDental] = useState(false);
+  const [autoRecordDentalId, setAutoRecordDentalId] = useState(null);
 
   const [consentForms, setConsentForms] = useState([]);
   const [consentForm, setConsentForm] = useState({
@@ -347,6 +351,42 @@ export default function ConsultDetailPage() {
     });
     setDentalForm({ performed_by: '', findings: '', procedures_performed: '', notes: '' });
     loadDentalReports();
+  }
+
+  // The standard path onto a Surgical/Dental Report: skip the manual form
+  // entirely — create a blank report right away and mark it so its card's
+  // AudioRecorder auto-starts capturing the moment it renders, so a vet
+  // goes straight from clicking this button to talking. The manual form
+  // below stays available (tucked under "Or add manually") for filling in
+  // structured fields directly instead.
+  async function startDictateSurgicalReport() {
+    setDictatingSurgical(true);
+    const res = await fetch('/api/surgical-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visit_id: id }),
+    });
+    const data = await res.json();
+    setDictatingSurgical(false);
+    if (res.ok) {
+      setAutoRecordSurgicalId(data.id);
+      loadSurgicalReports();
+    }
+  }
+
+  async function startDictateDentalReport() {
+    setDictatingDental(true);
+    const res = await fetch('/api/dental-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visit_id: id }),
+    });
+    const data = await res.json();
+    setDictatingDental(false);
+    if (res.ok) {
+      setAutoRecordDentalId(data.id);
+      loadDentalReports();
+    }
   }
 
   async function createInvoice() {
@@ -781,7 +821,11 @@ export default function ConsultDetailPage() {
             </p>
           )}
           <AttachmentSection entityType="surgical_report" entityId={r.id} />
-          <AudioRecorder entityType="surgical_report" entityId={r.id} />
+          <AudioRecorder
+            entityType="surgical_report"
+            entityId={r.id}
+            autoStart={r.id === autoRecordSurgicalId}
+          />
           <PostOpInstructionsPanel
             reportId={r.id}
             apiBase="/api/surgical-reports"
@@ -792,37 +836,43 @@ export default function ConsultDetailPage() {
           />
         </div>
       ))}
-      <form className="card" onSubmit={addSurgicalReport}>
-        <h3>Add Surgical Report</h3>
-        <input
-          placeholder="Procedure"
-          value={surgForm.procedure_name}
-          onChange={(e) => setSurgForm({ ...surgForm, procedure_name: e.target.value })}
-        />
-        <select
-          value={surgForm.surgeon_id}
-          onChange={(e) => setSurgForm({ ...surgForm, surgeon_id: e.target.value })}
-        >
-          <option value="">Surgeon...</option>
-          {vets.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.full_name}
-            </option>
-          ))}
-        </select>
-        <label>
-          <span className="field-label-row">
-            Notes
-            <VoiceToTextButton kind="surgical_notes" onResult={appendSurgNotes} />
-          </span>
-          <textarea
-            rows={2}
-            value={surgForm.notes}
-            onChange={(e) => setSurgForm({ ...surgForm, notes: e.target.value })}
+      <button type="button" onClick={startDictateSurgicalReport} disabled={dictatingSurgical}>
+        🎤 {dictatingSurgical ? 'Starting...' : 'Dictate New Surgical Report'}
+      </button>
+      <details>
+        <summary>Or add manually</summary>
+        <form className="card" onSubmit={addSurgicalReport}>
+          <h3>Add Surgical Report</h3>
+          <input
+            placeholder="Procedure"
+            value={surgForm.procedure_name}
+            onChange={(e) => setSurgForm({ ...surgForm, procedure_name: e.target.value })}
           />
-        </label>
-        <button type="submit">Add Surgical Report</button>
-      </form>
+          <select
+            value={surgForm.surgeon_id}
+            onChange={(e) => setSurgForm({ ...surgForm, surgeon_id: e.target.value })}
+          >
+            <option value="">Surgeon...</option>
+            {vets.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.full_name}
+              </option>
+            ))}
+          </select>
+          <label>
+            <span className="field-label-row">
+              Notes
+              <VoiceToTextButton kind="surgical_notes" onResult={appendSurgNotes} />
+            </span>
+            <textarea
+              rows={2}
+              value={surgForm.notes}
+              onChange={(e) => setSurgForm({ ...surgForm, notes: e.target.value })}
+            />
+          </label>
+          <button type="submit">Add Surgical Report</button>
+        </form>
+      </details>
       </div>
 
       <div>
@@ -848,7 +898,11 @@ export default function ConsultDetailPage() {
             </p>
           )}
           <AttachmentSection entityType="dental_report" entityId={r.id} />
-          <AudioRecorder entityType="dental_report" entityId={r.id} />
+          <AudioRecorder
+            entityType="dental_report"
+            entityId={r.id}
+            autoStart={r.id === autoRecordDentalId}
+          />
           <PostOpInstructionsPanel
             reportId={r.id}
             apiBase="/api/dental-reports"
@@ -859,42 +913,48 @@ export default function ConsultDetailPage() {
           />
         </div>
       ))}
-      <form className="card" onSubmit={addDentalReport}>
-        <h3>Add Dental Report</h3>
-        <select
-          value={dentalForm.performed_by}
-          onChange={(e) => setDentalForm({ ...dentalForm, performed_by: e.target.value })}
-        >
-          <option value="">Performed by...</option>
-          {vets.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.full_name}
-            </option>
-          ))}
-        </select>
-        <input
-          placeholder="Findings"
-          value={dentalForm.findings}
-          onChange={(e) => setDentalForm({ ...dentalForm, findings: e.target.value })}
-        />
-        <input
-          placeholder="Procedures performed"
-          value={dentalForm.procedures_performed}
-          onChange={(e) => setDentalForm({ ...dentalForm, procedures_performed: e.target.value })}
-        />
-        <label>
-          <span className="field-label-row">
-            Notes
-            <VoiceToTextButton kind="dental_notes" onResult={appendDentalNotes} />
-          </span>
-          <textarea
-            rows={2}
-            value={dentalForm.notes}
-            onChange={(e) => setDentalForm({ ...dentalForm, notes: e.target.value })}
+      <button type="button" onClick={startDictateDentalReport} disabled={dictatingDental}>
+        🎤 {dictatingDental ? 'Starting...' : 'Dictate New Dental Report'}
+      </button>
+      <details>
+        <summary>Or add manually</summary>
+        <form className="card" onSubmit={addDentalReport}>
+          <h3>Add Dental Report</h3>
+          <select
+            value={dentalForm.performed_by}
+            onChange={(e) => setDentalForm({ ...dentalForm, performed_by: e.target.value })}
+          >
+            <option value="">Performed by...</option>
+            {vets.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.full_name}
+              </option>
+            ))}
+          </select>
+          <input
+            placeholder="Findings"
+            value={dentalForm.findings}
+            onChange={(e) => setDentalForm({ ...dentalForm, findings: e.target.value })}
           />
-        </label>
-        <button type="submit">Add Dental Report</button>
-      </form>
+          <input
+            placeholder="Procedures performed"
+            value={dentalForm.procedures_performed}
+            onChange={(e) => setDentalForm({ ...dentalForm, procedures_performed: e.target.value })}
+          />
+          <label>
+            <span className="field-label-row">
+              Notes
+              <VoiceToTextButton kind="dental_notes" onResult={appendDentalNotes} />
+            </span>
+            <textarea
+              rows={2}
+              value={dentalForm.notes}
+              onChange={(e) => setDentalForm({ ...dentalForm, notes: e.target.value })}
+            />
+          </label>
+          <button type="submit">Add Dental Report</button>
+        </form>
+      </details>
       </div>
       </div>
 

@@ -21,7 +21,7 @@ const STATUS_LABEL = {
   error: 'Failed',
 };
 
-export default function AudioRecorder({ entityType, entityId, onExtractedFields }) {
+export default function AudioRecorder({ entityType, entityId, onExtractedFields, autoStart }) {
   const [recording, setRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -68,6 +68,16 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields 
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entityType, entityId]);
+
+  // Set when this card was just created via a "Dictate New ... Report"
+  // button (see the consult page) — skip the extra "click Start Recording"
+  // step and begin capturing immediately. Runs once on mount only; a
+  // report already sitting in the database on a normal page load never
+  // has autoStart set, so this never fires for it.
+  useEffect(() => {
+    if (autoStart) startRecording();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function startRecording() {
     setError(null);
