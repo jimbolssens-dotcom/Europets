@@ -7,13 +7,19 @@
 //   - consult appointments are fixed at 15 minutes
 //   - surgery appointments run in 10-minute increments (10, 20, 30, ...)
 //   - a room (and a vet) can't be double-booked for an overlapping slot
-//   - booking a vet outside their weekly schedule (staff_schedules) is a
-//     soft warning, not a block — the client sends weekday/shift computed
-//     from the *local* date/time it already has (see the appointments
-//     page), sidestepping any server/client timezone mismatch from
-//     re-deriving them off the stored UTC start_time. Pass
-//     override_schedule_warning: true to book anyway once the warning's
-//     been shown.
+//   - booking a vet for a date+shift the staff roster (staff_roster_entries
+//     — actual dated presence, see app/(admin)/staff/roster) shows other
+//     staff on but not them is a hard block, no override. Only applies
+//     once that specific date+shift actually has roster data — a day
+//     nobody's filled in yet is skipped rather than blocking everything.
+//   - booking a vet outside their weekly schedule (staff_schedules, a
+//     recurring weekday template used only when the roster above didn't
+//     already resolve the question) is a softer warning, not a block —
+//     the client sends date/weekday/shift computed from the *local*
+//     date/time it already has (see the appointments page), sidestepping
+//     any server/client timezone mismatch from re-deriving them off the
+//     stored UTC start_time. Pass override_schedule_warning: true to book
+//     anyway once that warning's been shown.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -73,6 +79,7 @@ export async function POST(request) {
     start_time,
     duration_minutes,
     reason,
+    date,
     weekday,
     shift,
     override_schedule_warning,
@@ -145,6 +152,34 @@ export async function POST(request) {
       { error: 'that room or vet is already booked for an overlapping time' },
       { status: 409 }
     );
+  }
+
+  // Staff roster hard block: once a specific date+shift has any roster
+  // entries at all (i.e. the roster's actually been filled in for that
+  // day), a vet who isn't in it is clearly not working then — no override,
+  // unlike the softer schedule warning below. A day with zero roster rows
+  // for anyone is left alone (nothing to check yet), so this doesn't brick
+  // every booking before staff start using the roster.
+  if (vet_id && date && SHIFTS.includes(shift)) {
+    const { data: dayRoster, error: rosterError } = await supabase
+      .from('staff_roster_entries')
+      .select('staff_id')
+      .eq('date', date)
+      .eq('shift', shift);
+
+    if (rosterError) {
+      return NextResponse.json({ error: rosterError.message }, { status: 500 });
+    }
+
+    if (dayRoster.length > 0 && !dayRoster.some((r) => r.staff_id === vet_id)) {
+      const { data: vet } = await supabase.from('staff').select('full_name').eq('id', vet_id).single();
+      return NextResponse.json(
+        {
+          error: `${vet?.full_name || 'This vet'} isn't on the staff roster for that ${shift} (${date}). Add them on the Staff Roster page first, or pick a different vet.`,
+        },
+        { status: 409 }
+      );
+    }
   }
 
   // Soft schedule warning: only when the client sent a valid weekday/shift

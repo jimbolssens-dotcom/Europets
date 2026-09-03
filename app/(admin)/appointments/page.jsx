@@ -311,8 +311,10 @@ export default function AppointmentsPage() {
       duration_minutes: form.type === 'surgery' ? Number(form.duration_minutes) : undefined,
       reason: form.reason,
       // Computed from the local date/time (not re-derived from start_time
-      // server-side) so the vet's schedule is checked against the day/shift
-      // clinic staff actually see on screen, regardless of server timezone.
+      // server-side) so the vet's schedule/roster is checked against the
+      // day/shift clinic staff actually see on screen, regardless of
+      // server timezone.
+      date: selectedDate,
       weekday: startTime.getDay(),
       shift: startTime.getHours() < 12 ? 'morning' : 'afternoon',
     };
