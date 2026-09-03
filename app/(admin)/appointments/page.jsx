@@ -2,7 +2,15 @@
 // Month calendar overview + an Outlook-style day schedule: one column per
 // room, continuous time down the side, appointments as colored blocks
 // positioned by their actual start time/duration and color-coded by vet.
-// Click empty grid space to pick a room + time for a new booking.
+// Click empty grid space to pick a room + time for a new booking, or
+// click-and-drag across the grid to select a multi-slot range for one.
+// An existing block can be dragged to a new time/room (mousedown on the
+// block body) or, for a surgery appointment, resized by its bottom-edge
+// handle. All three drag interactions are plain mousedown + window-level
+// mousemove/mouseup listeners set up per-gesture (see startDragSelect,
+// startMoveAppointment, startResizeAppointment) rather than a drag-and-drop
+// library — the grid is a fixed absolute-positioned layout, so raw pixel
+// math is simpler than adapting a generic DnD API to it.
 
 'use client';
 
@@ -30,6 +38,10 @@ const SCHEDULE_HEADER_HEIGHT = 36; // matches .schedule-header's 2.25rem
 // slack for that descender on top of normal breathing room, or it clips.
 const SCHEDULE_BOTTOM_MARGIN = 36;
 const SNAP_MINUTES = 15;
+// Surgery durations only make sense in 10-minute increments (matches the
+// server — see lib/appointmentScheduling.js), so resizing a surgery block
+// snaps to that instead of the coarser 15-minute grid used for start times.
+const SURGERY_INCREMENT_MINUTES = 10;
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const VET_PALETTE = [
@@ -67,6 +79,15 @@ function formatTime(iso) {
 function minutesSinceOpen(iso) {
   const d = new Date(iso);
   return (d.getHours() - OPEN_HOUR) * 60 + d.getMinutes();
+}
+
+// Inverse of minutesSinceOpen — used to render a live preview while an
+// appointment block is being dragged to a new time, before it's saved.
+function startTimeFromMinutes(dateISO, minutesFromOpen) {
+  const totalMinutes = OPEN_HOUR * 60 + minutesFromOpen;
+  const hh = Math.floor(totalMinutes / 60);
+  const mm = totalMinutes % 60;
+  return new Date(`${dateISO}T${pad(hh)}:${pad(mm)}:00`).toISOString();
 }
 
 // A 6-row Sun-start grid of Date objects covering the given month, padded
@@ -182,6 +203,10 @@ export default function AppointmentsPage() {
   const [rosterBlock, setRosterBlock] = useState(null); // { message, vetId, vetName, date, shift, payload } while showing the not-on-roster alert
   const [resolvingRosterBlock, setResolvingRosterBlock] = useState(false);
   const [pixelsPerMinute, setPixelsPerMinute] = useState(DEFAULT_PIXELS_PER_MINUTE);
+  const [scheduleError, setScheduleError] = useState(null); // conflict/other errors from dragging a block, shown above the grid
+  const [dragSelect, setDragSelect] = useState(null); // { roomId, startMinutes, endMinutes } — click-and-drag on empty grid to pick a multi-slot range
+  const [dragMove, setDragMove] = useState(null); // { appointmentId, roomId, startMinutes } — dragging an existing block to a new time/room
+  const [dragResize, setDragResize] = useState(null); // { appointmentId, duration } — dragging a surgery block's bottom edge
   const bookingFormRef = useRef(null);
   const scheduleWrapRef = useRef(null);
   const scheduleHeight = (CLOSE_HOUR - OPEN_HOUR) * 60 * pixelsPerMinute;
@@ -281,6 +306,22 @@ export default function AppointmentsPage() {
     [appointments, selectedDate]
   );
 
+  // Overrides the position/room/duration of whichever single appointment is
+  // actively being dragged, so the block visually follows the cursor before
+  // the move/resize is actually saved. Everything else renders unchanged.
+  const liveDayAppointments = useMemo(() => {
+    if (!dragMove && !dragResize) return dayAppointments;
+    return dayAppointments.map((a) => {
+      if (dragMove && dragMove.appointmentId === a.id) {
+        return { ...a, room_id: dragMove.roomId, start_time: startTimeFromMinutes(selectedDate, dragMove.startMinutes) };
+      }
+      if (dragResize && dragResize.appointmentId === a.id) {
+        return { ...a, duration_minutes: dragResize.duration };
+      }
+      return a;
+    });
+  }, [dayAppointments, dragMove, dragResize, selectedDate]);
+
   const patientsForClient = useMemo(
     () => patients.filter((p) => p.client_id === form.client_id),
     [patients, form.client_id]
@@ -313,14 +354,27 @@ export default function AppointmentsPage() {
     return { minutesFromOpen: clamped, time };
   }
 
-  function pickFromGrid(e, roomId) {
-    const { time } = computeSlot(e);
-    // A surgery room's column should default the form to a surgery booking
-    // (10-min increments) instead of the usual 15-min consult, so picking a
-    // slot there doesn't also require manually flipping the type dropdown.
+  // Fills in the booking form for a chosen room + start time + duration —
+  // shared by a plain click (durationMinutes === SNAP_MINUTES) and a
+  // click-and-drag multi-slot selection (see startDragSelect).
+  function applySlotSelection(roomId, startMinutes, durationMinutes) {
+    const totalMinutes = OPEN_HOUR * 60 + startMinutes;
+    const time = `${pad(Math.floor(totalMinutes / 60))}:${pad(totalMinutes % 60)}`;
     const room = rooms.find((r) => r.id === roomId);
-    const type = room?.type === 'surgery' ? 'surgery' : 'consult';
-    setForm({ ...form, time, room_id: roomId, type, duration_minutes: '10' });
+    if (durationMinutes <= SNAP_MINUTES) {
+      // A single slot: same as before — a surgery room defaults to a
+      // surgery booking, everything else to a consult.
+      const type = room?.type === 'surgery' ? 'surgery' : 'consult';
+      setForm({ ...form, time, room_id: roomId, type, duration_minutes: '10' });
+    } else {
+      // Multiple slots dragged: only surgery bookings have a variable
+      // duration, so switch to that type and prefill it from the drag,
+      // rounded to the nearest 10 minutes (surgery's real increment —
+      // the drag itself snaps to the coarser 15-minute time grid). The
+      // number is still editable in the form before it's actually booked.
+      const rounded = Math.max(SURGERY_INCREMENT_MINUTES, Math.round(durationMinutes / SURGERY_INCREMENT_MINUTES) * SURGERY_INCREMENT_MINUTES);
+      setForm({ ...form, time, room_id: roomId, type: 'surgery', duration_minutes: String(rounded) });
+    }
     setError(null);
     setRosterBlock(null);
     // Jump straight to the booking form so a click on the schedule is enough
@@ -328,9 +382,136 @@ export default function AppointmentsPage() {
     bookingFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // Click-and-drag on empty grid space to select a multi-slot range for a
+  // new booking. A plain click (no real movement) falls out of this as
+  // start === end, giving the same single-slot behavior as before.
+  function startDragSelect(e, roomId) {
+    if (e.button !== 0 || dragMove || dragResize) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const { minutesFromOpen } = computeSlot(e);
+    setDragSelect({ roomId, startMinutes: minutesFromOpen, endMinutes: minutesFromOpen });
+    setHoverSlot(null);
+    setError(null);
+    setRosterBlock(null);
+
+    function onMove(moveEvent) {
+      const offsetY = moveEvent.clientY - rect.top;
+      const raw = offsetY / pixelsPerMinute;
+      const snapped = Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES;
+      const clamped = Math.max(0, Math.min(snapped, (CLOSE_HOUR - OPEN_HOUR) * 60 - SNAP_MINUTES));
+      setDragSelect((prev) => (prev ? { ...prev, endMinutes: clamped } : prev));
+    }
+    function onUp() {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      setDragSelect((prev) => {
+        if (prev) {
+          const start = Math.min(prev.startMinutes, prev.endMinutes);
+          const end = Math.max(prev.startMinutes, prev.endMinutes) + SNAP_MINUTES;
+          applySlotSelection(prev.roomId, start, end - start);
+        }
+        return null;
+      });
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
   function hoverGrid(e, roomId) {
+    if (dragSelect || dragMove || dragResize) return;
     const { minutesFromOpen, time } = computeSlot(e);
     setHoverSlot({ roomId, top: minutesFromOpen * pixelsPerMinute, label: formatSlotLabel(time) });
+  }
+
+  // Dragging an existing block to a new time and/or room. Movement under a
+  // small pixel threshold is treated as a plain click (a no-op — double-
+  // click still opens the consult via its own handler) rather than a drop
+  // back onto the exact same spot.
+  function startMoveAppointment(e, appointment) {
+    if (e.button !== 0 || appointment.status === 'cancelled' || appointment.status === 'complete') return;
+    e.stopPropagation();
+    const trackEl = e.currentTarget.closest('.schedule-room-track');
+    if (!trackEl) return;
+    const originalRoomId = appointment.room_id;
+    const originalStartMinutes = minutesSinceOpen(appointment.start_time);
+    const duration = appointment.duration_minutes;
+    const totalMinutes = (CLOSE_HOUR - OPEN_HOUR) * 60;
+    const grabOffsetMinutes = (e.clientY - trackEl.getBoundingClientRect().top) / pixelsPerMinute - originalStartMinutes;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let moved = false;
+
+    setDragMove({ appointmentId: appointment.id, roomId: originalRoomId, startMinutes: originalStartMinutes });
+    setHoverSlot(null);
+
+    function resolve(clientX, clientY) {
+      const el = document.elementFromPoint(clientX, clientY)?.closest('.schedule-room-track');
+      const roomId = el?.dataset.roomId || originalRoomId;
+      const rect = el ? el.getBoundingClientRect() : trackEl.getBoundingClientRect();
+      const raw = (clientY - rect.top) / pixelsPerMinute - grabOffsetMinutes;
+      const snapped = Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES;
+      const clamped = Math.max(0, Math.min(snapped, totalMinutes - duration));
+      return { roomId, startMinutes: clamped };
+    }
+
+    function onMove(moveEvent) {
+      if (Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3) {
+        moved = true;
+      }
+      const { roomId, startMinutes } = resolve(moveEvent.clientX, moveEvent.clientY);
+      setDragMove((prev) => (prev ? { ...prev, roomId, startMinutes } : prev));
+    }
+    function onUp(upEvent) {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      setDragMove(null);
+      if (!moved) return;
+      const { roomId, startMinutes } = resolve(upEvent.clientX, upEvent.clientY);
+      if (roomId === originalRoomId && startMinutes === originalStartMinutes) return;
+      patchAppointment(appointment.id, {
+        room_id: roomId,
+        start_time: startTimeFromMinutes(selectedDate, startMinutes),
+        date: selectedDate,
+        shift: OPEN_HOUR + Math.floor(startMinutes / 60) < 12 ? 'morning' : 'afternoon',
+      });
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  // Dragging a surgery block's bottom-edge handle to lengthen/shorten it.
+  // Only surgery appointments get this handle at all (see the render below)
+  // — consult is a fixed 15 minutes, same rule the server enforces.
+  function startResizeAppointment(e, appointment) {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    const trackEl = e.currentTarget.closest('.schedule-room-track');
+    if (!trackEl) return;
+    const rect = trackEl.getBoundingClientRect();
+    const startMinutes = minutesSinceOpen(appointment.start_time);
+    const totalMinutes = (CLOSE_HOUR - OPEN_HOUR) * 60;
+    const originalDuration = appointment.duration_minutes;
+
+    setDragResize({ appointmentId: appointment.id, duration: originalDuration });
+
+    function onMove(moveEvent) {
+      const raw = (moveEvent.clientY - rect.top) / pixelsPerMinute - startMinutes;
+      const snapped = Math.round(raw / SURGERY_INCREMENT_MINUTES) * SURGERY_INCREMENT_MINUTES;
+      const clamped = Math.max(SURGERY_INCREMENT_MINUTES, Math.min(snapped, totalMinutes - startMinutes));
+      setDragResize((prev) => (prev ? { ...prev, duration: clamped } : prev));
+    }
+    function onUp() {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      setDragResize((prev) => {
+        if (prev && prev.duration !== originalDuration) {
+          patchAppointment(appointment.id, { duration_minutes: prev.duration, date: selectedDate, shift: startMinutes < (12 - OPEN_HOUR) * 60 ? 'morning' : 'afternoon' });
+        }
+        return null;
+      });
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }
 
   async function submitAppointment(payload) {
@@ -362,9 +543,43 @@ export default function AppointmentsPage() {
     return res.ok;
   }
 
+  // Saves a dragged move/resize (see startMoveAppointment, startResizeAppointment).
+  // Mirrors submitAppointment's error handling — including the same
+  // not-on-roster alert, reused for a drag by tagging its retry payload
+  // __reschedule so addToRosterAndBook knows to PATCH instead of POST.
+  async function patchAppointment(appointmentId, body) {
+    const res = await fetch(`/api/appointments/${appointmentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      if (data?.code === 'not_on_roster') {
+        setRosterBlock({
+          message: `${data.vet_name} isn't on the staff roster for that ${data.shift} (${data.date}).`,
+          vetId: data.vet_id,
+          vetName: data.vet_name,
+          date: data.date,
+          shift: data.shift,
+          payload: { __reschedule: true, appointmentId, body },
+        });
+      } else {
+        setScheduleError(data?.error || 'Failed to update the appointment');
+      }
+      return false;
+    }
+    setScheduleError(null);
+    setRosterBlock(null);
+    loadMonth();
+    return true;
+  }
+
   // "Add to Roster" on the not-on-roster alert: add the vet to the roster
   // for that exact date+shift (idempotent — see /api/staff-roster), then
-  // immediately retry the same booking, which should now pass the check.
+  // immediately retry whatever triggered the alert — either the new
+  // booking that was being submitted, or a drag-to-reschedule/resize.
   async function addToRosterAndBook() {
     if (!rosterBlock) return;
     setResolvingRosterBlock(true);
@@ -382,7 +597,11 @@ export default function AppointmentsPage() {
       }
       const payload = rosterBlock.payload;
       setRosterBlock(null);
-      await submitAppointment(payload);
+      if (payload?.__reschedule) {
+        await patchAppointment(payload.appointmentId, payload.body);
+      } else {
+        await submitAppointment(payload);
+      }
     } finally {
       setResolvingRosterBlock(false);
     }
@@ -391,6 +610,10 @@ export default function AppointmentsPage() {
   // "Rebook with Other Vet": dismiss the alert and clear the vet field so
   // the booking form nudges toward picking someone who's actually on for
   // that shift, without losing the rest of what was already filled in.
+  // Only applies to the new-booking alert — a reschedule alert's dismiss
+  // is just "Cancel" (see the modal render), since there's no form to
+  // clear and the dragged block already snaps back once dragMove/
+  // dragResize is cleared.
   function rebookWithOtherVet() {
     setRosterBlock(null);
     setForm((f) => ({ ...f, vet_id: '' }));
@@ -544,6 +767,7 @@ export default function AppointmentsPage() {
         </div>
 
         <div className="schedule-main">
+          {scheduleError && <p className="error">{scheduleError}</p>}
           {vets.length > 0 && (
             <div className="vet-legend">
               {vets.map((v) => (
@@ -599,8 +823,9 @@ export default function AppointmentsPage() {
                   <div className="schedule-header">{room.name}</div>
                   <div
                     className="schedule-room-track"
+                    data-room-id={room.id}
                     style={{ height: scheduleHeight }}
-                    onClick={(e) => pickFromGrid(e, room.id)}
+                    onMouseDown={(e) => startDragSelect(e, room.id)}
                     onMouseMove={(e) => hoverGrid(e, room.id)}
                     onMouseLeave={() => setHoverSlot(null)}
                   >
@@ -622,18 +847,34 @@ export default function AppointmentsPage() {
                         <span className="schedule-hover-label">{hoverSlot.label}</span>
                       </div>
                     )}
-                    {dayAppointments
+                    {dragSelect && dragSelect.roomId === room.id && (
+                      <div
+                        className="schedule-drag-select"
+                        style={{
+                          top: Math.min(dragSelect.startMinutes, dragSelect.endMinutes) * pixelsPerMinute,
+                          height:
+                            (Math.abs(dragSelect.endMinutes - dragSelect.startMinutes) + SNAP_MINUTES) * pixelsPerMinute,
+                        }}
+                      />
+                    )}
+                    {liveDayAppointments
                       .filter((a) => a.room_id === room.id)
                       .map((a) => {
                         const color = colorForVet(a.vet_id);
                         const top = minutesSinceOpen(a.start_time) * pixelsPerMinute;
                         const height = Math.max(a.duration_minutes * pixelsPerMinute, 22);
+                        const isBeingDragged =
+                          (dragMove && dragMove.appointmentId === a.id) ||
+                          (dragResize && dragResize.appointmentId === a.id);
+                        const canDrag = a.status !== 'cancelled' && a.status !== 'complete';
                         return (
                           <div
                             key={a.id}
                             className={[
                               'schedule-block',
                               openingConsultId === a.id ? 'schedule-block-opening' : '',
+                              isBeingDragged ? 'schedule-block-dragging' : '',
+                              canDrag ? 'schedule-block-draggable' : '',
                             ]
                               .filter(Boolean)
                               .join(' ')}
@@ -644,17 +885,24 @@ export default function AppointmentsPage() {
                               borderColor: color.fg,
                               color: color.fg,
                             }}
-                            title="Double-click to open the consult"
+                            title={canDrag ? 'Drag to reschedule · Double-click to open the consult' : 'Double-click to open the consult'}
                             onClick={(e) => e.stopPropagation()}
                             onDoubleClick={(e) => {
                               e.stopPropagation();
                               openConsult(a);
                             }}
+                            onMouseDown={(e) => startMoveAppointment(e, a)}
                             onMouseMove={(e) => e.stopPropagation()}
                             onMouseEnter={() => setHoverSlot(null)}
                           >
                             <strong>{a.patients?.name}</strong> {formatTime(a.start_time)} ·{' '}
                             {a.type} · {a.status}
+                            {a.type === 'surgery' && canDrag && (
+                              <div
+                                className="schedule-resize-handle"
+                                onMouseDown={(e) => startResizeAppointment(e, a)}
+                              />
+                            )}
                           </div>
                         );
                       })}
@@ -813,11 +1061,19 @@ export default function AppointmentsPage() {
             {error && <p className="error">{error}</p>}
             <div className="roster-block-actions">
               <button type="button" onClick={addToRosterAndBook} disabled={resolvingRosterBlock}>
-                {resolvingRosterBlock ? 'Adding...' : `✅ Add ${rosterBlock.vetName} & Book`}
+                {resolvingRosterBlock
+                  ? 'Adding...'
+                  : `✅ Add ${rosterBlock.vetName} & ${rosterBlock.payload?.__reschedule ? 'Move' : 'Book'}`}
               </button>
-              <button type="button" className="secondary" onClick={rebookWithOtherVet} disabled={resolvingRosterBlock}>
-                🔄 Rebook with Other Vet
-              </button>
+              {rosterBlock.payload?.__reschedule ? (
+                <button type="button" className="secondary" onClick={() => setRosterBlock(null)} disabled={resolvingRosterBlock}>
+                  ✖️ Cancel
+                </button>
+              ) : (
+                <button type="button" className="secondary" onClick={rebookWithOtherVet} disabled={resolvingRosterBlock}>
+                  🔄 Rebook with Other Vet
+                </button>
+              )}
             </div>
           </div>
         </div>

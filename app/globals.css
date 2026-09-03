@@ -1879,6 +1879,20 @@ button.secondary:hover {
   white-space: nowrap;
 }
 
+/* Click-and-drag multi-slot selection for a new booking — a firmer fill
+   than the single-slot hover preview above, since it's an active
+   selection rather than just a "here's where you'd land" hint. */
+.schedule-drag-select {
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  background: rgba(230, 24, 109, 0.22);
+  border: 2px dashed var(--pink);
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .schedule-block {
   position: absolute;
   left: 3px;
@@ -1893,9 +1907,39 @@ button.secondary:hover {
   z-index: 2;
 }
 
+.schedule-block-draggable {
+  cursor: grab;
+}
+
+.schedule-block-draggable:active {
+  cursor: grabbing;
+}
+
+.schedule-block-dragging {
+  opacity: 0.7;
+  z-index: 3;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
 .schedule-block-opening {
   opacity: 0.6;
   cursor: wait;
+}
+
+/* Bottom-edge resize handle on a surgery block (see startResizeAppointment)
+   — a thin strip rather than a visible grip, so it doesn't clutter blocks
+   that are often only ~20px tall; the resize cursor is the affordance. */
+.schedule-resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.schedule-resize-handle:hover {
+  background: rgba(0, 0, 0, 0.15);
 }
 
 /* Ambient audio recorder (consults & surgeries) */

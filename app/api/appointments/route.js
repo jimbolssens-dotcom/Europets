@@ -19,9 +19,12 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
-
-const CONSULT_DURATION_MINUTES = 15;
-const SURGERY_INCREMENT_MINUTES = 10;
+import {
+  CONSULT_DURATION_MINUTES,
+  SURGERY_INCREMENT_MINUTES,
+  findAppointmentConflict,
+  checkStaffRoster,
+} from '@/lib/appointmentScheduling';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -62,8 +65,6 @@ export async function GET(request) {
   }
   return NextResponse.json(data);
 }
-
-const SHIFTS = ['morning', 'afternoon'];
 
 export async function POST(request) {
   const body = await request.json();
@@ -118,28 +119,16 @@ export async function POST(request) {
   }
 
   // conflict check: room and vet can't overlap with an existing booked slot
-  const conflictWindStart = new Date(startTime.getTime() - 12 * 60 * 60000).toISOString();
-  const conflictWindEnd = endTime.toISOString();
-
-  const { data: existing, error: existingError } = await supabase
-    .from('appointments')
-    .select('id, room_id, vet_id, start_time, duration_minutes, status')
-    .neq('status', 'cancelled')
-    .gte('start_time', conflictWindStart)
-    .lt('start_time', conflictWindEnd)
-    .or(`room_id.eq.${room_id}${vet_id ? `,vet_id.eq.${vet_id}` : ''}`);
-
-  if (existingError) {
-    return NextResponse.json({ error: existingError.message }, { status: 500 });
-  }
-
-  const conflict = (existing || []).find((appt) => {
-    const apptStart = new Date(appt.start_time);
-    const apptEnd = new Date(apptStart.getTime() + appt.duration_minutes * 60000);
-    const overlaps = apptStart < endTime && startTime < apptEnd;
-    if (!overlaps) return false;
-    return appt.room_id === room_id || (vet_id && appt.vet_id === vet_id);
+  const { conflict, error: conflictError } = await findAppointmentConflict(supabase, {
+    roomId: room_id,
+    vetId: vet_id,
+    startTime,
+    endTime,
   });
+
+  if (conflictError) {
+    return NextResponse.json({ error: conflictError.message }, { status: 500 });
+  }
 
   if (conflict) {
     return NextResponse.json(
@@ -154,31 +143,22 @@ export async function POST(request) {
   // unlike the softer schedule warning below. A day with zero roster rows
   // for anyone is left alone (nothing to check yet), so this doesn't brick
   // every booking before staff start using the roster.
-  if (vet_id && date && SHIFTS.includes(shift)) {
-    const { data: dayRoster, error: rosterError } = await supabase
-      .from('staff_roster_entries')
-      .select('staff_id')
-      .eq('date', date)
-      .eq('shift', shift);
-
-    if (rosterError) {
-      return NextResponse.json({ error: rosterError.message }, { status: 500 });
-    }
-
-    if (dayRoster.length > 0 && !dayRoster.some((r) => r.staff_id === vet_id)) {
-      const { data: vet } = await supabase.from('staff').select('full_name').eq('id', vet_id).single();
-      return NextResponse.json(
-        {
-          error: `${vet?.full_name || 'This vet'} isn't on the staff roster for that ${shift} (${date}).`,
-          code: 'not_on_roster',
-          vet_id,
-          vet_name: vet?.full_name || 'This vet',
-          date,
-          shift,
-        },
-        { status: 409 }
-      );
-    }
+  const rosterResult = await checkStaffRoster(supabase, { vetId: vet_id, date, shift });
+  if (rosterResult.error) {
+    return NextResponse.json({ error: rosterResult.error.message }, { status: 500 });
+  }
+  if (rosterResult.blocked) {
+    return NextResponse.json(
+      {
+        error: `${rosterResult.vetName} isn't on the staff roster for that ${shift} (${date}).`,
+        code: 'not_on_roster',
+        vet_id,
+        vet_name: rosterResult.vetName,
+        date,
+        shift,
+      },
+      { status: 409 }
+    );
   }
 
   const { data, error } = await supabase
