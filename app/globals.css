@@ -1330,6 +1330,13 @@ button.secondary:hover {
   margin-top: 0.5rem;
 }
 
+/* The day's appointment list below the schedule — same fix as
+   .schedule-wrap above: scroll the table internally on narrow screens
+   instead of letting it stretch the whole page. */
+.appointments-day-list-wrap {
+  overflow-x: auto;
+}
+
 .schedule-header {
   height: 2.25rem;
   display: flex;
@@ -2012,6 +2019,17 @@ form.card.admit-patient-form {
 .admit-patient-cages {
   flex: 1;
   min-width: 480px;
+}
+
+/* On narrow screens the cage floor plan itself doesn't shrink (unchanged
+   layout/tile sizes) — instead let its own box scroll horizontally rather
+   than forcing the whole page wider. */
+@media (max-width: 900px) {
+  .admit-patient-cages {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+  }
 }
 
 .cage-picker-label {

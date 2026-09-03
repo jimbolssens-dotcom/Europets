@@ -666,51 +666,53 @@ export default function AppointmentsPage() {
       </div>
 
       <h2>{selectedDateLabel} — list</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Type</th>
-            <th>Patient</th>
-            <th>Room</th>
-            <th>Vet</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {dayAppointments.length === 0 && (
+      <div className="appointments-day-list-wrap">
+        <table>
+          <thead>
             <tr>
-              <td colSpan={7}>No appointments booked for this day.</td>
+              <th>Time</th>
+              <th>Type</th>
+              <th>Patient</th>
+              <th>Room</th>
+              <th>Vet</th>
+              <th>Status</th>
+              <th></th>
             </tr>
-          )}
-          {dayAppointments.map((a) => (
-            <tr key={a.id}>
-              <td>
-                {formatTime(a.start_time)} ({a.duration_minutes}m)
-              </td>
-              <td>{a.type}</td>
-              <td>{a.patients?.name}</td>
-              <td>{a.rooms?.name}</td>
-              <td>{a.staff?.full_name || '—'}</td>
-              <td>{a.status}</td>
-              <td>
-                {a.status === 'booked' && (
-                  <button type="button" onClick={() => checkIn(a.id)}>
-                    Check In
-                  </button>
-                )}
-                {a.status === 'checked_in' && <a href="/consults">View Consult</a>}
-                {a.status !== 'cancelled' && a.status !== 'complete' && (
-                  <button type="button" onClick={() => cancelAppointment(a.id)}>
-                    Cancel
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {dayAppointments.length === 0 && (
+              <tr>
+                <td colSpan={7}>No appointments booked for this day.</td>
+              </tr>
+            )}
+            {dayAppointments.map((a) => (
+              <tr key={a.id}>
+                <td>
+                  {formatTime(a.start_time)} ({a.duration_minutes}m)
+                </td>
+                <td>{a.type}</td>
+                <td>{a.patients?.name}</td>
+                <td>{a.rooms?.name}</td>
+                <td>{a.staff?.full_name || '—'}</td>
+                <td>{a.status}</td>
+                <td>
+                  {a.status === 'booked' && (
+                    <button type="button" onClick={() => checkIn(a.id)}>
+                      Check In
+                    </button>
+                  )}
+                  {a.status === 'checked_in' && <a href="/consults">View Consult</a>}
+                  {a.status !== 'cancelled' && a.status !== 'complete' && (
+                    <button type="button" onClick={() => cancelAppointment(a.id)}>
+                      Cancel
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
