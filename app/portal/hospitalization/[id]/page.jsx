@@ -13,6 +13,13 @@ import { supabase } from '@/lib/supabaseClient';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 
+// Belt-and-suspenders alongside the Cache-Control header in next.config.js:
+// this is a "live" page reloaded from the same shared link repeatedly, so
+// nothing in the chain (framework, CDN, browser) should ever be allowed to
+// serve a stale copy of it.
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 export default function HospitalizationPortalPage() {
   const { id } = useParams();
   const [admission, setAdmission] = useState(null);
