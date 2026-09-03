@@ -132,7 +132,6 @@ export default function AppointmentsPage() {
   const [error, setError] = useState(null);
   const [hoverSlot, setHoverSlot] = useState(null);
   const [openingConsultId, setOpeningConsultId] = useState(null);
-  const [scheduleWarning, setScheduleWarning] = useState(null); // { message, payload } while showing "book anyway"
   const bookingFormRef = useRef(null);
 
   const monthKey = toMonthKey(new Date(viewYear, viewMonthIndex, 1));
@@ -219,7 +218,6 @@ export default function AppointmentsPage() {
 
   function selectDay(d) {
     setSelectedDate(toISODate(d));
-    setScheduleWarning(null);
     if (d.getMonth() !== viewMonthIndex || d.getFullYear() !== viewYear) {
       setViewYear(d.getFullYear());
       setViewMonthIndex(d.getMonth());
@@ -254,7 +252,6 @@ export default function AppointmentsPage() {
     const type = room?.type === 'surgery' ? 'surgery' : 'consult';
     setForm({ ...form, time, room_id: roomId, type, duration_minutes: '10' });
     setError(null);
-    setScheduleWarning(null);
     // Jump straight to the booking form so a click on the schedule is enough
     // to continue — no manual scrolling down to find where the pick landed.
     bookingFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -275,16 +272,7 @@ export default function AppointmentsPage() {
 
     if (!res.ok) {
       setError(data.error || 'Failed to book appointment');
-      setScheduleWarning(null);
-    } else if (data.warning === 'schedule') {
-      const vetName = vets.find((v) => v.id === payload.vet_id)?.full_name || 'This vet';
-      const dayLabel = new Date(`${selectedDate}T00:00:00`).toLocaleDateString([], { weekday: 'long' });
-      setScheduleWarning({
-        message: `${vetName} isn't scheduled to work ${payload.shift}s on ${dayLabel}s. Book anyway?`,
-        payload,
-      });
     } else {
-      setScheduleWarning(null);
       setForm({ ...emptyForm, client_id: form.client_id });
       loadMonth();
     }
@@ -303,7 +291,6 @@ export default function AppointmentsPage() {
     }
     setSubmitting(true);
     setError(null);
-    setScheduleWarning(null);
 
     const startTime = new Date(`${selectedDate}T${form.time}:00`);
 
@@ -316,23 +303,13 @@ export default function AppointmentsPage() {
       duration_minutes: form.type === 'surgery' ? Number(form.duration_minutes) : undefined,
       reason: form.reason,
       // Computed from the local date/time (not re-derived from start_time
-      // server-side) so the vet's schedule/roster is checked against the
-      // day/shift clinic staff actually see on screen, regardless of
-      // server timezone.
+      // server-side) so the vet's roster is checked against the day/shift
+      // clinic staff actually see on screen, regardless of server timezone.
       date: selectedDate,
-      weekday: startTime.getDay(),
       shift: startTime.getHours() < 12 ? 'morning' : 'afternoon',
     };
 
     await submitAppointment(payload);
-    setSubmitting(false);
-  }
-
-  async function bookAnyway() {
-    if (!scheduleWarning) return;
-    setSubmitting(true);
-    setError(null);
-    await submitAppointment({ ...scheduleWarning.payload, override_schedule_warning: true });
     setSubmitting(false);
   }
 
@@ -634,10 +611,7 @@ export default function AppointmentsPage() {
 
             <select
               value={form.vet_id}
-              onChange={(e) => {
-                setForm({ ...form, vet_id: e.target.value });
-                setScheduleWarning(null);
-              }}
+              onChange={(e) => setForm({ ...form, vet_id: e.target.value })}
             >
               <option value="">Select vet (optional)...</option>
               {vets.map((v) => (
@@ -653,21 +627,9 @@ export default function AppointmentsPage() {
               onChange={(e) => setForm({ ...form, reason: e.target.value })}
             />
 
-            {scheduleWarning ? (
-              <div className="possible-duplicate-warning">
-                <p>{scheduleWarning.message}</p>
-                <button type="button" onClick={bookAnyway} disabled={submitting}>
-                  {submitting ? 'Booking...' : 'Book Anyway'}
-                </button>{' '}
-                <button type="button" onClick={() => setScheduleWarning(null)}>
-                  Change Vet or Time
-                </button>
-              </div>
-            ) : (
-              <button type="submit" disabled={submitting || !form.time || !form.room_id}>
-                {submitting ? 'Booking...' : 'Book Appointment'}
-              </button>
-            )}
+            <button type="submit" disabled={submitting || !form.time || !form.room_id}>
+              {submitting ? 'Booking...' : 'Book Appointment'}
+            </button>
           </form>
         </div>
       </div>

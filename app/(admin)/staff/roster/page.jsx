@@ -2,11 +2,10 @@
 // The real, date-based staff roster: a week grid (every staff member x
 // every day x morning/afternoon, click a cell to toggle them on/off that
 // shift) plus a mini month calendar for jumping to any week and seeing
-// coverage at a glance (a small count badge per day). This is distinct
-// from a staff member's Schedule page (/staff/[id]/schedule) — that's a
-// recurring weekday template used only to warn on appointment booking;
-// this is what's actually happening on real dates, editable here and from
-// the mobile "My Schedule" self-service page.
+// coverage at a glance (a small count badge per day). This is the single
+// source of truth appointment booking checks against (see
+// app/api/appointments/route.js) — editable here and from the mobile
+// "My Schedule" self-service page.
 
 'use client';
 

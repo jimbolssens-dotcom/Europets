@@ -12,14 +12,10 @@
 //     staff on but not them is a hard block, no override. Only applies
 //     once that specific date+shift actually has roster data — a day
 //     nobody's filled in yet is skipped rather than blocking everything.
-//   - booking a vet outside their weekly schedule (staff_schedules, a
-//     recurring weekday template used only when the roster above didn't
-//     already resolve the question) is a softer warning, not a block —
-//     the client sends date/weekday/shift computed from the *local*
-//     date/time it already has (see the appointments page), sidestepping
-//     any server/client timezone mismatch from re-deriving them off the
-//     stored UTC start_time. Pass override_schedule_warning: true to book
-//     anyway once that warning's been shown.
+//     The client sends date/shift computed from the *local* date/time it
+//     already has (see the appointments page), sidestepping any
+//     server/client timezone mismatch from re-deriving them off the
+//     stored UTC start_time.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -80,9 +76,7 @@ export async function POST(request) {
     duration_minutes,
     reason,
     date,
-    weekday,
     shift,
-    override_schedule_warning,
   } = body;
 
   if (!patient_id || !room_id || !start_time) {
@@ -179,31 +173,6 @@ export async function POST(request) {
         },
         { status: 409 }
       );
-    }
-  }
-
-  // Soft schedule warning: only when the client sent a valid weekday/shift
-  // and the vet has an explicit staff_schedules row saying they're not
-  // expected then. No row at all (schedule never configured for this
-  // staff member) means nothing to warn about.
-  if (
-    vet_id &&
-    !override_schedule_warning &&
-    Number.isInteger(weekday) &&
-    weekday >= 0 &&
-    weekday <= 6 &&
-    SHIFTS.includes(shift)
-  ) {
-    const { data: scheduleRow } = await supabase
-      .from('staff_schedules')
-      .select('expected')
-      .eq('staff_id', vet_id)
-      .eq('weekday', weekday)
-      .eq('shift', shift)
-      .maybeSingle();
-
-    if (scheduleRow && scheduleRow.expected === false) {
-      return NextResponse.json({ warning: 'schedule' });
     }
   }
 

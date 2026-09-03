@@ -1066,23 +1066,6 @@ button.secondary:hover {
   color: #888;
 }
 
-/* A staff member's weekly schedule grid (app/staff/[id]/schedule) — kept
-   narrow rather than stretching to the page's full width like other
-   tables, since it's only 3 columns of mostly checkboxes. */
-.staff-schedule-table {
-  max-width: 420px;
-}
-
-.staff-schedule-table th:not(:first-child),
-.staff-schedule-table td:not(:first-child) {
-  text-align: center;
-}
-
-.staff-schedule-table input[type='checkbox'] {
-  width: 1.1rem;
-  height: 1.1rem;
-}
-
 .home-links {
   display: flex;
   flex-wrap: wrap;
