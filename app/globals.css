@@ -2793,31 +2793,40 @@ form.card.admit-patient-form {
   flex-shrink: 0;
 }
 
-.mobile-tile {
+/* Mobile home grid (app/mobile/page.js) — small square tiles, the same
+   icon-over-label language as the cleaner's Hospital/Staff Roster tabs
+   (.mobile-cleaner-tab) but sized down since there are six of these
+   instead of two. */
+.mobile-square-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.7rem;
+  margin: 1.25rem 0;
+}
+
+.mobile-square-tile {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0.75rem 0.4rem;
   background: white;
   border: 1px solid #eee;
   border-top: 3px solid var(--pink);
-  border-radius: 12px;
-  padding: 1.5rem 1.25rem;
-  margin: 1rem 0;
+  border-radius: 14px;
   text-decoration: none;
   color: var(--ink);
-  font-size: 1.15rem;
-  font-weight: 700;
-  text-align: left;
-}
-
-.mobile-tile-icon {
-  font-size: 1.8rem;
-}
-
-.mobile-tile-hint {
   font-size: 0.8rem;
-  font-weight: 400;
-  color: #777;
+  font-weight: 700;
+  text-align: center;
+}
+
+.mobile-square-tile-icon {
+  font-size: 2.1rem;
+  line-height: 1;
 }
 
 .mobile-back {
@@ -2851,10 +2860,6 @@ form.card.admit-patient-form {
   font-size: 2.2rem;
   color: var(--pink);
   margin: 0.5rem 0 0.25rem;
-}
-
-.mobile-tile-first {
-  margin-top: 1.5rem;
 }
 
 .mobile-hint {
