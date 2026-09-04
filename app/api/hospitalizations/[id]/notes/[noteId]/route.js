@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 
 const EDITABLE_FIELDS = [
   'note_date',
+  'author_id',
   'appetite',
   'condition',
   'notes',

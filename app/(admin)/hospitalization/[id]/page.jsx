@@ -283,6 +283,7 @@ export default function HospitalizationDetailPage() {
     setNoteAddItemForm(emptyPendingItem);
     setEditNoteForm({
       note_date: n.note_date || todayISODate(),
+      author_id: n.author_id || '',
       appetite: n.appetite || '',
       drinking: n.drinking || '',
       stool: n.stool || '',
@@ -656,6 +657,20 @@ export default function HospitalizationDetailPage() {
                       value={editNoteForm.note_date}
                       onChange={(e) => setEditNoteForm({ ...editNoteForm, note_date: e.target.value })}
                     />
+                  </label>
+                  <label className="worksheet-entry-edit-field">
+                    Logged by
+                    <select
+                      value={editNoteForm.author_id}
+                      onChange={(e) => setEditNoteForm({ ...editNoteForm, author_id: e.target.value })}
+                    >
+                      <option value="">Unassigned</option>
+                      {staff.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.full_name}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label className="worksheet-entry-edit-field">
                     Appetite
