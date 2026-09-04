@@ -7,15 +7,27 @@
 // through the tile-grid home to switch between them. Nothing else in the
 // mobile app is reachable from here, by design.
 
+'use client';
+
+import { useHospitalizationUpdatePending } from '@/app/_components/useHospitalizationUpdatePending';
+
 export default function MobileCleanerTabs({ active }) {
+  const updatePending = useHospitalizationUpdatePending();
+
   return (
     <nav className="mobile-cleaner-tabs">
       <a
         href="/mobile/hospitalization"
-        className={`mobile-cleaner-tab${active === 'hospital' ? ' mobile-cleaner-tab-active' : ''}`}
+        className={[
+          'mobile-cleaner-tab',
+          active === 'hospital' ? 'mobile-cleaner-tab-active' : '',
+          updatePending ? 'cage-update-requested' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
       >
         <span className="mobile-cleaner-tab-icon">🏥</span>
-        <span>Hospital</span>
+        <span>Hospital{updatePending && ' 🔔'}</span>
       </a>
       <a
         href="/mobile/schedule"

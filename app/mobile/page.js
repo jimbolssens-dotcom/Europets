@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
+import { useHospitalizationUpdatePending } from '@/app/_components/useHospitalizationUpdatePending';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 
@@ -56,6 +57,7 @@ export default function MobileHomePage() {
   const [ready, setReady] = useState(false);
   const [staff, setStaff] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const updatePending = useHospitalizationUpdatePending();
 
   useEffect(() => {
     setStaffId(localStorage.getItem(MOBILE_STAFF_STORAGE_KEY));
@@ -138,9 +140,12 @@ export default function MobileHomePage() {
                 <span className="mobile-square-tile-icon">🎙️</span>
                 <span>Consults</span>
               </a>
-              <a href="/mobile/hospitalization" className="mobile-square-tile">
+              <a
+                href="/mobile/hospitalization"
+                className={`mobile-square-tile${updatePending ? ' cage-update-requested' : ''}`}
+              >
                 <span className="mobile-square-tile-icon">🏥</span>
-                <span>Hospitalization</span>
+                <span>Hospitalization{updatePending && ' 🔔'}</span>
               </a>
               <a href="/mobile/dental" className="mobile-square-tile">
                 <span className="mobile-square-tile-icon">🦷</span>
