@@ -1319,10 +1319,85 @@ button.secondary:hover {
   border-bottom: 2px solid var(--pink-tint);
 }
 
+/* Clicking the date expands that day's medication log (.day-med-panel) —
+   the header itself is a button for that, styled to still read as plain
+   heading text rather than an obvious button. */
+.worksheet-day-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.worksheet-day-toggle:hover {
+  text-decoration: underline;
+}
+
+.worksheet-day-caret {
+  display: inline-block;
+  font-size: 0.65em;
+  transition: transform 0.15s ease;
+}
+
+.worksheet-day-caret-open {
+  transform: rotate(90deg);
+}
+
 .worksheet-day-count {
   color: #999;
   font-weight: 400;
   font-size: 0.8rem;
+}
+
+/* A day's medication log — every treatment_item across every entry logged
+   that date, editable/removable here regardless of which specific entry
+   it was originally logged under; adding a new one attaches it to that
+   day's most recent entry. */
+.day-med-panel {
+  background: var(--pink-tint);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.day-med-panel h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: var(--pink-dark);
+}
+
+.day-med-panel .worksheet-entry-items li {
+  background: white;
+}
+
+.day-med-editing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.day-med-editing input {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.day-med-editing input[type='number'] {
+  width: 5rem;
+}
+
+.day-med-add {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  max-width: 420px;
 }
 
 .worksheet-day .visit-card {

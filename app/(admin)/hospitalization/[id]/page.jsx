@@ -37,6 +37,7 @@ const emptyNoteForm = {
 };
 
 const emptyPendingItem = { goods_service_id: '', instructions: '', quantity: '1' };
+const emptyDayAddForm = { goods_service_id: '', instructions: '', quantity: '1' };
 
 export default function HospitalizationDetailPage() {
   const { id } = useParams();
@@ -69,6 +70,12 @@ export default function HospitalizationDetailPage() {
   });
   const [consentSubmitting, setConsentSubmitting] = useState(false);
   const [consentError, setConsentError] = useState(null);
+  const [expandedDay, setExpandedDay] = useState(null);
+  const [dayAddForm, setDayAddForm] = useState(emptyDayAddForm);
+  const [dayAddSubmitting, setDayAddSubmitting] = useState(false);
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [itemEditForm, setItemEditForm] = useState({ instructions: '', quantity: '' });
+  const [savingItemEdit, setSavingItemEdit] = useState(false);
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`)
@@ -201,6 +208,54 @@ export default function HospitalizationDetailPage() {
 
   async function deleteTreatmentItem(itemId) {
     await fetch(`/api/treatment-items/${itemId}`, { method: 'DELETE' });
+    loadNotes();
+  }
+
+  // A day's medication log — click the date header to expand it, in place
+  // of navigating anywhere. Reads across every entry logged that date (a
+  // multi-day stay can have several), regardless of which specific entry
+  // each medication was originally logged under.
+  function toggleDay(date) {
+    setExpandedDay((prev) => (prev === date ? null : date));
+    setDayAddForm(emptyDayAddForm);
+    setEditingItemId(null);
+  }
+
+  // New medications added from the day view attach to that day's most
+  // recent entry (dayEntries is already newest-first — see
+  // groupNotesByDate) rather than asking which entry each one belongs to.
+  async function addDayMedication(dayEntries) {
+    if (!dayAddForm.goods_service_id) return;
+    const latestNote = dayEntries[0];
+    setDayAddSubmitting(true);
+    await fetch('/api/treatment-items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hospitalization_note_id: latestNote.id, ...dayAddForm }),
+    });
+    setDayAddForm(emptyDayAddForm);
+    setDayAddSubmitting(false);
+    loadNotes();
+  }
+
+  function startEditItem(item) {
+    setEditingItemId(item.id);
+    setItemEditForm({ instructions: item.instructions || '', quantity: item.quantity ?? 1 });
+  }
+
+  function cancelEditItem() {
+    setEditingItemId(null);
+  }
+
+  async function saveEditItem(itemId) {
+    setSavingItemEdit(true);
+    await fetch(`/api/treatment-items/${itemId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(itemEditForm),
+    });
+    setSavingItemEdit(false);
+    setEditingItemId(null);
     loadNotes();
   }
 
@@ -470,14 +525,101 @@ export default function HospitalizationDetailPage() {
       <div className="split-main">
       <h2>Day-to-day Worksheet</h2>
       {notes.length === 0 && <p>No entries yet.</p>}
-      {groupNotesByDate(notes).map((group) => (
+      {groupNotesByDate(notes).map((group) => {
+        const dayItems = group.entries
+          .flatMap((n) => n.treatment_items || [])
+          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        const dayExpanded = expandedDay === group.date;
+        return (
         <div key={group.date} className="worksheet-day">
           <h3 className="worksheet-day-header">
-            {formatDayHeader(group.date)}{' '}
-            <span className="worksheet-day-count">
-              {group.entries.length} {group.entries.length === 1 ? 'entry' : 'entries'}
-            </span>
+            <button type="button" className="worksheet-day-toggle" onClick={() => toggleDay(group.date)}>
+              <span className={`worksheet-day-caret${dayExpanded ? ' worksheet-day-caret-open' : ''}`}>▶</span>
+              {formatDayHeader(group.date)}{' '}
+              <span className="worksheet-day-count">
+                {group.entries.length} {group.entries.length === 1 ? 'entry' : 'entries'}
+                {dayItems.length > 0 && ` · ${dayItems.length} medication${dayItems.length === 1 ? '' : 's'}`}
+              </span>
+            </button>
           </h3>
+
+          {dayExpanded && (
+            <div className="day-med-panel">
+              <h4>Medications logged {formatDayHeader(group.date).toLowerCase()}</h4>
+              {dayItems.length === 0 ? (
+                <p className="visit-meta">No medications logged yet for this day.</p>
+              ) : (
+                <ul className="worksheet-entry-items">
+                  {dayItems.map((t) =>
+                    editingItemId === t.id ? (
+                      <li key={t.id} className="day-med-editing">
+                        <strong>{t.goods_services?.name}</strong>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Quantity"
+                          value={itemEditForm.quantity}
+                          onChange={(e) => setItemEditForm({ ...itemEditForm, quantity: e.target.value })}
+                        />
+                        <input
+                          placeholder="Instructions"
+                          value={itemEditForm.instructions}
+                          onChange={(e) => setItemEditForm({ ...itemEditForm, instructions: e.target.value })}
+                        />
+                        <button type="button" disabled={savingItemEdit} onClick={() => saveEditItem(t.id)}>
+                          {savingItemEdit ? 'Saving...' : 'Save'}
+                        </button>
+                        <button type="button" onClick={cancelEditItem}>
+                          Cancel
+                        </button>
+                      </li>
+                    ) : (
+                      <li key={t.id}>
+                        {t.goods_services?.name}
+                        {t.quantity > 1 ? ` ×${t.quantity}` : ''}
+                        {t.instructions && ` — ${t.instructions}`}
+                        {t.administration_method && ` (${ADMINISTRATION_METHOD_LABELS[t.administration_method]})`}
+                        <span className="visit-meta"> · {formatTime(t.created_at)}</span>
+                        <button type="button" onClick={() => startEditItem(t)}>
+                          Edit
+                        </button>
+                        <button type="button" onClick={() => deleteTreatmentItem(t.id)}>
+                          Remove
+                        </button>
+                      </li>
+                    )
+                  )}
+                </ul>
+              )}
+
+              <div className="day-med-add">
+                <CatalogPicker
+                  catalog={catalog}
+                  subcategories={subcategories}
+                  value={dayAddForm.goods_service_id}
+                  onChange={(value) => setDayAddForm({ ...dayAddForm, goods_service_id: value })}
+                  onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+                />
+                <input
+                  placeholder="Instructions (dosage, frequency, duration)"
+                  value={dayAddForm.instructions}
+                  onChange={(e) => setDayAddForm({ ...dayAddForm, instructions: e.target.value })}
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Quantity"
+                  value={dayAddForm.quantity}
+                  onChange={(e) => setDayAddForm({ ...dayAddForm, quantity: e.target.value })}
+                />
+                <button type="button" disabled={dayAddSubmitting} onClick={() => addDayMedication(group.entries)}>
+                  {dayAddSubmitting ? 'Adding...' : '+ Add Medication'}
+                </button>
+                <p className="visit-meta">Attaches to the most recent entry logged this day.</p>
+              </div>
+            </div>
+          )}
+
           {group.entries.map((n) => (
             <div key={n.id} className="visit-card">
               <div className="visit-header">
@@ -611,7 +753,8 @@ export default function HospitalizationDetailPage() {
             </div>
           ))}
         </div>
-      ))}
+        );
+      })}
       </div>
 
       <div className="split-aside">
