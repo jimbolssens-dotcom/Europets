@@ -8,18 +8,23 @@
 // the boxes look right, save.
 //
 // Photos: AttachmentSection's "Take Photo" button opens the phone camera
-// directly (capture="environment"). Case Photos (entity type
-// 'hospitalization') are always available at the top of the page. Photos
-// for the entry itself are staged locally (picked/taken but not uploaded)
-// while the entry is still a draft — a note doesn't exist as a row yet, so
-// there's nothing to attach to — then uploaded together with the note the
-// moment Save Entry is tapped, so photo + observation commit as one action
-// instead of a separate step after saving. A second AttachmentSection
-// still appears after saving too, for adding more afterward.
+// directly (capture="environment"). No case-level photo section here —
+// just the entry's own photos, staged locally (picked/taken but not
+// uploaded) while the entry is still a draft — a note doesn't exist as a
+// row yet, so there's nothing to attach to — then uploaded together with
+// the note the moment Save Entry is tapped, so photo + observation commit
+// as one action instead of a separate step after saving. A second
+// AttachmentSection still appears after saving too, for adding more
+// afterward.
 //
 // Author: defaults to whichever staff member is remembered on this phone
 // from My Schedule (app/mobile/schedule) if any, but stays a normal picker
 // so anyone using a shared device can pick themselves instead.
+//
+// The small ⚡ icon (upper right) jumps to this same admission's
+// simplified Quick Check-In (app/mobile/hospitalization/[id]/checkin) —
+// normally cleaner-only, but useful here too for anyone who just wants a
+// fast tile-tap update instead of filling in the full form.
 
 'use client';
 
@@ -176,6 +181,16 @@ export default function MobileHospitalizationPage() {
 
   return (
     <div className="mobile-page">
+      {admission && (
+        <a
+          href={`/mobile/hospitalization/${id}/checkin`}
+          className="mobile-quick-switch-btn"
+          title="Switch to simplified Quick Check-In"
+          aria-label="Switch to simplified Quick Check-In"
+        >
+          ⚡
+        </a>
+      )}
       <a href="/mobile/hospitalization" className="mobile-back">
         &larr; Hospitalization
       </a>
@@ -183,9 +198,6 @@ export default function MobileHospitalizationPage() {
         <>
           <h1>{admission.cages?.name || 'No cage'} — {admission.patients?.name}</h1>
           <p className="mobile-subtitle">{admission.clients?.full_name}</p>
-
-          <h2 className="mobile-section-header">Case Photos</h2>
-          <AttachmentSection entityType="hospitalization" entityId={id} />
 
           <p className="mobile-hint">
             Record an observation and it'll fill in Appetite, Weight, Temperature, Condition, and

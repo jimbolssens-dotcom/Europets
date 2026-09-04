@@ -2788,6 +2788,28 @@ form.card.admit-patient-form {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
+/* Jumps to this same admission's simplified Quick Check-In (see
+   app/mobile/hospitalization/[id]/page.js) — same corner-icon treatment
+   as .mobile-refresh-btn above, just an <a> instead of a <button>. */
+.mobile-quick-switch-btn {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  background: white;
+  border: 1px solid var(--pink-tint);
+  color: var(--pink-dark);
+  font-size: 1.2rem;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
 .mobile-home-logo {
   height: 48px;
   flex-shrink: 0;
