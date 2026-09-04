@@ -6,11 +6,13 @@
 // stay, one worksheet entry/treatment_items row per day) consolidates
 // into a single line with the quantities summed (5 tablets), instead of
 // one line per day it was given — see the grouping below. A medication
-// that was dispensed/SC/IM has its administration fee folded straight
-// into that consolidated line, once per day it was actually given (see
-// lib/invoicing.js), not shown as separate lines. If a non-void invoice
-// already exists for this admission, that one is returned instead — no
-// duplicates.
+// with an administration method has that fee folded straight into the
+// consolidated line rather than shown separately: SC/IM once per day it
+// was actually given (an injection is a real per-day event), dispensing
+// only once total no matter how many days the course ran (dispensing the
+// tablets happens once, not once per dose taken from that supply) — see
+// lib/invoicing.js. If a non-void invoice already exists for this
+// admission, that one is returned instead — no duplicates.
 
 import { supabase } from '@/lib/supabaseClient';
 import { recomputeInvoiceTotals, buildMedicationLineItems } from '@/lib/invoicing';
