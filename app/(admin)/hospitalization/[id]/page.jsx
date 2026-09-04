@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import CheckinSummary from '@/app/_components/CheckinSummary';
 import AudioRecorder from '@/app/_components/AudioRecorder';
+import { CHECKIN_CATEGORIES } from '@/lib/hospitalizationCheckin';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import CatalogPicker from '@/app/_components/CatalogPicker';
@@ -49,6 +50,9 @@ export default function HospitalizationDetailPage() {
   const [pendingItems, setPendingItems] = useState([]);
   const [pendingItemForm, setPendingItemForm] = useState(emptyPendingItem);
   const [submitting, setSubmitting] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editNoteForm, setEditNoteForm] = useState(null);
+  const [savingEditNote, setSavingEditNote] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [editingReason, setEditingReason] = useState(false);
   const [reasonDraft, setReasonDraft] = useState('');
@@ -198,6 +202,42 @@ export default function HospitalizationDetailPage() {
 
   async function deleteTreatmentItem(itemId) {
     await fetch(`/api/treatment-items/${itemId}`, { method: 'DELETE' });
+    loadNotes();
+  }
+
+  function startEditNote(n) {
+    setEditingNoteId(n.id);
+    setEditNoteForm({
+      note_date: n.note_date || todayISODate(),
+      appetite: n.appetite || '',
+      drinking: n.drinking || '',
+      stool: n.stool || '',
+      urine: n.urine || '',
+      vomit: n.vomit || '',
+      mood: n.mood || '',
+      temperature_feel: n.temperature_feel || '',
+      temperature_c: n.temperature_c ?? '',
+      weight_kg: n.weight_kg ?? '',
+      condition: n.condition || '',
+      notes: n.notes || '',
+    });
+  }
+
+  function cancelEditNote() {
+    setEditingNoteId(null);
+    setEditNoteForm(null);
+  }
+
+  async function saveEditNote(noteId) {
+    setSavingEditNote(true);
+    await fetch(`/api/hospitalizations/${id}/notes/${noteId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editNoteForm),
+    });
+    setSavingEditNote(false);
+    setEditingNoteId(null);
+    setEditNoteForm(null);
     loadNotes();
   }
 
@@ -444,45 +484,116 @@ export default function HospitalizationDetailPage() {
                 <strong>{formatTime(n.created_at)}</strong>
                 <span>{n.staff?.full_name || 'unassigned'}</span>
               </div>
-              <p>
-                {n.appetite && (
-                  <>
-                    <strong>Appetite:</strong> {n.appetite}{' '}
-                  </>
-                )}
-                {n.weight_kg != null && (
-                  <>
-                    · <strong>Weight:</strong> {n.weight_kg}kg{' '}
-                  </>
-                )}
-                {n.temperature_c != null && (
-                  <>
-                    · <strong>Temp:</strong> {n.temperature_c}°C{' '}
-                  </>
-                )}
-              </p>
-              <CheckinSummary note={n} />
-              {n.condition && (
-                <p>
-                  <strong>Condition:</strong> {n.condition}
-                </p>
-              )}
-              {n.notes && <p>{n.notes}</p>}
-              {n.treatment_items?.length > 0 && (
-                <ul className="worksheet-entry-items">
-                  {n.treatment_items.map((t) => (
-                    <li key={t.id}>
-                      {t.goods_services?.name}
-                      {t.quantity > 1 ? ` ×${t.quantity}` : ''}
-                      {t.instructions && ` — ${t.instructions}`}
-                      <button type="button" onClick={() => deleteTreatmentItem(t.id)}>
-                        Remove
-                      </button>
-                    </li>
+              {editingNoteId === n.id ? (
+                <div className="worksheet-entry-edit">
+                  <input
+                    type="date"
+                    value={editNoteForm.note_date}
+                    onChange={(e) => setEditNoteForm({ ...editNoteForm, note_date: e.target.value })}
+                  />
+                  <select
+                    value={editNoteForm.appetite}
+                    onChange={(e) => setEditNoteForm({ ...editNoteForm, appetite: e.target.value })}
+                  >
+                    <option value="">Appetite...</option>
+                    <option value="good">Good</option>
+                    <option value="reduced">Reduced</option>
+                    <option value="none">None</option>
+                  </select>
+                  {CHECKIN_CATEGORIES.filter((c) => c.key !== 'appetite').map((category) => (
+                    <select
+                      key={category.key}
+                      value={editNoteForm[category.key]}
+                      onChange={(e) => setEditNoteForm({ ...editNoteForm, [category.key]: e.target.value })}
+                    >
+                      <option value="">{category.label}...</option>
+                      {category.options.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.icon} {o.label}
+                        </option>
+                      ))}
+                    </select>
                   ))}
-                </ul>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Weight (kg)"
+                    value={editNoteForm.weight_kg}
+                    onChange={(e) => setEditNoteForm({ ...editNoteForm, weight_kg: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="Temperature (°C)"
+                    value={editNoteForm.temperature_c}
+                    onChange={(e) => setEditNoteForm({ ...editNoteForm, temperature_c: e.target.value })}
+                  />
+                  <input
+                    placeholder="General condition"
+                    value={editNoteForm.condition}
+                    onChange={(e) => setEditNoteForm({ ...editNoteForm, condition: e.target.value })}
+                  />
+                  <textarea
+                    rows={2}
+                    placeholder="Notes"
+                    value={editNoteForm.notes}
+                    onChange={(e) => setEditNoteForm({ ...editNoteForm, notes: e.target.value })}
+                  />
+                  <div className="worksheet-entry-edit-actions">
+                    <button type="button" disabled={savingEditNote} onClick={() => saveEditNote(n.id)}>
+                      {savingEditNote ? 'Saving...' : 'Save'}
+                    </button>
+                    <button type="button" onClick={cancelEditNote}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p>
+                    {n.appetite && (
+                      <>
+                        <strong>Appetite:</strong> {n.appetite}{' '}
+                      </>
+                    )}
+                    {n.weight_kg != null && (
+                      <>
+                        · <strong>Weight:</strong> {n.weight_kg}kg{' '}
+                      </>
+                    )}
+                    {n.temperature_c != null && (
+                      <>
+                        · <strong>Temp:</strong> {n.temperature_c}°C{' '}
+                      </>
+                    )}
+                  </p>
+                  <CheckinSummary note={n} />
+                  {n.condition && (
+                    <p>
+                      <strong>Condition:</strong> {n.condition}
+                    </p>
+                  )}
+                  {n.notes && <p>{n.notes}</p>}
+                  {n.treatment_items?.length > 0 && (
+                    <ul className="worksheet-entry-items">
+                      {n.treatment_items.map((t) => (
+                        <li key={t.id}>
+                          {t.goods_services?.name}
+                          {t.quantity > 1 ? ` ×${t.quantity}` : ''}
+                          {t.instructions && ` — ${t.instructions}`}
+                          <button type="button" onClick={() => deleteTreatmentItem(t.id)}>
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <button type="button" className="reason-edit-btn" onClick={() => startEditNote(n)}>
+                    Edit
+                  </button>
+                  <AttachmentSection entityType="hospitalization_note" entityId={n.id} />
+                </>
               )}
-              <AttachmentSection entityType="hospitalization_note" entityId={n.id} />
             </div>
           ))}
         </div>

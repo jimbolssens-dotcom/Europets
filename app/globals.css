@@ -1329,6 +1329,23 @@ button.secondary:hover {
   margin-bottom: 0.75rem;
 }
 
+/* Inline "Edit" form for an existing worksheet entry (staff hospitalization
+   detail page) — covers both a vet's full-form fields and a cleaner's Quick
+   Check-In fields, since either kind of entry can be edited the same way. */
+.worksheet-entry-edit {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.4rem 0;
+  padding: 0.6rem 0.75rem;
+  background: var(--pink-tint);
+  border-radius: 6px;
+}
+
+.worksheet-entry-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 /* A worksheet entry's Quick Check-In fields (see CheckinSummary.jsx and
    lib/hospitalizationCheckin.js), shown on both the staff worksheet and
    the client portal — small icon+label chips, one per category that was

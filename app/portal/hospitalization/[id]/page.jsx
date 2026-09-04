@@ -11,8 +11,8 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
-import CheckinSummary from '@/app/_components/CheckinSummary';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
+import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 
 // Belt-and-suspenders alongside the Cache-Control header in next.config.js:
 // this is a "live" page reloaded from the same shared link repeatedly, so
@@ -128,18 +128,21 @@ export default function HospitalizationPortalPage() {
                   {formatTime(n.created_at)}
                   {n.staff?.full_name && <span className="portal-note-author"> · {n.staff.full_name}</span>}
                 </div>
-                {(n.appetite || n.temperature_c != null || n.weight_kg != null) && (
-                  <p>
-                    {[
-                      n.appetite ? `Appetite: ${n.appetite}` : null,
-                      n.temperature_c != null ? `Temp: ${n.temperature_c}°C` : null,
-                      n.weight_kg != null ? `Weight: ${n.weight_kg} kg` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </p>
+                {hasCheckinData(n) ? (
+                  <p>{buildEmpathicCheckinText(n, admission.patients?.name)}</p>
+                ) : (
+                  (n.appetite || n.temperature_c != null || n.weight_kg != null) && (
+                    <p>
+                      {[
+                        n.appetite ? `Appetite: ${n.appetite}` : null,
+                        n.temperature_c != null ? `Temp: ${n.temperature_c}°C` : null,
+                        n.weight_kg != null ? `Weight: ${n.weight_kg} kg` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                  )
                 )}
-                <CheckinSummary note={n} />
                 {n.condition && (
                   <p>
                     <strong>Condition:</strong> {n.condition}
