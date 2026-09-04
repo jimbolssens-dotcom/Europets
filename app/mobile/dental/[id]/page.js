@@ -1,10 +1,11 @@
 // app/mobile/dental/[id]/page.js
 // Record a dental report from a phone: the same interactive dental chart
-// desktop uses (tap a tooth to mark extracted/missing), dictation
-// (auto-starts — this page is only ever reached right after creating a
-// blank report via the picker, same as desktop's "Dictate New Dental
-// Report"), and photos. Nothing to type by hand; review/edit the fuller
-// record on the desktop consult page afterward.
+// desktop uses (tap a tooth to mark extracted/missing), dictation (tap
+// Start Recording when ready — this page is reached right after creating
+// a blank report via the picker, same as desktop's "Dictate New Dental
+// Report", but doesn't start listening on its own), and photos. Nothing
+// to type by hand; review/edit the fuller record on the desktop consult
+// page afterward.
 
 'use client';
 
@@ -62,10 +63,10 @@ export default function MobileDentalReportPage() {
           </p>
 
           <p className="mobile-hint">
-            Recording fills in the report directly — nothing to type. Tap a tooth below to mark it
-            extracted or missing.
+            Tap Start Recording when you're ready to dictate — it fills in the report directly,
+            nothing to type. Tap a tooth below to mark it extracted or missing.
           </p>
-          <AudioRecorder entityType="dental_report" entityId={id} autoStart />
+          <AudioRecorder entityType="dental_report" entityId={id} />
 
           <h2 className="mobile-section-header">Dental Chart</h2>
           <DentalChart

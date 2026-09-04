@@ -1,9 +1,10 @@
 // app/mobile/surgery/[id]/page.js
-// Record a surgical report from a phone: dictation (auto-starts — this
-// page is only ever reached right after creating a blank report via the
-// picker, same as desktop's "Dictate New Surgical Report") plus photos.
-// Nothing to type by hand; review/edit the fuller record on the desktop
-// consult page afterward.
+// Record a surgical report from a phone: dictation (tap Start Recording
+// when ready — this page is reached right after creating a blank report
+// via the picker, same as desktop's "Dictate New Surgical Report", but
+// doesn't start listening on its own) plus photos. Nothing to type by
+// hand; review/edit the fuller record on the desktop consult page
+// afterward.
 
 'use client';
 
@@ -38,8 +39,11 @@ export default function MobileSurgicalReportPage() {
             {client?.full_name} · {patient?.species}
           </p>
 
-          <p className="mobile-hint">Recording fills in the report directly — nothing to type.</p>
-          <AudioRecorder entityType="surgical_report" entityId={id} autoStart />
+          <p className="mobile-hint">
+            Tap Start Recording when you're ready to dictate — it fills in the report directly,
+            nothing to type.
+          </p>
+          <AudioRecorder entityType="surgical_report" entityId={id} />
 
           <h2 className="mobile-section-header">Photos</h2>
           <AttachmentSection entityType="surgical_report" entityId={id} />
