@@ -14,13 +14,15 @@ export default function MobileCleanerTabs({ active }) {
         href="/mobile/hospitalization"
         className={`mobile-cleaner-tab${active === 'hospital' ? ' mobile-cleaner-tab-active' : ''}`}
       >
-        🏥 Hospital
+        <span className="mobile-cleaner-tab-icon">🏥</span>
+        <span>Hospital</span>
       </a>
       <a
         href="/mobile/schedule"
         className={`mobile-cleaner-tab${active === 'roster' ? ' mobile-cleaner-tab-active' : ''}`}
       >
-        📅 Staff Roster
+        <span className="mobile-cleaner-tab-icon">📅</span>
+        <span>Staff Roster</span>
       </a>
     </nav>
   );
