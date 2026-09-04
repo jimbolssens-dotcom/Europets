@@ -11,7 +11,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { buildStaffColorMap } from '@/lib/staffColors';
+import { buildStaffColorMap, ROLE_SECTION_TINTS } from '@/lib/staffColors';
 
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const SHIFTS = ['morning', 'afternoon'];
@@ -348,9 +348,13 @@ export default function StaffRosterPage() {
                 <tbody>
                   {sortedStaff.map((s) => {
                     const color = staffColor[s.id];
+                    const roleTint = ROLE_SECTION_TINTS[s.role] || 'transparent';
                     return (
-                      <tr key={s.id}>
-                        <td className="roster-staff-col" style={{ borderLeft: `4px solid ${color.fg}` }}>
+                      <tr key={s.id} style={{ background: roleTint }}>
+                        <td
+                          className="roster-staff-col"
+                          style={{ borderLeft: `4px solid ${color.fg}`, background: roleTint }}
+                        >
                           <span className="staff-color-swatch" style={{ background: color.fg }} />{' '}
                           {s.full_name} <span className="visit-meta">({s.role})</span>
                         </td>
