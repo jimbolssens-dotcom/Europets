@@ -67,6 +67,7 @@ export default function MobileHospitalizationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [savedNoteId, setSavedNoteId] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
   const stagedCameraInputRef = useRef(null);
   const stagedFileInputRef = useRef(null);
 
@@ -150,6 +151,7 @@ export default function MobileHospitalizationPage() {
   async function saveEntry(e) {
     e.preventDefault();
     setSubmitting(true);
+    setUploadError(null);
     const res = await fetch(`/api/hospitalizations/${id}/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -158,16 +160,27 @@ export default function MobileHospitalizationPage() {
     const data = await res.json();
 
     if (res.ok && stagedPhotos.length > 0) {
-      await Promise.all(
+      // allSettled, not all — a failed upload must not be swallowed
+      // (silently losing a photo staff believe they already attached is
+      // worse than a visible error asking them to re-add it below).
+      const results = await Promise.allSettled(
         stagedPhotos.map(({ file }) =>
           uploadAttachment({
             entityType: 'hospitalization_note',
             entityId: data.id,
             file,
             uploadedBy: form.author_id || null,
-          }).catch(() => {})
+          })
         )
       );
+      const failedCount = results.filter((r) => r.status === 'rejected').length;
+      if (failedCount > 0) {
+        setUploadError(
+          `Entry saved, but ${failedCount} photo${failedCount === 1 ? '' : 's'} failed to upload — add ${
+            failedCount === 1 ? 'it' : 'them'
+          } again below.`
+        );
+      }
       stagedPhotos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       setStagedPhotos([]);
     }
@@ -209,6 +222,7 @@ export default function MobileHospitalizationPage() {
           {saved && savedNoteId && (
             <div className="mobile-worksheet-form">
               <p className="mobile-saved">Entry saved.</p>
+              {uploadError && <p className="error">{uploadError}</p>}
               <h2 className="mobile-section-header">Add more photos to that entry</h2>
               <AttachmentSection entityType="hospitalization_note" entityId={savedNoteId} />
             </div>

@@ -39,6 +39,7 @@ export default function MobileHospitalizationCheckinPage() {
   const [stagedPhotos, setStagedPhotos] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
   const cameraInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -73,6 +74,7 @@ export default function MobileHospitalizationCheckinPage() {
 
   async function saveCheckin() {
     setSubmitting(true);
+    setUploadError(null);
     const res = await fetch(`/api/hospitalizations/${id}/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -85,25 +87,40 @@ export default function MobileHospitalizationCheckinPage() {
     });
     const data = await res.json().catch(() => null);
 
+    let failedPhotos = [];
     if (res.ok && data?.id && stagedPhotos.length > 0) {
-      await Promise.all(
+      // allSettled, not all — a failed upload must not be swallowed
+      // (silently losing a photo staff believe they already attached is
+      // worse than a visible error). Failed ones stay staged so tapping
+      // Save Check-In again retries them.
+      const results = await Promise.allSettled(
         stagedPhotos.map(({ file }) =>
           uploadAttachment({
             entityType: 'hospitalization_note',
             entityId: data.id,
             file,
             uploadedBy: authorId || null,
-          }).catch(() => {})
+          })
         )
       );
-      stagedPhotos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      failedPhotos = stagedPhotos.filter((_, i) => results[i].status === 'rejected');
+      stagedPhotos
+        .filter((_, i) => results[i].status === 'fulfilled')
+        .forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      if (failedPhotos.length > 0) {
+        setUploadError(
+          `Check-in logged, but ${failedPhotos.length} photo${
+            failedPhotos.length === 1 ? '' : 's'
+          } failed to upload — tap Save Check-In again to retry.`
+        );
+      }
     }
 
     setSubmitting(false);
     setSaved(true);
     setSelection(emptySelection);
     setTemperatureC('');
-    setStagedPhotos([]);
+    setStagedPhotos(failedPhotos);
   }
 
   return (
@@ -118,6 +135,7 @@ export default function MobileHospitalizationCheckinPage() {
           <p className="mobile-subtitle">{admission.clients?.full_name}</p>
 
           {saved && <p className="mobile-saved">✅ Check-in logged.</p>}
+          {uploadError && <p className="error">{uploadError}</p>}
 
           {CHECKIN_CATEGORIES.map((category) => (
             <div key={category.key} className="checkin-section">
