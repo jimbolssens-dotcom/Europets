@@ -628,34 +628,49 @@ export default function HospitalizationDetailPage() {
               </div>
               {editingNoteId === n.id ? (
                 <div className="worksheet-entry-edit">
-                  <input
-                    type="date"
-                    value={editNoteForm.note_date}
-                    onChange={(e) => setEditNoteForm({ ...editNoteForm, note_date: e.target.value })}
-                  />
-                  <select
-                    value={editNoteForm.appetite}
-                    onChange={(e) => setEditNoteForm({ ...editNoteForm, appetite: e.target.value })}
-                  >
-                    <option value="">Appetite...</option>
-                    <option value="good">Good</option>
-                    <option value="reduced">Reduced</option>
-                    <option value="none">None</option>
-                  </select>
-                  {CHECKIN_CATEGORIES.filter((c) => c.key !== 'appetite').map((category) => (
+                  <label className="worksheet-entry-edit-field">
+                    Date
+                    <input
+                      type="date"
+                      value={editNoteForm.note_date}
+                      onChange={(e) => setEditNoteForm({ ...editNoteForm, note_date: e.target.value })}
+                    />
+                  </label>
+                  <label className="worksheet-entry-edit-field">
+                    Appetite
                     <select
-                      key={category.key}
-                      value={editNoteForm[category.key]}
-                      onChange={(e) => setEditNoteForm({ ...editNoteForm, [category.key]: e.target.value })}
+                      value={editNoteForm.appetite}
+                      onChange={(e) => setEditNoteForm({ ...editNoteForm, appetite: e.target.value })}
                     >
-                      <option value="">{category.label}...</option>
-                      {category.options.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.icon} {o.label}
-                        </option>
-                      ))}
+                      <option value="">Appetite...</option>
+                      <option value="good">Good</option>
+                      <option value="reduced">Reduced</option>
+                      <option value="none">None</option>
                     </select>
-                  ))}
+                  </label>
+
+                  {/* The tile-based check-in fields (drinking/stool/urine/vomit/mood/
+                      temperature feel/medication/force-feeding) only apply to a
+                      cleaner's Quick Check-In entry — a vet's own worksheet entry
+                      never had them to begin with, so they're hidden rather than
+                      showing 8 empty, irrelevant dropdowns on every edit. */}
+                  {hasCheckinData(n) &&
+                    CHECKIN_CATEGORIES.filter((c) => c.key !== 'appetite').map((category) => (
+                      <label key={category.key} className="worksheet-entry-edit-field">
+                        {category.label}
+                        <select
+                          value={editNoteForm[category.key]}
+                          onChange={(e) => setEditNoteForm({ ...editNoteForm, [category.key]: e.target.value })}
+                        >
+                          <option value="">{category.label}...</option>
+                          {category.options.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.icon} {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
                   {hasCheckinData(n) && (
                     <label className="client-summary-edit-label">
                       What the owner sees on the portal
@@ -666,31 +681,85 @@ export default function HospitalizationDetailPage() {
                       />
                     </label>
                   )}
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="Weight (kg)"
-                    value={editNoteForm.weight_kg}
-                    onChange={(e) => setEditNoteForm({ ...editNoteForm, weight_kg: e.target.value })}
-                  />
-                  <input
-                    type="number"
-                    step="0.1"
-                    placeholder="Temperature (°C)"
-                    value={editNoteForm.temperature_c}
-                    onChange={(e) => setEditNoteForm({ ...editNoteForm, temperature_c: e.target.value })}
-                  />
-                  <input
-                    placeholder="General condition"
-                    value={editNoteForm.condition}
-                    onChange={(e) => setEditNoteForm({ ...editNoteForm, condition: e.target.value })}
-                  />
-                  <textarea
-                    rows={2}
-                    placeholder="Notes"
-                    value={editNoteForm.notes}
-                    onChange={(e) => setEditNoteForm({ ...editNoteForm, notes: e.target.value })}
-                  />
+                  <label className="worksheet-entry-edit-field">
+                    Weight (kg)
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editNoteForm.weight_kg}
+                      onChange={(e) => setEditNoteForm({ ...editNoteForm, weight_kg: e.target.value })}
+                    />
+                  </label>
+                  <label className="worksheet-entry-edit-field">
+                    Temperature (°C)
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={editNoteForm.temperature_c}
+                      onChange={(e) => setEditNoteForm({ ...editNoteForm, temperature_c: e.target.value })}
+                    />
+                  </label>
+                  <label className="worksheet-entry-edit-field">
+                    General condition
+                    <input
+                      value={editNoteForm.condition}
+                      onChange={(e) => setEditNoteForm({ ...editNoteForm, condition: e.target.value })}
+                    />
+                  </label>
+                  <label className="worksheet-entry-edit-field">
+                    Notes
+                    <textarea
+                      rows={2}
+                      value={editNoteForm.notes}
+                      onChange={(e) => setEditNoteForm({ ...editNoteForm, notes: e.target.value })}
+                    />
+                  </label>
+
+                  {n.treatment_items?.length > 0 && (
+                    <div className="worksheet-entry-edit-field">
+                      Medications
+                      <ul className="worksheet-entry-items">
+                        {n.treatment_items.map((t) =>
+                          editingItemId === t.id ? (
+                            <li key={t.id} className="day-med-editing">
+                              <strong>{t.goods_services?.name}</strong>
+                              <input
+                                type="number"
+                                step="0.01"
+                                placeholder="Quantity"
+                                value={itemEditForm.quantity}
+                                onChange={(e) => setItemEditForm({ ...itemEditForm, quantity: e.target.value })}
+                              />
+                              <input
+                                placeholder="Instructions"
+                                value={itemEditForm.instructions}
+                                onChange={(e) => setItemEditForm({ ...itemEditForm, instructions: e.target.value })}
+                              />
+                              <button type="button" disabled={savingItemEdit} onClick={() => saveEditItem(t.id)}>
+                                {savingItemEdit ? 'Saving...' : 'Save'}
+                              </button>
+                              <button type="button" onClick={cancelEditItem}>
+                                Cancel
+                              </button>
+                            </li>
+                          ) : (
+                            <li key={t.id}>
+                              {t.goods_services?.name}
+                              {t.quantity > 1 ? ` ×${t.quantity}` : ''}
+                              {t.instructions && ` — ${t.instructions}`}
+                              <button type="button" onClick={() => startEditItem(t)}>
+                                Edit
+                              </button>
+                              <button type="button" onClick={() => deleteTreatmentItem(t.id)}>
+                                Remove
+                              </button>
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
                   <div className="worksheet-entry-edit-actions">
                     <button type="button" disabled={savingEditNote} onClick={() => saveEditNote(n.id)}>
                       {savingEditNote ? 'Saving...' : 'Save'}

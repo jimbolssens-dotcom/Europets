@@ -1421,6 +1421,29 @@ button.secondary:hover {
   gap: 0.5rem;
 }
 
+/* Every field in the edit form gets its own visible label (date, weight,
+   condition, notes, medications, ...) instead of relying on a bare
+   placeholder — a placeholder disappears the moment there's a value,
+   which made an already-filled-in field look uneditable/inert next to
+   the empty check-in dropdowns. */
+.worksheet-entry-edit-field {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.worksheet-entry-edit-field input,
+.worksheet-entry-edit-field select,
+.worksheet-entry-edit-field textarea {
+  font-weight: 400;
+}
+
+.worksheet-entry-edit-field .worksheet-entry-items {
+  margin-top: 0.3rem;
+}
+
 /* A Quick Check-In entry's client-facing text (see
    lib/hospitalizationCheckin.js: buildEmpathicCheckinText and
    hospitalization_notes.client_summary) — shown on the staff worksheet
