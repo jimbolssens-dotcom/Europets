@@ -6,8 +6,9 @@
 // Tapping a selected tile again deselects it. Saves as a normal
 // hospitalization_notes row via the same POST route the full worksheet
 // form uses — it shows up the same way in the staff worksheet and the
-// client portal (see app/_components/CheckinSummary.jsx), and clears any
-// pending "Request an Update" flag exactly like any other entry does.
+// client portal (see lib/hospitalizationCheckin.js: buildEmpathicCheckinText),
+// and clears any pending "Request an Update" flag exactly like any other
+// entry does.
 //
 // Reached only from the cage layout when the current phone is a cleaner
 // (see app/mobile/hospitalization/page.js) — anyone else's tap on an

@@ -129,7 +129,7 @@ export default function HospitalizationPortalPage() {
                   {n.staff?.full_name && <span className="portal-note-author"> · {n.staff.full_name}</span>}
                 </div>
                 {hasCheckinData(n) ? (
-                  <p>{buildEmpathicCheckinText(n, admission.patients?.name)}</p>
+                  <p>{n.client_summary || buildEmpathicCheckinText(n, admission.patients?.name)}</p>
                 ) : (
                   (n.appetite || n.temperature_c != null || n.weight_kg != null) && (
                     <p>

@@ -12,9 +12,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
-import CheckinSummary from '@/app/_components/CheckinSummary';
 import AudioRecorder from '@/app/_components/AudioRecorder';
-import { CHECKIN_CATEGORIES } from '@/lib/hospitalizationCheckin';
+import { CHECKIN_CATEGORIES, hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import CatalogPicker from '@/app/_components/CatalogPicker';
@@ -220,6 +219,7 @@ export default function HospitalizationDetailPage() {
       weight_kg: n.weight_kg ?? '',
       condition: n.condition || '',
       notes: n.notes || '',
+      client_summary: n.client_summary ?? (hasCheckinData(n) ? buildEmpathicCheckinText(n, admission?.patients?.name) : ''),
     });
   }
 
@@ -514,6 +514,16 @@ export default function HospitalizationDetailPage() {
                       ))}
                     </select>
                   ))}
+                  {hasCheckinData(n) && (
+                    <label className="client-summary-edit-label">
+                      What the owner sees on the portal
+                      <textarea
+                        rows={3}
+                        value={editNoteForm.client_summary}
+                        onChange={(e) => setEditNoteForm({ ...editNoteForm, client_summary: e.target.value })}
+                      />
+                    </label>
+                  )}
                   <input
                     type="number"
                     step="0.01"
@@ -567,7 +577,11 @@ export default function HospitalizationDetailPage() {
                       </>
                     )}
                   </p>
-                  <CheckinSummary note={n} />
+                  {hasCheckinData(n) && (
+                    <p className="client-summary-view">
+                      {n.client_summary || buildEmpathicCheckinText(n, admission?.patients?.name)}
+                    </p>
+                  )}
                   {n.condition && (
                     <p>
                       <strong>Condition:</strong> {n.condition}

@@ -20,6 +20,7 @@ const EDITABLE_FIELDS = [
   'temperature_feel',
   'medication_given',
   'force_feeding_done',
+  'client_summary',
 ];
 const EDITABLE_NUMBER_FIELDS = ['temperature_c', 'weight_kg'];
 

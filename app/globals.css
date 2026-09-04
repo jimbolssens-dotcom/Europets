@@ -1346,27 +1346,30 @@ button.secondary:hover {
   gap: 0.5rem;
 }
 
-/* A worksheet entry's Quick Check-In fields (see CheckinSummary.jsx and
-   lib/hospitalizationCheckin.js), shown on both the staff worksheet and
-   the client portal — small icon+label chips, one per category that was
-   actually set. */
-.checkin-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin: 0.4rem 0;
-}
-
-.checkin-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
+/* A Quick Check-In entry's client-facing text (see
+   lib/hospitalizationCheckin.js: buildEmpathicCheckinText and
+   hospitalization_notes.client_summary) — shown on the staff worksheet
+   exactly as the owner sees it on the portal, instead of icon chips, so
+   staff can catch and correct the wording before it's ever shared. */
+.client-summary-view {
   background: var(--pink-tint);
   color: var(--pink-dark);
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.client-summary-edit-label {
+  display: grid;
+  gap: 0.3rem;
   font-size: 0.78rem;
   font-weight: 600;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
+  color: var(--ink);
+}
+
+.client-summary-edit-label textarea {
+  font-style: italic;
 }
 
 .worksheet-entry-items {

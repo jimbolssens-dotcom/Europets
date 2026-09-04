@@ -10,6 +10,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
+import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 
 // See app/api/hospitalizations/[id]/route.js — same caching gotcha, and
 // this is the route the client portal's Temp/Weight/Appetite fields
@@ -68,6 +69,17 @@ export async function POST(request, { params }) {
     force_feeding_done,
   } = body;
 
+  const checkinFields = { stool, urine, vomit, drinking, mood, temperature_feel, medication_given, force_feeding_done, appetite, temperature_c };
+  let clientSummary = null;
+  if (hasCheckinData(checkinFields)) {
+    const { data: hosp } = await supabase
+      .from('hospitalizations')
+      .select('patients(name)')
+      .eq('id', params.id)
+      .single();
+    clientSummary = buildEmpathicCheckinText(checkinFields, hosp?.patients?.name);
+  }
+
   const { data: note, error } = await supabase
     .from('hospitalization_notes')
     .insert([
@@ -90,6 +102,11 @@ export async function POST(request, { params }) {
         temperature_feel: temperature_feel || null,
         medication_given: medication_given || null,
         force_feeding_done: force_feeding_done || null,
+        // Prose version of the fields above, shown to the owner on the
+        // portal — generated once here, then staff-editable on the
+        // worksheet (app/(admin)/hospitalization/[id]) independently of
+        // the structured fields, so an edit always sticks.
+        client_summary: clientSummary,
       },
     ])
     .select('*, staff(full_name)')

@@ -389,6 +389,8 @@ create table hospitalization_notes (
     temperature_feel text,           -- 'normal', 'warm', 'cold'
     medication_given text,           -- 'given' (single toggle, not a scale)
     force_feeding_done text,         -- 'done' (single toggle, not a scale)
+    client_summary text,             -- editable prose shown to owners for a check-in entry;
+                                      -- generated once at creation, staff-editable afterward
     created_at timestamptz default now(),
     updated_at timestamptz default now()   -- bumped on every edit, so multiple touches in a day are visible
 );
