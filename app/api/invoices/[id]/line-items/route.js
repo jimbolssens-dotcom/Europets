@@ -61,6 +61,7 @@ export async function POST(request, { params }) {
     quantity: qty,
     unit_price,
     line_total,
+    administration_method: item.administration_method || null,
   };
 
   if (item.administration_method) {

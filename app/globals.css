@@ -3540,3 +3540,38 @@ form.card.admit-patient-form {
   background: #ffffff;
 }
 
+/* Invoice detail page's dispensing-labels section (see
+   app/(admin)/invoices/[id]/page.jsx) — one row per medication line item,
+   its own editable label instructions and its own independent Print
+   Label button, so each prints (or doesn't) on its own. */
+.dispensing-labels {
+  max-width: 640px;
+}
+
+.dispensing-labels-list {
+  list-style: none;
+  margin: 0.75rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.dispensing-label-row {
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.dispensing-label-row textarea {
+  width: 100%;
+  min-height: 3rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.dispensing-label-row button {
+  justify-self: start;
+}
+

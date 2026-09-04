@@ -1,4 +1,8 @@
 // app/api/invoices/[id]/line-items/[itemId]/route.js
+// PATCH /api/invoices/:id/line-items/:itemId  { instructions }
+//   -> edit a line item's dispensing instructions (reviewed/corrected on
+//      the invoice detail page's dispensing-label form before printing —
+//      see migrations/049). Doesn't touch price/quantity/description.
 // DELETE /api/invoices/:id/line-items/:itemId  -> remove a line item, recomputing totals
 //
 // Blocked if it would drop the invoice's total below what's already been
@@ -10,6 +14,29 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 import { recomputeInvoiceTotals, VAT_RATE } from '@/lib/invoicing';
+
+export async function PATCH(request, { params }) {
+  const body = await request.json();
+  if (body.instructions === undefined) {
+    return NextResponse.json({ error: 'instructions is required' }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from('invoice_line_items')
+    .update({ instructions: body.instructions === '' ? null : body.instructions })
+    .eq('id', params.itemId)
+    .eq('invoice_id', params.id)
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (!data) {
+    return NextResponse.json({ error: 'line item not found' }, { status: 404 });
+  }
+  return NextResponse.json(data);
+}
 
 export async function DELETE(request, { params }) {
   const [{ data: invoice, error: invoiceError }, { data: item, error: itemError }] = await Promise.all([

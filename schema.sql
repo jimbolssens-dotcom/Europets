@@ -560,7 +560,15 @@ create table invoice_line_items (
     description text,
     quantity numeric(10,2) not null default 1,   -- e.g. kg of bodyweight for per_kg items
     unit_price numeric(10,2) not null,
-    line_total numeric(10,2) not null            -- pre-VAT
+    line_total numeric(10,2) not null,           -- pre-VAT
+    -- Same instructions already folded into `description`'s free text, kept
+    -- separately (and editable) so the dispensing label feature can print
+    -- them without re-parsing that string. administration_method mirrors
+    -- the originating treatment_item's, so the label form can default to
+    -- selecting only medications actually dispensed to go home (see
+    -- migration 049).
+    instructions text,
+    administration_method text check (administration_method in ('dispense', 'sc', 'im'))
 );
 
 -- A log of every individual payment received against an invoice — lets a

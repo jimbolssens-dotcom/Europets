@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
+import { printPdfUrl } from '@/lib/printPdf';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -35,6 +36,9 @@ export default function InvoiceDetailPage() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [addCategory, setAddCategory] = useState('product');
+  const [dispenseInstructions, setDispenseInstructions] = useState({}); // line item id -> text override
+  const [printingLabelId, setPrintingLabelId] = useState(null); // line item id currently printing, or null
+  const [labelsError, setLabelsError] = useState(null);
 
   const loadInvoice = () =>
     fetch(`/api/invoices/${id}`)
@@ -116,6 +120,36 @@ export default function InvoiceDetailPage() {
     loadInvoice();
   }
 
+  // Dispensing labels: each medication line item prints independently —
+  // nothing goes to the printer unless its own button is clicked. Saves
+  // that item's (possibly edited) instructions back to it first (see
+  // app/api/invoices/[id]/line-items/[itemId]), so what prints always
+  // matches what was reviewed on screen, then prints its one-page label
+  // (see app/api/invoices/[id]/dispensing-labels-pdf).
+  async function printLabel(li) {
+    setLabelsError(null);
+    setPrintingLabelId(li.id);
+    try {
+      const currentText = dispenseInstructions[li.id] ?? li.instructions ?? '';
+      if (currentText !== (li.instructions || '')) {
+        const res = await fetch(`/api/invoices/${id}/line-items/${li.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ instructions: currentText }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to save instructions');
+        }
+      }
+      printPdfUrl(`/api/invoices/${id}/dispensing-labels-pdf?item_ids=${li.id}&t=${Date.now()}`);
+    } catch (err) {
+      setLabelsError(err.message);
+    } finally {
+      setPrintingLabelId(null);
+    }
+  }
+
   function downloadTaxInvoice() {
     // A cache-busting query param, on top of the route's own no-store
     // headers, so a browser/download manager can never reuse a previous
@@ -131,6 +165,7 @@ export default function InvoiceDetailPage() {
   const lineItemGroups = groupLineItemsByCategory(invoice.line_items);
   const editable = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
   const columnCount = editable ? 5 : 4;
+  const medicationLineItems = invoice.line_items.filter((li) => li.goods_services?.main_category === 'product');
 
   return (
     <div>
@@ -230,6 +265,36 @@ export default function InvoiceDetailPage() {
             </button>
           </div>
         </form>
+      )}
+
+      {medicationLineItems.length > 0 && (
+        <div className="card dispensing-labels">
+          <h3>Dispensing Labels</h3>
+          <p className="visit-meta">
+            Review/edit each medication&apos;s instructions, then print just that one — nothing goes
+            to the printer until you click its button. Labels are sized for the Brother QL-800 (62mm
+            continuous tape).
+          </p>
+          {labelsError && <p className="error">{labelsError}</p>}
+          <ul className="dispensing-labels-list">
+            {medicationLineItems.map((li) => {
+              const instructionsValue = dispenseInstructions[li.id] ?? li.instructions ?? '';
+              return (
+                <li key={li.id} className="dispensing-label-row">
+                  <strong>{li.goods_services?.name || li.description}</strong>
+                  <textarea
+                    placeholder="Dispensing instructions for the label"
+                    value={instructionsValue}
+                    onChange={(e) => setDispenseInstructions({ ...dispenseInstructions, [li.id]: e.target.value })}
+                  />
+                  <button type="button" onClick={() => printLabel(li)} disabled={printingLabelId === li.id}>
+                    {printingLabelId === li.id ? 'Printing...' : '🏷️ Print Label'}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
 
       <h3>Payments</h3>

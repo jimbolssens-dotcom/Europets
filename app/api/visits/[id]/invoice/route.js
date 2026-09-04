@@ -63,6 +63,8 @@ export async function POST(request, { params }) {
         quantity: qty,
         unit_price,
         line_total: Math.round(unit_price * qty * 100) / 100,
+        instructions: item.instructions || null,
+        administration_method: item.administration_method || null,
       };
       return applyAdministrationFee(medicationLine, item.administration_method, clinicSettings);
     });
