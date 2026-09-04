@@ -16,6 +16,10 @@ import { buildStaffColorMap } from '@/lib/staffColors';
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const SHIFTS = ['morning', 'afternoon'];
 const SHIFT_LABELS = { morning: 'AM', afternoon: 'PM' };
+// Row order for the roster grid — vets first (who's actually seeing
+// patients matters most for at-a-glance coverage), then the rest of the
+// clinical/admin chain. Anyone with an unrecognized role sorts last.
+const ROLE_ORDER = ['vet', 'tech', 'admin', 'reception', 'cleaner'];
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -114,11 +118,25 @@ export default function StaffRosterPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Rows read vets, techs, admin, reception, then cleaners — see
+  // ROLE_ORDER — alphabetical by name within the same role. An
+  // unrecognized role (indexOf -1) sorts after all of those, not before.
+  const sortedStaff = useMemo(() => {
+    const roleRank = (role) => {
+      const i = ROLE_ORDER.indexOf(role);
+      return i === -1 ? ROLE_ORDER.length : i;
+    };
+    return [...staff].sort((a, b) => {
+      const roleDiff = roleRank(a.role) - roleRank(b.role);
+      return roleDiff !== 0 ? roleDiff : a.full_name.localeCompare(b.full_name);
+    });
+  }, [staff]);
+
   // Same color a staff member reads as on the Appointments schedule — see
   // lib/staffColors.js: their own chosen color (Staff page) if they have
   // one, otherwise a stable auto-assigned one, so every row here is
   // color-coded either way.
-  const staffColor = useMemo(() => buildStaffColorMap(staff), [staff]);
+  const staffColor = useMemo(() => buildStaffColorMap(sortedStaff), [sortedStaff]);
 
   const staffCountByDate = useMemo(() => {
     const seen = {};
@@ -328,7 +346,7 @@ export default function StaffRosterPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {staff.map((s) => {
+                  {sortedStaff.map((s) => {
                     const color = staffColor[s.id];
                     return (
                       <tr key={s.id}>
