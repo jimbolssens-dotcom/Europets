@@ -76,6 +76,8 @@ export default function HospitalizationDetailPage() {
   const [editingItemId, setEditingItemId] = useState(null);
   const [itemEditForm, setItemEditForm] = useState({ instructions: '', quantity: '' });
   const [savingItemEdit, setSavingItemEdit] = useState(false);
+  const [noteAddItemForm, setNoteAddItemForm] = useState(emptyPendingItem);
+  const [noteAddItemSubmitting, setNoteAddItemSubmitting] = useState(false);
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`)
@@ -259,8 +261,26 @@ export default function HospitalizationDetailPage() {
     loadNotes();
   }
 
+  // Adds a new medication/service/test straight to the entry currently
+  // being edited (unlike the day-level "+ Add Medication", which always
+  // attaches to that day's most recent entry — here the target entry is
+  // explicit, since it's the one already open for editing).
+  async function addItemToNote(noteId) {
+    if (!noteAddItemForm.goods_service_id) return;
+    setNoteAddItemSubmitting(true);
+    await fetch('/api/treatment-items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hospitalization_note_id: noteId, ...noteAddItemForm }),
+    });
+    setNoteAddItemForm(emptyPendingItem);
+    setNoteAddItemSubmitting(false);
+    loadNotes();
+  }
+
   function startEditNote(n) {
     setEditingNoteId(n.id);
+    setNoteAddItemForm(emptyPendingItem);
     setEditNoteForm({
       note_date: n.note_date || todayISODate(),
       appetite: n.appetite || '',
@@ -281,6 +301,7 @@ export default function HospitalizationDetailPage() {
   function cancelEditNote() {
     setEditingNoteId(null);
     setEditNoteForm(null);
+    setNoteAddItemForm(emptyPendingItem);
   }
 
   async function saveEditNote(noteId) {
@@ -715,9 +736,9 @@ export default function HospitalizationDetailPage() {
                     />
                   </label>
 
-                  {n.treatment_items?.length > 0 && (
-                    <div className="worksheet-entry-edit-field">
-                      Medications
+                  <div className="worksheet-entry-edit-field">
+                    Medications / Services / Diagnostics
+                    {n.treatment_items?.length > 0 && (
                       <ul className="worksheet-entry-items">
                         {n.treatment_items.map((t) =>
                           editingItemId === t.id ? (
@@ -757,8 +778,33 @@ export default function HospitalizationDetailPage() {
                           )
                         )}
                       </ul>
+                    )}
+
+                    <div className="day-med-add">
+                      <CatalogPicker
+                        catalog={catalog}
+                        subcategories={subcategories}
+                        value={noteAddItemForm.goods_service_id}
+                        onChange={(value) => setNoteAddItemForm({ ...noteAddItemForm, goods_service_id: value })}
+                        onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+                      />
+                      <input
+                        placeholder="Instructions (dosage, frequency, duration)"
+                        value={noteAddItemForm.instructions}
+                        onChange={(e) => setNoteAddItemForm({ ...noteAddItemForm, instructions: e.target.value })}
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Quantity"
+                        value={noteAddItemForm.quantity}
+                        onChange={(e) => setNoteAddItemForm({ ...noteAddItemForm, quantity: e.target.value })}
+                      />
+                      <button type="button" disabled={noteAddItemSubmitting} onClick={() => addItemToNote(n.id)}>
+                        {noteAddItemSubmitting ? 'Adding...' : '+ Add Item'}
+                      </button>
                     </div>
-                  )}
+                  </div>
 
                   <div className="worksheet-entry-edit-actions">
                     <button type="button" disabled={savingEditNote} onClick={() => saveEditNote(n.id)}>
