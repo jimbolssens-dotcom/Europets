@@ -1,14 +1,19 @@
 // app/api/hospitalizations/[id]/invoice/route.js
 // POST /api/hospitalizations/:id/invoice -> create an invoice for this
 // admission and import every treatment item (medication/goods/service/test,
-// with the quantity logged) as a line item — a medication that was
-// dispensed/SC/IM has its administration fee folded straight into that
-// line (see lib/invoicing.js), not shown separately. If a non-void
-// invoice already exists for this admission, that one is returned
-// instead — no duplicates.
+// with the quantity logged) as a line item. The same medication logged
+// across multiple days (e.g. one Doxycycline tablet daily for a 5-day
+// stay, one worksheet entry/treatment_items row per day) consolidates
+// into a single line with the quantities summed (5 tablets), instead of
+// one line per day it was given — see the grouping below. A medication
+// that was dispensed/SC/IM has its administration fee folded straight
+// into that consolidated line, once per day it was actually given (see
+// lib/invoicing.js), not shown as separate lines. If a non-void invoice
+// already exists for this admission, that one is returned instead — no
+// duplicates.
 
 import { supabase } from '@/lib/supabaseClient';
-import { recomputeInvoiceTotals, applyAdministrationFee } from '@/lib/invoicing';
+import { recomputeInvoiceTotals, buildMedicationLineItems } from '@/lib/invoicing';
 import { NextResponse } from 'next/server';
 
 export async function POST(request, { params }) {
@@ -65,22 +70,7 @@ export async function POST(request, { params }) {
     supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
   ]);
 
-  const lineItems = (treatmentItems || [])
-    .filter((item) => item.goods_services)
-    .map((item) => {
-      const catalogItem = item.goods_services;
-      const qty = Number(item.quantity) || 1;
-      const unit_price = Number(catalogItem.base_price);
-      const medicationLine = {
-        invoice_id: invoice.id,
-        goods_service_id: catalogItem.id,
-        description: item.instructions ? `${catalogItem.name} — ${item.instructions}` : catalogItem.name,
-        quantity: qty,
-        unit_price,
-        line_total: Math.round(unit_price * qty * 100) / 100,
-      };
-      return applyAdministrationFee(medicationLine, item.administration_method, clinicSettings);
-    });
+  const lineItems = buildMedicationLineItems(treatmentItems, invoice.id, clinicSettings);
 
   if (lineItems.length > 0) {
     const { error: lineItemsError } = await supabase.from('invoice_line_items').insert(lineItems);
