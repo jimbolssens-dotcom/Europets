@@ -64,6 +64,8 @@ export async function POST(request, { params }) {
     drinking,
     mood,
     temperature_feel,
+    medication_given,
+    force_feeding_done,
   } = body;
 
   const { data: note, error } = await supabase
@@ -86,6 +88,8 @@ export async function POST(request, { params }) {
         drinking: drinking || null,
         mood: mood || null,
         temperature_feel: temperature_feel || null,
+        medication_given: medication_given || null,
+        force_feeding_done: force_feeding_done || null,
       },
     ])
     .select('*, staff(full_name)')

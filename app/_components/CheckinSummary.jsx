@@ -9,7 +9,16 @@
 
 import { checkinOption } from '@/lib/hospitalizationCheckin';
 
-const SUMMARY_KEYS = ['drinking', 'stool', 'urine', 'vomit', 'mood', 'temperature_feel'];
+const SUMMARY_KEYS = [
+  'drinking',
+  'stool',
+  'urine',
+  'vomit',
+  'mood',
+  'temperature_feel',
+  'medication_given',
+  'force_feeding_done',
+];
 
 export default function CheckinSummary({ note }) {
   const chips = SUMMARY_KEYS.map((key) => ({ key, option: checkinOption(key, note[key]) })).filter(

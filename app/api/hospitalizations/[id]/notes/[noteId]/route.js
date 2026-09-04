@@ -18,6 +18,8 @@ const EDITABLE_FIELDS = [
   'drinking',
   'mood',
   'temperature_feel',
+  'medication_given',
+  'force_feeding_done',
 ];
 const EDITABLE_NUMBER_FIELDS = ['temperature_c', 'weight_kg'];
 
