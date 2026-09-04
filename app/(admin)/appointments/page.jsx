@@ -196,9 +196,6 @@ export default function AppointmentsPage() {
   const [dragSelect, setDragSelect] = useState(null); // { roomId, startMinutes, endMinutes } — click-and-drag on empty grid to pick a multi-slot range
   const [dragMove, setDragMove] = useState(null); // { appointmentId, roomId, startMinutes } — dragging an existing block to a new time/room
   const [dragResize, setDragResize] = useState(null); // { appointmentId, duration } — dragging a surgery block's bottom edge
-  const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState(null);
-  const [importError, setImportError] = useState(null);
   const bookingFormRef = useRef(null);
   const scheduleWrapRef = useRef(null);
   const scheduleHeight = (CLOSE_HOUR - OPEN_HOUR) * 60 * pixelsPerMinute;
@@ -637,37 +634,6 @@ export default function AppointmentsPage() {
     setSubmitting(false);
   }
 
-  // Imports a JSON file of { start_time, duration_minutes?, reason? } entries
-  // (e.g. an external calendar export) as appointments randomly spread
-  // across the clinic's consult rooms, with no patient/client/vet linked —
-  // rather than guessing at a patient/client match. See
-  // /api/appointments/import.
-  async function handleImportFile(e) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setImportError(null);
-    setImportResult(null);
-    setImporting(true);
-    try {
-      const items = JSON.parse(await file.text());
-      if (!Array.isArray(items)) throw new Error('File must contain a JSON array');
-      const res = await fetch('/api/appointments/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointments: items }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Import failed');
-      setImportResult(data.imported);
-      loadMonth();
-    } catch (err) {
-      setImportError(err.message);
-    } finally {
-      setImporting(false);
-    }
-  }
-
   async function cancelAppointment(id) {
     await fetch(`/api/appointments/${id}`, {
       method: 'PATCH',
@@ -731,16 +697,6 @@ export default function AppointmentsPage() {
   return (
     <div>
       <h1>Appointments</h1>
-
-      <p className="appointments-import">
-        <label>
-          Import schedule (JSON):{' '}
-          <input type="file" accept="application/json" onChange={handleImportFile} disabled={importing} />
-        </label>
-        {importing && ' Importing...'}
-        {importResult != null && ` Imported ${importResult} appointment(s), spread across consult rooms — no patient/client linked yet, assign as needed.`}
-        {importError && <span className="error"> {importError}</span>}
-      </p>
 
       <div className="schedule-layout">
         <div className="date-nav">
