@@ -144,6 +144,26 @@ button:disabled {
   letter-spacing: normal;
 }
 
+/* Hospitalization nav link when any admitted case has a pending "Request
+   an Update" from the client portal — same alert language as the
+   blinking cage on the Cage Layout page (.cage-update-requested), so
+   staff notice it from anywhere in the app, not just that one page. The
+   solid highlight is the always-visible baseline; the pulse only runs
+   when the viewer hasn't asked for reduced motion. */
+.topnav-links a.nav-update-requested {
+  background: #fff3cd !important;
+  border: 1px solid #ffc107;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  color: #92620a;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .topnav-links a.nav-update-requested {
+    animation: cage-update-blink 1s ease-in-out infinite;
+  }
+}
+
 .search-box {
   position: relative;
   flex: 0 1 300px;
