@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
+import CheckinSummary from '@/app/_components/CheckinSummary';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 
 // Belt-and-suspenders alongside the Cache-Control header in next.config.js:
@@ -138,6 +139,7 @@ export default function HospitalizationPortalPage() {
                       .join(' · ')}
                   </p>
                 )}
+                <CheckinSummary note={n} />
                 {n.condition && (
                   <p>
                     <strong>Condition:</strong> {n.condition}

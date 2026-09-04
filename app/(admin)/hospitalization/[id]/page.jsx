@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
+import CheckinSummary from '@/app/_components/CheckinSummary';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
@@ -460,6 +461,7 @@ export default function HospitalizationDetailPage() {
                   </>
                 )}
               </p>
+              <CheckinSummary note={n} />
               {n.condition && (
                 <p>
                   <strong>Condition:</strong> {n.condition}

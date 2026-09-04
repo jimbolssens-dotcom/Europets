@@ -49,7 +49,22 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   const body = await request.json();
-  const { author_id, note_date, appetite, condition, temperature_c, weight_kg, notes, treatment_items } = body;
+  const {
+    author_id,
+    note_date,
+    appetite,
+    condition,
+    temperature_c,
+    weight_kg,
+    notes,
+    treatment_items,
+    stool,
+    urine,
+    vomit,
+    drinking,
+    mood,
+    temperature_feel,
+  } = body;
 
   const { data: note, error } = await supabase
     .from('hospitalization_notes')
@@ -63,6 +78,14 @@ export async function POST(request, { params }) {
         temperature_c: temperature_c !== undefined && temperature_c !== '' ? Number(temperature_c) : null,
         weight_kg: weight_kg !== undefined && weight_kg !== '' ? Number(weight_kg) : null,
         notes: notes || null,
+        // Quick Check-In fields (see lib/hospitalizationCheckin.js) — the
+        // cleaner's simplified tile form; null for a normal worksheet entry.
+        stool: stool || null,
+        urine: urine || null,
+        vomit: vomit || null,
+        drinking: drinking || null,
+        mood: mood || null,
+        temperature_feel: temperature_feel || null,
       },
     ])
     .select('*, staff(full_name)')

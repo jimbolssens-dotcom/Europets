@@ -376,6 +376,17 @@ create table hospitalization_notes (
     temperature_c numeric(4,1),
     weight_kg numeric(6,2),
     notes text,
+    -- Quick Check-In fields (see lib/hospitalizationCheckin.js) — a
+    -- cleaner's simplified tile-based entry populates these instead of
+    -- condition/notes. temperature_feel is a qualitative "feels warm/
+    -- cold to the touch" flag, distinct from the clinical temperature_c
+    -- reading above.
+    stool text,                      -- 'normal', 'diarrhea', 'bloody'
+    urine text,                      -- 'normal', 'orange', 'pale', 'bloody'
+    vomit text,                      -- 'none', 'once', 'multiple'
+    drinking text,                   -- 'good', 'reduced', 'none'
+    mood text,                       -- 'happy', 'neutral', 'unhappy'
+    temperature_feel text,           -- 'normal', 'warm', 'cold'
     created_at timestamptz default now(),
     updated_at timestamptz default now()   -- bumped on every edit, so multiple touches in a day are visible
 );

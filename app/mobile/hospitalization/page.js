@@ -15,12 +15,15 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { byGroup } from '@/app/_components/CageFloorPlan';
+import { useMobileStaff } from '@/app/_components/useMobileStaff';
+import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
 
-function MobileCageTile({ cage, hosp }) {
+function MobileCageTile({ cage, hosp, checkinOnly }) {
   if (hosp) {
+    const href = checkinOnly ? `/mobile/hospitalization/${hosp.id}/checkin` : `/mobile/hospitalization/${hosp.id}`;
     return (
       <a
-        href={`/mobile/hospitalization/${hosp.id}`}
+        href={href}
         className={`cage-tile cage-tile-mobile-occupied${hosp.update_requested_at ? ' cage-update-requested' : ''}`}
       >
         <div className="cage-tile-header">
@@ -124,6 +127,7 @@ export default function MobileHospitalizationListPage() {
   const [cages, setCages] = useState([]);
   const [admitted, setAdmitted] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { isCleaner } = useMobileStaff();
 
   const loadAdmitted = () =>
     fetch('/api/hospitalizations?status=admitted')
@@ -147,9 +151,13 @@ export default function MobileHospitalizationListPage() {
 
   return (
     <div className="mobile-page">
-      <a href="/mobile" className="mobile-back">
-        &larr; Record
-      </a>
+      {isCleaner ? (
+        <MobileCleanerTabs active="hospital" />
+      ) : (
+        <a href="/mobile" className="mobile-back">
+          &larr; Record
+        </a>
+      )}
       <h1>Hospitalization</h1>
 
       {loading ? (
@@ -157,7 +165,9 @@ export default function MobileHospitalizationListPage() {
       ) : (
         <MobileCageColumns
           cages={cages}
-          renderTile={(cage) => <MobileCageTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} />}
+          renderTile={(cage) => (
+            <MobileCageTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} checkinOnly={isCleaner} />
+          )}
         />
       )}
     </div>

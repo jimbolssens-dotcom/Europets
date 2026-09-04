@@ -12,6 +12,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 
@@ -87,26 +88,34 @@ export default function MobileHomePage() {
             Not you? Switch
           </button>
 
-          <a href="/mobile/consults" className="mobile-tile mobile-tile-first">
-            <span className="mobile-tile-icon">🎙️</span>
-            <span>Consults</span>
-            <span className="mobile-tile-hint">Today's appointments — tap a patient to record</span>
-          </a>
-          <a href="/mobile/hospitalization" className="mobile-tile">
-            <span className="mobile-tile-icon">🏥</span>
-            <span>Hospitalization</span>
-            <span className="mobile-tile-hint">Admitted patients — tap one to record an observation</span>
-          </a>
-          <a href="/mobile/scan-receipt" className="mobile-tile">
-            <span className="mobile-tile-icon">🧾</span>
-            <span>Scan Receipt</span>
-            <span className="mobile-tile-hint">Photograph a supplier receipt to log it as an expense</span>
-          </a>
-          <a href="/mobile/schedule" className="mobile-tile">
-            <span className="mobile-tile-icon">📅</span>
-            <span>My Schedule</span>
-            <span className="mobile-tile-hint">Add or remove yourself from this week's mornings/afternoons</span>
-          </a>
+          {me?.role === 'cleaner' ? (
+            // A cleaner's whole job on this phone is these two things —
+            // no Consults, Scan Receipt, or anything clinical/admin.
+            <MobileCleanerTabs />
+          ) : (
+            <>
+              <a href="/mobile/consults" className="mobile-tile mobile-tile-first">
+                <span className="mobile-tile-icon">🎙️</span>
+                <span>Consults</span>
+                <span className="mobile-tile-hint">Today's appointments — tap a patient to record</span>
+              </a>
+              <a href="/mobile/hospitalization" className="mobile-tile">
+                <span className="mobile-tile-icon">🏥</span>
+                <span>Hospitalization</span>
+                <span className="mobile-tile-hint">Admitted patients — tap one to record an observation</span>
+              </a>
+              <a href="/mobile/scan-receipt" className="mobile-tile">
+                <span className="mobile-tile-icon">🧾</span>
+                <span>Scan Receipt</span>
+                <span className="mobile-tile-hint">Photograph a supplier receipt to log it as an expense</span>
+              </a>
+              <a href="/mobile/schedule" className="mobile-tile">
+                <span className="mobile-tile-icon">📅</span>
+                <span>My Schedule</span>
+                <span className="mobile-tile-hint">Add or remove yourself from this week's mornings/afternoons</span>
+              </a>
+            </>
+          )}
 
           <p className="mobile-hint">
             Add this to your home screen for one-tap access: on iPhone, tap Share, then &quot;Add to
