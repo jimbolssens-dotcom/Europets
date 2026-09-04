@@ -21,7 +21,7 @@ import ReportShareActions from '@/app/_components/ReportShareActions';
 import ClientReportEditor from '@/app/_components/ClientReportEditor';
 import DentalChart from '@/app/_components/DentalChart';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
-import { subcategoryName } from '@/lib/catalogGrouping';
+import { subcategoryName, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
@@ -71,6 +71,7 @@ export default function ConsultDetailPage() {
 
   const [treatmentItems, setTreatmentItems] = useState([]);
   const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1' });
+  const [treatCategory, setTreatCategory] = useState('product');
 
   const [surgicalReports, setSurgicalReports] = useState([]);
   const [surgForm, setSurgForm] = useState({ surgeon_id: '', procedure_name: '', notes: '' });
@@ -735,6 +736,7 @@ export default function ConsultDetailPage() {
             value={treatForm.goods_service_id}
             onChange={(value) => setTreatForm({ ...treatForm, goods_service_id: value })}
             onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+            onCategoryChange={setTreatCategory}
           />
           <input
             placeholder="Instructions (dosage, frequency, duration)"
@@ -748,7 +750,7 @@ export default function ConsultDetailPage() {
             value={treatForm.quantity}
             onChange={(e) => setTreatForm({ ...treatForm, quantity: e.target.value })}
           />
-          <button type="submit">Add to Plan</button>
+          <button type="submit">{`+ Add ${ADD_ITEM_LABELS[treatCategory]}`}</button>
         </form>
 
         <table>

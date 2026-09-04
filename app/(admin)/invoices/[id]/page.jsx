@@ -10,7 +10,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
-import { groupLineItemsByCategory } from '@/lib/catalogGrouping';
+import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -34,6 +34,7 @@ export default function InvoiceDetailPage() {
   const [quantity, setQuantity] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [addCategory, setAddCategory] = useState('product');
 
   const loadInvoice = () =>
     fetch(`/api/invoices/${id}`)
@@ -213,6 +214,7 @@ export default function InvoiceDetailPage() {
             value={goodsServiceId}
             onChange={setGoodsServiceId}
             onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+            onCategoryChange={setAddCategory}
           />
           <div className="catalog-add-form-row">
             <input
@@ -224,7 +226,7 @@ export default function InvoiceDetailPage() {
               onChange={(e) => setQuantity(e.target.value)}
             />
             <button type="submit" disabled={submitting || !goodsServiceId}>
-              Add
+              {`+ Add ${ADD_ITEM_LABELS[addCategory]}`}
             </button>
           </div>
         </form>

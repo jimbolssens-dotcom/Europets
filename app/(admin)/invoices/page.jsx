@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import SearchSelect from '@/app/_components/SearchSelect';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
-import { groupLineItemsByCategory } from '@/lib/catalogGrouping';
+import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -29,6 +29,7 @@ function InvoiceCard({ summary, catalog, subcategories, staff, onCatalogChange, 
   const [quantity, setQuantity] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [addCategory, setAddCategory] = useState('product');
 
   const loadInvoice = () =>
     fetch(`/api/invoices/${summary.id}`)
@@ -182,6 +183,7 @@ function InvoiceCard({ summary, catalog, subcategories, staff, onCatalogChange, 
             value={goodsServiceId}
             onChange={setGoodsServiceId}
             onItemCreated={onCatalogChange}
+            onCategoryChange={setAddCategory}
           />
           <div className="catalog-add-form-row">
             <input
@@ -193,7 +195,7 @@ function InvoiceCard({ summary, catalog, subcategories, staff, onCatalogChange, 
               onChange={(e) => setQuantity(e.target.value)}
             />
             <button type="submit" disabled={submitting || !goodsServiceId}>
-              Add
+              {`+ Add ${ADD_ITEM_LABELS[addCategory]}`}
             </button>
           </div>
         </form>

@@ -17,6 +17,7 @@ import { CHECKIN_CATEGORIES, hasCheckinData, buildEmpathicCheckinText } from '@/
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import { ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
@@ -37,12 +38,6 @@ const emptyNoteForm = {
 };
 
 const emptyPendingItem = { goods_service_id: '', instructions: '', quantity: '1' };
-
-// Labels the day-log/note "+ Add ___" button to match whichever
-// CatalogPicker tab (Products/Tests/Services) is active — "product" reads
-// as "Medication" here specifically, since that's what's actually being
-// logged in a hospitalization worksheet.
-const ADD_ITEM_LABELS = { product: 'Medication', test: 'Test', service: 'Service' };
 const emptyDayAddForm = { goods_service_id: '', instructions: '', quantity: '1' };
 
 export default function HospitalizationDetailPage() {
@@ -86,6 +81,7 @@ export default function HospitalizationDetailPage() {
   const [noteAddItemSubmitting, setNoteAddItemSubmitting] = useState(false);
   const [dayAddCategory, setDayAddCategory] = useState('product');
   const [noteAddCategory, setNoteAddCategory] = useState('product');
+  const [pendingItemCategory, setPendingItemCategory] = useState('product');
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`)
@@ -995,6 +991,7 @@ export default function HospitalizationDetailPage() {
             value={pendingItemForm.goods_service_id}
             onChange={(value) => setPendingItemForm({ ...pendingItemForm, goods_service_id: value })}
             onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+            onCategoryChange={setPendingItemCategory}
           />
           <input
             placeholder="Instructions (dosage, frequency, duration)"
@@ -1009,7 +1006,7 @@ export default function HospitalizationDetailPage() {
             onChange={(e) => setPendingItemForm({ ...pendingItemForm, quantity: e.target.value })}
           />
           <button type="button" className="secondary" onClick={addPendingItem}>
-            + Add Item
+            {`+ Add ${ADD_ITEM_LABELS[pendingItemCategory]}`}
           </button>
         </fieldset>
 
