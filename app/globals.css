@@ -2672,6 +2672,100 @@ button.secondary:hover {
   background: rgba(0, 0, 0, 0.35);
 }
 
+/* Hospitalization page: quick occupancy read above the Cage
+   Layout/All Admissions tabs. */
+.hosp-stat-strip {
+  display: flex;
+  gap: 1.75rem;
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.hosp-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.hosp-stat .n {
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hosp-stat .l {
+  font-size: 0.75rem;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+}
+
+.hosp-stat-occupied .n {
+  color: var(--pink-dark);
+}
+
+.hosp-stat-attention .n {
+  color: #b45309;
+}
+
+.hosp-stat-attention {
+  margin-left: auto;
+}
+
+/* Admit Patient slide-over — the standalone-admission form pulled out of
+   the page flow into an overlay, reachable from either tab (Cage Layout
+   or All Admissions) without losing your place. */
+.admit-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 40;
+}
+
+.admit-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(1000px, 96vw);
+  background: var(--bg);
+  border-left: 1px solid #eee;
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.18);
+  z-index: 41;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.admit-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.admit-panel-header h2 {
+  margin: 0;
+}
+
+.admit-panel-close {
+  background: none;
+  border: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: #999;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+}
+
+.admit-panel-close:hover {
+  color: var(--pink-dark);
+}
+
 /* Compact cage picker on the Admit Patient form — same CageFloorPlan
    arrangement and group colors as the full Cage Layout page, shrunk into
    small clickable squares instead of full detail tiles. */

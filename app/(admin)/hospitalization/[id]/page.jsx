@@ -363,7 +363,7 @@ export default function HospitalizationDetailPage() {
         <h1>
           {admission.patients?.name} <span>({admission.status})</span>
         </h1>
-        <a href="/hospitalization/cages" className="button-link">
+        <a href="/hospitalization" className="button-link">
           🗺️ Cage Layout
         </a>
       </div>
