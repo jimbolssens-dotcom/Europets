@@ -13,7 +13,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import AudioRecorder from '@/app/_components/AudioRecorder';
-import { CHECKIN_CATEGORIES, hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
+import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import CatalogPicker from '@/app/_components/CatalogPicker';
@@ -677,41 +677,28 @@ export default function HospitalizationDetailPage() {
                       ))}
                     </select>
                   </label>
-                  <label className="worksheet-entry-edit-field">
-                    Appetite
-                    <select
-                      value={editNoteForm.appetite}
-                      onChange={(e) => setEditNoteForm({ ...editNoteForm, appetite: e.target.value })}
-                    >
-                      <option value="">Appetite...</option>
-                      <option value="good">Good</option>
-                      <option value="reduced">Reduced</option>
-                      <option value="none">None</option>
-                    </select>
-                  </label>
-
-                  {/* The tile-based check-in fields (drinking/stool/urine/vomit/mood/
-                      temperature feel/medication/force-feeding) only apply to a
-                      cleaner's Quick Check-In entry — a vet's own worksheet entry
-                      never had them to begin with, so they're hidden rather than
-                      showing 8 empty, irrelevant dropdowns on every edit. */}
-                  {hasCheckinData(n) &&
-                    CHECKIN_CATEGORIES.filter((c) => c.key !== 'appetite').map((category) => (
-                      <label key={category.key} className="worksheet-entry-edit-field">
-                        {category.label}
-                        <select
-                          value={editNoteForm[category.key]}
-                          onChange={(e) => setEditNoteForm({ ...editNoteForm, [category.key]: e.target.value })}
-                        >
-                          <option value="">{category.label}...</option>
-                          {category.options.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.icon} {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ))}
+                  {/* Appetite and the whole tile-based check-in field set
+                      (drinking/stool/urine/vomit/mood/temperature feel/
+                      medication/force-feeding) only apply to a cleaner's
+                      Quick Check-In entry, and aren't editable here — the
+                      client-facing text below is the single source of
+                      truth for what the owner sees, and editing these
+                      raw values wouldn't update that text, silently
+                      leaving it wrong. Correct the text directly instead. */}
+                  {!hasCheckinData(n) && (
+                    <label className="worksheet-entry-edit-field">
+                      Appetite
+                      <select
+                        value={editNoteForm.appetite}
+                        onChange={(e) => setEditNoteForm({ ...editNoteForm, appetite: e.target.value })}
+                      >
+                        <option value="">Appetite...</option>
+                        <option value="good">Good</option>
+                        <option value="reduced">Reduced</option>
+                        <option value="none">None</option>
+                      </select>
+                    </label>
+                  )}
                   {hasCheckinData(n) && (
                     <label className="client-summary-edit-label">
                       What the owner sees on the portal
