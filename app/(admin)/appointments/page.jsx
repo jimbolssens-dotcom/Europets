@@ -638,8 +638,8 @@ export default function AppointmentsPage() {
   }
 
   // Imports a JSON file of { start_time, duration_minutes?, reason? } entries
-  // (e.g. an external calendar export) as plain appointments with no
-  // patient/client/room/vet — visible on this page's day list for review,
+  // (e.g. an external calendar export) as appointments randomly spread
+  // across the clinic's consult rooms, with no patient/client/vet linked —
   // rather than guessing at a patient/client match. See
   // /api/appointments/import.
   async function handleImportFile(e) {
@@ -738,7 +738,7 @@ export default function AppointmentsPage() {
           <input type="file" accept="application/json" onChange={handleImportFile} disabled={importing} />
         </label>
         {importing && ' Importing...'}
-        {importResult != null && ` Imported ${importResult} appointment(s) — unlinked, review and assign as needed.`}
+        {importResult != null && ` Imported ${importResult} appointment(s), spread across consult rooms — no patient/client linked yet, assign as needed.`}
         {importError && <span className="error"> {importError}</span>}
       </p>
 
