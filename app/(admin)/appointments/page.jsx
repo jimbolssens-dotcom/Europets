@@ -196,6 +196,9 @@ export default function AppointmentsPage() {
   const [dragSelect, setDragSelect] = useState(null); // { roomId, startMinutes, endMinutes } — click-and-drag on empty grid to pick a multi-slot range
   const [dragMove, setDragMove] = useState(null); // { appointmentId, roomId, startMinutes } — dragging an existing block to a new time/room
   const [dragResize, setDragResize] = useState(null); // { appointmentId, duration } — dragging a surgery block's bottom edge
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const [importError, setImportError] = useState(null);
   const bookingFormRef = useRef(null);
   const scheduleWrapRef = useRef(null);
   const scheduleHeight = (CLOSE_HOUR - OPEN_HOUR) * 60 * pixelsPerMinute;
@@ -634,6 +637,37 @@ export default function AppointmentsPage() {
     setSubmitting(false);
   }
 
+  // Imports a JSON file of { start_time, duration_minutes?, reason? } entries
+  // (e.g. an external calendar export) as plain appointments with no
+  // patient/client/room/vet — visible on this page's day list for review,
+  // rather than guessing at a patient/client match. See
+  // /api/appointments/import.
+  async function handleImportFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImportError(null);
+    setImportResult(null);
+    setImporting(true);
+    try {
+      const items = JSON.parse(await file.text());
+      if (!Array.isArray(items)) throw new Error('File must contain a JSON array');
+      const res = await fetch('/api/appointments/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointments: items }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      setImportResult(data.imported);
+      loadMonth();
+    } catch (err) {
+      setImportError(err.message);
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function cancelAppointment(id) {
     await fetch(`/api/appointments/${id}`, {
       method: 'PATCH',
@@ -697,6 +731,16 @@ export default function AppointmentsPage() {
   return (
     <div>
       <h1>Appointments</h1>
+
+      <p className="appointments-import">
+        <label>
+          Import schedule (JSON):{' '}
+          <input type="file" accept="application/json" onChange={handleImportFile} disabled={importing} />
+        </label>
+        {importing && ' Importing...'}
+        {importResult != null && ` Imported ${importResult} appointment(s) — unlinked, review and assign as needed.`}
+        {importError && <span className="error"> {importError}</span>}
+      </p>
 
       <div className="schedule-layout">
         <div className="date-nav">
@@ -992,6 +1036,7 @@ export default function AppointmentsPage() {
               <th>Time</th>
               <th>Type</th>
               <th>Patient</th>
+              <th>Reason</th>
               <th>Room</th>
               <th>Vet</th>
               <th>Status</th>
@@ -1001,7 +1046,7 @@ export default function AppointmentsPage() {
           <tbody>
             {dayAppointments.length === 0 && (
               <tr>
-                <td colSpan={7}>No appointments booked for this day.</td>
+                <td colSpan={8}>No appointments booked for this day.</td>
               </tr>
             )}
             {dayAppointments.map((a) => (
@@ -1010,12 +1055,13 @@ export default function AppointmentsPage() {
                   {formatTime(a.start_time)} ({a.duration_minutes}m)
                 </td>
                 <td>{a.type}</td>
-                <td>{a.patients?.name}</td>
+                <td>{a.patients?.name || (a.patient_id ? '' : '(unlinked)')}</td>
+                <td>{a.reason}</td>
                 <td>{a.rooms?.name}</td>
                 <td>{a.staff?.full_name || '—'}</td>
                 <td>{a.status}</td>
                 <td>
-                  {a.status === 'booked' && (
+                  {a.status === 'booked' && a.patient_id && (
                     <button type="button" onClick={() => checkIn(a.id)}>
                       Check In
                     </button>
