@@ -30,9 +30,9 @@ export async function POST(request) {
   if (!full_name || !role) {
     return NextResponse.json({ error: 'full_name and role are required' }, { status: 400 });
   }
-  if (!['vet', 'tech', 'reception', 'admin'].includes(role)) {
+  if (!['vet', 'tech', 'reception', 'cleaner', 'admin'].includes(role)) {
     return NextResponse.json(
-      { error: "role must be one of 'vet', 'tech', 'reception', 'admin'" },
+      { error: "role must be one of 'vet', 'tech', 'reception', 'cleaner', 'admin'" },
       { status: 400 }
     );
   }

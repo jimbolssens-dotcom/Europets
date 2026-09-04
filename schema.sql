@@ -5,7 +5,7 @@
 create table staff (
     id uuid primary key default gen_random_uuid(),
     full_name text not null,
-    role text not null,              -- 'vet', 'tech', 'reception', 'admin'
+    role text not null,              -- 'vet', 'tech', 'reception', 'cleaner', 'admin'
     email text unique,
     color text,                      -- chosen appointment-schedule color (hex);
                                       -- null falls back to the auto palette (migration 035)
