@@ -33,12 +33,16 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
   // reported) — so onExtractedFields only fires for a recording that
   // finishes while this page is open, not every past one on every mount.
   const seenDoneIdsRef = useRef(null);
+  // Mirrors `items`, readable from the pagehide/unmount cleanup below without
+  // that closure capturing a stale, empty array from the first render.
+  const itemsRef = useRef([]);
 
   const load = () =>
     fetch(`/api/recordings?entity_type=${entityType}&entity_id=${entityId}`)
       .then((res) => res.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
+        itemsRef.current = list;
         setItems(list);
 
         if (seenDoneIdsRef.current === null) {
@@ -66,6 +70,32 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
       )
       .subscribe();
     return () => supabase.removeChannel(channel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entityType, entityId]);
+
+  // Once a dictation has finished transcribing and its text has been
+  // extracted into the report/consult it belongs to, the raw audio has no
+  // further purpose — it's cleaned up automatically the moment the user
+  // leaves this page, rather than lingering in Storage indefinitely. A
+  // recording still `processing` is left alone (it's still needed) and
+  // picked up next time this page is left after it finishes. Every page in
+  // this app navigates with plain links (full page loads, not client-side
+  // routing), so `pagehide` — not just the React unmount cleanup — is what
+  // actually catches that; `keepalive` lets the requests survive the page
+  // tearing down.
+  useEffect(() => {
+    const cleanupFinishedRecordings = () => {
+      for (const r of itemsRef.current) {
+        if (r.status === 'done') {
+          fetch(`/api/recordings/${r.id}`, { method: 'DELETE', keepalive: true }).catch(() => {});
+        }
+      }
+    };
+    window.addEventListener('pagehide', cleanupFinishedRecordings);
+    return () => {
+      window.removeEventListener('pagehide', cleanupFinishedRecordings);
+      cleanupFinishedRecordings();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entityType, entityId]);
 
