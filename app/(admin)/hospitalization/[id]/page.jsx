@@ -37,6 +37,12 @@ const emptyNoteForm = {
 };
 
 const emptyPendingItem = { goods_service_id: '', instructions: '', quantity: '1' };
+
+// Labels the day-log/note "+ Add ___" button to match whichever
+// CatalogPicker tab (Products/Tests/Services) is active — "product" reads
+// as "Medication" here specifically, since that's what's actually being
+// logged in a hospitalization worksheet.
+const ADD_ITEM_LABELS = { product: 'Medication', test: 'Test', service: 'Service' };
 const emptyDayAddForm = { goods_service_id: '', instructions: '', quantity: '1' };
 
 export default function HospitalizationDetailPage() {
@@ -78,6 +84,8 @@ export default function HospitalizationDetailPage() {
   const [savingItemEdit, setSavingItemEdit] = useState(false);
   const [noteAddItemForm, setNoteAddItemForm] = useState(emptyPendingItem);
   const [noteAddItemSubmitting, setNoteAddItemSubmitting] = useState(false);
+  const [dayAddCategory, setDayAddCategory] = useState('product');
+  const [noteAddCategory, setNoteAddCategory] = useState('product');
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`)
@@ -621,6 +629,7 @@ export default function HospitalizationDetailPage() {
                   value={dayAddForm.goods_service_id}
                   onChange={(value) => setDayAddForm({ ...dayAddForm, goods_service_id: value })}
                   onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+                  onCategoryChange={setDayAddCategory}
                 />
                 <input
                   placeholder="Instructions (dosage, frequency, duration)"
@@ -635,7 +644,7 @@ export default function HospitalizationDetailPage() {
                   onChange={(e) => setDayAddForm({ ...dayAddForm, quantity: e.target.value })}
                 />
                 <button type="button" disabled={dayAddSubmitting} onClick={() => addDayMedication(group.entries)}>
-                  {dayAddSubmitting ? 'Adding...' : '+ Add Medication'}
+                  {dayAddSubmitting ? 'Adding...' : `+ Add ${ADD_ITEM_LABELS[dayAddCategory]}`}
                 </button>
                 <p className="visit-meta">Attaches to the most recent entry logged this day.</p>
               </div>
@@ -802,6 +811,7 @@ export default function HospitalizationDetailPage() {
                         value={noteAddItemForm.goods_service_id}
                         onChange={(value) => setNoteAddItemForm({ ...noteAddItemForm, goods_service_id: value })}
                         onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+                        onCategoryChange={setNoteAddCategory}
                       />
                       <input
                         placeholder="Instructions (dosage, frequency, duration)"
@@ -816,7 +826,7 @@ export default function HospitalizationDetailPage() {
                         onChange={(e) => setNoteAddItemForm({ ...noteAddItemForm, quantity: e.target.value })}
                       />
                       <button type="button" disabled={noteAddItemSubmitting} onClick={() => addItemToNote(n.id)}>
-                        {noteAddItemSubmitting ? 'Adding...' : '+ Add Item'}
+                        {noteAddItemSubmitting ? 'Adding...' : `+ Add ${ADD_ITEM_LABELS[noteAddCategory]}`}
                       </button>
                     </div>
                   </div>

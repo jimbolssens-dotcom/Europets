@@ -11,7 +11,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, groupCatalogBySubcategory } from '@/lib/catalogGrouping';
 import SearchSelect from '@/app/_components/SearchSelect';
 
@@ -23,9 +23,20 @@ export default function CatalogPicker({
   value,
   onChange,
   onItemCreated,
+  onCategoryChange,
   fixedMainCategory = null,
 }) {
   const [activeCategory, setActiveCategory] = useState(fixedMainCategory || 'product');
+
+  // Lets a caller with its own "+ Add ___" button below the picker (e.g.
+  // the hospitalization worksheet) label it to match whichever tab is
+  // active, instead of a fixed "Add Medication" that's wrong once
+  // someone switches to Tests or Services. Fires on mount too, so the
+  // caller knows the starting category without guessing the default.
+  useEffect(() => {
+    onCategoryChange?.(activeCategory);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory]);
   const [adding, setAdding] = useState(false);
   const [newItem, setNewItem] = useState(emptyNewItem);
   const [creating, setCreating] = useState(false);
