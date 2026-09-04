@@ -19,9 +19,13 @@ import { byGroup } from '@/app/_components/CageFloorPlan';
 function MobileCageTile({ cage, hosp }) {
   if (hosp) {
     return (
-      <a href={`/mobile/hospitalization/${hosp.id}`} className="cage-tile cage-tile-mobile-occupied">
+      <a
+        href={`/mobile/hospitalization/${hosp.id}`}
+        className={`cage-tile cage-tile-mobile-occupied${hosp.update_requested_at ? ' cage-update-requested' : ''}`}
+      >
         <div className="cage-tile-header">
           <span className="cage-name">{cage.name}</span>
+          {hosp.update_requested_at && <span title="Owner requested an update">🔔</span>}
           {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
         </div>
         <div className="cage-patient">{hosp.patients?.name}</div>

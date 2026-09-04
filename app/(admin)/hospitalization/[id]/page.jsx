@@ -297,6 +297,19 @@ export default function HospitalizationDetailPage() {
     loadAdmission();
   }
 
+  // Dismisses the "owner is waiting" flag (and the blinking cage on the
+  // Cage Layout page) without necessarily logging a worksheet entry —
+  // that also clears it automatically (see the notes route), this is for
+  // when staff have already responded some other way (in person, phone).
+  async function dismissUpdateRequest() {
+    await fetch(`/api/hospitalizations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ update_requested_at: null }),
+    });
+    loadAdmission();
+  }
+
   if (loading || !admission) return <p>Loading admission...</p>;
   if (admission.error) return <p>Admission not found.</p>;
 
@@ -313,6 +326,14 @@ export default function HospitalizationDetailPage() {
           🗺️ Cage Layout
         </a>
       </div>
+      {admission.update_requested_at && (
+        <div className="update-requested-banner">
+          <span>🔔 {admission.clients?.full_name || 'The owner'} requested an update</span>
+          <button type="button" onClick={dismissUpdateRequest}>
+            Dismiss
+          </button>
+        </div>
+      )}
       <p>
         Owner: <a href={`/clients/${admission.clients?.id}`}>{admission.clients?.full_name}</a> ·
         Cage: {admission.cages?.name || '—'} · Admitted:{' '}

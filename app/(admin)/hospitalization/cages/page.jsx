@@ -32,6 +32,7 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
         className={[
           'cage-tile',
           'cage-occupied',
+          hosp.update_requested_at ? 'cage-update-requested' : '',
           isDragSource ? 'cage-drag-source' : '',
           isDropTarget ? 'cage-drop-target' : '',
         ]
@@ -39,7 +40,11 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
           .join(' ')}
         data-cage-id={cage.id}
         onPointerDown={(e) => onDragStart(e, cage, hosp)}
-        title="Drag to move to another cage, or tap to open"
+        title={
+          hosp.update_requested_at
+            ? `${hosp.patients?.name}'s owner is waiting for an update — drag to move, or tap to open`
+            : 'Drag to move to another cage, or tap to open'
+        }
       >
         <button
           type="button"
@@ -55,6 +60,7 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
         </button>
         <div className="cage-tile-header">
           <span className="cage-name">{cage.name}</span>
+          {hosp.update_requested_at && <span title="Owner requested an update">🔔</span>}
           {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
         </div>
         <div className="cage-patient">{hosp.patients?.name}</div>

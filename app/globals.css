@@ -2188,6 +2188,34 @@ button.secondary:hover {
   color: #555;
 }
 
+/* "Request an Update" button on the hospitalization portal page — see
+   app/portal/hospitalization/[id]. Flags the case for staff on the Cage
+   Layout page (see .cage-update-requested below) until they respond. */
+.portal-update-request {
+  margin-top: 0.75rem;
+}
+
+.portal-update-request button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* Staff-side banner on the admission page (app/hospitalization/[id]) when
+   a client has requested an update — mirrors the blinking cage, for
+   whichever page staff happen to be looking at first. */
+.update-requested-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  margin: 0.75rem 0;
+  font-weight: 600;
+}
+
 .portal-note {
   padding: 0.75rem 0;
   border-top: 1px solid #f0f0f0;
@@ -2494,6 +2522,36 @@ button.secondary:hover {
 .cage-occupied:hover .cage-patient,
 .cage-occupied:hover .cage-patient-species {
   color: white;
+}
+
+/* An occupied cage whose owner tapped "Request an Update" on the client
+   portal (see app/portal/hospitalization/[id]) — loud on purpose, since
+   this is how staff notice a waiting owner without checking every case.
+   The solid highlight is the baseline (always visible); the blink itself
+   only runs when the viewer hasn't asked for reduced motion. Applies to
+   both the desktop cage tile (.cage-occupied) and the mobile one
+   (.cage-tile-mobile-occupied) — same class, either base. */
+.cage-update-requested {
+  background: #fff3cd !important;
+  box-shadow: 0 0 0 3px #ffc107;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cage-update-requested {
+    animation: cage-update-blink 1s ease-in-out infinite;
+  }
+}
+
+@keyframes cage-update-blink {
+  0%,
+  100% {
+    background: #fff3cd;
+    box-shadow: 0 0 0 3px #ffc107;
+  }
+  50% {
+    background: #ffe69c;
+    box-shadow: 0 0 0 5px #ffc107;
+  }
 }
 
 .cage-patient {

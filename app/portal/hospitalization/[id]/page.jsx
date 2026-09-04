@@ -25,6 +25,7 @@ export default function HospitalizationPortalPage() {
   const [admission, setAdmission] = useState(null);
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [requestingUpdate, setRequestingUpdate] = useState(false);
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`, { cache: 'no-store' })
@@ -60,6 +61,13 @@ export default function HospitalizationPortalPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  async function requestUpdate() {
+    setRequestingUpdate(true);
+    await fetch(`/api/hospitalizations/${id}/request-update`, { method: 'POST' });
+    setRequestingUpdate(false);
+    loadAdmission();
+  }
+
   if (loading) return <p className="portal-loading">Loading...</p>;
   if (!admission || admission.error) return <p className="portal-loading">We couldn&apos;t find that page.</p>;
 
@@ -82,6 +90,20 @@ export default function HospitalizationPortalPage() {
           {admission.discharged_at && ` · Discharged ${new Date(admission.discharged_at).toLocaleString()}`}
         </p>
         {admission.reason && <p>{admission.reason}</p>}
+        {admission.status === 'admitted' && (
+          <div className="portal-update-request">
+            <button type="button" onClick={requestUpdate} disabled={requestingUpdate || !!admission.update_requested_at}>
+              {requestingUpdate
+                ? 'Sending...'
+                : admission.update_requested_at
+                ? '🔔 Update Requested'
+                : '🔔 Request an Update'}
+            </button>
+            {admission.update_requested_at && (
+              <p className="visit-meta">We&apos;ve let the team know — they&apos;ll post an update soon.</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="portal-card">

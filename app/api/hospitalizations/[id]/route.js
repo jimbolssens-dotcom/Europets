@@ -31,7 +31,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { status, room_id, cage_id, reason } = body;
+  const { status, room_id, cage_id, reason, update_requested_at } = body;
 
   const update = {};
   if (status !== undefined) {
@@ -47,6 +47,10 @@ export async function PATCH(request, { params }) {
   if (room_id !== undefined) update.room_id = room_id;
   if (cage_id !== undefined) update.cage_id = cage_id;
   if (reason !== undefined) update.reason = reason;
+  // Only ever set to null here (dismissing the "owner is waiting" flag from
+  // staff's side) — the client portal sets the timestamp itself, via
+  // POST /api/hospitalizations/:id/request-update.
+  if (update_requested_at === null) update.update_requested_at = null;
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });

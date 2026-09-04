@@ -360,6 +360,8 @@ create table hospitalizations (
     discharged_at timestamptz,
     status text not null default 'admitted',  -- 'admitted', 'discharged'
     reason text,
+    update_requested_at timestamptz,  -- set by the client portal's "Request an Update" button; makes
+                                       -- this case's cage blink on the Cage Layout page until cleared
     created_at timestamptz default now()
 );
 
