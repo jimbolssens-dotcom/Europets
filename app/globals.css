@@ -2748,6 +2748,26 @@ form.card.admit-patient-form {
   line-height: 0;
 }
 
+/* Force-updates the phone to whatever's live on Vercel right now — see
+   forceRefresh() in app/mobile/page.js. Fixed in the corner rather than
+   inline in the heading row, so it's reachable without scrolling even if
+   a stale cached version has broken layout further down the page. */
+.mobile-refresh-btn {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border-radius: 999px;
+  background: white;
+  border: 1px solid var(--pink-tint);
+  color: var(--pink-dark);
+  font-size: 1.2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
 .mobile-home-logo {
   height: 48px;
   flex-shrink: 0;

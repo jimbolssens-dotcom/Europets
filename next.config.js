@@ -21,6 +21,17 @@ const nextConfig = {
         source: '/api/hospitalizations/:path*',
         headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
       },
+      {
+        // The mobile app is launched from a home-screen icon (see
+        // public/mobile-manifest.json) straight into this document, with
+        // no browser chrome and thus no pull-to-refresh — a phone that
+        // cached an old copy would otherwise keep opening that same stale
+        // version indefinitely. The in-app Refresh button (app/mobile/
+        // page.js) is the explicit escape hatch; this stops it from being
+        // needed in the first place.
+        source: '/mobile/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+      },
     ];
   },
 };

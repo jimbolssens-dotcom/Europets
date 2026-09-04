@@ -25,10 +25,37 @@ function firstNameOf(fullName) {
   return withoutTitle.split(' ')[0];
 }
 
+// Forces the phone onto whatever's actually live on Vercel right now.
+// The mobile app launches from a home-screen icon straight into this
+// page with no browser chrome — no address bar reload, no pull-to-
+// refresh — so a phone that cached an old copy has no way to notice a
+// new deploy on its own. Clearing any service worker/Cache Storage
+// entries is defensive (there isn't one today) so this keeps working if
+// one's ever added later; the cache-busting query param is what actually
+// forces a fresh document fetch instead of a cached one.
+async function forceRefresh() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch {
+    // best-effort — still force the reload below either way
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.set('_refresh', Date.now().toString());
+  window.location.replace(url.toString());
+}
+
 export default function MobileHomePage() {
   const [staffId, setStaffId] = useState(null);
   const [ready, setReady] = useState(false);
   const [staff, setStaff] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     setStaffId(localStorage.getItem(MOBILE_STAFF_STORAGE_KEY));
@@ -53,6 +80,19 @@ export default function MobileHomePage() {
 
   return (
     <div className="mobile-home">
+      <button
+        type="button"
+        className="mobile-refresh-btn"
+        title="Update to the latest version"
+        disabled={refreshing}
+        onClick={() => {
+          setRefreshing(true);
+          forceRefresh();
+        }}
+      >
+        {refreshing ? '⏳' : '🔄'}
+      </button>
+
       {!ready ? null : !staffId ? (
         <>
           <div className="mobile-heading-row">
