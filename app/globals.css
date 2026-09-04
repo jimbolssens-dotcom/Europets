@@ -3079,6 +3079,27 @@ form.card.admit-patient-form {
   color: var(--pink-dark);
 }
 
+/* Optional exact-number field under the Temperature tiles — a cleaner
+   with a thermometer reading can log the actual number alongside (or
+   instead of) the quick "feels warm/cold" tap. */
+.checkin-number-field {
+  display: block;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.checkin-number-field input {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
 .mobile-desktop-link {
   display: block;
   margin-top: 1.5rem;
