@@ -12,6 +12,8 @@
 // to be on. Scoped to this layout (not the root one) so it only applies
 // under /mobile, not the desktop admin site or the client portal.
 
+import AppVersionWatcher from '@/app/_components/AppVersionWatcher';
+
 export const metadata = {
   robots: { index: false, follow: false },
   title: 'Europets — Record',
@@ -33,5 +35,10 @@ export const viewport = {
 };
 
 export default function MobileLayout({ children }) {
-  return <div className="mobile-app">{children}</div>;
+  return (
+    <div className="mobile-app">
+      <AppVersionWatcher />
+      {children}
+    </div>
+  );
 }
