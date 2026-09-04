@@ -68,6 +68,8 @@ export default function StaffRosterPage() {
   const [entries, setEntries] = useState([]); // every entry across the visible 42-day mini-cal grid
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [copying, setCopying] = useState(false);
+  const [copyMessage, setCopyMessage] = useState(null);
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonthIndex), [viewYear, viewMonthIndex]);
   const gridStartISO = toISODate(monthGrid[0]);
@@ -132,6 +134,7 @@ export default function StaffRosterPage() {
 
   function jumpToWeekOf(d) {
     setWeekStart(mondayOf(d));
+    setCopyMessage(null);
     if (d.getMonth() !== viewMonthIndex || d.getFullYear() !== viewYear) {
       setViewYear(d.getFullYear());
       setViewMonthIndex(d.getMonth());
@@ -169,6 +172,38 @@ export default function StaffRosterPage() {
       return;
     }
     loadEntries();
+  }
+
+  // Copies every staff member's shifts from the week immediately before
+  // the one currently shown onto this week, in one go — see
+  // app/api/staff-roster/repeat-week/route.js. Additive: shifts already
+  // on this week are left alone, so this only fills in the gaps.
+  async function copyPreviousWeek() {
+    setError(null);
+    setCopyMessage(null);
+    setCopying(true);
+    try {
+      const res = await fetch('/api/staff-roster/repeat-week', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ week_start: weekStartISO }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.error || "Failed to copy last week's roster");
+        return;
+      }
+      setCopyMessage(
+        data.copied > 0
+          ? `Copied ${data.copied} shift${data.copied === 1 ? '' : 's'} from the previous week.`
+          : 'No shifts in the previous week to copy.'
+      );
+      loadEntries();
+    } catch (err) {
+      setError(err.message || "Failed to copy last week's roster");
+    } finally {
+      setCopying(false);
+    }
   }
 
   const monthLabel = new Date(viewYear, viewMonthIndex, 1).toLocaleDateString([], { month: 'long', year: 'numeric' });
@@ -244,6 +279,17 @@ export default function StaffRosterPage() {
               Next week &rsaquo;
             </button>
           </div>
+
+          <div className="roster-copy-week">
+            <button type="button" className="button-link" onClick={copyPreviousWeek} disabled={copying}>
+              🔁 {copying ? 'Copying...' : 'Copy Previous Week (All Staff)'}
+            </button>
+            <span className="visit-meta">
+              Fills in this week from last week&apos;s roster, for every staff member at once — won&apos;t
+              touch shifts already on this week.
+            </span>
+          </div>
+          {copyMessage && <p className="visit-meta roster-copy-message">{copyMessage}</p>}
 
           {loading ? (
             <p>Loading roster...</p>
