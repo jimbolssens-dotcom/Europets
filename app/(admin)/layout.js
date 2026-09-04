@@ -61,9 +61,6 @@ export default function AdminLayout({ children }) {
           <a href="/mobile" title="Mobile recording app" aria-label="Mobile recording app" className="settings-link">
             📱
           </a>
-          <a href="/shift-tally" title="Shift Tally" aria-label="Shift Tally" className="settings-link">
-            💰
-          </a>
           <a href="/settings" title="Settings" aria-label="Settings" className="settings-link">
             ⚙️
           </a>
