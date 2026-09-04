@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import SearchSelect from '@/app/_components/SearchSelect';
+import { buildStaffColorMap, UNASSIGNED_STAFF_COLOR } from '@/lib/staffColors';
 
 const OPEN_HOUR = 8;
 const CLOSE_HOUR = 19;
@@ -43,18 +44,6 @@ const SNAP_MINUTES = 15;
 // snaps to that instead of the coarser 15-minute grid used for start times.
 const SURGERY_INCREMENT_MINUTES = 10;
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-const VET_PALETTE = [
-  { bg: '#dbeafe', fg: '#1d4ed8' },
-  { bg: '#dcfce7', fg: '#15803d' },
-  { bg: '#fef3c7', fg: '#b45309' },
-  { bg: '#ede9fe', fg: '#6d28d9' },
-  { bg: '#cffafe', fg: '#0e7490' },
-  { bg: '#ffe4e6', fg: '#be123c' },
-  { bg: '#ecfccb', fg: '#4d7c0f' },
-  { bg: '#fae8ff', fg: '#a21caf' },
-];
-const UNASSIGNED_COLOR = { bg: '#f3f4f6', fg: '#4b5563' };
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -253,20 +242,11 @@ export default function AppointmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const vetColor = useMemo(() => {
-    const map = {};
-    vets.forEach((v, i) => {
-      // A vet's own chosen color (Staff page) wins; the auto palette is
-      // only a fallback for anyone who hasn't picked one yet. The bg tint
-      // is derived from the chosen color itself (hex + alpha) rather than
-      // asking for two colors, matching how the palette's own bg/fg pairs
-      // read (a pale tint behind a solid border/text color).
-      map[v.id] = v.color ? { bg: `${v.color}22`, fg: v.color } : VET_PALETTE[i % VET_PALETTE.length];
-    });
-    return map;
-  }, [vets]);
+  // See lib/staffColors.js — same per-staff color map the Staff Roster
+  // page uses, so a vet reads the same color in both places.
+  const vetColor = useMemo(() => buildStaffColorMap(vets), [vets]);
 
-  const colorForVet = (vetId) => (vetId && vetColor[vetId]) || UNASSIGNED_COLOR;
+  const colorForVet = (vetId) => (vetId && vetColor[vetId]) || UNASSIGNED_STAFF_COLOR;
 
   useEffect(() => {
     if (rosterBlock) playAlertBeep();
@@ -782,7 +762,7 @@ export default function AppointmentsPage() {
               <span className="vet-legend-item">
                 <span
                   className="vet-legend-swatch"
-                  style={{ background: UNASSIGNED_COLOR.bg, borderColor: UNASSIGNED_COLOR.fg }}
+                  style={{ background: UNASSIGNED_STAFF_COLOR.bg, borderColor: UNASSIGNED_STAFF_COLOR.fg }}
                 />
                 Unassigned
               </span>

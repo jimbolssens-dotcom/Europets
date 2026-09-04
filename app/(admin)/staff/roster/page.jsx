@@ -11,6 +11,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { buildStaffColorMap } from '@/lib/staffColors';
 
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const SHIFTS = ['morning', 'afternoon'];
@@ -112,6 +113,12 @@ export default function StaffRosterPage() {
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Same color a staff member reads as on the Appointments schedule — see
+  // lib/staffColors.js: their own chosen color (Staff page) if they have
+  // one, otherwise a stable auto-assigned one, so every row here is
+  // color-coded either way.
+  const staffColor = useMemo(() => buildStaffColorMap(staff), [staff]);
 
   const staffCountByDate = useMemo(() => {
     const seen = {};
@@ -321,37 +328,42 @@ export default function StaffRosterPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {staff.map((s) => (
-                    <tr key={s.id}>
-                      <td className="roster-staff-col">
-                        {s.full_name} <span className="visit-meta">({s.role})</span>
-                      </td>
-                      {weekDates.map((d) => {
-                        const iso = toISODate(d);
-                        return (
-                          <Fragment key={iso}>
-                            {SHIFTS.map((shift) => {
-                              const on = weekEntries.some(
-                                (e) => e.staff_id === s.id && e.date === iso && e.shift === shift
-                              );
-                              return (
-                                <td key={shift} className="roster-cell">
-                                  <button
-                                    type="button"
-                                    className={`roster-toggle${on ? ' roster-toggle-on' : ''}`}
-                                    onClick={() => toggleCell(s, iso, shift)}
-                                    title={`${s.full_name} — ${d.toLocaleDateString()} ${SHIFT_LABELS[shift]} — click to ${on ? 'remove' : 'add'}`}
-                                  >
-                                    {on ? '✓' : '+'}
-                                  </button>
-                                </td>
-                              );
-                            })}
-                          </Fragment>
-                        );
-                      })}
-                    </tr>
-                  ))}
+                  {staff.map((s) => {
+                    const color = staffColor[s.id];
+                    return (
+                      <tr key={s.id}>
+                        <td className="roster-staff-col" style={{ borderLeft: `4px solid ${color.fg}` }}>
+                          <span className="staff-color-swatch" style={{ background: color.fg }} />{' '}
+                          {s.full_name} <span className="visit-meta">({s.role})</span>
+                        </td>
+                        {weekDates.map((d) => {
+                          const iso = toISODate(d);
+                          return (
+                            <Fragment key={iso}>
+                              {SHIFTS.map((shift) => {
+                                const on = weekEntries.some(
+                                  (e) => e.staff_id === s.id && e.date === iso && e.shift === shift
+                                );
+                                return (
+                                  <td key={shift} className="roster-cell">
+                                    <button
+                                      type="button"
+                                      className={`roster-toggle${on ? ' roster-toggle-on' : ''}`}
+                                      style={on ? { background: color.fg, borderColor: color.fg } : undefined}
+                                      onClick={() => toggleCell(s, iso, shift)}
+                                      title={`${s.full_name} — ${d.toLocaleDateString()} ${SHIFT_LABELS[shift]} — click to ${on ? 'remove' : 'add'}`}
+                                    >
+                                      {on ? '✓' : '+'}
+                                    </button>
+                                  </td>
+                                );
+                              })}
+                            </Fragment>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
