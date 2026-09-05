@@ -24,7 +24,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
-import { phoneSearchDigits } from '@/lib/phoneMatch';
+import { phoneSearchDigits, clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 
 export async function GET() {
   const { data, error } = await supabase
@@ -55,10 +55,10 @@ export async function POST(request) {
   } else if (body.sent_to_phone) {
     const digits = phoneSearchDigits(body.sent_to_phone);
     if (digits) {
-      const { data: matches } = await supabase
-        .from('clients')
-        .select('id')
-        .or(`phone.ilike.%${digits}%,phone2.ilike.%${digits}%`);
+      const extraIds = await clientIdsWithPhoneLike(supabase, `%${digits}%`);
+      const orFilter =
+        extraIds.length > 0 ? `phone.ilike.%${digits}%,id.in.(${extraIds.join(',')})` : `phone.ilike.%${digits}%`;
+      const { data: matches } = await supabase.from('clients').select('id').or(orFilter);
       if (matches && matches.length === 1) {
         clientId = matches[0].id;
       }

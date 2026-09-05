@@ -12,38 +12,17 @@ import { supabase } from '@/lib/supabaseClient';
 import { uploadAttachment } from '@/lib/attachments';
 import ScanIdButton from '@/app/_components/ScanIdButton';
 import { phoneSearchDigits } from '@/lib/phoneMatch';
+import ClientPhonesEditor, { emptyPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
 
 const emptyForm = {
   full_name: '',
-  phone: '+971',
-  phone2: '+971',
-  phone2_label: '',
+  phones: [emptyPhoneRow(true)],
   emirates_id: '',
   trn: '',
   email: '',
   address: '',
 };
 const emptySearch = { client_number: '', name: '', phone: '', emirates_id: '', email: '', address: '' };
-
-const PHONE2_LABELS = [
-  { value: 'husband', label: 'Husband' },
-  { value: 'wife', label: 'Wife' },
-  { value: 'maid', label: 'Maid' },
-  { value: 'driver', label: 'Driver' },
-  { value: 'other', label: 'Other' },
-];
-
-function phone2LabelText(value) {
-  return PHONE2_LABELS.find((o) => o.value === value)?.label || value;
-}
-
-// The +971 default is just a typing shortcut — if it's left untouched (no
-// digits typed beyond the country code), treat the field as not filled in
-// rather than saving a bare "+971" as someone's phone number.
-function normalizePhone(value) {
-  const digits = (value || '').replace(/\D/g, '');
-  return digits === '' || digits === '971' ? '' : value;
-}
 
 function buildQuery(search) {
   const params = new URLSearchParams();
@@ -126,15 +105,18 @@ export default function ClientsPage() {
   }
 
   // Cross-references what's typed so far against existing clients by
-  // phone (formatting-normalized), Emirates ID, and name — a match on any
-  // of these is a strong sign this "new" client already exists.
+  // phone (formatting-normalized, any number on the form — not just
+  // whichever is picked for WhatsApp), Emirates ID, and name — a match on
+  // any of these is a strong sign this "new" client already exists.
   async function findPossibleDuplicates() {
-    const digits = phoneSearchDigits(normalizePhone(form.phone));
+    const allDigits = [...new Set(form.phones.map((p) => phoneSearchDigits(p.phone)).filter(Boolean))];
     const emiratesId = form.emirates_id.trim();
     const name = form.full_name.trim();
 
     const requests = [];
-    if (digits) requests.push(fetch(`/api/clients?phone=${digits}`).then((res) => res.json()));
+    for (const digits of allDigits) {
+      requests.push(fetch(`/api/clients?phone=${digits}`).then((res) => res.json()));
+    }
     if (emiratesId) requests.push(fetch(`/api/clients?emirates_id=${encodeURIComponent(emiratesId)}`).then((res) => res.json()));
     if (name) requests.push(fetch(`/api/clients?name=${encodeURIComponent(name)}`).then((res) => res.json()));
     if (requests.length === 0) return [];
@@ -171,11 +153,7 @@ export default function ClientsPage() {
     const res = await fetch('/api/clients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...form,
-        phone: normalizePhone(form.phone),
-        phone2: normalizePhone(form.phone2),
-      }),
+      body: JSON.stringify(form),
     });
     const data = await res.json();
 
@@ -219,11 +197,10 @@ export default function ClientsPage() {
 
   function startEdit(client) {
     setEditingId(client.id);
+    const phones = (client.client_phones || []).map(toEditableRow);
     setEditForm({
       full_name: client.full_name,
-      phone: client.phone || '+971',
-      phone2: client.phone2 || '+971',
-      phone2_label: client.phone2_label || '',
+      phones: phones.length > 0 ? phones : [emptyPhoneRow(true)],
       emirates_id: client.emirates_id || '',
       trn: client.trn || '',
       email: client.email || '',
@@ -242,11 +219,7 @@ export default function ClientsPage() {
     const res = await fetch(`/api/clients/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...editForm,
-        phone: normalizePhone(editForm.phone),
-        phone2: normalizePhone(editForm.phone2),
-      }),
+      body: JSON.stringify(editForm),
     });
     const data = await res.json();
 
@@ -343,27 +316,7 @@ export default function ClientsPage() {
             value={form.trn}
             onChange={(e) => updateForm({ trn: e.target.value })}
           />
-          <input
-            placeholder="Phone"
-            value={form.phone}
-            onChange={(e) => updateForm({ phone: e.target.value })}
-          />
-          <input
-            placeholder="2nd phone (optional)"
-            value={form.phone2}
-            onChange={(e) => updateForm({ phone2: e.target.value })}
-          />
-          <select
-            value={form.phone2_label}
-            onChange={(e) => updateForm({ phone2_label: e.target.value })}
-          >
-            <option value="">2nd phone belongs to...</option>
-            {PHONE2_LABELS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <ClientPhonesEditor phones={form.phones} onChange={(phones) => updateForm({ phones })} groupName="new" />
           <input
             placeholder="Email"
             type="email"
@@ -422,8 +375,7 @@ export default function ClientsPage() {
                 <tr>
                   <th>Client #</th>
                   <th>Name</th>
-                  <th>Phone</th>
-                  <th>2nd Phone</th>
+                  <th>Phone Numbers</th>
                   <th>Emirates ID</th>
                   <th>Email</th>
                   <th>Address</th>
@@ -442,28 +394,11 @@ export default function ClientsPage() {
                         />
                       </td>
                       <td>
-                        <input
-                          value={editForm.phone}
-                          onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                        <ClientPhonesEditor
+                          phones={editForm.phones}
+                          onChange={(phones) => setEditForm({ ...editForm, phones })}
+                          groupName={`edit-${c.id}`}
                         />
-                      </td>
-                      <td>
-                        <input
-                          placeholder="Phone"
-                          value={editForm.phone2}
-                          onChange={(e) => setEditForm({ ...editForm, phone2: e.target.value })}
-                        />
-                        <select
-                          value={editForm.phone2_label}
-                          onChange={(e) => setEditForm({ ...editForm, phone2_label: e.target.value })}
-                        >
-                          <option value="">Whose?</option>
-                          {PHONE2_LABELS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
                       </td>
                       <td>
                         <input
@@ -510,11 +445,15 @@ export default function ClientsPage() {
                       <td>
                         <a href={`/clients/${c.id}`}>{c.full_name}</a>
                       </td>
-                      <td>{c.phone}</td>
                       <td>
-                        {c.phone2
-                          ? `${c.phone2}${c.phone2_label ? ` (${phone2LabelText(c.phone2_label)})` : ''}`
-                          : ''}
+                        {(c.client_phones || []).length === 0
+                          ? c.phone || '—'
+                          : c.client_phones.map((p, i) => (
+                              <div key={i}>
+                                {p.phone} ({p.label}
+                                {p.is_whatsapp ? ' · WhatsApp' : ''})
+                              </div>
+                            ))}
                       </td>
                       <td>{c.emirates_id || '—'}</td>
                       <td>{c.email}</td>

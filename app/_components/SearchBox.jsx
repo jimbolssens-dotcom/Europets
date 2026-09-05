@@ -87,10 +87,7 @@ export default function SearchBox() {
                   onClick={() => pick(`/clients/${c.id}`)}
                 >
                   <strong>{c.full_name}</strong>
-                  <span>
-                    {c.phone}
-                    {c.phone2 ? ` · ${c.phone2}` : ''}
-                  </span>
+                  <span>{c.phone}</span>
                 </button>
               ))}
             </>

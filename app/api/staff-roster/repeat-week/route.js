@@ -17,6 +17,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
+import { defaultRosterCapabilities } from '@/lib/rosterDefaults';
 
 function addDays(dateISO, n) {
   const d = new Date(`${dateISO}T00:00:00Z`);
@@ -52,10 +53,21 @@ export async function POST(request) {
     return NextResponse.json({ copied: 0 });
   }
 
+  const staffIds = [...new Set(lastWeek.map((e) => e.staff_id))];
+  const { data: staffRows, error: staffError } = await supabase
+    .from('staff')
+    .select('id, full_name')
+    .in('id', staffIds);
+  if (staffError) {
+    return NextResponse.json({ error: staffError.message }, { status: 500 });
+  }
+  const nameById = new Map((staffRows || []).map((s) => [s.id, s.full_name]));
+
   const rows = lastWeek.map((entry) => ({
     staff_id: entry.staff_id,
     date: addDays(entry.date, 7),
     shift: entry.shift,
+    ...defaultRosterCapabilities(entry.shift, nameById.get(entry.staff_id)),
   }));
 
   const { data: inserted, error: insertError } = await supabase

@@ -39,15 +39,33 @@ create table clients (
     id uuid primary key default gen_random_uuid(),
     client_number bigint generated always as identity unique,  -- human-facing client number
     full_name text not null,
-    phone text,
-    phone2 text,
-    phone2_label text,       -- who the second number belongs to: 'husband', 'wife', 'maid', 'driver', 'other'
+    phone text,               -- synced to whichever client_phones row is_whatsapp=true (see below)
     emirates_id text,        -- UAE Emirates ID number, typed or read off a scanned card
     trn text,                -- client's own VAT Tax Registration Number, if a registered business
     email text,
     address text,
     created_at timestamptz default now()
 );
+
+-- A client's phone numbers — as many as they like, each with a mandatory
+-- label (a preset like "Husband"/"Maid" or free-typed custom text), and
+-- at most one flagged as their preferred WhatsApp number (see the partial
+-- unique index). clients.phone is kept in sync with that one number, since
+-- most of the app (search, WhatsApp draft links, PDFs) just reads it
+-- directly rather than joining this table.
+create table client_phones (
+    id uuid primary key default gen_random_uuid(),
+    client_id uuid references clients(id) on delete cascade not null,
+    phone text not null,
+    label text not null,
+    is_whatsapp boolean not null default false,
+    created_at timestamptz default now()
+);
+
+create unique index client_phones_one_whatsapp_per_client
+    on client_phones (client_id) where (is_whatsapp);
+create index client_phones_client_id_idx on client_phones (client_id);
+create index client_phones_phone_idx on client_phones (phone);
 
 -- ============ PATIENTS ============
 create table patients (

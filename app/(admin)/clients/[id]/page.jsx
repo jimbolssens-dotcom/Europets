@@ -11,14 +11,6 @@ import AttachmentSection from '@/app/_components/AttachmentSection';
 import ScanIdButton from '@/app/_components/ScanIdButton';
 import { uploadAttachment } from '@/lib/attachments';
 
-const PHONE2_LABEL_TEXT = {
-  husband: 'Husband',
-  wife: 'Wife',
-  maid: 'Maid',
-  driver: 'Driver',
-  other: 'Other',
-};
-
 export default function ClientDetailPage() {
   const { id } = useParams();
   const [client, setClient] = useState(null);
@@ -114,10 +106,11 @@ export default function ClientDetailPage() {
         {client.full_name} <span>(Client #{client.client_number})</span>
       </h1>
       <p>
-        {client.phone}
-        {client.phone2
-          ? ` · ${client.phone2}${client.phone2_label ? ` (${PHONE2_LABEL_TEXT[client.phone2_label] || client.phone2_label})` : ''}`
-          : ''}{' '}
+        {(client.client_phones || []).length > 0
+          ? client.client_phones
+              .map((p) => `${p.phone} (${p.label}${p.is_whatsapp ? ' · WhatsApp' : ''})`)
+              .join(' · ')
+          : client.phone}{' '}
         · {client.email}
         {client.address ? ` · ${client.address}` : ''}
         {client.emirates_id ? ` · Emirates ID: ${client.emirates_id}` : ''}

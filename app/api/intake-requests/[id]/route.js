@@ -277,6 +277,14 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
       return NextResponse.json({ error: clientError.message }, { status: 500 });
     }
     client = created;
+    if (intake.phone) {
+      // Backs clients.phone with a real client_phones row, same as any
+      // client added directly on the Clients page — otherwise this
+      // number would show up there but not in their editable phones list.
+      await supabase
+        .from('client_phones')
+        .insert([{ client_id: client.id, phone: intake.phone, label: 'Mobile', is_whatsapp: true }]);
+    }
   }
 
   const patientRows = (intake.patients || []).map((p) => ({

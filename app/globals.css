@@ -313,6 +313,50 @@ button:disabled {
   }
 }
 
+/* Client phone numbers list (see app/_components/ClientPhonesEditor) —
+   used both in the "Add Client" form and the inline edit row on
+   app/(admin)/clients, so it needs to work both as a form.card descendant
+   (which forces child labels into flex-column, hence the !importants
+   below) and as a bare table-cell descendant. */
+.client-phones-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.client-phone-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.client-phone-row input,
+.client-phone-row select {
+  width: auto;
+  min-width: 0;
+}
+
+.client-phone-whatsapp-choice {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.25rem !important;
+  font-weight: normal !important;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.client-phone-remove {
+  padding: 0.2rem 0.5rem;
+  line-height: 1;
+  font-size: 1rem;
+}
+
+.client-phone-add {
+  align-self: flex-start;
+}
+
 .tagline {
   color: var(--pink-dark);
   font-weight: 600;

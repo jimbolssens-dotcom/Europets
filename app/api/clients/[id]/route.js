@@ -1,15 +1,18 @@
 // app/api/clients/[id]/route.js
-// GET    /api/clients/:id  -> a single client
-// PATCH  /api/clients/:id  -> edit a client
+// GET    /api/clients/:id  -> a single client, with its phone numbers (client_phones)
+// PATCH  /api/clients/:id  -> edit a client — pass `phones` to replace their whole
+//                             phones list (see lib/clientPhones); omit it to leave
+//                             their numbers untouched
 // DELETE /api/clients/:id  -> remove a client (blocked if they/their patients have history)
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
+import { normalizeClientPhones, syncClientWhatsappPhone } from '@/lib/clientPhones';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('clients')
-    .select('*')
+    .select('*, client_phones(*)')
     .eq('id', params.id)
     .single();
 
@@ -21,31 +24,63 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { full_name, phone, phone2, phone2_label, emirates_id, trn, email, address } = body;
+  const { full_name, phones, emirates_id, trn, email, address } = body;
 
   const update = {};
   if (full_name !== undefined) update.full_name = full_name;
-  if (phone !== undefined) update.phone = phone;
-  if (phone2 !== undefined) {
-    update.phone2 = phone2 || null;
-    update.phone2_label = phone2 ? phone2_label || null : null;
-  } else if (phone2_label !== undefined) {
-    update.phone2_label = phone2_label || null;
-  }
   if (emirates_id !== undefined) update.emirates_id = emirates_id || null;
   if (trn !== undefined) update.trn = trn || null;
   if (email !== undefined) update.email = email;
   if (address !== undefined) update.address = address;
 
-  if (Object.keys(update).length === 0) {
+  let normalizedPhones;
+  if (phones !== undefined) {
+    try {
+      normalizedPhones = normalizeClientPhones(phones);
+    } catch (err) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+  }
+
+  if (Object.keys(update).length === 0 && normalizedPhones === undefined) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
+  }
+
+  if (normalizedPhones !== undefined) {
+    // Replace the whole list rather than diffing individual rows — it's
+    // always small, and this keeps the "exactly one WhatsApp number"
+    // logic in one place (see normalizeClientPhones) instead of having to
+    // reconcile partial updates against what's already there.
+    const { error: deleteError } = await supabase.from('client_phones').delete().eq('client_id', params.id);
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
+    if (normalizedPhones.length > 0) {
+      const { error: insertError } = await supabase
+        .from('client_phones')
+        .insert(normalizedPhones.map((p) => ({ ...p, client_id: params.id })));
+      if (insertError) {
+        return NextResponse.json({ error: insertError.message }, { status: 500 });
+      }
+    }
+    try {
+      await syncClientWhatsappPhone(supabase, params.id, normalizedPhones);
+    } catch (err) {
+      return NextResponse.json({ error: err.message }, { status: 500 });
+    }
+  }
+
+  if (Object.keys(update).length > 0) {
+    const { error: updateError } = await supabase.from('clients').update(update).eq('id', params.id);
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
   }
 
   const { data, error } = await supabase
     .from('clients')
-    .update(update)
+    .select('*, client_phones(*)')
     .eq('id', params.id)
-    .select()
     .single();
 
   if (error) {

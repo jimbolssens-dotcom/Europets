@@ -4,6 +4,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
+import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 
 // PostgREST's .or() filter syntax uses commas/parens as delimiters — strip
 // them out of the raw search term so a stray character can't break the query.
@@ -22,14 +23,20 @@ export async function GET(request) {
 
   const term = `%${q}%`;
 
+  let extraPhoneClientIds;
+  try {
+    extraPhoneClientIds = await clientIdsWithPhoneLike(supabase, term);
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+  const clientOrFilter =
+    extraPhoneClientIds.length > 0
+      ? `full_name.ilike.${term},phone.ilike.${term},id.in.(${extraPhoneClientIds.join(',')})`
+      : `full_name.ilike.${term},phone.ilike.${term}`;
+
   const [{ data: clients, error: clientsError }, { data: patients, error: patientsError }] =
     await Promise.all([
-      supabase
-        .from('clients')
-        .select('*')
-        .or(`full_name.ilike.${term},phone.ilike.${term},phone2.ilike.${term}`)
-        .order('full_name', { ascending: true })
-        .limit(limit),
+      supabase.from('clients').select('*').or(clientOrFilter).order('full_name', { ascending: true }).limit(limit),
       supabase
         .from('patients')
         .select('*, clients(id, full_name, phone)')

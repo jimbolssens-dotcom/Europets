@@ -12,6 +12,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
+import { defaultRosterCapabilities } from '@/lib/rosterDefaults';
 
 const SHIFTS = ['morning', 'afternoon'];
 
@@ -56,8 +57,16 @@ export async function POST(request) {
   }
 
   const row = { staff_id, date, shift };
-  if (can_consult !== undefined) row.can_consult = Boolean(can_consult);
-  if (can_surgery !== undefined) row.can_surgery = Boolean(can_surgery);
+  if (can_consult !== undefined || can_surgery !== undefined) {
+    if (can_consult !== undefined) row.can_consult = Boolean(can_consult);
+    if (can_surgery !== undefined) row.can_surgery = Boolean(can_surgery);
+  } else {
+    // Neither was specified — apply the standard default for this shift
+    // (and doctor) rather than the bare column default, which used to be
+    // "consult only" regardless of shift or who it was.
+    const { data: staffMember } = await supabase.from('staff').select('full_name').eq('id', staff_id).single();
+    Object.assign(row, defaultRosterCapabilities(shift, staffMember?.full_name));
+  }
 
   const { data, error } = await supabase
     .from('staff_roster_entries')

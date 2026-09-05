@@ -53,7 +53,6 @@ function SearchResults() {
                   <th>Client #</th>
                   <th>Name</th>
                   <th>Phone</th>
-                  <th>2nd Phone</th>
                   <th>Email</th>
                 </tr>
               </thead>
@@ -65,7 +64,6 @@ function SearchResults() {
                       <a href={`/clients/${c.id}`}>{c.full_name}</a>
                     </td>
                     <td>{c.phone}</td>
-                    <td>{c.phone2}</td>
                     <td>{c.email}</td>
                   </tr>
                 ))}
