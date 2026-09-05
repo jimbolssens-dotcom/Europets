@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import SearchBox from '../_components/SearchBox';
+import AppVersionWatcher from '../_components/AppVersionWatcher';
 import { supabase } from '@/lib/supabaseClient';
 
 // Wraps every internal staff page (everything except the public client
@@ -90,6 +91,7 @@ export default function AdminLayout({ children }) {
 
   return (
     <>
+      <AppVersionWatcher />
       <nav className="topnav">
         <a href="/" className="brand">
           <img src="/logo.png" alt="Europets Clinic" />

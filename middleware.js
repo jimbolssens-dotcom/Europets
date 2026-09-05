@@ -35,6 +35,7 @@ const PUBLIC_PATTERNS = [
   /^\/api\/hospitalizations\/[^/]+\/notes$/, // by id only, not /notes/[noteId]
   /^\/api\/hospitalizations\/[^/]+\/request-update$/,
   /^\/api\/booking-availability(\/.*)?$/,
+  /^\/api\/app-version$/, // polled by AppVersionWatcher on every page, staff and portal alike
 ];
 
 function isPublicPath(pathname, method) {
