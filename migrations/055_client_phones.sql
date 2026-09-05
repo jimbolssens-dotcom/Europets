@@ -14,9 +14,9 @@
 -- sync on every add/edit/remove here; nothing needs to change on those
 -- read-only call sites.
 --
--- Existing phone/phone2 data is backfilled into client_phones below.
--- phone2/phone2_label themselves are dropped in a separate follow-up
--- migration (056) once that backfill is confirmed.
+-- Existing phone/phone2 data is backfilled into client_phones below. The
+-- phone2 backfill only runs if that column still exists, so this is safe
+-- to run even after 056_drop_client_phone2.sql already dropped it.
 --
 -- Run this in your Supabase SQL editor. Safe to run more than once.
 
@@ -45,17 +45,26 @@ where phone is not null and phone <> ''
   and not exists (select 1 from client_phones cp where cp.client_id = clients.id and cp.phone = clients.phone);
 
 -- Backfill: clients.phone2 becomes its own row, carrying over whatever
--- label it already had (mapped to the new preset names).
-insert into client_phones (client_id, phone, label, is_whatsapp)
-select id, phone2,
-       case phone2_label
-         when 'husband' then 'Husband'
-         when 'wife' then 'Wife'
-         when 'maid' then 'Maid'
-         when 'driver' then 'Driver'
-         else coalesce(nullif(phone2_label, ''), 'Other')
-       end,
-       false
-from clients
-where phone2 is not null and phone2 <> ''
-  and not exists (select 1 from client_phones cp where cp.client_id = clients.id and cp.phone = clients.phone2);
+-- label it already had (mapped to the new preset names) — skipped
+-- entirely if phone2 has already been dropped (migration 056 ran first).
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'clients' and column_name = 'phone2'
+  ) then
+    insert into client_phones (client_id, phone, label, is_whatsapp)
+    select id, phone2,
+           case phone2_label
+             when 'husband' then 'Husband'
+             when 'wife' then 'Wife'
+             when 'maid' then 'Maid'
+             when 'driver' then 'Driver'
+             else coalesce(nullif(phone2_label, ''), 'Other')
+           end,
+           false
+    from clients
+    where phone2 is not null and phone2 <> ''
+      and not exists (select 1 from client_phones cp where cp.client_id = clients.id and cp.phone = clients.phone2);
+  end if;
+end $$;
