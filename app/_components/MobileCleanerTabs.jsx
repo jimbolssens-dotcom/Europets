@@ -1,38 +1,24 @@
 // app/_components/MobileCleanerTabs.jsx
-// Persistent 2-tab nav shown instead of the usual "← Record" back link on
-// the pages a cleaner needs — Hospital (the cage layout) and Staff Roster
-// (My Schedule). See app/mobile/page.js: picking a cleaner staff member
-// lands on a simplified home with only these two tabs, and both
-// destination pages show this same bar so a cleaner never has to go back
-// through the tile-grid home to switch between them. Nothing else in the
-// mobile app is reachable from here, by design.
+// The cleaner's actual home screen (app/mobile/page.js) — two big tap
+// targets, Hospital (the cage layout) and Staff Roster (My Schedule),
+// instead of the full staff tile grid. Everything past this point uses
+// the same MobileHomeButton every other follow-through screen does to
+// get back here, rather than this bar following the cleaner around.
 
 'use client';
 
 import { useHospitalizationUpdatePending } from '@/app/_components/useHospitalizationUpdatePending';
 
-export default function MobileCleanerTabs({ active }) {
+export default function MobileCleanerTabs() {
   const updatePending = useHospitalizationUpdatePending();
 
   return (
     <nav className="mobile-cleaner-tabs">
-      <a
-        href="/mobile/hospitalization"
-        className={[
-          'mobile-cleaner-tab',
-          active === 'hospital' ? 'mobile-cleaner-tab-active' : '',
-          updatePending ? 'cage-update-requested' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-      >
+      <a href="/mobile/hospitalization" className={`mobile-cleaner-tab${updatePending ? ' cage-update-requested' : ''}`}>
         <span className="mobile-cleaner-tab-icon">🏥</span>
         <span>Hospital{updatePending && ' 🔔'}</span>
       </a>
-      <a
-        href="/mobile/schedule"
-        className={`mobile-cleaner-tab${active === 'roster' ? ' mobile-cleaner-tab-active' : ''}`}
-      >
+      <a href="/mobile/schedule" className="mobile-cleaner-tab">
         <span className="mobile-cleaner-tab-icon">📅</span>
         <span>Staff Roster</span>
       </a>

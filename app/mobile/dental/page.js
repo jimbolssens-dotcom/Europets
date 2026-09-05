@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import MobileHomeButton from '@/app/_components/MobileHomeButton';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -68,9 +69,7 @@ export default function MobileDentalPickerPage() {
 
   return (
     <div className="mobile-page">
-      <a href="/mobile" className="mobile-back">
-        &larr; Record
-      </a>
+      <MobileHomeButton />
       <h1>🦷 Dental Report</h1>
       <p className="mobile-hint">Pick a patient to start a dental chart and dictate a report.</p>
 

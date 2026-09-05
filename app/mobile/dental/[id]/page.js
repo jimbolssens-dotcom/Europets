@@ -14,6 +14,7 @@ import { useParams, useRouter } from 'next/navigation';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import DentalChart from '@/app/_components/DentalChart';
+import MobileHomeButton from '@/app/_components/MobileHomeButton';
 
 export default function MobileDentalReportPage() {
   const { id } = useParams();
@@ -52,9 +53,7 @@ export default function MobileDentalReportPage() {
 
   return (
     <div className="mobile-page">
-      <a href="/mobile/dental" className="mobile-back">
-        &larr; Dental Report
-      </a>
+      <MobileHomeButton />
       {visit && (
         <>
           <h1>{visit.patients?.name}</h1>

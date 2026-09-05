@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import AttachmentSection from '@/app/_components/AttachmentSection';
+import MobileHomeButton from '@/app/_components/MobileHomeButton';
 
 export default function MobileSurgicalReportPage() {
   const { id } = useParams();
@@ -29,9 +30,7 @@ export default function MobileSurgicalReportPage() {
 
   return (
     <div className="mobile-page">
-      <a href="/mobile/surgery" className="mobile-back">
-        &larr; Surgery Report
-      </a>
+      <MobileHomeButton />
       {report && (
         <>
           <h1>{patient?.name}</h1>

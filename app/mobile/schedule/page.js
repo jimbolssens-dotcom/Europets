@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
+import MobileHomeButton from '@/app/_components/MobileHomeButton';
 
 const STORAGE_KEY = 'europets_mobile_staff_id';
 const SHIFTS = ['morning', 'afternoon'];
@@ -168,13 +168,7 @@ export default function MobileSchedulePage() {
 
   return (
     <div className="mobile-page">
-      {me?.role === 'cleaner' ? (
-        <MobileCleanerTabs active="roster" />
-      ) : (
-        <a href="/mobile" className="mobile-back">
-          &larr; Record
-        </a>
-      )}
+      <MobileHomeButton />
       <h1>My Schedule</h1>
       {error && <p className="error">{error}</p>}
 

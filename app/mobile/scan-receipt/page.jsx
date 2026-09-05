@@ -13,6 +13,7 @@
 import { useState } from 'react';
 import { uploadAttachment } from '@/lib/attachments';
 import ScanReceiptButton from '@/app/_components/ScanReceiptButton';
+import MobileHomeButton from '@/app/_components/MobileHomeButton';
 
 const CATEGORIES = [
   'supplies',
@@ -115,9 +116,7 @@ export default function MobileScanReceiptPage() {
 
   return (
     <div className="mobile-page">
-      <a href="/mobile" className="mobile-back">
-        &larr; Record
-      </a>
+      <MobileHomeButton />
       <h1>Scan Receipt</h1>
 
       {saved && <p style={{ color: '#1a7a3d' }}>Expense saved.</p>}

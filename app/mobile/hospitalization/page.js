@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { byGroup } from '@/app/_components/CageFloorPlan';
 import { useMobileStaff } from '@/app/_components/useMobileStaff';
-import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
+import MobileHomeButton from '@/app/_components/MobileHomeButton';
 
 function MobileCageTile({ cage, hosp, checkinOnly }) {
   if (hosp) {
@@ -155,13 +155,7 @@ export default function MobileHospitalizationListPage() {
 
   return (
     <div className="mobile-page">
-      {isCleaner ? (
-        <MobileCleanerTabs active="hospital" />
-      ) : (
-        <a href="/mobile" className="mobile-back">
-          &larr; Record
-        </a>
-      )}
+      <MobileHomeButton />
       <h1>Hospitalization</h1>
 
       {loading ? (

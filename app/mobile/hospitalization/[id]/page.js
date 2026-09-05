@@ -33,6 +33,7 @@ import { useParams, useRouter } from 'next/navigation';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import AttachmentSection from '@/app/_components/AttachmentSection';
+import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import { uploadAttachment } from '@/lib/attachments';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
@@ -197,16 +198,14 @@ export default function MobileHospitalizationPage() {
       {admission && (
         <a
           href={`/mobile/hospitalization/${id}/checkin`}
-          className="mobile-quick-switch-btn"
+          className="mobile-corner-btn mobile-corner-btn-secondary"
           title="Switch to simplified Quick Check-In"
           aria-label="Switch to simplified Quick Check-In"
         >
           ⚡
         </a>
       )}
-      <a href="/mobile/hospitalization" className="mobile-back">
-        &larr; Hospitalization
-      </a>
+      <MobileHomeButton />
       {admission && (
         <>
           <h1>{admission.cages?.name || 'No cage'} — {admission.patients?.name}</h1>

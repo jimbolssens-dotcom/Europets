@@ -20,7 +20,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CHECKIN_CATEGORIES } from '@/lib/hospitalizationCheckin';
 import { MOBILE_STAFF_STORAGE_KEY } from '@/app/_components/useMobileStaff';
-import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
+import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import { uploadAttachment } from '@/lib/attachments';
 
 const emptySelection = Object.fromEntries(CHECKIN_CATEGORIES.map((c) => [c.key, '']));
@@ -125,7 +125,7 @@ export default function MobileHospitalizationCheckinPage() {
 
   return (
     <div className="mobile-page">
-      <MobileCleanerTabs active="hospital" />
+      <MobileHomeButton />
 
       {admission && (
         <>

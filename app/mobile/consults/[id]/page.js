@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AudioRecorder from '@/app/_components/AudioRecorder';
+import MobileHomeButton from '@/app/_components/MobileHomeButton';
 
 export default function MobileConsultPage() {
   const { id } = useParams();
@@ -23,9 +24,7 @@ export default function MobileConsultPage() {
 
   return (
     <div className="mobile-page">
-      <a href="/mobile/consults" className="mobile-back">
-        &larr; Consults
-      </a>
+      <MobileHomeButton />
       {consult && (
         <>
           <h1>{consult.patients?.name}</h1>

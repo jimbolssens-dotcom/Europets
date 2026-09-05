@@ -3303,30 +3303,15 @@ form.card.admit-patient-form {
   line-height: 0;
 }
 
-/* Force-updates the phone to whatever's live on Vercel right now — see
-   forceRefresh() in app/mobile/page.js. Fixed in the corner rather than
-   inline in the heading row, so it's reachable without scrolling even if
-   a stale cached version has broken layout further down the page. */
-.mobile-refresh-btn {
-  position: fixed;
-  top: 0.75rem;
-  right: 0.75rem;
-  z-index: 10;
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0;
-  border-radius: 999px;
-  background: white;
-  border: 1px solid var(--pink-tint);
-  color: var(--pink-dark);
-  font-size: 1.2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-}
-
-/* Jumps to this same admission's simplified Quick Check-In (see
-   app/mobile/hospitalization/[id]/page.js) — same corner-icon treatment
-   as .mobile-refresh-btn above, just an <a> instead of a <button>. */
-.mobile-quick-switch-btn {
+/* Fixed top-right corner button on every mobile follow-through screen —
+   always the Home button (see MobileHomeButton.jsx), always at this same
+   exact spot. A page that needs one extra contextual icon alongside it
+   (e.g. the hospitalization admission's Quick Check-In switch) adds
+   .mobile-corner-btn-secondary to sit just to Home's left instead — each
+   button is independently fixed-positioned rather than relying on a
+   shared flex wrapper, so Home alone (the common case) needs no wrapper
+   element at all. */
+.mobile-corner-btn {
   position: fixed;
   top: 0.75rem;
   right: 0.75rem;
@@ -3336,13 +3321,19 @@ form.card.admit-patient-form {
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
+  padding: 0;
   border-radius: 999px;
   background: white;
   border: 1px solid var(--pink-tint);
   color: var(--pink-dark);
   font-size: 1.2rem;
   text-decoration: none;
+  cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.mobile-corner-btn-secondary {
+  right: calc(0.75rem + 2.5rem + 0.5rem);
 }
 
 .mobile-home-logo {
@@ -3384,14 +3375,6 @@ form.card.admit-patient-form {
 .mobile-square-tile-icon {
   font-size: 3rem;
   line-height: 1;
-}
-
-.mobile-back {
-  display: inline-block;
-  margin-bottom: 0.75rem;
-  color: var(--pink-dark);
-  font-weight: 600;
-  text-decoration: none;
 }
 
 .mobile-page h1 {
@@ -3586,12 +3569,6 @@ form.card.admit-patient-form {
 .mobile-cleaner-tab-icon {
   font-size: 3.5rem;
   line-height: 1;
-}
-
-.mobile-cleaner-tab-active {
-  background: var(--pink);
-  border-color: var(--pink);
-  color: white;
 }
 
 /* Quick Check-In (app/mobile/hospitalization/[id]/checkin) — one category
