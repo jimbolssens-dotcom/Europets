@@ -10,7 +10,9 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
+import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
+import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { printPdfUrl } from '@/lib/printPdf';
 
 function money(n) {
@@ -40,6 +42,7 @@ export default function InvoiceDetailPage() {
   const [printingLabelId, setPrintingLabelId] = useState(null); // line item id currently printing, or null
   const [labelsError, setLabelsError] = useState(null);
   const [paymentLinkError, setPaymentLinkError] = useState(null);
+  const [microchipModalOpen, setMicrochipModalOpen] = useState(false);
 
   const loadInvoice = () =>
     fetch(`/api/invoices/${id}`)
@@ -84,12 +87,7 @@ export default function InvoiceDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function addLineItem(e) {
-    e.preventDefault();
-    if (!goodsServiceId) return;
-    setSubmitting(true);
-    setError(null);
-
+  async function postLineItem() {
     const res = await fetch(`/api/invoices/${id}/line-items`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -99,15 +97,68 @@ export default function InvoiceDetailPage() {
       }),
     });
     const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to add item');
+    return data;
+  }
 
-    if (!res.ok) {
-      setError(data.error || 'Failed to add item');
-    } else {
+  async function addLineItem(e) {
+    e.preventDefault();
+    if (!goodsServiceId) return;
+
+    if (isMicrochipProduct(selected?.name)) {
+      setMicrochipModalOpen(true);
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await postLineItem();
       setGoodsServiceId('');
       setQuantity('');
       loadInvoice();
+    } catch (err) {
+      setError(err.message);
     }
     setSubmitting(false);
+  }
+
+  // Called once the microchip popup is confirmed: adds the line item as
+  // usual, then saves the chip number + implantation date straight to the
+  // patient file (see EDITABLE_FIELDS in app/api/patients/[id]) so nobody
+  // has to remember to do that as a separate step. Returns an error
+  // message on failure (shown inside the modal), or null on success.
+  async function confirmMicrochip(number, date) {
+    setError(null);
+    try {
+      await postLineItem();
+    } catch (err) {
+      return err.message;
+    }
+
+    const patientId = invoice.visits?.patients?.id || invoice.hospitalizations?.patients?.id;
+    if (patientId) {
+      const res = await fetch(`/api/patients/${patientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ microchip_number: number, microchip_implanted_at: date }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        // The invoice line item is already added at this point — only the
+        // patient-file save failed (e.g. that chip number is already
+        // registered to another patient) — so surface it but don't retry
+        // adding the item again.
+        loadInvoice();
+        return `Line item added, but couldn't save to the patient file: ${data.error || 'unknown error'}`;
+      }
+    }
+
+    setGoodsServiceId('');
+    setQuantity('');
+    setMicrochipModalOpen(false);
+    loadInvoice();
+    return null;
   }
 
   async function removeLineItem(itemId) {
@@ -325,6 +376,15 @@ export default function InvoiceDetailPage() {
 
       <h3>Payments</h3>
       <InvoicePaymentPanel invoice={invoice} staff={staff} onChanged={loadInvoice} />
+
+      {microchipModalOpen && (
+        <MicrochipCaptureModal
+          patientName={patientName}
+          confirmLabel="Save & Add to Invoice"
+          onCancel={() => setMicrochipModalOpen(false)}
+          onConfirm={confirmMicrochip}
+        />
+      )}
     </div>
   );
 }

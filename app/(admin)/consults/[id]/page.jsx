@@ -17,6 +17,8 @@ import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
+import { isMicrochipProduct } from '@/lib/microchipProduct';
 import ReportShareActions from '@/app/_components/ReportShareActions';
 import ClientReportEditor from '@/app/_components/ClientReportEditor';
 import DentalChart from '@/app/_components/DentalChart';
@@ -72,6 +74,7 @@ export default function ConsultDetailPage() {
   const [treatmentItems, setTreatmentItems] = useState([]);
   const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1' });
   const [treatCategory, setTreatCategory] = useState('product');
+  const [microchipModalOpen, setMicrochipModalOpen] = useState(false);
 
   const [surgicalReports, setSurgicalReports] = useState([]);
   const [surgForm, setSurgForm] = useState({ surgeon_id: '', procedure_name: '', notes: '' });
@@ -314,16 +317,61 @@ export default function ConsultDetailPage() {
     loadTreatmentItems();
   }
 
-  async function addTreatmentItem(e) {
-    e.preventDefault();
-    if (!treatForm.goods_service_id) return;
-    await fetch('/api/treatment-items', {
+  async function postTreatmentItem() {
+    const res = await fetch('/api/treatment-items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ visit_id: id, ...treatForm }),
     });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || 'Failed to add treatment item');
+    }
+  }
+
+  async function addTreatmentItem(e) {
+    e.preventDefault();
+    if (!treatForm.goods_service_id) return;
+
+    const selected = catalog.find((c) => c.id === treatForm.goods_service_id);
+    if (isMicrochipProduct(selected?.name)) {
+      setMicrochipModalOpen(true);
+      return;
+    }
+
+    await postTreatmentItem();
     setTreatForm({ goods_service_id: '', instructions: '', quantity: '1' });
     loadTreatmentItems();
+  }
+
+  // Called once the microchip popup is confirmed: adds the treatment item
+  // (which becomes an invoice line once this consult is invoiced) as
+  // usual, then saves the chip number + implantation date straight to the
+  // patient file. Returns an error message on failure, or null on success.
+  async function confirmMicrochip(number, date) {
+    try {
+      await postTreatmentItem();
+    } catch (err) {
+      return err.message;
+    }
+
+    if (consult.patients?.id) {
+      const res = await fetch(`/api/patients/${consult.patients.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ microchip_number: number, microchip_implanted_at: date }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        loadTreatmentItems();
+        return `Treatment item added, but couldn't save to the patient file: ${data.error || 'unknown error'}`;
+      }
+    }
+
+    setTreatForm({ goods_service_id: '', instructions: '', quantity: '1' });
+    setMicrochipModalOpen(false);
+    loadTreatmentItems();
+    return null;
   }
 
   async function addConsentForm(e) {
@@ -752,6 +800,15 @@ export default function ConsultDetailPage() {
           />
           <button type="submit">{`+ Add ${ADD_ITEM_LABELS[treatCategory]}`}</button>
         </form>
+
+        {microchipModalOpen && (
+          <MicrochipCaptureModal
+            patientName={consult.patients?.name}
+            confirmLabel="Save & Add to Treatment Plan"
+            onCancel={() => setMicrochipModalOpen(false)}
+            onConfirm={confirmMicrochip}
+          />
+        )}
 
         <table>
           <thead>

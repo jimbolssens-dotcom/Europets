@@ -1107,6 +1107,58 @@ button.secondary:hover {
   width: 100%;
 }
 
+/* Generic small popup form (currently used for the microchip-capture
+   prompt) — a lighter-weight sibling of .pdf-preview-backdrop/-panel for
+   dialogs that hold a short form rather than embedded content. */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-panel {
+  background: white;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 420px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modal-panel h3 {
+  margin: 0;
+}
+
+.modal-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.modal-panel label input {
+  padding: 0.45rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  color: inherit;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
 /* Not-on-roster booking alert (app/appointments) — deliberately loud: a
    vet who isn't on the staff roster for that date+shift is a hard block,
    so this needs to actually stop reception rather than read as one more
