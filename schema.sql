@@ -565,6 +565,13 @@ create table clinic_settings (
     -- post-op release form is built from (see migration 033).
     surgical_postop_baseline text,
     dental_postop_baseline text,
+    -- The two windows a client can request a slot in on the self-booking
+    -- portal form (see lib/appointmentBooking.js) — editable on the
+    -- Settings page since the clinic's actual hours change (migration 052).
+    booking_morning_start time not null default '09:00',
+    booking_morning_end time not null default '13:00',
+    booking_afternoon_start time not null default '16:30',
+    booking_afternoon_end time not null default '19:00',
     updated_at timestamptz default now()
 );
 insert into clinic_settings (id) values (true) on conflict do nothing;

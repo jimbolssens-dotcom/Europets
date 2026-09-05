@@ -16,7 +16,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
-import { CLIENT_APPOINTMENT_TYPES, CLIENT_BOOKING_WINDOWS, clientBookingDurationMinutes } from '@/lib/appointmentBooking';
+import { CLIENT_APPOINTMENT_TYPES, buildClientBookingWindows, clientBookingDurationMinutes } from '@/lib/appointmentBooking';
 
 const SLOT_STEP_MINUTES = 15;
 
@@ -53,19 +53,21 @@ export async function GET(request) {
   const dayStart = new Date(uaeIso(date, '00:00'));
   const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
-  const [{ data: roster, error: rosterError }, { data: dayAppointments, error: apptError }] = await Promise.all([
-    supabase
-      .from('staff_roster_entries')
-      .select('staff_id, shift, staff(full_name)')
-      .eq('date', date)
-      .eq(capabilityColumn, true),
-    supabase
-      .from('appointments')
-      .select('vet_id, start_time, duration_minutes')
-      .neq('status', 'cancelled')
-      .gte('start_time', dayStart.toISOString())
-      .lt('start_time', dayEnd.toISOString()),
-  ]);
+  const [{ data: roster, error: rosterError }, { data: dayAppointments, error: apptError }, { data: clinicSettings, error: settingsError }] =
+    await Promise.all([
+      supabase
+        .from('staff_roster_entries')
+        .select('staff_id, shift, staff(full_name)')
+        .eq('date', date)
+        .eq(capabilityColumn, true),
+      supabase
+        .from('appointments')
+        .select('vet_id, start_time, duration_minutes')
+        .neq('status', 'cancelled')
+        .gte('start_time', dayStart.toISOString())
+        .lt('start_time', dayEnd.toISOString()),
+      supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
+    ]);
 
   if (rosterError) {
     return NextResponse.json({ error: rosterError.message }, { status: 500 });
@@ -73,6 +75,11 @@ export async function GET(request) {
   if (apptError) {
     return NextResponse.json({ error: apptError.message }, { status: 500 });
   }
+  if (settingsError) {
+    return NextResponse.json({ error: settingsError.message }, { status: 500 });
+  }
+
+  const bookingWindows = buildClientBookingWindows(clinicSettings);
 
   const appointmentsByVet = new Map();
   for (const appt of dayAppointments || []) {
@@ -92,7 +99,7 @@ export async function GET(request) {
 
   const slots = [];
   for (const entry of roster || []) {
-    const window = CLIENT_BOOKING_WINDOWS.find((w) => w.shift === entry.shift);
+    const window = bookingWindows.find((w) => w.shift === entry.shift);
     if (!window) continue;
 
     for (let startMin = window.startMinutes; startMin + duration <= window.endMinutes; startMin += SLOT_STEP_MINUTES) {

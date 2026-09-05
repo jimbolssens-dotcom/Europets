@@ -5,7 +5,9 @@
 // PATCH /api/clinic-settings  -> edit it (legal_name, trn, address, phone,
 //                                 phone2, email, dispensing_fee,
 //                                 sc_injection_fee, im_injection_fee,
-//                                 surgical_postop_baseline, dental_postop_baseline)
+//                                 surgical_postop_baseline, dental_postop_baseline,
+//                                 booking_morning_start, booking_morning_end,
+//                                 booking_afternoon_start, booking_afternoon_end)
 //
 // Singleton row (id is always `true`) — there's only ever one clinic. Both
 // handlers create the row on the fly if it's missing (e.g. the migration's
@@ -50,6 +52,10 @@ export async function PATCH(request) {
     im_injection_fee,
     surgical_postop_baseline,
     dental_postop_baseline,
+    booking_morning_start,
+    booking_morning_end,
+    booking_afternoon_start,
+    booking_afternoon_end,
   } = body;
 
   const update = { id: true, updated_at: new Date().toISOString() };
@@ -64,6 +70,10 @@ export async function PATCH(request) {
   if (im_injection_fee !== undefined) update.im_injection_fee = Number(im_injection_fee) || 0;
   if (surgical_postop_baseline !== undefined) update.surgical_postop_baseline = surgical_postop_baseline || null;
   if (dental_postop_baseline !== undefined) update.dental_postop_baseline = dental_postop_baseline || null;
+  if (booking_morning_start !== undefined) update.booking_morning_start = booking_morning_start;
+  if (booking_morning_end !== undefined) update.booking_morning_end = booking_morning_end;
+  if (booking_afternoon_start !== undefined) update.booking_afternoon_start = booking_afternoon_start;
+  if (booking_afternoon_end !== undefined) update.booking_afternoon_end = booking_afternoon_end;
 
   const { data, error } = await supabase
     .from('clinic_settings')

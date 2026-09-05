@@ -18,6 +18,10 @@ const emptyForm = {
   im_injection_fee: '',
   surgical_postop_baseline: '',
   dental_postop_baseline: '',
+  booking_morning_start: '09:00',
+  booking_morning_end: '13:00',
+  booking_afternoon_start: '16:30',
+  booking_afternoon_end: '19:00',
 };
 
 export default function SettingsPage() {
@@ -43,6 +47,10 @@ export default function SettingsPage() {
           im_injection_fee: data.im_injection_fee || 0,
           surgical_postop_baseline: data.surgical_postop_baseline || '',
           dental_postop_baseline: data.dental_postop_baseline || '',
+          booking_morning_start: (data.booking_morning_start || '09:00').slice(0, 5),
+          booking_morning_end: (data.booking_morning_end || '13:00').slice(0, 5),
+          booking_afternoon_start: (data.booking_afternoon_start || '16:30').slice(0, 5),
+          booking_afternoon_end: (data.booking_afternoon_end || '19:00').slice(0, 5),
         });
         setLoading(false);
       });
@@ -187,6 +195,45 @@ export default function SettingsPage() {
             placeholder="e.g. Soft food only for 3-5 days. No hard chews or toys for 2 weeks. Watch for excessive drooling, bleeding, or reluctance to eat and call us if it persists..."
             value={form.dental_postop_baseline}
             onChange={(e) => setForm({ ...form, dental_postop_baseline: e.target.value })}
+          />
+        </label>
+
+        <h3>Client Self-Booking Hours</h3>
+        <p className="visit-meta">
+          The two windows a client can request a consult/spay/castration/dental slot in on the
+          booking portal — a slot only shows up within these hours, and only with a doctor the
+          roster flags in for that kind (Staff Roster page).
+        </p>
+        <label>
+          Morning window start
+          <input
+            type="time"
+            value={form.booking_morning_start}
+            onChange={(e) => setForm({ ...form, booking_morning_start: e.target.value })}
+          />
+        </label>
+        <label>
+          Morning window end
+          <input
+            type="time"
+            value={form.booking_morning_end}
+            onChange={(e) => setForm({ ...form, booking_morning_end: e.target.value })}
+          />
+        </label>
+        <label>
+          Afternoon window start
+          <input
+            type="time"
+            value={form.booking_afternoon_start}
+            onChange={(e) => setForm({ ...form, booking_afternoon_start: e.target.value })}
+          />
+        </label>
+        <label>
+          Afternoon window end
+          <input
+            type="time"
+            value={form.booking_afternoon_end}
+            onChange={(e) => setForm({ ...form, booking_afternoon_end: e.target.value })}
           />
         </label>
 
