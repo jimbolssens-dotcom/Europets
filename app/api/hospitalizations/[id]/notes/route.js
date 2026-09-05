@@ -120,7 +120,10 @@ export async function POST(request, { params }) {
   // "Request an Update" flag (see the request-update route) so that
   // case's cage stops blinking on the Cage Layout page. Best-effort: a
   // failure here shouldn't lose the note that was just saved.
-  await supabase.from('hospitalizations').update({ update_requested_at: null }).eq('id', params.id);
+  await supabase
+    .from('hospitalizations')
+    .update({ update_requested_at: null, update_request_message: null })
+    .eq('id', params.id);
 
   let insertedItems = [];
   const pendingItems = (Array.isArray(treatment_items) ? treatment_items : []).filter((t) => t.goods_service_id);

@@ -28,7 +28,11 @@ function MobileCageTile({ cage, hosp, checkinOnly }) {
       >
         <div className="cage-tile-header">
           <span className="cage-name">{cage.name}</span>
-          {hosp.update_requested_at && <span title="Owner requested an update">🔔</span>}
+          {hosp.update_requested_at && (
+            <span title={hosp.update_request_message ? `Owner requested an update: "${hosp.update_request_message}"` : 'Owner requested an update'}>
+              🔔
+            </span>
+          )}
           {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
         </div>
         <div className="cage-patient">{hosp.patients?.name}</div>

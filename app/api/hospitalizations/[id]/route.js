@@ -50,7 +50,10 @@ export async function PATCH(request, { params }) {
   // Only ever set to null here (dismissing the "owner is waiting" flag from
   // staff's side) — the client portal sets the timestamp itself, via
   // POST /api/hospitalizations/:id/request-update.
-  if (update_requested_at === null) update.update_requested_at = null;
+  if (update_requested_at === null) {
+    update.update_requested_at = null;
+    update.update_request_message = null;
+  }
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });

@@ -404,6 +404,7 @@ create table hospitalizations (
     reason text,
     update_requested_at timestamptz,  -- set by the client portal's "Request an Update" button; makes
                                        -- this case's cage blink on the Cage Layout page until cleared
+    update_request_message text,      -- optional short note the client typed alongside that request
     created_at timestamptz default now()
 );
 

@@ -27,6 +27,7 @@ export default function HospitalizationPortalPage() {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [requestingUpdate, setRequestingUpdate] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState('');
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`, { cache: 'no-store' })
@@ -64,8 +65,13 @@ export default function HospitalizationPortalPage() {
 
   async function requestUpdate() {
     setRequestingUpdate(true);
-    await fetch(`/api/hospitalizations/${id}/request-update`, { method: 'POST' });
+    await fetch(`/api/hospitalizations/${id}/request-update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: updateMessage.trim() }),
+    });
     setRequestingUpdate(false);
+    setUpdateMessage('');
     loadAdmission();
   }
 
@@ -93,6 +99,18 @@ export default function HospitalizationPortalPage() {
         {admission.reason && <p>{admission.reason}</p>}
         {admission.status === 'admitted' && (
           <div className="portal-update-request">
+            {!admission.update_requested_at && (
+              <label className="portal-update-request-note">
+                Want to ask something specific? (optional)
+                <textarea
+                  rows={2}
+                  maxLength={500}
+                  placeholder="e.g. Is she eating yet?"
+                  value={updateMessage}
+                  onChange={(e) => setUpdateMessage(e.target.value)}
+                />
+              </label>
+            )}
             <button type="button" onClick={requestUpdate} disabled={requestingUpdate || !!admission.update_requested_at}>
               {requestingUpdate
                 ? 'Sending...'
@@ -101,7 +119,12 @@ export default function HospitalizationPortalPage() {
                 : '🔔 Request an Update'}
             </button>
             {admission.update_requested_at && (
-              <p className="visit-meta">We&apos;ve let the team know — they&apos;ll post an update soon.</p>
+              <>
+                <p className="visit-meta">We&apos;ve let the team know — they&apos;ll post an update soon.</p>
+                {admission.update_request_message && (
+                  <p className="portal-update-request-sent">&quot;{admission.update_request_message}&quot;</p>
+                )}
+              </>
             )}
           </div>
         )}

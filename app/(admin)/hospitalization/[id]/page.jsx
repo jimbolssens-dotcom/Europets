@@ -450,7 +450,10 @@ export default function HospitalizationDetailPage() {
       </div>
       {admission.update_requested_at && (
         <div className="update-requested-banner">
-          <span>🔔 {admission.clients?.full_name || 'The owner'} requested an update</span>
+          <span>
+            🔔 {admission.clients?.full_name || 'The owner'} requested an update
+            {admission.update_request_message && <> — &quot;{admission.update_request_message}&quot;</>}
+          </span>
           <button type="button" onClick={dismissUpdateRequest}>
             Dismiss
           </button>

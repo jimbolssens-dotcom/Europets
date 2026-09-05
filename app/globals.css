@@ -2482,6 +2482,26 @@ button.secondary:hover {
   cursor: default;
 }
 
+.portal-update-request-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 0.5rem;
+}
+
+.portal-update-request-note textarea {
+  font-family: inherit;
+  resize: vertical;
+}
+
+.portal-update-request-sent {
+  font-style: italic;
+  color: #555;
+  margin-top: 0.3rem;
+}
+
 /* Staff-side banner on the admission page (app/hospitalization/[id]) when
    a client has requested an update — mirrors the blinking cage, for
    whichever page staff happen to be looking at first. */
