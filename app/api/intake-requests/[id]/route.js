@@ -18,6 +18,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 import { CLIENT_APPOINTMENT_TYPES, CLIENT_APPOINTMENT_TYPE_LABELS, appointmentTypeAllowedForSex } from '@/lib/appointmentBooking';
+import { seedCoreVaccinationsFromLastGiven } from '@/lib/vaccinationSeeding';
 import { findAppointmentConflict } from '@/lib/appointmentScheduling';
 
 export async function GET(request, { params }) {
@@ -80,8 +81,8 @@ async function submit(id, body) {
     }
   }
   for (const p of newPets) {
-    if (!p.name || !p.species) {
-      return NextResponse.json({ error: 'each pet needs a name and species' }, { status: 400 });
+    if (!p.name || !p.species || !p.sex) {
+      return NextResponse.json({ error: 'each pet needs a name, species, and sex' }, { status: 400 });
     }
   }
 
@@ -292,9 +293,11 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
     name: p.name,
     species: p.species,
     breed: p.breed || null,
+    color: p.color || null,
     date_of_birth: p.date_of_birth || null,
     sex: p.sex || null,
     microchip_number: p.microchip_number || null,
+    microchip_implanted_at: p.microchip_implanted_at || null,
   }));
   const { data: insertedPatients, error: patientsError } = await supabase
     .from('patients')
@@ -315,6 +318,21 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
         : patientsError.message;
     return NextResponse.json({ error: message }, { status: patientsError.code === '23505' ? 409 : 500 });
   }
+
+  // Puts each new pet with a last vaccination date onto the existing
+  // Vaccination Reminders dashboard a year out — same as the desktop Add
+  // Patient form (see lib/vaccinationSeeding.js). insertedPatients comes
+  // back in the same order as patientRows/intake.patients above.
+  await Promise.all(
+    insertedPatients.map((row, i) =>
+      seedCoreVaccinationsFromLastGiven(
+        supabase,
+        row.id,
+        intake.patients[i]?.species,
+        intake.patients[i]?.last_vaccination_date
+      )
+    )
+  );
 
   // The one pet this request concerns — either the existing one they
   // picked, or the one (and only, enforced at submit time) new pet they

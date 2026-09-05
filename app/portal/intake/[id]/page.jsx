@@ -24,6 +24,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import SpeciesField from '@/app/_components/SpeciesField';
+import PetAttributeField from '@/app/_components/PetAttributeField';
+import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
 import {
   clientAppointmentTypeEntriesForSex,
   clientBookingDurationMinutes,
@@ -31,7 +33,18 @@ import {
 } from '@/lib/appointmentBooking';
 
 function emptyPet() {
-  return { name: '', species: '', breed: '', date_of_birth: '', sex: '', microchip_number: '', weight_kg: '' };
+  return {
+    name: '',
+    species: '',
+    breed: '',
+    color: '',
+    date_of_birth: '',
+    sex: '',
+    microchip_number: '',
+    microchip_implanted_at: '',
+    last_vaccination_date: '',
+    weight_kg: '',
+  };
 }
 
 function todayISODate() {
@@ -420,7 +433,25 @@ export default function IntakePortalPage() {
                     </label>
                     <label>
                       Breed (optional)
-                      <input value={pets[0].breed} onChange={(e) => updatePet(0, 'breed', e.target.value)} />
+                      <PetAttributeField
+                        species={pets[0].species}
+                        value={pets[0].breed}
+                        onChange={(breed) => updatePet(0, 'breed', breed)}
+                        catOptions={CAT_BREEDS}
+                        dogOptions={DOG_BREEDS}
+                        placeholder="Breed"
+                      />
+                    </label>
+                    <label>
+                      Color (optional)
+                      <PetAttributeField
+                        species={pets[0].species}
+                        value={pets[0].color}
+                        onChange={(color) => updatePet(0, 'color', color)}
+                        catOptions={CAT_COLORS}
+                        dogOptions={DOG_COLORS}
+                        placeholder="Color"
+                      />
                     </label>
                     <label>
                       Weight in kg (optional — helps us schedule the right amount of time)
@@ -440,13 +471,16 @@ export default function IntakePortalPage() {
                       />
                     </label>
                     <label>
-                      Sex (optional)
-                      <select value={pets[0].sex} onChange={(e) => updatePet(0, 'sex', e.target.value)}>
-                        <option value="">Unknown</option>
+                      Sex
+                      <select value={pets[0].sex} onChange={(e) => updatePet(0, 'sex', e.target.value)} required>
+                        <option value="" disabled>
+                          Select...
+                        </option>
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                         <option value="male_castrated">Male (Castrated)</option>
                         <option value="female_spayed">Female (Spayed)</option>
+                        <option value="unknown">Unknown</option>
                       </select>
                     </label>
                     <label>
@@ -454,6 +488,22 @@ export default function IntakePortalPage() {
                       <input
                         value={pets[0].microchip_number}
                         onChange={(e) => updatePet(0, 'microchip_number', e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Microchip implantation date (optional)
+                      <input
+                        type="date"
+                        value={pets[0].microchip_implanted_at}
+                        onChange={(e) => updatePet(0, 'microchip_implanted_at', e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Last vaccination given (optional)
+                      <input
+                        type="date"
+                        value={pets[0].last_vaccination_date}
+                        onChange={(e) => updatePet(0, 'last_vaccination_date', e.target.value)}
                       />
                     </label>
                   </div>
@@ -479,7 +529,25 @@ export default function IntakePortalPage() {
                     </label>
                     <label>
                       Breed (optional)
-                      <input value={pet.breed} onChange={(e) => updatePet(i, 'breed', e.target.value)} />
+                      <PetAttributeField
+                        species={pet.species}
+                        value={pet.breed}
+                        onChange={(breed) => updatePet(i, 'breed', breed)}
+                        catOptions={CAT_BREEDS}
+                        dogOptions={DOG_BREEDS}
+                        placeholder="Breed"
+                      />
+                    </label>
+                    <label>
+                      Color (optional)
+                      <PetAttributeField
+                        species={pet.species}
+                        value={pet.color}
+                        onChange={(color) => updatePet(i, 'color', color)}
+                        catOptions={CAT_COLORS}
+                        dogOptions={DOG_COLORS}
+                        placeholder="Color"
+                      />
                     </label>
                     <label>
                       Weight in kg (optional — helps us schedule the right amount of time)
@@ -499,13 +567,16 @@ export default function IntakePortalPage() {
                       />
                     </label>
                     <label>
-                      Sex (optional)
-                      <select value={pet.sex} onChange={(e) => updatePet(i, 'sex', e.target.value)}>
-                        <option value="">Unknown</option>
+                      Sex
+                      <select value={pet.sex} onChange={(e) => updatePet(i, 'sex', e.target.value)} required>
+                        <option value="" disabled>
+                          Select...
+                        </option>
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                         <option value="male_castrated">Male (Castrated)</option>
                         <option value="female_spayed">Female (Spayed)</option>
+                        <option value="unknown">Unknown</option>
                       </select>
                     </label>
                     <label>
@@ -513,6 +584,22 @@ export default function IntakePortalPage() {
                       <input
                         value={pet.microchip_number}
                         onChange={(e) => updatePet(i, 'microchip_number', e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Microchip implantation date (optional)
+                      <input
+                        type="date"
+                        value={pet.microchip_implanted_at}
+                        onChange={(e) => updatePet(i, 'microchip_implanted_at', e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Last vaccination given (optional)
+                      <input
+                        type="date"
+                        value={pet.last_vaccination_date}
+                        onChange={(e) => updatePet(i, 'last_vaccination_date', e.target.value)}
                       />
                     </label>
                   </div>

@@ -10,25 +10,32 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import SpeciesField from '@/app/_components/SpeciesField';
+import PetAttributeField from '@/app/_components/PetAttributeField';
 import SearchSelect from '@/app/_components/SearchSelect';
+import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
 
 const emptyForm = {
   client_id: '',
   name: '',
   species: '',
   breed: '',
+  color: '',
   date_of_birth: '',
   sex: '',
   current_weight_kg: '',
   microchip_number: '',
+  microchip_implanted_at: '',
+  last_vaccination_date: '',
 };
 
 const emptyEditForm = {
   name: '',
   species: '',
   breed: '',
+  color: '',
   current_weight_kg: '',
   microchip_number: '',
+  microchip_implanted_at: '',
   deceased: false,
 };
 
@@ -126,6 +133,8 @@ function PatientsPageInner() {
       current_weight_kg: form.current_weight_kg ? Number(form.current_weight_kg) : null,
       date_of_birth: form.date_of_birth || null,
       microchip_number: form.microchip_number || null,
+      microchip_implanted_at: form.microchip_implanted_at || null,
+      last_vaccination_date: form.last_vaccination_date || null,
     };
 
     const res = await fetch('/api/patients', {
@@ -150,8 +159,10 @@ function PatientsPageInner() {
       name: patient.name,
       species: patient.species,
       breed: patient.breed || '',
+      color: patient.color || '',
       current_weight_kg: patient.current_weight_kg ?? '',
       microchip_number: patient.microchip_number || '',
+      microchip_implanted_at: patient.microchip_implanted_at || '',
       deceased: patient.deceased || false,
     });
     setRowError(null);
@@ -168,6 +179,7 @@ function PatientsPageInner() {
       ...editForm,
       current_weight_kg: editForm.current_weight_kg ? Number(editForm.current_weight_kg) : null,
       microchip_number: editForm.microchip_number || null,
+      microchip_implanted_at: editForm.microchip_implanted_at || null,
     };
 
     const res = await fetch(`/api/patients/${id}`, {
@@ -273,22 +285,36 @@ function PatientsPageInner() {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
           <SpeciesField value={form.species} onChange={(species) => setForm({ ...form, species })} />
-          <input
-            placeholder="Breed"
+          <PetAttributeField
+            species={form.species}
             value={form.breed}
-            onChange={(e) => setForm({ ...form, breed: e.target.value })}
+            onChange={(breed) => setForm({ ...form, breed })}
+            catOptions={CAT_BREEDS}
+            dogOptions={DOG_BREEDS}
+            placeholder="Breed"
+          />
+          <PetAttributeField
+            species={form.species}
+            value={form.color}
+            onChange={(color) => setForm({ ...form, color })}
+            catOptions={CAT_COLORS}
+            dogOptions={DOG_COLORS}
+            placeholder="Color"
           />
           <input
             type="date"
             value={form.date_of_birth}
             onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
           />
-          <select value={form.sex} onChange={(e) => setForm({ ...form, sex: e.target.value })}>
-            <option value="">Sex (unknown)</option>
+          <select value={form.sex} onChange={(e) => setForm({ ...form, sex: e.target.value })} required>
+            <option value="" disabled>
+              Sex...
+            </option>
             <option value="male">Male</option>
             <option value="female">Female</option>
             <option value="male_castrated">Male (Castrated)</option>
             <option value="female_spayed">Female (Spayed)</option>
+            <option value="unknown">Unknown</option>
           </select>
           <input
             placeholder="Weight (kg)"
@@ -302,6 +328,22 @@ function PatientsPageInner() {
             value={form.microchip_number}
             onChange={(e) => setForm({ ...form, microchip_number: e.target.value })}
           />
+          <label className="patient-form-date-field">
+            Microchip implanted
+            <input
+              type="date"
+              value={form.microchip_implanted_at}
+              onChange={(e) => setForm({ ...form, microchip_implanted_at: e.target.value })}
+            />
+          </label>
+          <label className="patient-form-date-field">
+            Last vaccination given
+            <input
+              type="date"
+              value={form.last_vaccination_date}
+              onChange={(e) => setForm({ ...form, last_vaccination_date: e.target.value })}
+            />
+          </label>
           <button type="submit" disabled={submitting || clients.length === 0}>
             {submitting ? 'Saving...' : 'Add Patient'}
           </button>
@@ -324,6 +366,7 @@ function PatientsPageInner() {
                   <th>Name</th>
                   <th>Species</th>
                   <th>Breed</th>
+                  <th>Color</th>
                   <th>Owner</th>
                   <th>Weight (kg)</th>
                   <th>Microchip #</th>
@@ -349,9 +392,23 @@ function PatientsPageInner() {
                         />
                       </td>
                       <td>
-                        <input
+                        <PetAttributeField
+                          species={editForm.species}
                           value={editForm.breed}
-                          onChange={(e) => setEditForm({ ...editForm, breed: e.target.value })}
+                          onChange={(breed) => setEditForm({ ...editForm, breed })}
+                          catOptions={CAT_BREEDS}
+                          dogOptions={DOG_BREEDS}
+                          placeholder="Breed"
+                        />
+                      </td>
+                      <td>
+                        <PetAttributeField
+                          species={editForm.species}
+                          value={editForm.color}
+                          onChange={(color) => setEditForm({ ...editForm, color })}
+                          catOptions={CAT_COLORS}
+                          dogOptions={DOG_COLORS}
+                          placeholder="Color"
                         />
                       </td>
                       <td>
@@ -369,9 +426,18 @@ function PatientsPageInner() {
                       </td>
                       <td>
                         <input
+                          placeholder="Microchip #"
                           value={editForm.microchip_number}
                           onChange={(e) =>
                             setEditForm({ ...editForm, microchip_number: e.target.value })
+                          }
+                        />
+                        <input
+                          type="date"
+                          title="Microchip implantation date"
+                          value={editForm.microchip_implanted_at}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, microchip_implanted_at: e.target.value })
                           }
                         />
                       </td>
@@ -404,11 +470,17 @@ function PatientsPageInner() {
                       </td>
                       <td>{p.species}</td>
                       <td>{p.breed}</td>
+                      <td>{p.color || '—'}</td>
                       <td>
                         <a href={`/clients/${p.client_id}`}>{p.clients?.full_name}</a>
                       </td>
                       <td>{p.current_weight_kg}</td>
-                      <td>{p.microchip_number || '—'}</td>
+                      <td>
+                        {p.microchip_number || '—'}
+                        {p.microchip_number && p.microchip_implanted_at && (
+                          <span className="visit-meta"> ({p.microchip_implanted_at})</span>
+                        )}
+                      </td>
                       <td>{p.deceased ? 'Yes' : '—'}</td>
                       <td>
                         <button type="button" onClick={() => startEdit(p)}>

@@ -1618,6 +1618,17 @@ button.secondary:hover {
   margin: 0.25rem 0 0.75rem;
 }
 
+/* A labeled date field in the Add Patient form (app/(admin)/patients) —
+   the form's other fields rely on placeholder text alone, which a date
+   input can't show, so these two get a small visible label instead. */
+.patient-form-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
 .consent-text-box {
   max-height: 300px;
   overflow-y: auto;

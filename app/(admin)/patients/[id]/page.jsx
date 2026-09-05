@@ -22,6 +22,7 @@ const SEX_LABELS = {
   female: 'Female',
   male_castrated: 'Male (Castrated)',
   female_spayed: 'Female (Spayed)',
+  unknown: 'Unknown',
 };
 
 export default function PatientDetailPage() {
@@ -113,6 +114,10 @@ export default function PatientDetailPage() {
               <span>{patient.breed || '—'}</span>
             </div>
             <div className="patient-fact">
+              <span className="patient-fact-label">Color</span>
+              <span>{patient.color || '—'}</span>
+            </div>
+            <div className="patient-fact">
               <span className="patient-fact-label">Sex</span>
               <span>{SEX_LABELS[patient.sex] || 'unknown'}</span>
             </div>
@@ -127,6 +132,10 @@ export default function PatientDetailPage() {
             <div className="patient-fact">
               <span className="patient-fact-label">Microchip #</span>
               <span>{patient.microchip_number || '—'}</span>
+            </div>
+            <div className="patient-fact">
+              <span className="patient-fact-label">Microchip implanted</span>
+              <span>{patient.microchip_implanted_at || '—'}</span>
             </div>
             <div className="patient-fact">
               <span className="patient-fact-label">Notes</span>

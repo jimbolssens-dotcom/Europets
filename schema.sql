@@ -75,10 +75,14 @@ create table patients (
     name text not null,
     species text not null,           -- dog, cat, etc.
     breed text,
+    color text,
     date_of_birth date,
-    sex text,                        -- 'male', 'female', 'unknown'
+    sex text,                        -- 'male', 'female', 'male_castrated', 'female_spayed', 'unknown' —
+                                      -- required on the intake forms (migration 059) but not enforced not
+                                      -- null here, since older rows predate that requirement
     current_weight_kg numeric(6,2),  -- updated at each visit; used for per-kg pricing
     microchip_number text unique,    -- ISO microchip number, if chipped
+    microchip_implanted_at date,
     deceased boolean not null default false,
     notes text,
     created_at timestamptz default now()

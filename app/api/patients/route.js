@@ -9,6 +9,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
+import { seedCoreVaccinationsFromLastGiven } from '@/lib/vaccinationSeeding';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -52,10 +53,13 @@ export async function POST(request) {
     name,
     species,
     breed,
+    color,
     date_of_birth,
     sex,
     current_weight_kg,
     microchip_number,
+    microchip_implanted_at,
+    last_vaccination_date,
   } = body;
 
   if (!client_id || !name || !species) {
@@ -63,6 +67,9 @@ export async function POST(request) {
       { error: 'client_id, name, and species are required' },
       { status: 400 }
     );
+  }
+  if (!sex) {
+    return NextResponse.json({ error: 'sex is required' }, { status: 400 });
   }
 
   const { data, error } = await supabase
@@ -73,10 +80,12 @@ export async function POST(request) {
         name,
         species,
         breed,
+        color: color || null,
         date_of_birth,
         sex,
         current_weight_kg,
         microchip_number: microchip_number || null,
+        microchip_implanted_at: microchip_implanted_at || null,
       },
     ])
     .select()
@@ -91,5 +100,8 @@ export async function POST(request) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await seedCoreVaccinationsFromLastGiven(supabase, data.id, species, last_vaccination_date);
+
   return NextResponse.json(data, { status: 201 });
 }
