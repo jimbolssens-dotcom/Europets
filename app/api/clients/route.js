@@ -9,7 +9,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
-import { normalizeClientPhones } from '@/lib/clientPhones';
+import { normalizeClientPhones, attachClientPhones } from '@/lib/clientPhones';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -20,18 +20,13 @@ export async function GET(request) {
   const clientNumber = searchParams.get('client_number');
   const emiratesId = searchParams.get('emirates_id');
 
-  let query = supabase.from('clients').select('*, client_phones(*)').order('full_name', { ascending: true });
+  let query = supabase.from('clients').select('*').order('full_name', { ascending: true });
 
   if (phone) {
     // A match on the client's synced primary (clients.phone) or any other
     // number they have on file (see client_phones) — combined as one
     // AND'ed clause alongside whatever other filters were given.
-    let extraIds;
-    try {
-      extraIds = await clientIdsWithPhoneLike(supabase, `%${phone}%`);
-    } catch (err) {
-      return NextResponse.json({ error: err.message }, { status: 500 });
-    }
+    const extraIds = await clientIdsWithPhoneLike(supabase, `%${phone}%`);
     query =
       extraIds.length > 0
         ? query.or(`phone.ilike.%${phone}%,id.in.(${extraIds.join(',')})`)
@@ -50,6 +45,7 @@ export async function GET(request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  await attachClientPhones(supabase, data);
   return NextResponse.json(data);
 }
 

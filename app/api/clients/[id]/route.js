@@ -7,18 +7,15 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
-import { normalizeClientPhones, syncClientWhatsappPhone } from '@/lib/clientPhones';
+import { normalizeClientPhones, syncClientWhatsappPhone, attachClientPhones } from '@/lib/clientPhones';
 
 export async function GET(request, { params }) {
-  const { data, error } = await supabase
-    .from('clients')
-    .select('*, client_phones(*)')
-    .eq('id', params.id)
-    .single();
+  const { data, error } = await supabase.from('clients').select('*').eq('id', params.id).single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 404 });
   }
+  await attachClientPhones(supabase, data);
   return NextResponse.json(data);
 }
 
@@ -77,15 +74,12 @@ export async function PATCH(request, { params }) {
     }
   }
 
-  const { data, error } = await supabase
-    .from('clients')
-    .select('*, client_phones(*)')
-    .eq('id', params.id)
-    .single();
+  const { data, error } = await supabase.from('clients').select('*').eq('id', params.id).single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  await attachClientPhones(supabase, data);
   return NextResponse.json(data);
 }
 

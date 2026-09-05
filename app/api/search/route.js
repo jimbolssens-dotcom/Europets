@@ -23,12 +23,7 @@ export async function GET(request) {
 
   const term = `%${q}%`;
 
-  let extraPhoneClientIds;
-  try {
-    extraPhoneClientIds = await clientIdsWithPhoneLike(supabase, term);
-  } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const extraPhoneClientIds = await clientIdsWithPhoneLike(supabase, term);
   const clientOrFilter =
     extraPhoneClientIds.length > 0
       ? `full_name.ilike.${term},phone.ilike.${term},id.in.(${extraPhoneClientIds.join(',')})`
