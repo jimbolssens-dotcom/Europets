@@ -4,7 +4,10 @@
 //      day: every 15-minute start time, within the client booking windows
 //      (see lib/appointmentBooking.js), where a roster'd doctor is flagged
 //      for the matching kind (can_consult for a consult, can_surgery for
-//      a spay/castration) and isn't already booked over that time.
+//      anything else) and isn't already booked over that time. Anything
+//      but a consult is restricted to the morning window regardless of
+//      what shift that flag is set on — surgeries (including dental)
+//      aren't done in the afternoon, per clinic policy.
 //
 // Room availability isn't checked here — a client's request doesn't pick
 // a room, staff assign one when approving it (see
@@ -16,7 +19,12 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
-import { CLIENT_APPOINTMENT_TYPES, buildClientBookingWindows, clientBookingDurationMinutes } from '@/lib/appointmentBooking';
+import {
+  CLIENT_APPOINTMENT_TYPES,
+  buildClientBookingWindows,
+  clientBookingDurationMinutes,
+  isSurgeryType,
+} from '@/lib/appointmentBooking';
 
 const SLOT_STEP_MINUTES = 15;
 
@@ -53,13 +61,18 @@ export async function GET(request) {
   const dayStart = new Date(uaeIso(date, '00:00'));
   const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
+  let rosterQuery = supabase
+    .from('staff_roster_entries')
+    .select('staff_id, shift, staff(full_name)')
+    .eq('date', date)
+    .eq(capabilityColumn, true);
+  if (isSurgeryType(type)) {
+    rosterQuery = rosterQuery.eq('shift', 'morning');
+  }
+
   const [{ data: roster, error: rosterError }, { data: dayAppointments, error: apptError }, { data: clinicSettings, error: settingsError }] =
     await Promise.all([
-      supabase
-        .from('staff_roster_entries')
-        .select('staff_id, shift, staff(full_name)')
-        .eq('date', date)
-        .eq(capabilityColumn, true),
+      rosterQuery,
       supabase
         .from('appointments')
         .select('vet_id, start_time, duration_minutes')

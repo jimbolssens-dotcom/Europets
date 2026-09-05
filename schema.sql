@@ -336,14 +336,23 @@ create table intake_requests (
     -- any — null means this link was just for registering, not booking.
     -- 'consult' is a fixed 15 minutes; 'spay'/'castration' durations are
     -- computed from the pet's species/weight (see lib/appointmentBooking.js);
-    -- 'dental_small'/'dental_big' are fixed 30/45 min. All three surgery-
+    -- 'dental_small'/'dental_big' are fixed 30/45 min. All four surgery-
     -- ish types share the roster's can_surgery flag — no separate dental
-    -- flag (migration 051). Anything more involved isn't self-bookable —
-    -- the portal form tells the client to contact the clinic directly.
-    appointment_type text check (appointment_type in ('consult', 'spay', 'castration', 'dental_small', 'dental_big')),
+    -- flag (migration 051) — and are only ever offered in the morning
+    -- window regardless of what shift that flag is set on (surgeries
+    -- aren't done in the afternoon). 'other_surgery' (migration 053) is
+    -- anything non-standard: the client describes it and suggests a day
+    -- instead of picking an exact slot (requested_vet_id/start_time/
+    -- duration_minutes stay null until staff sets them on approval).
+    appointment_type text check (appointment_type in ('consult', 'spay', 'castration', 'dental_small', 'dental_big', 'other_surgery')),
     requested_vet_id uuid references staff(id),
     requested_start_time timestamptz,
     requested_duration_minutes int,
+    -- 'other_surgery' only: the client's own description of what's needed,
+    -- and the day they'd prefer (not an exact time — staff schedule the
+    -- actual slot once they know how long it'll take).
+    custom_surgery_reason text,
+    preferred_date date,
     -- Set once approved, if an appointment was requested — the real
     -- appointments row (status 'booked'; approving *is* the confirmation,
     -- so there's no separate pending status on appointments itself).

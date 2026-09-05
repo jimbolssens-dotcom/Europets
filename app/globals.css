@@ -2560,6 +2560,19 @@ button.secondary:hover {
   color: white;
 }
 
+/* A "preferred day" suggestion that already has a doctor on for surgery
+   (see the custom-surgery-request calendar) — a lighter highlight than
+   .intake-slot-selected so a click can still tell the two apart. */
+.intake-slot-available {
+  background: var(--pink-tint);
+  border-color: var(--pink);
+}
+
+.intake-slot-available.intake-slot-selected {
+  background: var(--pink);
+  color: white;
+}
+
 .intake-review-card {
   background: white;
   border: 1px solid #eee;

@@ -34,7 +34,9 @@ export default function IntakePage() {
   const [copiedId, setCopiedId] = useState(null);
   const [error, setError] = useState(null);
   const [rooms, setRooms] = useState([]);
+  const [vets, setVets] = useState([]);
   const [approvalRoom, setApprovalRoom] = useState({}); // request id -> room_id chosen before approving
+  const [customBooking, setCustomBooking] = useState({}); // request id -> { vetId, date, time, duration } for an 'other_surgery' request
   const [possibleMatches, setPossibleMatches] = useState({}); // intake request id -> matching clients[]
 
   const load = () =>
@@ -50,6 +52,9 @@ export default function IntakePage() {
     fetch('/api/rooms')
       .then((res) => res.json())
       .then((data) => setRooms(Array.isArray(data) ? data : []));
+    fetch('/api/staff?role=vet')
+      .then((res) => res.json())
+      .then((data) => setVets(Array.isArray(data) ? data : []));
     const channel = supabase
       .channel('intake-requests')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'intake_requests' }, load)
@@ -157,9 +162,17 @@ export default function IntakePage() {
         return;
       }
     }
-    if (action === 'approve' && request?.appointment_type && !approvalRoom[id]) {
-      setError('Pick a room for the requested appointment before approving');
-      return;
+    const isCustomSurgery = request?.appointment_type === 'other_surgery';
+    const custom = customBooking[id] || {};
+    if (action === 'approve' && request?.appointment_type) {
+      if (!approvalRoom[id]) {
+        setError('Pick a room for the requested appointment before approving');
+        return;
+      }
+      if (isCustomSurgery && (!custom.vetId || !custom.date || !custom.time || !custom.duration)) {
+        setError('Pick a vet, date, time, and duration for this custom surgery request before approving');
+        return;
+      }
     }
     setError(null);
     const res = await fetch(`/api/intake-requests/${id}`, {
@@ -169,6 +182,13 @@ export default function IntakePage() {
         action,
         ...(clientId ? { client_id: clientId } : {}),
         ...(action === 'approve' && request?.appointment_type ? { room_id: approvalRoom[id] } : {}),
+        ...(action === 'approve' && isCustomSurgery
+          ? {
+              vet_id: custom.vetId,
+              start_time: new Date(`${custom.date}T${custom.time}:00`).toISOString(),
+              duration_minutes: Number(custom.duration),
+            }
+          : {}),
       }),
     });
     const data = await res.json();
@@ -280,7 +300,72 @@ export default function IntakePage() {
               {r.notes && <p className="visit-meta">Notes: {r.notes}</p>}
               <p className="visit-meta">Submitted {formatDateTime(r.submitted_at)}</p>
 
-              {r.appointment_type && (
+              {r.appointment_type === 'other_surgery' && (
+                <div className="intake-appointment-request">
+                  <p>
+                    📅 Requested: <strong>Custom surgery/procedure</strong>
+                    {r.preferred_date && ` — preferred day: ${new Date(`${r.preferred_date}T00:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}`}
+                  </p>
+                  <p className="visit-meta">&quot;{r.custom_surgery_reason}&quot;</p>
+                  <p className="visit-meta">Pick a vet, date, time, and duration, and a room, to schedule this:</p>
+                  <label>
+                    Vet
+                    <select
+                      value={customBooking[r.id]?.vetId || ''}
+                      onChange={(e) => setCustomBooking({ ...customBooking, [r.id]: { ...customBooking[r.id], vetId: e.target.value } })}
+                    >
+                      <option value="">Select vet...</option>
+                      {vets.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Date (surgeries are morning-only)
+                    <input
+                      type="date"
+                      value={customBooking[r.id]?.date || r.preferred_date || ''}
+                      onChange={(e) => setCustomBooking({ ...customBooking, [r.id]: { ...customBooking[r.id], date: e.target.value } })}
+                    />
+                  </label>
+                  <label>
+                    Time
+                    <input
+                      type="time"
+                      value={customBooking[r.id]?.time || ''}
+                      onChange={(e) => setCustomBooking({ ...customBooking, [r.id]: { ...customBooking[r.id], time: e.target.value } })}
+                    />
+                  </label>
+                  <label>
+                    Duration (minutes)
+                    <input
+                      type="number"
+                      min="10"
+                      step="5"
+                      value={customBooking[r.id]?.duration || ''}
+                      onChange={(e) => setCustomBooking({ ...customBooking, [r.id]: { ...customBooking[r.id], duration: e.target.value } })}
+                    />
+                  </label>
+                  <label>
+                    Room (required to approve)
+                    <select
+                      value={approvalRoom[r.id] || ''}
+                      onChange={(e) => setApprovalRoom({ ...approvalRoom, [r.id]: e.target.value })}
+                    >
+                      <option value="">Select room...</option>
+                      {rooms.map((room) => (
+                        <option key={room.id} value={room.id}>
+                          {room.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              )}
+
+              {r.appointment_type && r.appointment_type !== 'other_surgery' && (
                 <div className="intake-appointment-request">
                   <p>
                     📅 Requested: <strong>{CLIENT_APPOINTMENT_TYPE_LABELS[r.appointment_type]}</strong> with{' '}
@@ -330,7 +415,12 @@ export default function IntakePage() {
                 <button
                   type="button"
                   onClick={() => review(r.id, 'approve', null, r)}
-                  disabled={Boolean(r.appointment_type) && !approvalRoom[r.id]}
+                  disabled={
+                    Boolean(r.appointment_type) &&
+                    (!approvalRoom[r.id] ||
+                      (r.appointment_type === 'other_surgery' &&
+                        (!customBooking[r.id]?.vetId || !customBooking[r.id]?.date || !customBooking[r.id]?.time || !customBooking[r.id]?.duration)))
+                  }
                 >
                   {possibleMatches[r.id]?.length > 0 ? 'Create as New Client Anyway' : 'Approve'}
                 </button>

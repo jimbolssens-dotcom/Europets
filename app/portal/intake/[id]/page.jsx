@@ -13,16 +13,18 @@
 //     want isn't listed.
 //
 // Either way, once exactly one pet is in play, they can optionally
-// request a 15-min consult or a standard spay/castration slot — anything
-// else isn't self-bookable, they're told to contact the clinic directly.
-// Submitting holds everything for staff review, same as a plain intake.
+// request a 15-min consult or a standard spay/castration/dental slot, or
+// — for anything else — send a free-text description of what's needed
+// plus a preferred day, since they've no way to know how long it'll
+// take; staff schedule the actual slot when approving it. Submitting
+// holds everything for staff review, same as a plain intake.
 
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import SpeciesField from '@/app/_components/SpeciesField';
-import { CLIENT_APPOINTMENT_TYPE_LABELS, clientBookingDurationMinutes } from '@/lib/appointmentBooking';
+import { CLIENT_APPOINTMENT_TYPE_LABELS, clientBookingDurationMinutes, isSurgeryType } from '@/lib/appointmentBooking';
 
 function emptyPet() {
   return { name: '', species: '', breed: '', date_of_birth: '', sex: '', microchip_number: '', weight_kg: '' };
@@ -62,6 +64,14 @@ export default function IntakePortalPage() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotsError, setSlotsError] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
+
+  // 'other_surgery' only: no exact slot to pick (staff schedule it once
+  // they know how long it'll take) — just a description and a preferred
+  // day, informed by which days actually have surgery capacity.
+  const [customSurgeryReason, setCustomSurgeryReason] = useState('');
+  const [preferredDate, setPreferredDate] = useState(null);
+  const [surgeryDays, setSurgeryDays] = useState([]);
+  const [loadingSurgeryDays, setLoadingSurgeryDays] = useState(false);
 
   useEffect(() => {
     fetch(`/api/intake-requests/${id}`)
@@ -104,9 +114,11 @@ export default function IntakePortalPage() {
     ? clientBookingDurationMinutes(appointmentType, bookingPet.species, bookingPet.weight_kg)
     : null;
 
+  const isCustomSurgery = appointmentType === 'other_surgery';
+
   useEffect(() => {
     setSelectedSlot(null);
-    if (!wantsAppointment || !bookingPet || !computedDuration) {
+    if (!wantsAppointment || !bookingPet || !computedDuration || isCustomSurgery) {
       setSlots([]);
       return;
     }
@@ -133,6 +145,37 @@ export default function IntakePortalPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantsAppointment, appointmentDate, appointmentType, bookingPet?.species, bookingPet?.weight_kg]);
 
+  // A light schedule preview for the custom-surgery request — which of
+  // the next 30 days actually have a doctor on for surgery, so the client
+  // can suggest a preferred day with some idea of what's likely to work,
+  // without seeing exact slots or who's on (there's no exact slot to see
+  // yet — staff schedule the real time once they know the procedure).
+  useEffect(() => {
+    if (!wantsAppointment || !isCustomSurgery) {
+      setSurgeryDays([]);
+      return;
+    }
+    setLoadingSurgeryDays(true);
+    const start = new Date();
+    const end = new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    fetch(`/api/booking-availability/surgery-days?start=${toISO(start)}&end=${toISO(end)}`)
+      .then((res) => res.json())
+      .then((data) => setSurgeryDays(data.dates || []))
+      .catch(() => setSurgeryDays([]))
+      .finally(() => setLoadingSurgeryDays(false));
+  }, [wantsAppointment, isCustomSurgery]);
+
+  const next30Days = useMemo(() => {
+    const days = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      days.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    }
+    return days;
+  }, []);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
@@ -156,7 +199,15 @@ export default function IntakePortalPage() {
         return;
       }
     }
-    if (wantsAppointment && (!bookingPet || !selectedSlot)) {
+    if (wantsAppointment && !bookingPet) {
+      setError('Please pick or add a pet before requesting an appointment.');
+      return;
+    }
+    if (wantsAppointment && isCustomSurgery && !customSurgeryReason.trim()) {
+      setError('Please describe the procedure needed.');
+      return;
+    }
+    if (wantsAppointment && !isCustomSurgery && !selectedSlot) {
       setError('Please pick an appointment slot, or turn off "Request an appointment" to just submit your details.');
       return;
     }
@@ -178,7 +229,14 @@ export default function IntakePortalPage() {
         notes,
         patients: newPetsToSubmit,
         selected_patient_id: selectedPatientId,
-        ...(wantsAppointment && selectedSlot
+        ...(wantsAppointment && isCustomSurgery
+          ? {
+              appointment_type: appointmentType,
+              custom_surgery_reason: customSurgeryReason,
+              preferred_date: preferredDate,
+            }
+          : {}),
+        ...(wantsAppointment && !isCustomSurgery && selectedSlot
           ? {
               appointment_type: appointmentType,
               requested_vet_id: selectedSlot.vet_id,
@@ -201,6 +259,7 @@ export default function IntakePortalPage() {
   if (!request || request.error) return <p className="portal-loading">We couldn&apos;t find that page.</p>;
 
   const alreadyHandled = request.status !== 'pending';
+  const hasAppointmentRequest = wantsAppointment && (isCustomSurgery ? Boolean(customSurgeryReason.trim()) : Boolean(selectedSlot));
 
   return (
     <div className="portal-page">
@@ -213,8 +272,8 @@ export default function IntakePortalPage() {
         <div className="portal-card">
           <h1>Thank you!</h1>
           <p>
-            We&apos;ve received your details{wantsAppointment && selectedSlot ? ' and your appointment request' : ''}.
-            Our team will review {wantsAppointment && selectedSlot ? 'and confirm it' : 'them and reach out to book your visit'}.
+            We&apos;ve received your details{hasAppointmentRequest ? ' and your appointment request' : ''}.
+            Our team will review {hasAppointmentRequest ? 'and confirm it' : 'them and reach out to book your visit'}.
           </p>
         </div>
       ) : (
@@ -419,47 +478,93 @@ export default function IntakePortalPage() {
                         ))}
                       </select>
                     </label>
-                    <p className="visit-meta">
-                      {computedDuration ? `This will need about ${computedDuration} minutes.` : ''} Need something
-                      more involved than a standard consult, spay, castration, or dental cleaning? Please contact the clinic
-                      directly instead of booking here.
-                    </p>
-                    <label>
-                      Date
-                      <input
-                        type="date"
-                        min={todayISODate()}
-                        value={appointmentDate}
-                        onChange={(e) => setAppointmentDate(e.target.value)}
-                      />
-                    </label>
-
-                    {loadingSlots && <p className="visit-meta">Checking availability...</p>}
-                    {slotsError && <p className="error">{slotsError}</p>}
-                    {!loadingSlots && !slotsError && slots.length === 0 && (
-                      <p className="visit-meta">No open slots that day — try another date.</p>
+                    {isSurgeryType(appointmentType) && (
+                      <p className="visit-meta">
+                        🕘 Surgeries (spay, castration, dental, and anything else) are only scheduled in the
+                        morning.
+                      </p>
                     )}
-                    {slots.length > 0 && (
-                      <div className="intake-slot-grid">
-                        {slots.map((slot) => {
-                          const isSelected =
-                            selectedSlot &&
-                            selectedSlot.vet_id === slot.vet_id &&
-                            selectedSlot.start_time === slot.start_time;
-                          return (
-                            <button
-                              type="button"
-                              key={`${slot.vet_id}-${slot.start_time}`}
-                              className={`intake-slot-button${isSelected ? ' intake-slot-selected' : ''}`}
-                              onClick={() => setSelectedSlot(slot)}
-                            >
-                              {new Date(slot.start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                              <br />
-                              {slot.vet_name}
-                            </button>
-                          );
-                        })}
-                      </div>
+
+                    {isCustomSurgery ? (
+                      <>
+                        <label>
+                          Describe the procedure needed
+                          <textarea
+                            required
+                            rows={3}
+                            placeholder="e.g. a lump on the leg that may need removing — vet advised at the last checkup"
+                            value={customSurgeryReason}
+                            onChange={(e) => setCustomSurgeryReason(e.target.value)}
+                          />
+                        </label>
+                        <p className="visit-meta">
+                          We don&apos;t know how long this will take until we&apos;ve reviewed it, so we&apos;ll
+                          schedule the actual time ourselves and confirm it with you — but feel free to suggest a
+                          day that works for you below. Days highlighted below already have a doctor in for
+                          surgery, which makes them more likely to work.
+                        </p>
+                        {loadingSurgeryDays && <p className="visit-meta">Loading the schedule...</p>}
+                        <div className="intake-slot-grid">
+                          {next30Days.map((dateISO) => {
+                            const hasCapacity = surgeryDays.includes(dateISO);
+                            const isSelected = preferredDate === dateISO;
+                            const d = new Date(`${dateISO}T00:00:00`);
+                            return (
+                              <button
+                                type="button"
+                                key={dateISO}
+                                className={`intake-slot-button${isSelected ? ' intake-slot-selected' : ''}${hasCapacity ? ' intake-slot-available' : ''}`}
+                                onClick={() => setPreferredDate(dateISO)}
+                              >
+                                {d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="visit-meta">
+                          {computedDuration ? `This will need about ${computedDuration} minutes.` : ''}
+                        </p>
+                        <label>
+                          Date
+                          <input
+                            type="date"
+                            min={todayISODate()}
+                            value={appointmentDate}
+                            onChange={(e) => setAppointmentDate(e.target.value)}
+                          />
+                        </label>
+
+                        {loadingSlots && <p className="visit-meta">Checking availability...</p>}
+                        {slotsError && <p className="error">{slotsError}</p>}
+                        {!loadingSlots && !slotsError && slots.length === 0 && (
+                          <p className="visit-meta">No open slots that day — try another date.</p>
+                        )}
+                        {slots.length > 0 && (
+                          <div className="intake-slot-grid">
+                            {slots.map((slot) => {
+                              const isSelected =
+                                selectedSlot &&
+                                selectedSlot.vet_id === slot.vet_id &&
+                                selectedSlot.start_time === slot.start_time;
+                              return (
+                                <button
+                                  type="button"
+                                  key={`${slot.vet_id}-${slot.start_time}`}
+                                  className={`intake-slot-button${isSelected ? ' intake-slot-selected' : ''}`}
+                                  onClick={() => setSelectedSlot(slot)}
+                                >
+                                  {new Date(slot.start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                  <br />
+                                  {slot.vet_name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}

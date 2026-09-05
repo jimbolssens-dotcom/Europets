@@ -47,6 +47,8 @@ async function submit(id, body) {
     requested_vet_id,
     requested_start_time,
     requested_duration_minutes,
+    custom_surgery_reason,
+    preferred_date,
   } = body;
 
   const { data: existing, error: existingError } = await supabase
@@ -96,13 +98,25 @@ async function submit(id, body) {
         { status: 400 }
       );
     }
-    if (!requested_vet_id || !requested_start_time || !requested_duration_minutes) {
+    if (appointment_type === 'other_surgery') {
+      // No exact slot to pick — they've no way to know how long it'll
+      // take. A description is required instead so staff know what
+      // they're scheduling; a preferred day is just a suggestion.
+      if (!custom_surgery_reason || !custom_surgery_reason.trim()) {
+        return NextResponse.json(
+          { error: 'please describe the procedure needed' },
+          { status: 400 }
+        );
+      }
+    } else if (!requested_vet_id || !requested_start_time || !requested_duration_minutes) {
       return NextResponse.json(
         { error: 'requested_vet_id, requested_start_time, and requested_duration_minutes are required with an appointment request' },
         { status: 400 }
       );
     }
   }
+
+  const isCustomSurgery = appointment_type === 'other_surgery';
 
   const { data, error } = await supabase
     .from('intake_requests')
@@ -116,9 +130,11 @@ async function submit(id, body) {
       selected_patient_id: selected_patient_id || null,
       notes: notes || null,
       appointment_type: appointment_type || null,
-      requested_vet_id: appointment_type ? requested_vet_id : null,
-      requested_start_time: appointment_type ? requested_start_time : null,
-      requested_duration_minutes: appointment_type ? requested_duration_minutes : null,
+      requested_vet_id: appointment_type && !isCustomSurgery ? requested_vet_id : null,
+      requested_start_time: appointment_type && !isCustomSurgery ? requested_start_time : null,
+      requested_duration_minutes: appointment_type && !isCustomSurgery ? requested_duration_minutes : null,
+      custom_surgery_reason: isCustomSurgery ? custom_surgery_reason.trim() : null,
+      preferred_date: isCustomSurgery ? preferred_date || null : null,
       status: 'submitted',
       submitted_at: new Date().toISOString(),
     })
@@ -174,6 +190,16 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
     appointmentVetId = overrides.vetId || intake.requested_vet_id;
     appointmentStart = new Date(overrides.startTime || intake.requested_start_time);
     const duration = Number(overrides.durationMinutes || intake.requested_duration_minutes);
+
+    // 'other_surgery' has no requested vet/time/duration at all — the
+    // client only described what's needed and suggested a day, so staff
+    // must supply all three here (via overrides) to schedule it.
+    if (!appointmentVetId || Number.isNaN(appointmentStart.getTime()) || !duration) {
+      return NextResponse.json(
+        { error: 'a vet, date/time, and duration are required to approve this request' },
+        { status: 400 }
+      );
+    }
     appointmentEnd = new Date(appointmentStart.getTime() + duration * 60000);
 
     const { conflict, error: conflictError } = await findAppointmentConflict(supabase, {
@@ -275,7 +301,10 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
         start_time: appointmentStart.toISOString(),
         duration_minutes: Math.round((appointmentEnd.getTime() - appointmentStart.getTime()) / 60000),
         status: 'booked',
-        reason: `Client-requested ${CLIENT_APPOINTMENT_TYPE_LABELS[intake.appointment_type] || intake.appointment_type}`,
+        reason:
+          intake.appointment_type === 'other_surgery'
+            ? `Client-requested surgery: ${intake.custom_surgery_reason}`
+            : `Client-requested ${CLIENT_APPOINTMENT_TYPE_LABELS[intake.appointment_type] || intake.appointment_type}`,
         client_requested: true,
       }])
       .select('id')
