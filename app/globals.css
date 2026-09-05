@@ -725,10 +725,16 @@ form.card label {
   font-weight: 400 !important;
 }
 
+/* form.card input, form.card select, form.card textarea (above) sets
+   width:100%/padding/border on every input inside a .card form, and its
+   two-element selector (form.card input) outranks this one-class-one-
+   element selector on specificity alone — !important is what actually
+   keeps the checkbox a checkbox instead of a full-width bordered box,
+   which is what was pushing/wrapping the vaccine name text next to it. */
 .vaccine-checklist-item input {
-  width: auto;
-  padding: 0;
-  border: none;
+  width: auto !important;
+  padding: 0 !important;
+  border: none !important;
 }
 
 .primary-badge {
