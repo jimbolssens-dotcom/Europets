@@ -44,7 +44,7 @@ export default function AdminLayout({ children }) {
         <div className="topnav-links">
           <a href="/clients">Clients</a>
           <a href="/patients">Patients</a>
-          <a href="/intake">Intake</a>
+          <a href="/intake">Invite</a>
           <a href="/appointments">Appointments</a>
           <a href="/consults">Consults</a>
           <a

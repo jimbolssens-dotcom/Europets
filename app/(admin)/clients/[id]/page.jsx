@@ -126,7 +126,7 @@ export default function ClientDetailPage() {
 
       <p>
         <button type="button" onClick={sendBookingLink} disabled={sendingLink}>
-          {sendingLink ? 'Sending...' : '📅 Send Booking Link'}
+          {sendingLink ? 'Sending...' : '📅 Send Invite'}
         </button>
       </p>
       {bookingLinkError && <p className="error">{bookingLinkError}</p>}

@@ -1,8 +1,12 @@
 // app/intake/page.jsx
-// New-Client Intake: generate a self-service link to send a first-time
-// caller over WhatsApp, then review what they submit before it becomes a
-// real client + patient(s) — approving creates those records; rejecting
-// just discards the submission.
+// Client Invites: generate a self-service link from just a phone number
+// and send it over WhatsApp. The number decides which form the client
+// sees — POST /api/intake-requests looks it up against existing clients;
+// an unambiguous match sends the existing-client layout (their own pets,
+// no owner-detail fields), anything else sends the blank new-client
+// layout. Either way it lands here for review before becoming a real
+// client + patient(s) / appointment — approving creates those records;
+// rejecting just discards the submission.
 
 'use client';
 
@@ -91,13 +95,19 @@ export default function IntakePage() {
     return `${window.location.origin}/portal/intake/${id}`;
   }
 
-  function intakeMessage(id) {
-    return `Hi! Thanks for calling Europets Clinic. Please fill in your details and your pet's details here before your visit: ${portalUrl(id)}`;
+  // A request already matched to an existing client (see POST
+  // /api/intake-requests) gets a message that reflects that — no point
+  // asking someone we already know for their own details again.
+  function intakeMessage(id, isExistingClient) {
+    return isExistingClient
+      ? `Hi! Thanks for calling Europets Clinic. You can view your pet(s), add a new one, and request an appointment here: ${portalUrl(id)}`
+      : `Hi! Thanks for calling Europets Clinic. Please fill in your details and your pet's details here before your visit: ${portalUrl(id)}`;
   }
 
   // One click does both steps: generate a fresh link (each is single-use —
   // the client fills it in once and it moves to Needs Review) and open it
-  // pre-drafted in WhatsApp to the number just typed in.
+  // pre-drafted in WhatsApp to the number just typed in. The number alone
+  // decides new-client vs existing-client — see POST /api/intake-requests.
   async function sendNewLink() {
     const phone = quickPhone.replace(/\D/g, '');
     if (phone.length <= 3) {
@@ -114,11 +124,11 @@ export default function IntakePage() {
     if (!res.ok) {
       setSending(false);
       const data = await res.json().catch(() => ({}));
-      setError(data.error || 'Failed to generate an intake link');
+      setError(data.error || 'Failed to generate an invite link');
       return;
     }
     const data = await res.json();
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(intakeMessage(data.id))}`, '_blank');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(intakeMessage(data.id, Boolean(data.client_id)))}`, '_blank');
     setQuickPhone('+971 ');
     setSending(false);
     load();
@@ -145,12 +155,12 @@ export default function IntakePage() {
         body: JSON.stringify({ action: 'update_phone', sent_to_phone: normalized }),
       });
     }
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(intakeMessage(r.id))}`, '_blank');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(intakeMessage(r.id, Boolean(r.client_id)))}`, '_blank');
     load();
   }
 
   async function cancelLink(id) {
-    if (!confirm('Cancel this unused intake link?')) return;
+    if (!confirm('Cancel this unused invite link?')) return;
     await fetch(`/api/intake-requests/${id}`, { method: 'DELETE' });
     load();
   }
@@ -207,11 +217,13 @@ export default function IntakePage() {
 
   return (
     <div>
-      <h1>New-Client Intake</h1>
+      <h1>Client Invites</h1>
       <p className="visit-meta">
-        Enter a first-time caller&apos;s number and send them a link to fill in their own and their
-        pet&apos;s details before they come in — a fresh link is created and drafted in WhatsApp in one
-        step. Submissions land here for review — approving creates the client and patient records.
+        Enter a caller&apos;s number and send them a link — a fresh one is created and drafted in
+        WhatsApp in one step. If the number&apos;s already registered, it automatically sends their
+        existing-client link (their own pets, no need to re-enter their details); otherwise it sends
+        the normal new-client form. Submissions land here for review — approving creates the
+        client/patient records and books any requested appointment.
       </p>
 
       {error && <p className="error">{error}</p>}
@@ -224,7 +236,7 @@ export default function IntakePage() {
           onChange={(e) => setQuickPhone(e.target.value)}
         />
         <button type="button" onClick={sendNewLink} disabled={sending}>
-          {sending ? 'Sending...' : '💬 Send Intake Link via WhatsApp'}
+          {sending ? 'Sending...' : '💬 Send Invite via WhatsApp'}
         </button>
       </div>
 
@@ -247,6 +259,12 @@ export default function IntakePage() {
                     <button type="button" onClick={() => copyLink(r.id)}>
                       {copiedId === r.id ? 'Copied!' : '🔗 Copy Link'}
                     </button>
+                    {r.client_id && (
+                      <>
+                        {' '}
+                        <span className="visit-meta">({r.clients?.full_name || 'existing client'})</span>
+                      </>
+                    )}
                   </td>
                   <td>
                     <input
