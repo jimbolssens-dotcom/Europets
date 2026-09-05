@@ -421,7 +421,7 @@ export default function IntakePortalPage() {
                     </label>
                     <p className="visit-meta">
                       {computedDuration ? `This will need about ${computedDuration} minutes.` : ''} Need something
-                      more involved than a standard consult, spay, or castration? Please contact the clinic
+                      more involved than a standard consult, spay, castration, or dental cleaning? Please contact the clinic
                       directly instead of booking here.
                     </p>
                     <label>

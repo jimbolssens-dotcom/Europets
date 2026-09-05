@@ -335,10 +335,12 @@ create table intake_requests (
     -- The appointment slot requested alongside this intake/booking, if
     -- any — null means this link was just for registering, not booking.
     -- 'consult' is a fixed 15 minutes; 'spay'/'castration' durations are
-    -- computed from the pet's species/weight (see lib/appointmentBooking.js).
-    -- Anything more involved isn't self-bookable — the portal form tells
-    -- the client to contact the clinic directly for that.
-    appointment_type text check (appointment_type in ('consult', 'spay', 'castration')),
+    -- computed from the pet's species/weight (see lib/appointmentBooking.js);
+    -- 'dental_small'/'dental_big' are fixed 30/45 min. All three surgery-
+    -- ish types share the roster's can_surgery flag — no separate dental
+    -- flag (migration 051). Anything more involved isn't self-bookable —
+    -- the portal form tells the client to contact the clinic directly.
+    appointment_type text check (appointment_type in ('consult', 'spay', 'castration', 'dental_small', 'dental_big')),
     requested_vet_id uuid references staff(id),
     requested_start_time timestamptz,
     requested_duration_minutes int,

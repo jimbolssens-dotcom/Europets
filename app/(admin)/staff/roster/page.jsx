@@ -261,9 +261,9 @@ export default function StaffRosterPage() {
       <p className="visit-meta">
         Click a cell to add or remove a staff member from that morning/afternoon. Staff can also do
         this themselves from the mobile app&apos;s My Schedule page. Once they&apos;re on a shift, the{' '}
-        <strong>C</strong>/<strong>S</strong> badges say whether it covers Consult and/or Surgery
-        bookings — the client self-booking form only offers a slot with a doctor flagged in for
-        that kind.
+        <strong>C</strong>/<strong>S</strong> badges say whether it covers Consult and/or
+        Surgery/Dental bookings — the client self-booking form only offers a slot with a doctor
+        flagged in for that kind.
       </p>
       {error && <p className="error">{error}</p>}
 
@@ -413,7 +413,7 @@ export default function StaffRosterPage() {
                                             type="button"
                                             className={`roster-capability-badge${entry.can_surgery ? ' roster-capability-on' : ''}`}
                                             onClick={() => toggleCapability(entry, 'can_surgery')}
-                                            title={`${entry.can_surgery ? 'Available' : 'Not available'} for surgery bookings — click to toggle`}
+                                            title={`${entry.can_surgery ? 'Available' : 'Not available'} for surgery/dental bookings — click to toggle`}
                                           >
                                             S
                                           </button>

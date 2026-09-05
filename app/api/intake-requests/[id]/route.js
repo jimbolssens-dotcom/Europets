@@ -17,7 +17,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
-import { CLIENT_APPOINTMENT_TYPES } from '@/lib/appointmentBooking';
+import { CLIENT_APPOINTMENT_TYPES, CLIENT_APPOINTMENT_TYPE_LABELS } from '@/lib/appointmentBooking';
 import { findAppointmentConflict } from '@/lib/appointmentScheduling';
 
 export async function GET(request, { params }) {
@@ -275,7 +275,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
         start_time: appointmentStart.toISOString(),
         duration_minutes: Math.round((appointmentEnd.getTime() - appointmentStart.getTime()) / 60000),
         status: 'booked',
-        reason: `Client-requested ${intake.appointment_type}`,
+        reason: `Client-requested ${CLIENT_APPOINTMENT_TYPE_LABELS[intake.appointment_type] || intake.appointment_type}`,
         client_requested: true,
       }])
       .select('id')
