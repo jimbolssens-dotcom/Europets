@@ -169,6 +169,21 @@ export default function IntakePage() {
         </button>
       </div>
 
+      <details className="intake-qr-section">
+        <summary>🔲 New Client QR Code (for walk-ins)</summary>
+        <p className="visit-meta">
+          Print this and display it at reception — scanning it opens a blank new-client form, no
+          phone number needed up front. Each scan generates its own one-time link, so the same
+          printed code works for everyone.
+        </p>
+        <img src="/api/new-client-qr" alt="QR code linking to the new client intake form" className="intake-qr-image" />
+        <p>
+          <a href="/api/new-client-qr" download="europets-new-client-qr.png">
+            ⬇️ Download QR Code
+          </a>
+        </p>
+      </details>
+
       {pending.length > 0 && (
         <>
           <h2>Sent, Awaiting Submission</h2>

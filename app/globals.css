@@ -2563,6 +2563,31 @@ button.secondary:hover {
   min-width: 180px;
 }
 
+/* Printable QR code for walk-in clients (see /api/new-client-qr and
+   /portal/intake/new) — collapsed by default, out of the way of the
+   phone-number quick-send flow above. */
+.intake-qr-section {
+  margin-bottom: 1.5rem;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  background: white;
+}
+
+.intake-qr-section summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.intake-qr-image {
+  display: block;
+  width: 220px;
+  height: 220px;
+  margin: 0.75rem 0;
+  border: 1px solid #eee;
+  border-radius: 6px;
+}
+
 .intake-form {
   max-width: 100%;
 }
