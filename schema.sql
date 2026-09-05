@@ -662,7 +662,12 @@ create table invoice_line_items (
     -- selecting only medications actually dispensed to go home (see
     -- migration 049).
     instructions text,
-    administration_method text check (administration_method in ('dispense', 'sc', 'im'))
+    administration_method text check (administration_method in ('dispense', 'sc', 'im')),
+    -- A plain (no transcription/AI) recorded voice note, as a fallback for
+    -- when the treatment item's instructions weren't dictated or typed
+    -- during the consult — path within the consult-files bucket, or null
+    -- (see migration 060).
+    voice_note_path text
 );
 
 -- A log of every individual payment received against an invoice — lets a

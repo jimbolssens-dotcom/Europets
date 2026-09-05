@@ -2488,6 +2488,20 @@ button.secondary:hover {
   gap: 0.5rem;
 }
 
+/* Pairs a plain text input with a VoiceToTextButton as one row inside a
+   form.card grid (e.g. the treatment plan's Instructions field) — the
+   dedicated <label>-based .field-label-row layout doesn't fit here since
+   this input has no <label> wrapper of its own. */
+.instructions-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.instructions-input-row input {
+  flex: 1;
+}
+
 .voice-btn-wrap {
   display: inline-flex;
   align-items: center;
@@ -3909,5 +3923,17 @@ form.card.admit-patient-form {
 
 .dispensing-label-row button {
   justify-self: start;
+}
+
+.voice-note-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.voice-note-box audio {
+  height: 2.25rem;
+  max-width: 100%;
 }
 

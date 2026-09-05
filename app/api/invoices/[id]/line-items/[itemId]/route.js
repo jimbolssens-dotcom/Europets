@@ -1,8 +1,10 @@
 // app/api/invoices/[id]/line-items/[itemId]/route.js
-// PATCH /api/invoices/:id/line-items/:itemId  { instructions }
+// PATCH /api/invoices/:id/line-items/:itemId  { instructions, voice_note_path }
 //   -> edit a line item's dispensing instructions (reviewed/corrected on
 //      the invoice detail page's dispensing-label form before printing —
-//      see migrations/049). Doesn't touch price/quantity/description.
+//      see migrations/049) and/or its plain voice note (migration 060).
+//      Either field is optional but at least one must be given. Doesn't
+//      touch price/quantity/description.
 // DELETE /api/invoices/:id/line-items/:itemId  -> remove a line item, recomputing totals
 //
 // Blocked if it would drop the invoice's total below what's already been
@@ -17,13 +19,30 @@ import { recomputeInvoiceTotals, VAT_RATE } from '@/lib/invoicing';
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  if (body.instructions === undefined) {
-    return NextResponse.json({ error: 'instructions is required' }, { status: 400 });
+  const hasInstructions = body.instructions !== undefined;
+  const hasVoiceNote = body.voice_note_path !== undefined;
+
+  if (!hasInstructions && !hasVoiceNote) {
+    return NextResponse.json({ error: 'instructions or voice_note_path is required' }, { status: 400 });
+  }
+
+  const update = {};
+  if (hasInstructions) update.instructions = body.instructions === '' ? null : body.instructions;
+  if (hasVoiceNote) update.voice_note_path = body.voice_note_path || null;
+
+  let previousVoiceNotePath = null;
+  if (hasVoiceNote) {
+    const { data: existing } = await supabase
+      .from('invoice_line_items')
+      .select('voice_note_path')
+      .eq('id', params.itemId)
+      .single();
+    previousVoiceNotePath = existing?.voice_note_path || null;
   }
 
   const { data, error } = await supabase
     .from('invoice_line_items')
-    .update({ instructions: body.instructions === '' ? null : body.instructions })
+    .update(update)
     .eq('id', params.itemId)
     .eq('invoice_id', params.id)
     .select()
@@ -35,6 +54,12 @@ export async function PATCH(request, { params }) {
   if (!data) {
     return NextResponse.json({ error: 'line item not found' }, { status: 404 });
   }
+
+  // Being replaced or cleared — the old clip has no further purpose.
+  if (previousVoiceNotePath && previousVoiceNotePath !== data.voice_note_path) {
+    await supabase.storage.from('consult-files').remove([previousVoiceNotePath]);
+  }
+
   return NextResponse.json(data);
 }
 

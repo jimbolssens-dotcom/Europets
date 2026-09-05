@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
+import VoiceNoteBox from '@/app/_components/VoiceNoteBox';
 import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { printPdfUrl } from '@/lib/printPdf';
@@ -178,6 +179,21 @@ export default function InvoiceDetailPage() {
   // app/api/invoices/[id]/line-items/[itemId]), so what prints always
   // matches what was reviewed on screen, then prints its one-page label
   // (see app/api/invoices/[id]/dispensing-labels-pdf).
+  async function saveLineItemVoiceNote(lineItemId, path) {
+    setLabelsError(null);
+    const res = await fetch(`/api/invoices/${id}/line-items/${lineItemId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice_note_path: path }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setLabelsError(data.error || 'Failed to save voice note');
+      return;
+    }
+    loadInvoice();
+  }
+
   async function printLabel(li) {
     setLabelsError(null);
     setPrintingLabelId(li.id);
@@ -348,9 +364,11 @@ export default function InvoiceDetailPage() {
         <div className="card dispensing-labels">
           <h3>Dispensing Labels</h3>
           <p className="visit-meta">
-            Review/edit each medication&apos;s instructions, then print just that one — nothing goes
-            to the printer until you click its button. Labels are sized for the Brother QL-800 (62mm
-            continuous tape).
+            Instructions carry straight over from the treatment plan entered during the consult —
+            review/edit here if needed, then print just that one label; nothing goes to the printer
+            until you click its button. Labels are sized for the Brother QL-800 (62mm continuous
+            tape). If nothing was dictated or typed during the consult, record a plain voice note
+            below instead — it isn&apos;t transcribed or printed, just kept for reference.
           </p>
           {labelsError && <p className="error">{labelsError}</p>}
           <ul className="dispensing-labels-list">
@@ -363,6 +381,12 @@ export default function InvoiceDetailPage() {
                     placeholder="Dispensing instructions for the label"
                     value={instructionsValue}
                     onChange={(e) => setDispenseInstructions({ ...dispenseInstructions, [li.id]: e.target.value })}
+                  />
+                  <VoiceNoteBox
+                    lineItemId={li.id}
+                    path={li.voice_note_path}
+                    onUploaded={(path) => saveLineItemVoiceNote(li.id, path)}
+                    onCleared={() => saveLineItemVoiceNote(li.id, null)}
                   />
                   <button type="button" onClick={() => printLabel(li)} disabled={printingLabelId === li.id}>
                     {printingLabelId === li.id ? 'Printing...' : '🏷️ Print Label'}

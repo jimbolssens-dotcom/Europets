@@ -242,6 +242,14 @@ export default function ConsultDetailPage() {
     setDentalForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }));
   }
 
+  // Dictated straight into the treatment item's own Instructions field —
+  // this is the same text that gets copied onto the invoice line item (see
+  // /api/visits/[id]/invoice) and from there onto the printed dispensing
+  // label, so getting it right here means nobody has to re-enter it later.
+  function appendTreatInstructions(text) {
+    setTreatForm((prev) => ({ ...prev, instructions: prev.instructions ? `${prev.instructions}\n${text}` : text }));
+  }
+
   async function saveRecord(e) {
     e.preventDefault();
     setSavingRecord(true);
@@ -786,11 +794,14 @@ export default function ConsultDetailPage() {
             onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
             onCategoryChange={setTreatCategory}
           />
-          <input
-            placeholder="Instructions (dosage, frequency, duration)"
-            value={treatForm.instructions}
-            onChange={(e) => setTreatForm({ ...treatForm, instructions: e.target.value })}
-          />
+          <div className="instructions-input-row">
+            <input
+              placeholder="Instructions (dosage, frequency, duration)"
+              value={treatForm.instructions}
+              onChange={(e) => setTreatForm({ ...treatForm, instructions: e.target.value })}
+            />
+            <VoiceToTextButton kind="treatment_item_instructions" onResult={appendTreatInstructions} />
+          </div>
           <input
             type="number"
             step="0.01"
