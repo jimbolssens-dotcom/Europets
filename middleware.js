@@ -1,22 +1,22 @@
 // middleware.js
-// Two layers of the same basic password-gate pattern (see lib/staffAuth.js
-// and lib/accountingAuth.js for why this is a keep-casual-visitors-out
-// measure, not real per-user auth):
+// Two layers of the same basic shared-code gate pattern (see
+// lib/staffAuth.js and lib/accountingAuth.js for why this is a keep-
+// casual-visitors-out measure, not real per-user auth):
 //
 // 1. A staff-wide gate in front of nearly everything — the whole
 //    app/(admin) section (which has no shared URL prefix, since it's a
 //    route group) plus app/mobile. A small allowlist stays open with no
-//    password at all: the client-facing app/portal pages and the handful
-//    of API routes they call (see PUBLIC_PATTERNS below), plus /login
+//    PIN at all: the client-facing app/portal pages and the handful of
+//    API routes they call (see PUBLIC_PATTERNS below), plus /login
 //    itself and its own API route.
 // 2. The pre-existing extra /accounting password on top of that, for the
 //    owner/accountant-only pages — unchanged, except it now also implies
-//    the staff password (you need both, checked in that order).
+//    the staff PIN (you need both, checked in that order).
 //
 // One deliberate carve-out survives from before: POST /api/expenses and
 // POST /api/expenses/scan skip the extra accounting password (see app/
-// mobile/scan-receipt) — they still require the general staff password
-// like everything else under app/mobile now does.
+// mobile/scan-receipt) — they still require the general staff PIN like
+// everything else under app/mobile now does.
 
 import { NextResponse } from 'next/server';
 import { STAFF_COOKIE } from '@/lib/staffAuth';
@@ -49,15 +49,15 @@ export async function middleware(request) {
     return NextResponse.next();
   }
 
-  const staffPassword = process.env.STAFF_PASSWORD;
-  if (!staffPassword) {
+  const staffPincode = process.env.STAFF_PINCODE;
+  if (!staffPincode) {
     return new NextResponse(
-      'Staff access is not configured — set the STAFF_PASSWORD environment variable.',
+      'Staff access is not configured — set the STAFF_PINCODE environment variable.',
       { status: 503 }
     );
   }
 
-  const staffExpected = await sha256Hex(staffPassword);
+  const staffExpected = await sha256Hex(staffPincode);
   const staffCookie = request.cookies.get(STAFF_COOKIE)?.value;
   if (staffCookie !== staffExpected) {
     if (pathname.startsWith('/api/')) {

@@ -8,8 +8,18 @@
 
 import { NextResponse } from 'next/server';
 import { ACCOUNTING_COOKIE, sha256Hex } from '@/lib/accountingAuth';
+import { checkRateLimit, recordFailedAttempt, clearAttempts, getClientKey } from '@/lib/loginRateLimit';
 
 export async function POST(request) {
+  const clientKey = `accounting:${getClientKey(request)}`;
+  const rateLimit = checkRateLimit(clientKey);
+  if (rateLimit.blocked) {
+    return NextResponse.json(
+      { error: `Too many attempts — try again in ${Math.ceil(rateLimit.retryAfterSeconds / 60)} minute(s)` },
+      { status: 429 }
+    );
+  }
+
   const { password } = await request.json();
   const expected = process.env.ACCOUNTING_PASSWORD;
 
@@ -17,9 +27,11 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Accounting access is not configured' }, { status: 503 });
   }
   if (password !== expected) {
+    recordFailedAttempt(clientKey);
     return NextResponse.json({ error: 'Incorrect password' }, { status: 401 });
   }
 
+  clearAttempts(clientKey);
   const token = await sha256Hex(expected);
   const res = NextResponse.json({ ok: true });
   res.cookies.set(ACCOUNTING_COOKIE, token, {

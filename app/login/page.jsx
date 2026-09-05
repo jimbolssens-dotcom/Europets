@@ -1,8 +1,7 @@
 // app/login/page.jsx
-// Password gate for the whole staff app — deliberately outside
-// app/(admin) so it renders bare, without the internal staff nav (which
-// itself lives behind this same gate). See middleware.js and
-// lib/staffAuth.js.
+// PIN gate for the whole staff app — deliberately outside app/(admin) so
+// it renders bare, without the internal staff nav (which itself lives
+// behind this same gate). See middleware.js and lib/staffAuth.js.
 
 'use client';
 
@@ -12,7 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [password, setPassword] = useState('');
+  const [pincode, setPincode] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -24,7 +23,7 @@ function LoginForm() {
     const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ pincode }),
     });
 
     if (!res.ok) {
@@ -42,11 +41,12 @@ function LoginForm() {
       {error && <p className="error">{error}</p>}
       <input
         type="password"
-        placeholder="Password"
+        inputMode="numeric"
+        placeholder="PIN"
         autoFocus
         required
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        value={pincode}
+        onChange={(e) => setPincode(e.target.value)}
       />
       <button type="submit" disabled={submitting}>
         {submitting ? 'Checking...' : 'Log In'}
@@ -60,7 +60,7 @@ export default function LoginPage() {
     <div className="mobile-home">
       <img src="/logo.png" alt="Europets Clinic" className="mobile-logo" />
       <h1>Staff Login</h1>
-      <p className="visit-meta">Enter the staff password to continue.</p>
+      <p className="visit-meta">Enter the staff PIN to continue.</p>
       <Suspense fallback={<p>Loading...</p>}>
         <LoginForm />
       </Suspense>
