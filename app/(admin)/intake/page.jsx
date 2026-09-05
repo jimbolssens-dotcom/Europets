@@ -42,6 +42,8 @@ export default function IntakePage() {
   const [approvalRoom, setApprovalRoom] = useState({}); // request id -> room_id chosen before approving
   const [customBooking, setCustomBooking] = useState({}); // request id -> { vetId, date, time, duration } for an 'other_surgery' request
   const [possibleMatches, setPossibleMatches] = useState({}); // intake request id -> matching clients[]
+  const [reviewing, setReviewing] = useState(null); // { id, action } currently mid approve/reject, or null
+  const [reviewErrors, setReviewErrors] = useState({}); // request id -> error message, shown right on that card
 
   const load = () =>
     fetch('/api/intake-requests')
@@ -165,6 +167,14 @@ export default function IntakePage() {
     load();
   }
 
+  // Errors here are shown right on the card being acted on (see
+  // reviewErrors) rather than the shared banner at the top of the page —
+  // that banner is easy to miss once you've scrolled down to a card
+  // further down "Needs Review", which made a real failure look like the
+  // button just wasn't responding. reviewingId disables both buttons on
+  // that one card for the duration and shows "Approving.../Rejecting...",
+  // so a slow request (or a genuine no-op double click) reads as
+  // in-progress, not broken.
   async function review(id, action, clientId, request) {
     if (action === 'approve' && clientId) {
       const match = (possibleMatches[id] || []).find((c) => c.id === clientId);
@@ -176,37 +186,47 @@ export default function IntakePage() {
     const custom = customBooking[id] || {};
     if (action === 'approve' && request?.appointment_type) {
       if (!approvalRoom[id]) {
-        setError('Pick a room for the requested appointment before approving');
+        setReviewErrors({ ...reviewErrors, [id]: 'Pick a room for the requested appointment before approving' });
         return;
       }
       if (isCustomSurgery && (!custom.vetId || !custom.date || !custom.time || !custom.duration)) {
-        setError('Pick a vet, date, time, and duration for this custom surgery request before approving');
+        setReviewErrors({
+          ...reviewErrors,
+          [id]: 'Pick a vet, date, time, and duration for this custom surgery request before approving',
+        });
         return;
       }
     }
-    setError(null);
-    const res = await fetch(`/api/intake-requests/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action,
-        ...(clientId ? { client_id: clientId } : {}),
-        ...(action === 'approve' && request?.appointment_type ? { room_id: approvalRoom[id] } : {}),
-        ...(action === 'approve' && isCustomSurgery
-          ? {
-              vet_id: custom.vetId,
-              start_time: new Date(`${custom.date}T${custom.time}:00`).toISOString(),
-              duration_minutes: Number(custom.duration),
-            }
-          : {}),
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || `Failed to ${action} this request`);
-      return;
+    setReviewErrors({ ...reviewErrors, [id]: null });
+    setReviewing({ id, action });
+    try {
+      const res = await fetch(`/api/intake-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          ...(clientId ? { client_id: clientId } : {}),
+          ...(action === 'approve' && request?.appointment_type ? { room_id: approvalRoom[id] } : {}),
+          ...(action === 'approve' && isCustomSurgery
+            ? {
+                vet_id: custom.vetId,
+                start_time: new Date(`${custom.date}T${custom.time}:00`).toISOString(),
+                duration_minutes: Number(custom.duration),
+              }
+            : {}),
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setReviewErrors({ ...reviewErrors, [id]: data?.error || `Failed to ${action} this request` });
+        return;
+      }
+      load();
+    } catch (err) {
+      setReviewErrors({ ...reviewErrors, [id]: err.message || `Failed to ${action} this request — check your connection and try again` });
+    } finally {
+      setReviewing(null);
     }
-    load();
   }
 
   if (loading) return <p>Loading intake requests...</p>;
@@ -420,8 +440,8 @@ export default function IntakePage() {
                         </a>{' '}
                         · {c.phone || 'no phone on file'}
                         {c.email && ` · ${c.email}`}
-                        <button type="button" onClick={() => review(r.id, 'approve', c.id, r)}>
-                          Attach pet(s) to this client
+                        <button type="button" onClick={() => review(r.id, 'approve', c.id, r)} disabled={reviewing?.id === r.id}>
+                          {reviewing?.id === r.id ? 'Working...' : 'Attach pet(s) to this client'}
                         </button>
                       </li>
                     ))}
@@ -429,21 +449,33 @@ export default function IntakePage() {
                 </div>
               )}
 
+              {reviewErrors[r.id] && <p className="error">{reviewErrors[r.id]}</p>}
+
               <div className="intake-review-actions">
                 <button
                   type="button"
                   onClick={() => review(r.id, 'approve', null, r)}
                   disabled={
-                    Boolean(r.appointment_type) &&
-                    (!approvalRoom[r.id] ||
-                      (r.appointment_type === 'other_surgery' &&
-                        (!customBooking[r.id]?.vetId || !customBooking[r.id]?.date || !customBooking[r.id]?.time || !customBooking[r.id]?.duration)))
+                    reviewing?.id === r.id ||
+                    (Boolean(r.appointment_type) &&
+                      (!approvalRoom[r.id] ||
+                        (r.appointment_type === 'other_surgery' &&
+                          (!customBooking[r.id]?.vetId || !customBooking[r.id]?.date || !customBooking[r.id]?.time || !customBooking[r.id]?.duration))))
                   }
                 >
-                  {possibleMatches[r.id]?.length > 0 ? 'Create as New Client Anyway' : 'Approve'}
+                  {reviewing?.id === r.id && reviewing.action === 'approve'
+                    ? 'Approving...'
+                    : possibleMatches[r.id]?.length > 0
+                      ? 'Create as New Client Anyway'
+                      : 'Approve'}
                 </button>
-                <button type="button" className="secondary" onClick={() => review(r.id, 'reject', null, r)}>
-                  Reject
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => review(r.id, 'reject', null, r)}
+                  disabled={reviewing?.id === r.id}
+                >
+                  {reviewing?.id === r.id && reviewing.action === 'reject' ? 'Rejecting...' : 'Reject'}
                 </button>
               </div>
             </div>

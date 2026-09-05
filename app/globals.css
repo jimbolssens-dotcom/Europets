@@ -2543,6 +2543,7 @@ button.secondary:hover {
   border: 1px solid #ddd;
   border-radius: 6px;
   background: #fafafa;
+  color: var(--ink);
   padding: 0.5rem 0.4rem;
   font-size: 0.8rem;
   line-height: 1.3;
