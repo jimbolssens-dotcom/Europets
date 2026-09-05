@@ -400,24 +400,26 @@ export default function StaffRosterPage() {
                                         >
                                           ✓
                                         </button>
-                                        <div className="roster-capability-badges">
-                                          <button
-                                            type="button"
-                                            className={`roster-capability-badge${entry.can_consult ? ' roster-capability-on' : ''}`}
-                                            onClick={() => toggleCapability(entry, 'can_consult')}
-                                            title={`${entry.can_consult ? 'Available' : 'Not available'} for consult bookings — click to toggle`}
-                                          >
-                                            C
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className={`roster-capability-badge${entry.can_surgery ? ' roster-capability-on' : ''}`}
-                                            onClick={() => toggleCapability(entry, 'can_surgery')}
-                                            title={`${entry.can_surgery ? 'Available' : 'Not available'} for surgery/dental bookings — click to toggle`}
-                                          >
-                                            S
-                                          </button>
-                                        </div>
+                                        {s.role === 'vet' && (
+                                          <div className="roster-capability-badges">
+                                            <button
+                                              type="button"
+                                              className={`roster-capability-badge${entry.can_consult ? ' roster-capability-on' : ''}`}
+                                              onClick={() => toggleCapability(entry, 'can_consult')}
+                                              title={`${entry.can_consult ? 'Available' : 'Not available'} for consult bookings — click to toggle`}
+                                            >
+                                              C
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className={`roster-capability-badge${entry.can_surgery ? ' roster-capability-on' : ''}`}
+                                              onClick={() => toggleCapability(entry, 'can_surgery')}
+                                              title={`${entry.can_surgery ? 'Available' : 'Not available'} for surgery/dental bookings — click to toggle`}
+                                            >
+                                              S
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     ) : (
                                       <button

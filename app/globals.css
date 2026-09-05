@@ -2612,8 +2612,11 @@ button.secondary:hover {
 
 .intake-slot-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.4rem;
+  max-height: 15rem;
+  overflow-y: auto;
+  padding: 0.15rem;
 }
 
 .intake-slot-button {
@@ -2621,10 +2624,42 @@ button.secondary:hover {
   border-radius: 6px;
   background: #fafafa;
   color: var(--ink);
-  padding: 0.5rem 0.4rem;
-  font-size: 0.8rem;
-  line-height: 1.3;
+  padding: 0.35rem 0.4rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
   cursor: pointer;
+}
+
+/* Preferred-doctor / time-of-day filters above the slot grid (see
+   app/portal/intake/[id]) — checking a single doctor drops the vet name
+   from every slot button (redundant once there's only one), which on top
+   of these filters narrowing the list is what keeps the grid short enough
+   that it rarely needs its own scrollbar. */
+.intake-filter-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.intake-vet-preference {
+  margin-bottom: 0.6rem;
+}
+
+.intake-vet-preference-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+}
+
+.intake-vet-preference-option {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.3rem !important;
+  font-weight: normal !important;
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
 
 .intake-slot-button:hover {

@@ -61,11 +61,15 @@ export async function GET(request) {
   const dayStart = new Date(uaeIso(date, '00:00'));
   const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
+  // Only doctors are ever bookable through the client portal — a cleaner
+  // or admin staff member on the roster (even one accidentally left with
+  // can_consult/can_surgery set) must never show up here.
   let rosterQuery = supabase
     .from('staff_roster_entries')
-    .select('staff_id, shift, staff(full_name)')
+    .select('staff_id, shift, staff!inner(full_name, role)')
     .eq('date', date)
-    .eq(capabilityColumn, true);
+    .eq(capabilityColumn, true)
+    .eq('staff.role', 'vet');
   if (isSurgeryType(type)) {
     rosterQuery = rosterQuery.eq('shift', 'morning');
   }

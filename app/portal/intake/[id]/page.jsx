@@ -68,6 +68,9 @@ export default function IntakePortalPage() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotsError, setSlotsError] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [vets, setVets] = useState([]);
+  const [preferredVetIds, setPreferredVetIds] = useState([]); // empty = no preference, any doctor
+  const [preferredShift, setPreferredShift] = useState('any'); // 'any' | 'morning' | 'afternoon' — consult only, surgeries are always morning
 
   // 'other_surgery' only: no exact slot to pick (staff schedule it once
   // they know how long it'll take) — just a description and a preferred
@@ -84,6 +87,12 @@ export default function IntakePortalPage() {
         setRequest(data);
         setLoading(false);
       });
+    // Doctors only — a client picking a "preferred doctor" should never
+    // see a cleaner or admin staff member in the list (see
+    // app/api/booking-availability, which now filters the same way).
+    fetch('/api/staff?role=vet')
+      .then((res) => res.json())
+      .then((data) => setVets(Array.isArray(data) ? data : []));
   }, [id]);
 
   const isExistingClient = Boolean(request?.client_id);
@@ -99,6 +108,10 @@ export default function IntakePortalPage() {
 
   function removePet(index) {
     setPets(pets.filter((_, i) => i !== index));
+  }
+
+  function toggleVetPreference(vetId) {
+    setPreferredVetIds((prev) => (prev.includes(vetId) ? prev.filter((v) => v !== vetId) : [...prev, vetId]));
   }
 
   // The one pet this submission concerns, for appointment purposes —
@@ -138,6 +151,39 @@ export default function IntakePortalPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableAppointmentTypes]);
+
+  // Surgeries are always morning-only — a leftover "afternoon" preference
+  // from a previous consult request would otherwise silently hide every
+  // slot with no obvious reason why.
+  useEffect(() => {
+    if (isSurgeryType(appointmentType) && preferredShift === 'afternoon') {
+      setPreferredShift('any');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appointmentType]);
+
+  // Client-side filter over whatever the server returned for the day — no
+  // extra round-trip, since the full day's slots are already small enough
+  // to fetch in one go (see app/api/booking-availability).
+  const filteredSlots = useMemo(
+    () =>
+      slots.filter(
+        (s) =>
+          (preferredVetIds.length === 0 || preferredVetIds.includes(s.vet_id)) &&
+          (preferredShift === 'any' || s.shift === preferredShift)
+      ),
+    [slots, preferredVetIds, preferredShift]
+  );
+
+  useEffect(() => {
+    if (
+      selectedSlot &&
+      !filteredSlots.some((s) => s.vet_id === selectedSlot.vet_id && s.start_time === selectedSlot.start_time)
+    ) {
+      setSelectedSlot(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredSlots]);
 
   useEffect(() => {
     setSelectedSlot(null);
@@ -550,6 +596,36 @@ export default function IntakePortalPage() {
                         <p className="visit-meta">
                           {computedDuration ? `This will need about ${computedDuration} minutes.` : ''}
                         </p>
+
+                        {vets.length > 1 && (
+                          <div className="intake-vet-preference">
+                            <span className="intake-filter-label">Preferred doctor (optional)</span>
+                            <div className="intake-vet-preference-options">
+                              {vets.map((v) => (
+                                <label key={v.id} className="intake-vet-preference-option">
+                                  <input
+                                    type="checkbox"
+                                    checked={preferredVetIds.includes(v.id)}
+                                    onChange={() => toggleVetPreference(v.id)}
+                                  />
+                                  {v.full_name}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {!isSurgeryType(appointmentType) && (
+                          <label>
+                            Time of day
+                            <select value={preferredShift} onChange={(e) => setPreferredShift(e.target.value)}>
+                              <option value="any">Any time</option>
+                              <option value="morning">Morning</option>
+                              <option value="afternoon">Afternoon</option>
+                            </select>
+                          </label>
+                        )}
+
                         <label>
                           Date
                           <input
@@ -562,12 +638,15 @@ export default function IntakePortalPage() {
 
                         {loadingSlots && <p className="visit-meta">Checking availability...</p>}
                         {slotsError && <p className="error">{slotsError}</p>}
+                        {!loadingSlots && !slotsError && slots.length > 0 && filteredSlots.length === 0 && (
+                          <p className="visit-meta">No open slots match your preferences that day — try another date, doctor, or time.</p>
+                        )}
                         {!loadingSlots && !slotsError && slots.length === 0 && (
                           <p className="visit-meta">No open slots that day — try another date.</p>
                         )}
-                        {slots.length > 0 && (
+                        {filteredSlots.length > 0 && (
                           <div className="intake-slot-grid">
-                            {slots.map((slot) => {
+                            {filteredSlots.map((slot) => {
                               const isSelected =
                                 selectedSlot &&
                                 selectedSlot.vet_id === slot.vet_id &&
@@ -580,8 +659,12 @@ export default function IntakePortalPage() {
                                   onClick={() => setSelectedSlot(slot)}
                                 >
                                   {new Date(slot.start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                                  <br />
-                                  {slot.vet_name}
+                                  {preferredVetIds.length !== 1 && (
+                                    <>
+                                      <br />
+                                      {slot.vet_name}
+                                    </>
+                                  )}
                                 </button>
                               );
                             })}

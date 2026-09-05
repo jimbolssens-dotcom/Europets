@@ -22,9 +22,10 @@ export async function GET(request) {
 
   const { data, error } = await supabase
     .from('staff_roster_entries')
-    .select('date')
+    .select('date, staff!inner(role)')
     .eq('shift', 'morning')
     .eq('can_surgery', true)
+    .eq('staff.role', 'vet')
     .gte('date', start)
     .lte('date', end);
 
