@@ -667,6 +667,10 @@ p {
   margin-bottom: 0.4rem;
 }
 
+.avatar-photo {
+  object-fit: cover;
+}
+
 .team-card strong {
   font-size: 0.92rem;
 }

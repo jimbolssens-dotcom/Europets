@@ -18,7 +18,11 @@ function TeamRow({ people }) {
     <div className="team-grid">
       {people.map((p) => (
         <div key={p.name} className="card team-card">
-          <span className="avatar-circle avatar-circle-lg">{initials(p.name)}</span>
+          {p.photo ? (
+            <img src={p.photo} alt={p.name} className="avatar-circle avatar-circle-lg avatar-photo" />
+          ) : (
+            <span className="avatar-circle avatar-circle-lg">{initials(p.name)}</span>
+          )}
           <strong>{p.name}</strong>
           <span>{p.role}</span>
         </div>

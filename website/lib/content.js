@@ -54,7 +54,7 @@ export const SERVICES = [
 ];
 
 export const VETS = [
-  { name: 'Dr. Jim Bolssens', role: 'DVM, Owner' },
+  { name: 'Dr. Jim Bolssens', role: 'DVM, Owner', photo: '/team/jim-bolssens.jpg' },
   { name: 'Dr. Nada', role: 'DVM' },
   { name: 'Dr. Greta', role: 'DVM' },
   { name: 'Dr. Dalma', role: 'DVM' },

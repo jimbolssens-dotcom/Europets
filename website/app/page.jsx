@@ -105,7 +105,11 @@ export default function HomePage() {
           <div className="team-teaser-row">
             {VETS.map((v) => (
               <div key={v.name} className="team-avatar">
-                <span className="avatar-circle">{initials(v.name)}</span>
+                {v.photo ? (
+                  <img src={v.photo} alt={v.name} className="avatar-circle avatar-photo" />
+                ) : (
+                  <span className="avatar-circle">{initials(v.name)}</span>
+                )}
                 <strong>{v.name}</strong>
                 <span>{v.role}</span>
               </div>
