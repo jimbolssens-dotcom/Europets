@@ -529,6 +529,293 @@ p {
   margin-bottom: 0;
 }
 
+/* ---- Shared inner-page heading ---- */
+.page-title {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  margin: 0.75rem 0 1rem;
+}
+
+.page-lede {
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+  max-width: 40rem;
+  margin-bottom: 3rem;
+}
+
+/* ---- Services page ---- */
+.services-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.services-list-item {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+.services-list-item h2 {
+  font-size: 1.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.services-list-item > div > p {
+  color: var(--ink-soft);
+}
+
+.services-list-item ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+}
+
+.services-list-item li {
+  font-size: 0.9rem;
+  padding-left: 1.1rem;
+  position: relative;
+}
+
+.services-list-item li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pink);
+}
+
+.services-cta {
+  margin-top: 3rem;
+  padding: 2.5rem;
+  text-align: center;
+  background: var(--pink-tint);
+  border: none;
+}
+
+.services-cta h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.services-cta p {
+  color: var(--ink-soft);
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 780px) {
+  .services-list-item {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Team page ---- */
+.team-section-heading {
+  font-size: 1.1rem;
+  margin: 2.5rem 0 1.25rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.team-section-heading:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 1.25rem;
+}
+
+.team-card {
+  padding: 1.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.3rem;
+}
+
+.avatar-circle-lg {
+  width: 4rem;
+  height: 4rem;
+  font-size: 1.15rem;
+  margin-bottom: 0.4rem;
+}
+
+.team-card strong {
+  font-size: 0.92rem;
+}
+
+.team-card span {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+/* ---- New patients page ---- */
+.new-patients-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+.steps-list {
+  list-style: none;
+  margin: 0 0 2rem;
+  padding: 0;
+  counter-reset: step;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.steps-list li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: 0.9rem;
+}
+
+.steps-list li::before {
+  content: counter(step);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--pink);
+  color: white;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.steps-list strong {
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.steps-list span {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.qr-card {
+  padding: 2rem;
+  text-align: center;
+  position: sticky;
+  top: 6rem;
+}
+
+.qr-card-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-bottom: 1.25rem;
+}
+
+.qr-image {
+  width: 100%;
+  max-width: 12rem;
+  margin: 0 auto;
+  border-radius: 8px;
+}
+
+@media (max-width: 860px) {
+  .new-patients-grid {
+    grid-template-columns: 1fr;
+  }
+  .qr-card {
+    position: static;
+  }
+}
+
+/* ---- Contact page ---- */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+.contact-block {
+  margin-bottom: 2rem;
+}
+
+.contact-block h3 {
+  font-size: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.contact-block p {
+  margin-bottom: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.whatsapp-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.75rem;
+  text-decoration: none;
+  color: var(--ink);
+  background: var(--pink-tint);
+  border: none;
+  position: sticky;
+  top: 6rem;
+}
+
+.whatsapp-card:hover {
+  background: #f8d8e6;
+}
+
+.whatsapp-card strong {
+  display: block;
+  font-size: 1.05rem;
+}
+
+.whatsapp-card > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.whatsapp-icon {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: #25d366;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.whatsapp-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+@media (max-width: 860px) {
+  .contact-grid {
+    grid-template-columns: 1fr;
+  }
+  .whatsapp-card {
+    position: static;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
