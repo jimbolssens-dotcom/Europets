@@ -10,10 +10,15 @@ const DETAILS = {
     'Parasite prevention',
   ],
   Dentistry: ['Scale & polish', 'Extractions', 'Oral health assessments', 'Monitored anaesthesia'],
-  Diagnostics: ['Digital radiology (X-ray)', 'Ultrasound', 'In-house laboratory testing', 'Same-day results in most cases'],
-  Surgery: ['Spay & neuter', 'Soft tissue surgery', 'Complex orthopedic procedures', 'Dedicated recovery monitoring'],
-  Hospitalization: ['24-hour monitoring', 'Daily updates for owners', 'IV fluids & medication', 'Isolation care where needed'],
-  'Grooming & Boarding': ['Bath & tidy-up grooms', 'Short and extended boarding', 'Comfortable, supervised stays'],
+  Diagnostics: [
+    'Digital X-ray',
+    'State-of-the-art ultrasound',
+    'Endoscopy (gastroscopy, colonoscopy, cystoscopy)',
+    'In-house lab: microscopy, blood work, PCR testing',
+  ],
+  Surgery: ['Spay & neuter', 'Abdominal & intestinal surgery', 'Orthopedic surgery', 'Occasional hematologic surgery'],
+  Hospitalization: ['IV pumps', 'Heat lamps', 'Oxygen cages', 'Daily updates for owners'],
+  Rehabilitation: ['Laser therapy', 'Hydrotherapy', 'Post-op & orthopedic recovery plans'],
 };
 
 export default function ServicesPage() {

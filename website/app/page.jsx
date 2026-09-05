@@ -1,4 +1,4 @@
-import { BOOKING_URL, SERVICES, VETS, HOURS, CONTACT } from '@/lib/content';
+import { BOOKING_URL, SERVICES, VETS, HOURS, CONTACT, STORY } from '@/lib/content';
 
 function initials(name) {
   return name
@@ -61,6 +61,20 @@ export default function HomePage() {
           <span>Independent &amp; family-run</span>
           <span>In-house diagnostics</span>
           <span>Appointment-only care</span>
+        </div>
+      </section>
+
+      {/* Story teaser */}
+      <section className="section">
+        <div className="container story-teaser">
+          <div>
+            <span className="eyebrow">Our story</span>
+            <h2 className="section-title">Family-run, not corporate</h2>
+            <p>{STORY.paragraphs[0]}</p>
+          </div>
+          <a href="/about" className="btn btn-ghost">
+            Read our story
+          </a>
         </div>
       </section>
 

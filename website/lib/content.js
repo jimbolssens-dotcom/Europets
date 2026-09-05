@@ -34,19 +34,22 @@ export const SERVICES = [
   },
   {
     name: 'Diagnostics',
-    description: 'In-house radiology, ultrasound, and laboratory testing for fast, accurate answers.',
+    description:
+      'Digital X-ray, ultrasound, endoscopy (gastroscopy, colonoscopy, cystoscopy), and an in-house lab for microscopy, blood work, and PCR testing — most results the same day.',
   },
   {
     name: 'Surgery',
-    description: 'From routine spay/neuter to complex orthopedic procedures, led by our resident surgeons.',
+    description:
+      'From routine spay/neuter to complex abdominal, intestinal, and orthopedic procedures, led by our resident surgeons.',
   },
   {
     name: 'Hospitalization',
-    description: 'Round-the-clock monitoring and care for patients who need to stay with us, with daily updates for owners.',
+    description:
+      'ICU-level care for patients who need to stay with us — IV pumps, heat lamps, and oxygen cages — with daily updates for owners.',
   },
   {
-    name: 'Grooming & Boarding',
-    description: 'A comfortable stay for your pet, whether it is a quick groom or a longer visit while you travel.',
+    name: 'Rehabilitation',
+    description: 'Laser therapy and hydrotherapy to support recovery after surgery, especially orthopedic procedures.',
   },
 ];
 
@@ -69,9 +72,41 @@ export const TEAM = [
 ];
 
 export const NAV_LINKS = [
+  { href: '/about', label: 'About' },
   { href: '/services', label: 'Services' },
   { href: '/team', label: 'Our Team' },
   { href: '/new-patients', label: 'New Patients' },
   { href: '/reviews', label: 'Reviews' },
   { href: '/contact', label: 'Contact' },
 ];
+
+// Founding story + positioning, for the About page (and the Home page
+// story teaser). Dr. Jim Bolssens — following his own father into vet
+// medicine — moved to the UAE in 2004, saw the need for quality
+// veterinary care in Sharjah, and opened Europets as a one-man practice
+// in 2005. It has grown into a full team since, but has deliberately
+// stayed independently vet-owned rather than joining a corporate group —
+// that's a point of pride, not an oversight, and worth saying plainly
+// rather than burying in a "since 2005" footnote.
+export const STORY = {
+  founded: 2005,
+  paragraphs: [
+    "Dr. Jim Bolssens grew up around veterinary medicine — his father was a vet too — and after moving to the UAE in 2004, he saw a real need for quality veterinary care in Sharjah. He opened Europets Clinic in 2005 as a one-man practice.",
+    "Two decades on, that one-man practice has grown into a full team of vets and support staff — but we've stayed a fully independent, veterinarian-owned clinic by choice. No corporate group, no chain playbook. Just the same personal, homely approach we started with, focused on genuinely good care at a reasonable price.",
+    "That independence is also what lets us invest in equipment most clinics our size don't have in-house: digital X-ray, ultrasound, endoscopy, and a full in-house lab, alongside the surgical and hospitalization capability to handle far more than routine cases.",
+  ],
+};
+
+export const EQUIPMENT = [
+  { name: 'Digital X-ray', description: 'Fast, detailed imaging read the same day.' },
+  { name: 'Ultrasound', description: 'State-of-the-art ultrasound for soft tissue and abdominal imaging.' },
+  { name: 'Endoscopy', description: 'Gastroscopy, colonoscopy, and cystoscopy without open surgery.' },
+  { name: 'In-house laboratory', description: 'Microscopy, blood work, and PCR testing on site.' },
+  { name: 'Full pharmacy', description: 'A full range of medications dispensed directly from the clinic.' },
+  { name: 'ICU-level hospitalization', description: 'IV pumps, heat lamps, and oxygen cages for patients who need to stay.' },
+];
+
+export const COMMUNITY = {
+  heading: "Supporting the UAE's stray community",
+  body: "We work closely with the stray cat and dog support community across the UAE, and we're proud to play our part in that effort. It's built into how we operate, not a side promotion — the animals who need it most getting the same standard of care as any other patient.",
+};

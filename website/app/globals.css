@@ -529,6 +529,23 @@ p {
   margin-bottom: 0;
 }
 
+.story-teaser {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2.5rem;
+  flex-wrap: wrap;
+}
+
+.story-teaser > div {
+  max-width: 34rem;
+}
+
+.story-teaser p {
+  color: var(--ink-soft);
+  margin-top: 0.5rem;
+}
+
 /* ---- Shared inner-page heading ---- */
 .page-title {
   font-size: clamp(2rem, 4vw, 2.8rem);
@@ -814,6 +831,55 @@ p {
   .whatsapp-card {
     position: static;
   }
+}
+
+/* ---- About page ---- */
+.about-story {
+  max-width: 42rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 3.5rem;
+  font-size: 1.02rem;
+  color: var(--ink-soft);
+}
+
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1.25rem;
+  margin: 1.5rem 0 3rem;
+}
+
+.equipment-card {
+  padding: 1.5rem;
+}
+
+.equipment-card h3 {
+  font-size: 1.05rem;
+  margin-bottom: 0.4rem;
+}
+
+.equipment-card p {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.community-card {
+  padding: 2.5rem;
+  margin-bottom: 2rem;
+  background: var(--pink-tint);
+  border: none;
+}
+
+.community-card h2 {
+  font-size: 1.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.community-card p {
+  color: var(--ink);
+  max-width: 42rem;
 }
 
 /* ---- Reviews page ---- */
