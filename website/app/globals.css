@@ -1018,6 +1018,23 @@ p {
   justify-content: center;
 }
 
+.settle-bill-notice {
+  margin-top: 1.5rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.settle-bill-notice-error {
+  background: var(--pink-tint);
+  color: var(--pink-dark);
+  border-color: var(--pink-tint);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

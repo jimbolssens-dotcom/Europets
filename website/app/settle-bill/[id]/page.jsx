@@ -14,8 +14,13 @@ export default function SettleBillPage() {
   const [invoice, setInvoice] = useState(null);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState(null);
+  // Set from ?paid=1/0 once, right after Nomod redirects back here — this
+  // is only ever a hint for which banner to show, never proof of payment
+  // (a URL can be typed by hand), so the invoice's real status below still
+  // comes from our own database, polled until it catches up.
+  const [returnedFromNomod, setReturnedFromNomod] = useState(null); // null | 'success' | 'failure'
 
-  useEffect(() => {
+  const loadInvoice = () =>
     fetch(`/api/settle-bill/${id}`)
       .then((res) => {
         if (!res.ok) throw new Error('not_found');
@@ -26,8 +31,35 @@ export default function SettleBillPage() {
         if (data.status === 'void') setState('void');
         else if (data.status === 'paid' || data.balance_due <= 0) setState('paid');
         else setState('due');
+        return data;
       })
       .catch(() => setState('not_found'));
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paid = params.get('paid');
+    if (paid === '1') setReturnedFromNomod('success');
+    else if (paid === '0') setReturnedFromNomod('failure');
+
+    loadInvoice();
+
+    // Nomod doesn't confirm payment back to us automatically yet, so a
+    // client landing back here right after paying won't see it reflected
+    // immediately — poll for a bit in case staff (or a future automated
+    // reconciliation) marks it paid while this tab is still open.
+    if (paid === '1') {
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts += 1;
+        loadInvoice().then((data) => {
+          if ((data && (data.status === 'paid' || data.balance_due <= 0)) || attempts >= 12) {
+            clearInterval(interval);
+          }
+        });
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function payNow() {
@@ -100,6 +132,18 @@ export default function SettleBillPage() {
           {invoice.client_first_name ? `Hi ${invoice.client_first_name}, settle your bill` : 'Settle your bill'}
         </h1>
         <p className="page-lede">Pay securely online with Nomod — no need to come in with cash or a card.</p>
+
+        {returnedFromNomod === 'success' && (
+          <p className="settle-bill-notice">
+            Thanks! We&apos;re confirming your payment now — this can take a few minutes to show here.
+            If the balance below doesn&apos;t update shortly, don&apos;t worry, we&apos;ll have it recorded on our end.
+          </p>
+        )}
+        {returnedFromNomod === 'failure' && (
+          <p className="settle-bill-notice settle-bill-notice-error">
+            That payment didn&apos;t go through. No charge was made — feel free to try again below.
+          </p>
+        )}
 
         <div className="card settle-bill-card">
           <p className="settle-bill-amount">

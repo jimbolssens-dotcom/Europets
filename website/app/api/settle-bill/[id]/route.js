@@ -73,12 +73,15 @@ export async function POST(request, { params }) {
     return NextResponse.json({ url: existingLink.url });
   }
 
+  const origin = new URL(request.url).origin;
   let nomodLink;
   try {
     nomodLink = await createPaymentLink({
       amount,
-      description: `Europets Clinic — Invoice #${invoice.invoice_number}`,
-      reference: invoice.id,
+      title: `Europets Clinic — Invoice #${invoice.invoice_number}`,
+      itemName: 'Outstanding balance',
+      successUrl: `${origin}/settle-bill/${params.id}?paid=1`,
+      failureUrl: `${origin}/settle-bill/${params.id}?paid=0`,
     });
   } catch (err) {
     return NextResponse.json({ error: 'payments are temporarily unavailable — please try again shortly' }, { status: 502 });
