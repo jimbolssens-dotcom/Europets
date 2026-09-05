@@ -1,7 +1,12 @@
 // app/api/settle-bill/[id]/route.js
 // GET  -> invoice summary for the public "Settle Your Bill" page (balance
 //          due, status, client first name — never exposes line items or
-//          anything else on the invoice).
+//          anything else on the invoice). Also the point where a pending
+//          Nomod link actually gets reconciled: the page polls this
+//          repeatedly after the client returns from paying, and each
+//          call re-checks Nomod's real status for it first (see
+//          lib/nomodPayments — Nomod's webhooks are unconfirmed, so this
+//          active check is what actually marks the invoice paid).
 // POST -> the client clicking "Pay Now". Creates a Nomod payment link for
 //          the invoice's current balance (or reuses a still-pending one
 //          already created for that exact balance) and returns its URL
@@ -9,6 +14,7 @@
 
 import { supabaseServer } from '@/lib/supabaseServer';
 import { createPaymentLink } from '@/lib/nomod';
+import { reconcilePendingNomodLink } from '@/lib/nomodPayments';
 import { NextResponse } from 'next/server';
 
 async function loadInvoice(id) {
@@ -26,6 +32,8 @@ function balanceDue(invoice) {
 }
 
 export async function GET(request, { params }) {
+  await reconcilePendingNomodLink(params.id);
+
   const invoice = await loadInvoice(params.id);
   if (!invoice) {
     return NextResponse.json({ error: 'not found' }, { status: 404 });

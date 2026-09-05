@@ -56,6 +56,38 @@ export async function createPaymentLink({ amount, currency = 'AED', title, itemN
   return { id: data.id, url: data.url, status: data.status };
 }
 
+export async function getPaymentLink(linkId) {
+  const apiKey = process.env.NOMOD_API_KEY;
+  if (!apiKey) {
+    throw new Error('NOMOD_API_KEY is not configured');
+  }
+
+  const res = await fetch(`${NOMOD_API_BASE}/links/${linkId}`, {
+    headers: {
+      'X-API-KEY': apiKey,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Nomod API error (${res.status}): ${text || res.statusText}`);
+  }
+
+  return res.json();
+}
+
+// UNCONFIRMED — Nomod's own "Create Link"/"Get Link" reference pages only
+// ever show "enabled" (a fresh, unpaid link) in their example response;
+// neither documents the value `status` takes on once a link is actually
+// paid. Update this the moment a real (or smallest-possible) test
+// payment shows the real value via getPaymentLink().
+export const NOMOD_PAID_STATUSES = ['paid'];
+
+export function isPaidLinkStatus(status) {
+  return NOMOD_PAID_STATUSES.includes(status);
+}
+
 // UNVERIFIED — see the file header. Keeping this as-is (rather than
 // deleting it) so the webhook route still has something to call once
 // Nomod's real signature scheme is confirmed; right now it will always

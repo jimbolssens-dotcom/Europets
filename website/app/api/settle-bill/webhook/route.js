@@ -1,18 +1,21 @@
 // app/api/settle-bill/webhook/route.js
-// POST -> Nomod calling back to confirm a payment link was paid. Marks
-// that link 'paid', logs a matching invoice_payments row (payment_method
-// 'payment_link', no staff attached — see migration 058), and recomputes
-// the invoice's amount_paid/status the same way the staff app's own
-// lib/invoicing.js recomputeInvoicePayments does, since that function
-// lives in the other Next.js app and isn't reachable from here.
+// POST -> Nomod calling back to confirm a payment link was paid (IF
+// Nomod's account has webhooks at all — their own team said, as of
+// mid-2025, that webhooks weren't available yet and to poll GET
+// /v1/links/:id instead; see lib/nomod.js). That polling path
+// (reconcilePendingNomodLink, triggered by the Settle Your Bill page)
+// is the one actually wired up and confirmed working end to end — this
+// route stays in place in case webhooks turn out to exist or ship later,
+// but until then may simply never fire.
 //
-// IMPORTANT — UNVERIFIED AGAINST NOMOD'S REAL WEBHOOK SHAPE: see the
-// warning at the top of lib/nomod.js. The event-type field, the
-// signature header name, and the field carrying "which link is this"
-// below are all best-guess placeholders pending Nomod's real docs.
+// IMPORTANT — UNVERIFIED AGAINST NOMOD'S REAL WEBHOOK SHAPE: the
+// event-type field, the signature header name, and the field carrying
+// "which link is this" below are all best-guess placeholders — Nomod's
+// docs (as reviewed 2026-09-05) don't cover webhooks at all.
 
-import { supabaseServer } from '@/lib/supabaseServer';
 import { verifyWebhookSignature } from '@/lib/nomod';
+import { recordNomodPayment } from '@/lib/nomodPayments';
+import { supabaseServer } from '@/lib/supabaseServer';
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -56,42 +59,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, already_processed: true });
   }
 
-  const now = new Date().toISOString();
-
-  await supabaseServer
-    .from('nomod_payment_links')
-    .update({ status: 'paid', paid_at: now })
-    .eq('id', link.id);
-
-  await supabaseServer
-    .from('invoice_payments')
-    .insert([{ invoice_id: link.invoice_id, amount: link.amount, payment_method: 'payment_link', paid_at: now }]);
-
-  const { data: invoice } = await supabaseServer
-    .from('invoices')
-    .select('total, status')
-    .eq('id', link.invoice_id)
-    .single();
-  const { data: payments } = await supabaseServer
-    .from('invoice_payments')
-    .select('amount, paid_at')
-    .eq('invoice_id', link.invoice_id);
-
-  if (invoice && invoice.status !== 'void') {
-    const amountPaid = Math.round((payments || []).reduce((sum, p) => sum + Number(p.amount), 0) * 100) / 100;
-    const update = { amount_paid: amountPaid };
-    if (amountPaid <= 0) {
-      update.status = 'unpaid';
-      update.paid_at = null;
-    } else if (amountPaid < Number(invoice.total)) {
-      update.status = 'partially_paid';
-      update.paid_at = null;
-    } else {
-      update.status = 'paid';
-      update.paid_at = payments.reduce((latest, p) => (!latest || p.paid_at > latest ? p.paid_at : latest), null);
-    }
-    await supabaseServer.from('invoices').update(update).eq('id', link.invoice_id);
-  }
+  await recordNomodPayment(link, link.invoice_id);
 
   return NextResponse.json({ ok: true });
 }
