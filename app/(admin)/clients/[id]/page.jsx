@@ -24,6 +24,8 @@ export default function ClientDetailPage() {
   const [client, setClient] = useState(null);
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sendingLink, setSendingLink] = useState(false);
+  const [bookingLinkError, setBookingLinkError] = useState(null);
 
   const load = () =>
     Promise.all([
@@ -52,6 +54,36 @@ export default function ClientDetailPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Generates a link scoped to this one client (see POST /api/intake-
+  // requests) — the public form it opens only ever shows this client's
+  // own pets, never anyone else's, and lets them pick one (or add a new
+  // one) and request a consult/spay/castration slot, held for staff
+  // approval like a new-client intake submission.
+  async function sendBookingLink() {
+    setBookingLinkError(null);
+    setSendingLink(true);
+    const res = await fetch('/api/intake-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: id, sent_to_phone: client.phone || null }),
+    });
+    const data = await res.json().catch(() => null);
+    setSendingLink(false);
+    if (!res.ok) {
+      setBookingLinkError(data?.error || 'Failed to generate a booking link');
+      return;
+    }
+    const url = `${window.location.origin}/portal/intake/${data.id}`;
+    const digits = (client.phone || '').replace(/\D/g, '');
+    const message = `Hi ${client.full_name}! Please pick or add your pet and request an appointment here: ${url}`;
+    if (digits.length > 3) {
+      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+    } else {
+      await navigator.clipboard.writeText(url);
+      setBookingLinkError('No phone number on file — link copied to clipboard instead.');
+    }
+  }
 
   async function handleScanned({ full_name, emirates_id, file }) {
     const update = {};
@@ -91,6 +123,13 @@ export default function ClientDetailPage() {
         {client.emirates_id ? ` · Emirates ID: ${client.emirates_id}` : ''}
         {client.trn ? ` · TRN: ${client.trn}` : ''}
       </p>
+
+      <p>
+        <button type="button" onClick={sendBookingLink} disabled={sendingLink}>
+          {sendingLink ? 'Sending...' : '📅 Send Booking Link'}
+        </button>
+      </p>
+      {bookingLinkError && <p className="error">{bookingLinkError}</p>}
 
       <h2>Emirates ID</h2>
       <ScanIdButton

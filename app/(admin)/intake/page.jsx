@@ -9,9 +9,14 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { phoneSearchDigits } from '@/lib/phoneMatch';
+import { CLIENT_APPOINTMENT_TYPE_LABELS } from '@/lib/appointmentBooking';
 
 function formatDateTime(dateStr) {
   return new Date(dateStr).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatApptTime(dateStr) {
+  return new Date(dateStr).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 function petSummary(p) {
@@ -28,6 +33,8 @@ export default function IntakePage() {
   const [draftPhones, setDraftPhones] = useState({});
   const [copiedId, setCopiedId] = useState(null);
   const [error, setError] = useState(null);
+  const [rooms, setRooms] = useState([]);
+  const [approvalRoom, setApprovalRoom] = useState({}); // request id -> room_id chosen before approving
   const [possibleMatches, setPossibleMatches] = useState({}); // intake request id -> matching clients[]
 
   const load = () =>
@@ -40,6 +47,9 @@ export default function IntakePage() {
 
   useEffect(() => {
     load();
+    fetch('/api/rooms')
+      .then((res) => res.json())
+      .then((data) => setRooms(Array.isArray(data) ? data : []));
     const channel = supabase
       .channel('intake-requests')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'intake_requests' }, load)
@@ -51,8 +61,10 @@ export default function IntakePage() {
   // name already matches an existing client — a strong sign this is the
   // same person calling in again, not a genuinely new one — so staff can
   // attach the pet(s) to that client instead of creating a duplicate.
+  // Skipped for a link that already belongs to a known client (see "Send
+  // Booking Link") — there's no dedup question, we already know who it is.
   useEffect(() => {
-    const toCheck = requests.filter((r) => r.status === 'submitted' && !(r.id in possibleMatches));
+    const toCheck = requests.filter((r) => r.status === 'submitted' && !r.client_id && !(r.id in possibleMatches));
     if (toCheck.length === 0) return;
 
     toCheck.forEach(async (r) => {
@@ -138,18 +150,26 @@ export default function IntakePage() {
     load();
   }
 
-  async function review(id, action, clientId) {
+  async function review(id, action, clientId, request) {
     if (action === 'approve' && clientId) {
       const match = (possibleMatches[id] || []).find((c) => c.id === clientId);
       if (!confirm(`Attach this submission's pet(s) to the existing client "${match?.full_name}" instead of creating a new one?`)) {
         return;
       }
     }
+    if (action === 'approve' && request?.appointment_type && !approvalRoom[id]) {
+      setError('Pick a room for the requested appointment before approving');
+      return;
+    }
     setError(null);
     const res = await fetch(`/api/intake-requests/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, ...(clientId ? { client_id: clientId } : {}) }),
+      body: JSON.stringify({
+        action,
+        ...(clientId ? { client_id: clientId } : {}),
+        ...(action === 'approve' && request?.appointment_type ? { room_id: approvalRoom[id] } : {}),
+      }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -237,19 +257,52 @@ export default function IntakePage() {
           <h2>Needs Review</h2>
           {submitted.map((r) => (
             <div key={r.id} className="intake-review-card">
-              <p>
-                <strong>{r.full_name}</strong> · {r.phone}
-                {r.email && ` · ${r.email}`}
-              </p>
+              {r.client_id ? (
+                <p>
+                  <strong>{r.clients?.full_name}</strong> <span className="visit-meta">(existing client)</span>
+                </p>
+              ) : (
+                <p>
+                  <strong>{r.full_name}</strong> · {r.phone}
+                  {r.email && ` · ${r.email}`}
+                </p>
+              )}
               {r.address && <p className="visit-meta">{r.address}</p>}
               {r.emirates_id && <p className="visit-meta">Emirates ID: {r.emirates_id}</p>}
               <ul>
+                {r.selected_patient && (
+                  <li>{[r.selected_patient.name, r.selected_patient.species, r.selected_patient.breed].filter(Boolean).join(' · ')} (existing pet)</li>
+                )}
                 {(r.patients || []).map((p, i) => (
                   <li key={i}>{petSummary(p)}</li>
                 ))}
               </ul>
               {r.notes && <p className="visit-meta">Notes: {r.notes}</p>}
               <p className="visit-meta">Submitted {formatDateTime(r.submitted_at)}</p>
+
+              {r.appointment_type && (
+                <div className="intake-appointment-request">
+                  <p>
+                    📅 Requested: <strong>{CLIENT_APPOINTMENT_TYPE_LABELS[r.appointment_type]}</strong> with{' '}
+                    {r.requested_vet?.full_name || 'any available vet'} — {formatApptTime(r.requested_start_time)} (
+                    {r.requested_duration_minutes} min)
+                  </p>
+                  <label>
+                    Room (required to approve)
+                    <select
+                      value={approvalRoom[r.id] || ''}
+                      onChange={(e) => setApprovalRoom({ ...approvalRoom, [r.id]: e.target.value })}
+                    >
+                      <option value="">Select room...</option>
+                      {rooms.map((room) => (
+                        <option key={room.id} value={room.id}>
+                          {room.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              )}
 
               {possibleMatches[r.id]?.length > 0 && (
                 <div className="possible-duplicate-warning">
@@ -264,7 +317,7 @@ export default function IntakePage() {
                         </a>{' '}
                         · {c.phone || 'no phone on file'}
                         {c.email && ` · ${c.email}`}
-                        <button type="button" onClick={() => review(r.id, 'approve', c.id)}>
+                        <button type="button" onClick={() => review(r.id, 'approve', c.id, r)}>
                           Attach pet(s) to this client
                         </button>
                       </li>
@@ -274,10 +327,14 @@ export default function IntakePage() {
               )}
 
               <div className="intake-review-actions">
-                <button type="button" onClick={() => review(r.id, 'approve')}>
+                <button
+                  type="button"
+                  onClick={() => review(r.id, 'approve', null, r)}
+                  disabled={Boolean(r.appointment_type) && !approvalRoom[r.id]}
+                >
                   {possibleMatches[r.id]?.length > 0 ? 'Create as New Client Anyway' : 'Approve'}
                 </button>
-                <button type="button" className="secondary" onClick={() => review(r.id, 'reject')}>
+                <button type="button" className="secondary" onClick={() => review(r.id, 'reject', null, r)}>
                   Reject
                 </button>
               </div>

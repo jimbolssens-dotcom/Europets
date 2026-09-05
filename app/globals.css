@@ -1939,6 +1939,43 @@ button.secondary:hover {
   color: white;
 }
 
+.roster-cell-on {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.roster-capability-badges {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.roster-capability-badge {
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: #fafafa;
+  color: #bbb;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.roster-capability-badge:hover {
+  border-color: var(--pink);
+  color: var(--pink);
+}
+
+.roster-capability-on {
+  background: var(--pink-tint);
+  border-color: var(--pink);
+  color: var(--pink);
+}
+
 .vet-legend {
   display: flex;
   flex-wrap: wrap;
@@ -2481,6 +2518,48 @@ button.secondary:hover {
   color: white;
 }
 
+.intake-pet-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 400;
+}
+
+.intake-appointment {
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.intake-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.intake-slot-button {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 0.5rem 0.4rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.intake-slot-button:hover {
+  border-color: var(--pink);
+  color: var(--pink);
+}
+
+.intake-slot-selected {
+  background: var(--pink);
+  border-color: var(--pink);
+  color: white;
+}
+
 .intake-review-card {
   background: white;
   border: 1px solid #eee;
@@ -2500,6 +2579,13 @@ button.secondary:hover {
   display: flex;
   gap: 0.75rem;
   margin-top: 0.75rem;
+}
+
+.intake-appointment-request {
+  background: var(--pink-tint);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  margin: 0.5rem 0;
 }
 
 .possible-duplicate-warning {

@@ -46,7 +46,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { staff_id, date, shift } = body;
+  const { staff_id, date, shift, can_consult, can_surgery } = body;
 
   if (!staff_id || !date || !SHIFTS.includes(shift)) {
     return NextResponse.json(
@@ -55,9 +55,13 @@ export async function POST(request) {
     );
   }
 
+  const row = { staff_id, date, shift };
+  if (can_consult !== undefined) row.can_consult = Boolean(can_consult);
+  if (can_surgery !== undefined) row.can_surgery = Boolean(can_surgery);
+
   const { data, error } = await supabase
     .from('staff_roster_entries')
-    .insert([{ staff_id, date, shift }])
+    .insert([row])
     .select('*, staff(full_name, role)')
     .single();
 

@@ -1,19 +1,29 @@
 // app/api/intake-requests/[id]/route.js
 // GET    /api/intake-requests/:id  -> fetch one request — used by both the
-//                                      public intake form and the staff review page
+//                                      public intake form and the staff review page.
+//                                      When it's an existing-client link (client_id
+//                                      already set), also returns that client's own
+//                                      patients, so the public form can offer a picker
+//                                      of just those pets — never anyone else's.
 // PATCH  /api/intake-requests/:id  -> { action: 'submit', ... }   the client filling
 //                                      in and submitting the public form, or
 //                                      { action: 'approve' | 'reject' }   staff
-//                                      reviewing a submission
+//                                      reviewing a submission — approving one that
+//                                      requested an appointment also books it (see
+//                                      lib/appointmentBooking.js for the standard
+//                                      spay/castration durations; anything else isn't
+//                                      self-bookable)
 // DELETE /api/intake-requests/:id  -> cancel an unused link
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
+import { CLIENT_APPOINTMENT_TYPES } from '@/lib/appointmentBooking';
+import { findAppointmentConflict } from '@/lib/appointmentScheduling';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('intake_requests')
-    .select('*, clients(id, full_name)')
+    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg))')
     .eq('id', params.id)
     .single();
 
@@ -24,23 +34,24 @@ export async function GET(request, { params }) {
 }
 
 async function submit(id, body) {
-  const { full_name, phone, email, address, emirates_id, patients, notes } = body;
-
-  if (!full_name || !phone || !Array.isArray(patients) || patients.length === 0) {
-    return NextResponse.json(
-      { error: 'full_name, phone, and at least one pet are required' },
-      { status: 400 }
-    );
-  }
-  for (const p of patients) {
-    if (!p.name || !p.species) {
-      return NextResponse.json({ error: 'each pet needs a name and species' }, { status: 400 });
-    }
-  }
+  const {
+    full_name,
+    phone,
+    email,
+    address,
+    emirates_id,
+    patients,
+    notes,
+    selected_patient_id,
+    appointment_type,
+    requested_vet_id,
+    requested_start_time,
+    requested_duration_minutes,
+  } = body;
 
   const { data: existing, error: existingError } = await supabase
     .from('intake_requests')
-    .select('status')
+    .select('status, client_id')
     .eq('id', id)
     .single();
   if (existingError || !existing) {
@@ -50,16 +61,64 @@ async function submit(id, body) {
     return NextResponse.json({ error: 'this link has already been submitted' }, { status: 409 });
   }
 
+  const isExistingClient = Boolean(existing.client_id);
+  const newPets = Array.isArray(patients) ? patients : [];
+
+  if (isExistingClient) {
+    // Owner details are already on file — just needs a pet (existing or new).
+    if (!selected_patient_id && newPets.length === 0) {
+      return NextResponse.json({ error: 'select one of your pets, or add a new one' }, { status: 400 });
+    }
+  } else {
+    if (!full_name || !phone || newPets.length === 0) {
+      return NextResponse.json(
+        { error: 'full_name, phone, and at least one pet are required' },
+        { status: 400 }
+      );
+    }
+  }
+  for (const p of newPets) {
+    if (!p.name || !p.species) {
+      return NextResponse.json({ error: 'each pet needs a name and species' }, { status: 400 });
+    }
+  }
+
+  // An appointment request only makes sense for exactly one pet — the
+  // one selected, or the one (and only) new pet being added alongside it.
+  if (appointment_type) {
+    if (!CLIENT_APPOINTMENT_TYPES.includes(appointment_type)) {
+      return NextResponse.json({ error: `appointment_type must be one of ${CLIENT_APPOINTMENT_TYPES.join(', ')}` }, { status: 400 });
+    }
+    const petCount = (selected_patient_id ? 1 : 0) + newPets.length;
+    if (petCount !== 1) {
+      return NextResponse.json(
+        { error: 'an appointment request must be for exactly one pet' },
+        { status: 400 }
+      );
+    }
+    if (!requested_vet_id || !requested_start_time || !requested_duration_minutes) {
+      return NextResponse.json(
+        { error: 'requested_vet_id, requested_start_time, and requested_duration_minutes are required with an appointment request' },
+        { status: 400 }
+      );
+    }
+  }
+
   const { data, error } = await supabase
     .from('intake_requests')
     .update({
-      full_name,
-      phone,
-      email: email || null,
-      address: address || null,
-      emirates_id: emirates_id || null,
-      patients,
+      full_name: isExistingClient ? undefined : full_name,
+      phone: isExistingClient ? undefined : phone,
+      email: isExistingClient ? undefined : email || null,
+      address: isExistingClient ? undefined : address || null,
+      emirates_id: isExistingClient ? undefined : emirates_id || null,
+      patients: newPets,
+      selected_patient_id: selected_patient_id || null,
       notes: notes || null,
+      appointment_type: appointment_type || null,
+      requested_vet_id: appointment_type ? requested_vet_id : null,
+      requested_start_time: appointment_type ? requested_start_time : null,
+      requested_duration_minutes: appointment_type ? requested_duration_minutes : null,
       status: 'submitted',
       submitted_at: new Date().toISOString(),
     })
@@ -73,7 +132,7 @@ async function submit(id, body) {
   return NextResponse.json(data);
 }
 
-async function review(id, action, existingClientId) {
+async function review(id, action, existingClientId, roomId, overrides = {}) {
   const { data: intake, error: fetchError } = await supabase
     .from('intake_requests')
     .select('*')
@@ -97,10 +156,48 @@ async function review(id, action, existingClientId) {
     return NextResponse.json(data);
   }
 
+  // An existing-client link already carries its client_id from creation
+  // (see POST /api/intake-requests) — reuse the same "attach, don't
+  // create" path a staff-flagged duplicate match uses below.
+  existingClientId = existingClientId || intake.client_id;
+
+  // Check the requested slot is still free *before* creating anything —
+  // if it's since been taken, bail out here so a conflict never leaves a
+  // half-created client/patient behind.
+  let appointmentVetId;
+  let appointmentStart;
+  let appointmentEnd;
+  if (intake.appointment_type) {
+    if (!roomId) {
+      return NextResponse.json({ error: 'a room is required to approve an appointment request' }, { status: 400 });
+    }
+    appointmentVetId = overrides.vetId || intake.requested_vet_id;
+    appointmentStart = new Date(overrides.startTime || intake.requested_start_time);
+    const duration = Number(overrides.durationMinutes || intake.requested_duration_minutes);
+    appointmentEnd = new Date(appointmentStart.getTime() + duration * 60000);
+
+    const { conflict, error: conflictError } = await findAppointmentConflict(supabase, {
+      roomId,
+      vetId: appointmentVetId,
+      startTime: appointmentStart,
+      endTime: appointmentEnd,
+    });
+    if (conflictError) {
+      return NextResponse.json({ error: conflictError.message }, { status: 500 });
+    }
+    if (conflict) {
+      return NextResponse.json(
+        { error: 'that room or vet is no longer free for the requested time — pick a different slot' },
+        { status: 409 }
+      );
+    }
+  }
+
   // Approve: either attach this submission's pet(s) to a client staff
   // identified as already existing (a likely duplicate flagged in the
-  // review UI), or create a new client, then a patient per pet they
-  // listed, then link the intake request to that client.
+  // review UI, or this link's own pre-set client_id), or create a new
+  // client, then a patient per pet they listed, then link the intake
+  // request to that client.
   let client;
   if (existingClientId) {
     const { data: found, error: findError } = await supabase
@@ -139,7 +236,10 @@ async function review(id, action, existingClientId) {
     sex: p.sex || null,
     microchip_number: p.microchip_number || null,
   }));
-  const { error: patientsError } = await supabase.from('patients').insert(patientRows);
+  const { data: insertedPatients, error: patientsError } = await supabase
+    .from('patients')
+    .insert(patientRows)
+    .select('id');
   if (patientsError) {
     // Roll back the client we just created — there's no cross-table
     // transaction here, so this stays a clean retry instead of leaving an
@@ -156,9 +256,44 @@ async function review(id, action, existingClientId) {
     return NextResponse.json({ error: message }, { status: patientsError.code === '23505' ? 409 : 500 });
   }
 
+  // The one pet this request concerns — either the existing one they
+  // picked, or the one (and only, enforced at submit time) new pet they
+  // just registered. Only actually needed when there's an appointment to
+  // attach it to.
+  const bookingPatientId = intake.selected_patient_id || insertedPatients?.[0]?.id || null;
+
+  let appointmentId = null;
+  if (intake.appointment_type) {
+    const { data: appointment, error: appointmentError } = await supabase
+      .from('appointments')
+      .insert([{
+        patient_id: bookingPatientId,
+        client_id: client.id,
+        room_id: roomId,
+        vet_id: appointmentVetId,
+        type: intake.appointment_type === 'consult' ? 'consult' : 'surgery',
+        start_time: appointmentStart.toISOString(),
+        duration_minutes: Math.round((appointmentEnd.getTime() - appointmentStart.getTime()) / 60000),
+        status: 'booked',
+        reason: `Client-requested ${intake.appointment_type}`,
+        client_requested: true,
+      }])
+      .select('id')
+      .single();
+    if (appointmentError) {
+      return NextResponse.json({ error: appointmentError.message }, { status: 500 });
+    }
+    appointmentId = appointment.id;
+  }
+
   const { data, error } = await supabase
     .from('intake_requests')
-    .update({ status: 'approved', reviewed_at: new Date().toISOString(), client_id: client.id })
+    .update({
+      status: 'approved',
+      reviewed_at: new Date().toISOString(),
+      client_id: client.id,
+      appointment_id: appointmentId,
+    })
     .eq('id', id)
     .select('*, clients(id, full_name)')
     .single();
@@ -172,7 +307,13 @@ export async function PATCH(request, { params }) {
   const body = await request.json();
 
   if (body.action === 'submit') return submit(params.id, body);
-  if (body.action === 'approve' || body.action === 'reject') return review(params.id, body.action, body.client_id);
+  if (body.action === 'approve' || body.action === 'reject') {
+    return review(params.id, body.action, body.client_id, body.room_id, {
+      vetId: body.vet_id,
+      startTime: body.start_time,
+      durationMinutes: body.duration_minutes,
+    });
+  }
 
   // Editing/resending the number staff sent an unsubmitted link to —
   // updates the record shown in the "Sent, Awaiting Submission" list.

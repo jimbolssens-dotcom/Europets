@@ -199,6 +199,24 @@ export default function StaffRosterPage() {
     loadEntries();
   }
 
+  // Toggles whether this shift covers consult or surgery bookings (see
+  // migration 050) — the client booking form only offers a slot with a
+  // doctor flagged in for the matching kind.
+  async function toggleCapability(entry, field) {
+    setError(null);
+    const res = await fetch(`/api/staff-roster/${entry.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: !entry[field] }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setError(data?.error || 'Failed to update the roster');
+      return;
+    }
+    loadEntries();
+  }
+
   // Copies every staff member's shifts from the week immediately before
   // the one currently shown onto this week, in one go — see
   // app/api/staff-roster/repeat-week/route.js. Additive: shifts already
@@ -242,7 +260,10 @@ export default function StaffRosterPage() {
       <h1>Staff Roster</h1>
       <p className="visit-meta">
         Click a cell to add or remove a staff member from that morning/afternoon. Staff can also do
-        this themselves from the mobile app&apos;s My Schedule page.
+        this themselves from the mobile app&apos;s My Schedule page. Once they&apos;re on a shift, the{' '}
+        <strong>C</strong>/<strong>S</strong> badges say whether it covers Consult and/or Surgery
+        bookings — the client self-booking form only offers a slot with a doctor flagged in for
+        that kind.
       </p>
       {error && <p className="error">{error}</p>}
 
@@ -363,20 +384,51 @@ export default function StaffRosterPage() {
                           return (
                             <Fragment key={iso}>
                               {SHIFTS.map((shift) => {
-                                const on = weekEntries.some(
+                                const entry = weekEntries.find(
                                   (e) => e.staff_id === s.id && e.date === iso && e.shift === shift
                                 );
                                 return (
                                   <td key={shift} className="roster-cell">
-                                    <button
-                                      type="button"
-                                      className={`roster-toggle${on ? ' roster-toggle-on' : ''}`}
-                                      style={on ? { background: color.fg, borderColor: color.fg } : undefined}
-                                      onClick={() => toggleCell(s, iso, shift)}
-                                      title={`${s.full_name} — ${d.toLocaleDateString()} ${SHIFT_LABELS[shift]} — click to ${on ? 'remove' : 'add'}`}
-                                    >
-                                      {on ? '✓' : '+'}
-                                    </button>
+                                    {entry ? (
+                                      <div className="roster-cell-on">
+                                        <button
+                                          type="button"
+                                          className="roster-toggle roster-toggle-on"
+                                          style={{ background: color.fg, borderColor: color.fg }}
+                                          onClick={() => toggleCell(s, iso, shift)}
+                                          title={`${s.full_name} — ${d.toLocaleDateString()} ${SHIFT_LABELS[shift]} — click to remove`}
+                                        >
+                                          ✓
+                                        </button>
+                                        <div className="roster-capability-badges">
+                                          <button
+                                            type="button"
+                                            className={`roster-capability-badge${entry.can_consult ? ' roster-capability-on' : ''}`}
+                                            onClick={() => toggleCapability(entry, 'can_consult')}
+                                            title={`${entry.can_consult ? 'Available' : 'Not available'} for consult bookings — click to toggle`}
+                                          >
+                                            C
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className={`roster-capability-badge${entry.can_surgery ? ' roster-capability-on' : ''}`}
+                                            onClick={() => toggleCapability(entry, 'can_surgery')}
+                                            title={`${entry.can_surgery ? 'Available' : 'Not available'} for surgery bookings — click to toggle`}
+                                          >
+                                            S
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className="roster-toggle"
+                                        onClick={() => toggleCell(s, iso, shift)}
+                                        title={`${s.full_name} — ${d.toLocaleDateString()} ${SHIFT_LABELS[shift]} — click to add`}
+                                      >
+                                        +
+                                      </button>
+                                    )}
                                   </td>
                                 );
                               })}

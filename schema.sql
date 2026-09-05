@@ -23,6 +23,11 @@ create table staff_roster_entries (
     staff_id uuid references staff(id) on delete cascade not null,
     date date not null,
     shift text not null check (shift in ('morning', 'afternoon')),
+    -- What this shift actually covers — the client booking form only
+    -- offers a slot with a doctor flagged for the matching kind (see
+    -- migration 050).
+    can_consult boolean not null default true,
+    can_surgery boolean not null default false,
     created_at timestamptz default now(),
     unique (staff_id, date, shift)
 );
@@ -128,6 +133,9 @@ create table appointments (
     duration_minutes int not null default 15,  -- 15 for consult; 10-increment for surgery
     status text not null default 'booked',  -- booked, checked_in, in_progress, complete, cancelled
     reason text,
+    -- Came from a client's own booking request (see intake_requests
+    -- below) rather than staff booking it directly here (migration 050).
+    client_requested boolean not null default false,
     created_at timestamptz default now()
 );
 
@@ -314,7 +322,30 @@ create table intake_requests (
     notes text,
     submitted_at timestamptz,
     reviewed_at timestamptz,
-    client_id uuid references clients(id),  -- set once approved
+    -- Set once approved for a brand-new client — OR set by staff up front,
+    -- before the link is even sent, to scope this link to one already-
+    -- registered client: the public form then skips the owner-detail
+    -- fields and offers a picker of just that client's own pets instead
+    -- of collecting them again (see migration 050 and
+    -- app/(admin)/clients/[id]/page.jsx's "Send Booking Link").
+    client_id uuid references clients(id),
+    -- An already-registered pet the client picked (existing-client link),
+    -- as an alternative to typing a new one into `patients` above.
+    selected_patient_id uuid references patients(id),
+    -- The appointment slot requested alongside this intake/booking, if
+    -- any — null means this link was just for registering, not booking.
+    -- 'consult' is a fixed 15 minutes; 'spay'/'castration' durations are
+    -- computed from the pet's species/weight (see lib/appointmentBooking.js).
+    -- Anything more involved isn't self-bookable — the portal form tells
+    -- the client to contact the clinic directly for that.
+    appointment_type text check (appointment_type in ('consult', 'spay', 'castration')),
+    requested_vet_id uuid references staff(id),
+    requested_start_time timestamptz,
+    requested_duration_minutes int,
+    -- Set once approved, if an appointment was requested — the real
+    -- appointments row (status 'booked'; approving *is* the confirmation,
+    -- so there's no separate pending status on appointments itself).
+    appointment_id uuid references appointments(id),
     created_at timestamptz default now()
 );
 
