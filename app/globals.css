@@ -139,9 +139,24 @@ button:disabled {
   border-bottom-color: var(--pink);
 }
 
-.topnav-links a.settings-link {
+.topnav-links a.settings-link,
+.topnav-links button.settings-link {
   font-size: 1.1rem;
   letter-spacing: normal;
+}
+
+.topnav-links button.settings-link {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.25rem 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.topnav-links button.settings-link:hover {
+  color: var(--pink-dark);
+  border-bottom-color: var(--pink);
 }
 
 /* Hospitalization nav link when any admitted case has a pending "Request

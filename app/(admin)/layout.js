@@ -83,6 +83,11 @@ export default function AdminLayout({ children }) {
     return () => supabase.removeChannel(channel);
   }, []);
 
+  async function logOut() {
+    await fetch('/api/login', { method: 'DELETE' });
+    window.location.href = '/login';
+  }
+
   return (
     <>
       <nav className="topnav">
@@ -132,6 +137,15 @@ export default function AdminLayout({ children }) {
           <a href="/settings" title="Settings" aria-label="Settings" className="settings-link">
             ⚙️
           </a>
+          <button
+            type="button"
+            onClick={logOut}
+            title="Log out"
+            aria-label="Log out"
+            className="settings-link"
+          >
+            🚪
+          </button>
         </div>
       </nav>
       <main className="content">{children}</main>
