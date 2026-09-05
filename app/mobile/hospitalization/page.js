@@ -17,6 +17,16 @@ import { supabase } from '@/lib/supabaseClient';
 import { byGroup } from '@/app/_components/CageFloorPlan';
 import { useMobileStaff } from '@/app/_components/useMobileStaff';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
+import { formatDateTime } from '@/lib/formatTimestamp';
+import { isWithinOfficeHours } from '@/lib/officeHours';
+
+// See the matching helper in app/(admin)/hospitalization/page.jsx — same
+// tooltip content, just for the mobile cage tile.
+function updateRequestTooltip(hosp) {
+  const when = formatDateTime(hosp.update_requested_at);
+  const afterHours = !isWithinOfficeHours(new Date(hosp.update_requested_at));
+  return `${when}${afterHours ? ' (after hours)' : ''}${hosp.update_request_message ? `: "${hosp.update_request_message}"` : ''}`;
+}
 
 function MobileCageTile({ cage, hosp, checkinOnly }) {
   if (hosp) {
@@ -29,9 +39,7 @@ function MobileCageTile({ cage, hosp, checkinOnly }) {
         <div className="cage-tile-header">
           <span className="cage-name">{cage.name}</span>
           {hosp.update_requested_at && (
-            <span title={hosp.update_request_message ? `Owner requested an update: "${hosp.update_request_message}"` : 'Owner requested an update'}>
-              🔔
-            </span>
+            <span title={`Owner requested an update ${updateRequestTooltip(hosp)}`}>🔔</span>
           )}
           {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
         </div>

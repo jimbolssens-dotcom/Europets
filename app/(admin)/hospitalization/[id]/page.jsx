@@ -15,7 +15,8 @@ import AttachmentSection from '@/app/_components/AttachmentSection';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
-import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
+import { formatTime, formatDayHeader, formatDateTime, groupNotesByDate } from '@/lib/formatTimestamp';
+import { isWithinOfficeHours } from '@/lib/officeHours';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import { ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
@@ -451,7 +452,9 @@ export default function HospitalizationDetailPage() {
       {admission.update_requested_at && (
         <div className="update-requested-banner">
           <span>
-            🔔 {admission.clients?.full_name || 'The owner'} requested an update
+            🔔 {admission.clients?.full_name || 'The owner'} requested an update at{' '}
+            {formatDateTime(admission.update_requested_at)}
+            {!isWithinOfficeHours(new Date(admission.update_requested_at)) && ' (after hours)'}
             {admission.update_request_message && <> — &quot;{admission.update_request_message}&quot;</>}
           </span>
           <button type="button" onClick={dismissUpdateRequest}>

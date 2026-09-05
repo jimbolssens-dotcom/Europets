@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabaseClient';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
 import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
+import { isWithinOfficeHours, OFFICE_HOURS_LABEL } from '@/lib/officeHours';
 
 // Belt-and-suspenders alongside the Cache-Control header in next.config.js:
 // this is a "live" page reloaded from the same shared link repeatedly, so
@@ -120,7 +121,11 @@ export default function HospitalizationPortalPage() {
             </button>
             {admission.update_requested_at && (
               <>
-                <p className="visit-meta">We&apos;ve let the team know — they&apos;ll post an update soon.</p>
+                <p className="visit-meta">
+                  {isWithinOfficeHours(new Date(admission.update_requested_at))
+                    ? "We've let the team know — they'll post an update soon."
+                    : `You've reached us outside office hours (${OFFICE_HOURS_LABEL}). We've received your request and will get back to you once we're back in the office.`}
+                </p>
                 {admission.update_request_message && (
                   <p className="portal-update-request-sent">&quot;{admission.update_request_message}&quot;</p>
                 )}

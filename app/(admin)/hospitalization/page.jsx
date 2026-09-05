@@ -20,9 +20,21 @@ import { supabase } from '@/lib/supabaseClient';
 import CageFloorPlan from '@/app/_components/CageFloorPlan';
 import CagePicker from '@/app/_components/CagePicker';
 import SearchSelect from '@/app/_components/SearchSelect';
+import { formatDateTime } from '@/lib/formatTimestamp';
+import { isWithinOfficeHours } from '@/lib/officeHours';
 
 const DRAG_THRESHOLD = 6;
 const emptyAdmitForm = { client_id: '', patient_id: '', cage_id: '', reason: '' };
+
+// The cage tile's tooltip when an owner is waiting on an update — names
+// when the request came in (and flags it if that was outside office
+// hours) so staff can tell a fresh request from one that's been sitting
+// since overnight.
+function updateRequestTooltip(hosp) {
+  const when = formatDateTime(hosp.update_requested_at);
+  const afterHours = !isWithinOfficeHours(new Date(hosp.update_requested_at));
+  return `${when}${afterHours ? ' (after hours)' : ''}${hosp.update_request_message ? `: "${hosp.update_request_message}"` : ''}`;
+}
 
 function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDragStart, dragSourceId, dropTargetId }) {
   const isDragSource = dragSourceId === cage.id;
@@ -44,7 +56,7 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
         onPointerDown={(e) => onDragStart(e, cage, hosp)}
         title={
           hosp.update_requested_at
-            ? `${hosp.patients?.name}'s owner is waiting for an update${hosp.update_request_message ? `: "${hosp.update_request_message}"` : ''} — drag to move, or tap to open`
+            ? `${hosp.patients?.name}'s owner is waiting for an update (requested ${updateRequestTooltip(hosp)}) — drag to move, or tap to open`
             : 'Drag to move to another cage, or tap to open'
         }
       >
@@ -63,9 +75,7 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
         <div className="cage-tile-header">
           <span className="cage-name">{cage.name}</span>
           {hosp.update_requested_at && (
-            <span title={hosp.update_request_message ? `Owner requested an update: "${hosp.update_request_message}"` : 'Owner requested an update'}>
-              🔔
-            </span>
+            <span title={`Owner requested an update ${updateRequestTooltip(hosp)}`}>🔔</span>
           )}
           {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
         </div>
