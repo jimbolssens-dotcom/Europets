@@ -8,27 +8,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-function money(n) {
-  return Number(n || 0).toFixed(2);
-}
+import { money, balanceDue, invoiceLabel, openWhatsAppReminder, openEmailReminder } from '@/lib/paymentReminders';
 
 function daysSince(iso) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-}
-
-function balanceDue(inv) {
-  return Math.max(0, Number(inv.total || 0) - Number(inv.amount_paid || 0));
-}
-
-function reminderMessage(inv) {
-  const number = inv.invoice_number ? `INV-${String(inv.invoice_number).padStart(6, '0')}` : 'your invoice';
-  const due = balanceDue(inv);
-  const amountBit =
-    inv.status === 'partially_paid'
-      ? `a remaining balance of AED ${money(due)} on ${number} (AED ${money(inv.amount_paid)} already received — thank you!)`
-      : `${number} for AED ${money(due)}`;
-  return `Hi ${inv.clients?.full_name || ''}, this is a friendly reminder from Europets Clinic that ${amountBit} is still outstanding. Please let us know if you have any questions. Thank you!`;
 }
 
 export default function UnpaidInvoicesPage() {
@@ -47,10 +30,12 @@ export default function UnpaidInvoicesPage() {
       });
   }, []);
 
-  function remind(inv) {
-    const phone = (inv.clients?.phone || '').replace(/\D/g, '');
-    if (!phone) return;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(reminderMessage(inv))}`, '_blank');
+  function remindViaWhatsApp(inv) {
+    openWhatsAppReminder(inv.clients?.phone, inv.clients?.full_name, [inv]);
+  }
+
+  function remindViaEmail(inv) {
+    openEmailReminder(inv.clients?.email, inv.clients?.full_name, [inv]);
   }
 
   const total = invoices.reduce((sum, inv) => sum + balanceDue(inv), 0);
@@ -88,9 +73,7 @@ export default function UnpaidInvoicesPage() {
             {invoices.map((inv) => (
               <tr key={inv.id}>
                 <td>
-                  <a href={`/invoices/${inv.id}`}>
-                    {inv.invoice_number ? `INV-${String(inv.invoice_number).padStart(6, '0')}` : inv.id.slice(0, 8)}
-                  </a>
+                  <a href={`/invoices/${inv.id}`}>{invoiceLabel(inv)}</a>
                 </td>
                 <td>{inv.clients?.full_name}</td>
                 <td>{inv.clients?.phone || '—'}</td>
@@ -102,9 +85,12 @@ export default function UnpaidInvoicesPage() {
                   )}
                 </td>
                 <td>{daysSince(inv.created_at)}</td>
-                <td>
-                  <button type="button" onClick={() => remind(inv)} disabled={!inv.clients?.phone}>
-                    Remind via WhatsApp
+                <td className="unpaid-remind-actions">
+                  <button type="button" onClick={() => remindViaWhatsApp(inv)} disabled={!inv.clients?.phone}>
+                    💬 WhatsApp
+                  </button>
+                  <button type="button" onClick={() => remindViaEmail(inv)} disabled={!inv.clients?.email}>
+                    ✉️ Email
                   </button>
                 </td>
               </tr>

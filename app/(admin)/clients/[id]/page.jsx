@@ -10,11 +10,13 @@ import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import ScanIdButton from '@/app/_components/ScanIdButton';
 import { uploadAttachment } from '@/lib/attachments';
+import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder, openEmailReminder } from '@/lib/paymentReminders';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
   const [client, setClient] = useState(null);
   const [patients, setPatients] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sendingLink, setSendingLink] = useState(false);
   const [bookingLinkError, setBookingLinkError] = useState(null);
@@ -25,9 +27,11 @@ export default function ClientDetailPage() {
     Promise.all([
       fetch(`/api/clients/${id}`).then((res) => res.json()),
       fetch(`/api/patients?client_id=${id}`).then((res) => res.json()),
-    ]).then(([clientData, patientsData]) => {
+      fetch(`/api/invoices?client_id=${id}`).then((res) => res.json()),
+    ]).then(([clientData, patientsData, invoicesData]) => {
       setClient(clientData);
       setPatients(Array.isArray(patientsData) ? patientsData : []);
+      setInvoices(Array.isArray(invoicesData) ? invoicesData : []);
       setLoading(false);
     });
 
@@ -39,6 +43,15 @@ export default function ClientDetailPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'patients', filter: `client_id=eq.${id}` },
+        () => load()
+      )
+      .on(
+        // invoices.amount_paid/status are kept in sync from invoice_payments
+        // (see lib/invoicing.js), so subscribing here alone also catches a
+        // payment being logged, without needing a second subscription on a
+        // table that carries no client_id to filter on.
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'invoices', filter: `client_id=eq.${id}` },
         () => load()
       )
       .subscribe();
@@ -129,6 +142,11 @@ export default function ClientDetailPage() {
   if (loading) return <p>Loading client...</p>;
   if (!client || client.error) return <p>Client not found.</p>;
 
+  const outstandingInvoices = invoices
+    .filter((inv) => inv.status === 'unpaid' || inv.status === 'partially_paid')
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const totalOutstanding = totalBalanceDue(outstandingInvoices);
+
   return (
     <div>
       <p>
@@ -148,6 +166,61 @@ export default function ClientDetailPage() {
         {client.emirates_id ? ` · Emirates ID: ${client.emirates_id}` : ''}
         {client.trn ? ` · TRN: ${client.trn}` : ''}
       </p>
+
+      <div className="card financial-overview">
+        <div className="financial-overview-total">
+          <span className="financial-overview-total-label">Total Outstanding</span>
+          <span className={`financial-overview-total-amount${totalOutstanding > 0 ? ' financial-overview-total-amount-due' : ''}`}>
+            AED {money(totalOutstanding)}
+          </span>
+        </div>
+
+        {totalOutstanding > 0 && (
+          <div className="financial-overview-actions">
+            <button
+              type="button"
+              onClick={() => openWhatsAppReminder(client.phone, client.full_name, outstandingInvoices)}
+              disabled={!client.phone}
+            >
+              💬 Remind via WhatsApp
+            </button>
+            <button
+              type="button"
+              onClick={() => openEmailReminder(client.email, client.full_name, outstandingInvoices)}
+              disabled={!client.email}
+            >
+              ✉️ Remind via Email
+            </button>
+          </div>
+        )}
+
+        {outstandingInvoices.length > 0 ? (
+          <table className="financial-overview-table">
+            <thead>
+              <tr>
+                <th>Invoice</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Balance Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              {outstandingInvoices.map((inv) => (
+                <tr key={inv.id}>
+                  <td>
+                    <a href={`/invoices/${inv.id}`}>{invoiceLabel(inv)}</a>
+                  </td>
+                  <td>{new Date(inv.created_at).toLocaleDateString()}</td>
+                  <td>{inv.status === 'partially_paid' ? 'partially paid' : 'unpaid'}</td>
+                  <td>AED {money(balanceDue(inv))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="visit-meta">No outstanding invoices.</p>
+        )}
+      </div>
 
       <p>
         <button type="button" onClick={sendBookingLink} disabled={sendingLink}>
