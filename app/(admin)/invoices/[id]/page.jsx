@@ -39,6 +39,7 @@ export default function InvoiceDetailPage() {
   const [dispenseInstructions, setDispenseInstructions] = useState({}); // line item id -> text override
   const [printingLabelId, setPrintingLabelId] = useState(null); // line item id currently printing, or null
   const [labelsError, setLabelsError] = useState(null);
+  const [paymentLinkError, setPaymentLinkError] = useState(null);
 
   const loadInvoice = () =>
     fetch(`/api/invoices/${id}`)
@@ -150,6 +151,25 @@ export default function InvoiceDetailPage() {
     }
   }
 
+  // No link is generated here — it just points the client at their own
+  // "Settle Your Bill" page on the website (website/app/settle-bill/[id]),
+  // which creates the actual Nomod link itself, for whatever the balance
+  // due happens to be at the moment they open it (see
+  // website/app/api/settle-bill/[id]).
+  function sendPaymentLink() {
+    setPaymentLinkError(null);
+    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
+    const url = `${websiteUrl}/settle-bill/${id}`;
+    const digits = (invoice.clients?.phone || '').replace(/\D/g, '');
+    const message = `Hi ${invoice.clients?.full_name || ''}! You can settle your Europets Clinic invoice online here: ${url}`;
+    if (digits.length > 3) {
+      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+    } else {
+      navigator.clipboard.writeText(url);
+      setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
+    }
+  }
+
   function downloadTaxInvoice() {
     // A cache-busting query param, on top of the route's own no-store
     // headers, so a browser/download manager can never reuse a previous
@@ -189,8 +209,14 @@ export default function InvoiceDetailPage() {
       <p>
         <button type="button" onClick={downloadTaxInvoice}>
           📄 Download Tax Invoice (PDF)
-        </button>
+        </button>{' '}
+        {editable && (
+          <button type="button" onClick={sendPaymentLink}>
+            💳 Send Payment Link
+          </button>
+        )}
       </p>
+      {paymentLinkError && <p className="error">{paymentLinkError}</p>}
 
       <table>
         <thead>

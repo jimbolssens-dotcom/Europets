@@ -670,12 +670,36 @@ create table invoice_payments (
     invoice_id uuid references invoices(id) on delete cascade not null,
     amount numeric(10,2) not null check (amount > 0),
     payment_method text not null check (payment_method in ('cash', 'card', 'bank_transfer', 'payment_link')),
-    received_by uuid references staff(id) not null,
+    -- Null for an online Nomod payment recorded automatically by its
+    -- webhook (see nomod_payment_links below, migration 058) — every
+    -- other payment method is taken by a staff member in person and must
+    -- still name one.
+    received_by uuid references staff(id),
     paid_at timestamptz not null default now(),
     created_at timestamptz default now()
 );
 
 create index invoice_payments_invoice_id_idx on invoice_payments(invoice_id);
+
+-- ============ NOMOD PAYMENT LINKS ============
+-- Created lazily when a client opens their own "Settle Your Bill" page on
+-- the website (website/app/settle-bill/[id]) — never precomputed by staff —
+-- so it's always for the invoice's current real balance. Tracked here so a
+-- repeat visit reuses a still-pending link, and so the webhook has
+-- something to match a completed payment back to (migration 058).
+create table nomod_payment_links (
+    id uuid primary key default gen_random_uuid(),
+    invoice_id uuid references invoices(id) not null,
+    nomod_link_id text,  -- Nomod's own id for this link — what the webhook matches on
+    url text not null,
+    amount numeric(10,2) not null,
+    status text not null default 'pending',  -- pending, paid, cancelled
+    created_at timestamptz default now(),
+    paid_at timestamptz
+);
+
+create index idx_nomod_payment_links_invoice_id on nomod_payment_links(invoice_id);
+create unique index idx_nomod_payment_links_nomod_link_id on nomod_payment_links(nomod_link_id) where nomod_link_id is not null;
 
 -- ============ ACCOUNTING: EXPENSES ============
 -- The other half of a basic P&L/VAT picture, alongside invoices (revenue/
@@ -746,7 +770,8 @@ alter publication supabase_realtime add table
     clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items,
     diagnostics, treatment_items, surgical_reports, dental_reports,
     hospitalizations, hospitalization_notes, attachments, recordings, clinic_settings,
-    vaccine_protocols, vaccinations, intake_requests, expenses, staff_roster_entries, review_requests;
+    vaccine_protocols, vaccinations, intake_requests, expenses, staff_roster_entries, review_requests,
+    nomod_payment_links;
 
 -- ============ ROW LEVEL SECURITY ============
 -- RLS is intentionally left disabled: the app has no staff auth yet and
@@ -782,6 +807,7 @@ alter table vaccine_protocols disable row level security;
 alter table vaccinations disable row level security;
 alter table intake_requests disable row level security;
 alter table review_requests disable row level security;
+alter table nomod_payment_links disable row level security;
 alter table catalog_subcategories disable row level security;
 alter table consent_forms disable row level security;
 alter table patient_alerts disable row level security;

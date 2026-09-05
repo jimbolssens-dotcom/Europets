@@ -113,7 +113,9 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
               <span className="invoice-payment-date">{new Date(p.paid_at).toLocaleString()}</span>
               <span className="invoice-payment-amount">AED {money(p.amount)}</span>
               <span>{PAYMENT_METHOD_LABELS[p.payment_method] || p.payment_method}</span>
-              <span className="invoice-payment-by">{p.staff?.full_name || 'unassigned'}</span>
+              <span className="invoice-payment-by">
+                {p.staff?.full_name || (p.payment_method === 'payment_link' ? 'Online (Nomod)' : 'unassigned')}
+              </span>
               {canTakePayment && (
                 <button type="button" onClick={() => removePayment(p.id)}>
                   Remove

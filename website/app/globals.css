@@ -919,6 +919,36 @@ p {
   align-self: flex-start;
 }
 
+/* ---- Settle your bill ---- */
+.settle-bill-card {
+  padding: 2.5rem;
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.settle-bill-amount {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 2.6rem;
+  color: var(--ink);
+  margin-bottom: 1.5rem;
+}
+
+.settle-bill-amount span {
+  display: block;
+  font-family: var(--font-body), sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-top: 0.25rem;
+}
+
+.settle-bill-card .btn {
+  width: 100%;
+  justify-content: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
