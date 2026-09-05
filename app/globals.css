@@ -1710,6 +1710,63 @@ button.secondary:hover {
   top: 0.5rem;
 }
 
+/* Appointments page only: the month overview and, below it, any pending
+   appointment requests (see AppointmentRequestsPanel) share one sticky
+   column to the left of the schedule — wider than the plain .date-nav
+   (reused as-is on Staff Roster) so a review card's room/vet pickers
+   have room to breathe. */
+.schedule-left-col {
+  flex: 0 0 16rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  top: 0.5rem;
+  align-self: flex-start;
+}
+
+.schedule-left-col > .date-nav {
+  flex: none;
+  width: 100%;
+  position: static;
+  top: auto;
+}
+
+.appointment-requests-panel h3 {
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem;
+  color: var(--pink-dark);
+}
+
+.intake-review-card-compact {
+  max-width: none;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.82rem;
+  margin-top: 0.6rem;
+}
+
+.intake-review-card-compact .intake-appointment-request,
+.intake-review-card-compact .possible-duplicate-warning {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.intake-review-card-compact select,
+.intake-review-card-compact input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.intake-review-card-compact .intake-review-actions {
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.intake-review-card-compact .possible-duplicate-warning li {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .mini-cal-header {
   display: flex;
   align-items: center;

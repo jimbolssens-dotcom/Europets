@@ -17,13 +17,13 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
-import { CLIENT_APPOINTMENT_TYPES, CLIENT_APPOINTMENT_TYPE_LABELS } from '@/lib/appointmentBooking';
+import { CLIENT_APPOINTMENT_TYPES, CLIENT_APPOINTMENT_TYPE_LABELS, appointmentTypeAllowedForSex } from '@/lib/appointmentBooking';
 import { findAppointmentConflict } from '@/lib/appointmentScheduling';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('intake_requests')
-    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg))')
+    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg, sex))')
     .eq('id', params.id)
     .single();
 
@@ -113,6 +113,32 @@ async function submit(id, body) {
         { error: 'requested_vet_id, requested_start_time, and requested_duration_minutes are required with an appointment request' },
         { status: 400 }
       );
+    }
+
+    // A spay/castration only makes sense for one sex — re-checked here
+    // (not just filtered out of the client's dropdown) in case of a stale
+    // form or a direct API call.
+    if (appointment_type === 'spay' || appointment_type === 'castration') {
+      let sex = newPets[0]?.sex;
+      if (selected_patient_id) {
+        const { data: selectedPatient } = await supabase
+          .from('patients')
+          .select('sex')
+          .eq('id', selected_patient_id)
+          .single();
+        sex = selectedPatient?.sex;
+      }
+      if (!appointmentTypeAllowedForSex(appointment_type, sex)) {
+        return NextResponse.json(
+          {
+            error:
+              appointment_type === 'spay'
+                ? 'spay is only for a female pet'
+                : 'castration is only for a male pet',
+          },
+          { status: 400 }
+        );
+      }
     }
   }
 

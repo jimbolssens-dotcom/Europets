@@ -24,7 +24,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import SpeciesField from '@/app/_components/SpeciesField';
-import { CLIENT_APPOINTMENT_TYPE_LABELS, clientBookingDurationMinutes, isSurgeryType } from '@/lib/appointmentBooking';
+import {
+  clientAppointmentTypeEntriesForSex,
+  clientBookingDurationMinutes,
+  isSurgeryType,
+} from '@/lib/appointmentBooking';
 
 function emptyPet() {
   return { name: '', species: '', breed: '', date_of_birth: '', sex: '', microchip_number: '', weight_kg: '' };
@@ -115,6 +119,25 @@ export default function IntakePortalPage() {
     : null;
 
   const isCustomSurgery = appointmentType === 'other_surgery';
+
+  // Spay/castration only make sense for one sex — e.g. a male pet never
+  // sees "Spay" as an option (see lib/appointmentBooking.js). Falls back
+  // to every type when no pet is picked yet.
+  const availableAppointmentTypes = useMemo(
+    () => clientAppointmentTypeEntriesForSex(bookingPet?.sex),
+    [bookingPet?.sex]
+  );
+
+  // If the pet (or its sex) changes out from under a selection that's no
+  // longer valid — e.g. switching from a new pet marked female to an
+  // existing male one while "Spay" was picked — fall back to a consult
+  // rather than silently submitting a mismatched request.
+  useEffect(() => {
+    if (!availableAppointmentTypes.some(([value]) => value === appointmentType)) {
+      setAppointmentType('consult');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableAppointmentTypes]);
 
   useEffect(() => {
     setSelectedSlot(null);
@@ -471,7 +494,7 @@ export default function IntakePortalPage() {
                     <label>
                       Appointment type
                       <select value={appointmentType} onChange={(e) => setAppointmentType(e.target.value)}>
-                        {Object.entries(CLIENT_APPOINTMENT_TYPE_LABELS).map(([value, label]) => (
+                        {availableAppointmentTypes.map(([value, label]) => (
                           <option key={value} value={value}>
                             {label}
                           </option>

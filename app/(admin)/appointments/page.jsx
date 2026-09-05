@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import SearchSelect from '@/app/_components/SearchSelect';
+import AppointmentRequestsPanel from '@/app/_components/AppointmentRequestsPanel';
 import { buildStaffColorMap, UNASSIGNED_STAFF_COLOR } from '@/lib/staffColors';
 
 const OPEN_HOUR = 8;
@@ -699,51 +700,55 @@ export default function AppointmentsPage() {
       <h1>Appointments</h1>
 
       <div className="schedule-layout">
-        <div className="date-nav">
-          <div className="mini-cal-header">
-            <button type="button" onClick={() => goToMonth(-1)} aria-label="Previous month">
-              &lsaquo;
+        <div className="schedule-left-col">
+          <div className="date-nav">
+            <div className="mini-cal-header">
+              <button type="button" onClick={() => goToMonth(-1)} aria-label="Previous month">
+                &lsaquo;
+              </button>
+              <span>{monthLabel}</span>
+              <button type="button" onClick={() => goToMonth(1)} aria-label="Next month">
+                &rsaquo;
+              </button>
+            </div>
+            <div className="mini-cal-grid">
+              {WEEKDAY_LETTERS.map((w, i) => (
+                <div key={i} className="mini-cal-weekday">
+                  {w}
+                </div>
+              ))}
+              {monthGrid.map((d) => {
+                const iso = toISODate(d);
+                const inMonth = d.getMonth() === viewMonthIndex;
+                const isSelected = iso === selectedDate;
+                const isToday = iso === todayISODate();
+                return (
+                  <button
+                    type="button"
+                    key={iso}
+                    className={[
+                      'mini-cal-day',
+                      inMonth ? '' : 'mini-cal-day-outside',
+                      isSelected ? 'mini-cal-day-selected' : '',
+                      isToday && !isSelected ? 'mini-cal-day-today' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => selectDay(d)}
+                  >
+                    {d.getDate()}
+                    {countsByDate[iso] > 0 && <span className="mini-cal-day-dot" />}
+                  </button>
+                );
+              })}
+            </div>
+            <button type="button" className="date-nav-today" onClick={() => selectDay(new Date())}>
+              Today
             </button>
-            <span>{monthLabel}</span>
-            <button type="button" onClick={() => goToMonth(1)} aria-label="Next month">
-              &rsaquo;
-            </button>
+            <p className="date-nav-label">{selectedDateLabel}</p>
           </div>
-          <div className="mini-cal-grid">
-            {WEEKDAY_LETTERS.map((w, i) => (
-              <div key={i} className="mini-cal-weekday">
-                {w}
-              </div>
-            ))}
-            {monthGrid.map((d) => {
-              const iso = toISODate(d);
-              const inMonth = d.getMonth() === viewMonthIndex;
-              const isSelected = iso === selectedDate;
-              const isToday = iso === todayISODate();
-              return (
-                <button
-                  type="button"
-                  key={iso}
-                  className={[
-                    'mini-cal-day',
-                    inMonth ? '' : 'mini-cal-day-outside',
-                    isSelected ? 'mini-cal-day-selected' : '',
-                    isToday && !isSelected ? 'mini-cal-day-today' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  onClick={() => selectDay(d)}
-                >
-                  {d.getDate()}
-                  {countsByDate[iso] > 0 && <span className="mini-cal-day-dot" />}
-                </button>
-              );
-            })}
-          </div>
-          <button type="button" className="date-nav-today" onClick={() => selectDay(new Date())}>
-            Today
-          </button>
-          <p className="date-nav-label">{selectedDateLabel}</p>
+
+          <AppointmentRequestsPanel rooms={rooms} vets={vets} onApproved={loadMonth} />
         </div>
 
         <div className="schedule-main">

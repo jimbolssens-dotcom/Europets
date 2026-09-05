@@ -9,6 +9,8 @@ import { supabase } from '@/lib/supabaseClient';
 // layout in app/layout.js.
 export default function AdminLayout({ children }) {
   const [hasPendingUpdateRequest, setHasPendingUpdateRequest] = useState(false);
+  const [hasPendingAppointmentRequest, setHasPendingAppointmentRequest] = useState(false);
+  const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
 
   // The Hospitalization nav link blinks the same way an individual cage
   // does on the Cage Layout page (see .cage-update-requested there) —
@@ -34,6 +36,31 @@ export default function AdminLayout({ children }) {
     return () => supabase.removeChannel(channel);
   }, []);
 
+  // Same blinking treatment for a submitted intake/invite request awaiting
+  // review — Appointments if it also asked for a slot (reviewed there, see
+  // AppointmentRequestsPanel), Invite otherwise (see IntakeReviewCard) —
+  // so staff notice a pending review from anywhere in the app.
+  useEffect(() => {
+    const checkPending = () =>
+      fetch('/api/intake-requests')
+        .then((res) => res.json())
+        .then((data) => {
+          const list = Array.isArray(data) ? data : [];
+          const submitted = list.filter((r) => r.status === 'submitted');
+          setHasPendingAppointmentRequest(submitted.some((r) => r.appointment_type));
+          setHasPendingInviteRequest(submitted.some((r) => !r.appointment_type));
+        });
+
+    checkPending();
+
+    const channel = supabase
+      .channel('nav-intake-requests')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'intake_requests' }, checkPending)
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
+
   return (
     <>
       <nav className="topnav">
@@ -44,8 +71,20 @@ export default function AdminLayout({ children }) {
         <div className="topnav-links">
           <a href="/clients">Clients</a>
           <a href="/patients">Patients</a>
-          <a href="/intake">Invite</a>
-          <a href="/appointments">Appointments</a>
+          <a
+            href="/intake"
+            className={hasPendingInviteRequest ? 'nav-update-requested' : ''}
+            title={hasPendingInviteRequest ? 'A submission is waiting for review' : undefined}
+          >
+            Invite{hasPendingInviteRequest && ' 🔔'}
+          </a>
+          <a
+            href="/appointments"
+            className={hasPendingAppointmentRequest ? 'nav-update-requested' : ''}
+            title={hasPendingAppointmentRequest ? 'An appointment request is waiting for review' : undefined}
+          >
+            Appointments{hasPendingAppointmentRequest && ' 🔔'}
+          </a>
           <a href="/consults">Consults</a>
           <a
             href="/hospitalization"
