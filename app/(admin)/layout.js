@@ -11,6 +11,7 @@ export default function AdminLayout({ children }) {
   const [hasPendingUpdateRequest, setHasPendingUpdateRequest] = useState(false);
   const [hasPendingAppointmentRequest, setHasPendingAppointmentRequest] = useState(false);
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
+  const [hasPendingReviewRequest, setHasPendingReviewRequest] = useState(false);
 
   // The Hospitalization nav link blinks the same way an individual cage
   // does on the Cage Layout page (see .cage-update-requested there) —
@@ -61,6 +62,27 @@ export default function AdminLayout({ children }) {
     return () => supabase.removeChannel(channel);
   }, []);
 
+  // Same blinking treatment for a submitted review awaiting moderation —
+  // see app/(admin)/reviews and website/app/reviews/submit/[id].
+  useEffect(() => {
+    const checkPending = () =>
+      fetch('/api/review-requests')
+        .then((res) => res.json())
+        .then((data) => {
+          const list = Array.isArray(data) ? data : [];
+          setHasPendingReviewRequest(list.some((r) => r.status === 'submitted'));
+        });
+
+    checkPending();
+
+    const channel = supabase
+      .channel('nav-review-requests')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'review_requests' }, checkPending)
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
+
   return (
     <>
       <nav className="topnav">
@@ -86,6 +108,13 @@ export default function AdminLayout({ children }) {
             Appointments{hasPendingAppointmentRequest && ' 🔔'}
           </a>
           <a href="/consults">Consults</a>
+          <a
+            href="/reviews"
+            className={hasPendingReviewRequest ? 'nav-update-requested' : ''}
+            title={hasPendingReviewRequest ? 'A review is waiting for moderation' : undefined}
+          >
+            Reviews{hasPendingReviewRequest && ' 🔔'}
+          </a>
           <a
             href="/hospitalization"
             className={hasPendingUpdateRequest ? 'nav-update-requested' : ''}

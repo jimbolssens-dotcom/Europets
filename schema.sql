@@ -378,6 +378,28 @@ create table intake_requests (
     created_at timestamptz default now()
 );
 
+-- ============ REVIEW REQUESTS ============
+-- Review/testimonial requests, sent to clients via WhatsApp and filled in
+-- on the public website (no login) — moderated by staff before they ever
+-- appear on the site. Mirrors the intake_requests request/submission
+-- pattern above (migration 057).
+create table review_requests (
+    id uuid primary key default gen_random_uuid(),
+    status text not null default 'pending',  -- pending (link sent, not filled in yet),
+                                              -- submitted (filled in, awaiting staff review),
+                                              -- approved (shown on the public site), rejected
+    client_id uuid references clients(id),
+    sent_to_phone text,  -- the number staff sent the link to
+    rating smallint check (rating between 1 and 5),
+    comment text,
+    display_name text,  -- how the client wants to be shown publicly, e.g. "Sarah K." — defaults to their first name + last initial if left blank
+    submitted_at timestamptz,
+    reviewed_at timestamptz,
+    created_at timestamptz default now()
+);
+
+create index idx_review_requests_status on review_requests(status);
+
 -- ============ SURGICAL REPORTS ============
 create table surgical_reports (
     id uuid primary key default gen_random_uuid(),
@@ -724,7 +746,7 @@ alter publication supabase_realtime add table
     clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items,
     diagnostics, treatment_items, surgical_reports, dental_reports,
     hospitalizations, hospitalization_notes, attachments, recordings, clinic_settings,
-    vaccine_protocols, vaccinations, intake_requests, expenses, staff_roster_entries;
+    vaccine_protocols, vaccinations, intake_requests, expenses, staff_roster_entries, review_requests;
 
 -- ============ ROW LEVEL SECURITY ============
 -- RLS is intentionally left disabled: the app has no staff auth yet and
@@ -759,6 +781,7 @@ alter table clinic_settings disable row level security;
 alter table vaccine_protocols disable row level security;
 alter table vaccinations disable row level security;
 alter table intake_requests disable row level security;
+alter table review_requests disable row level security;
 alter table catalog_subcategories disable row level security;
 alter table consent_forms disable row level security;
 alter table patient_alerts disable row level security;
