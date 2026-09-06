@@ -23,6 +23,7 @@ import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
+import InfoHint from '@/app/_components/InfoHint';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -933,13 +934,15 @@ export default function HospitalizationDetailPage() {
       </details>
 
       <form className="card" onSubmit={addNote}>
-        <h3>Add Worksheet Entry</h3>
-        <p className="visit-meta">
-          Record an observation and Claude will break it down and fill in Appetite, Weight,
-          Temperature, Condition, and Notes below — anything already filled in is kept. Medications
-          or tests you mention are matched against the catalog and added to the list below
-          automatically when a confident match is found.
-        </p>
+        <h3>
+          Add Worksheet Entry{' '}
+          <InfoHint>
+            Record an observation and Claude will break it down and fill in Appetite, Weight,
+            Temperature, Condition, and Notes below — anything already filled in is kept.
+            Medications or tests you mention are matched against the catalog and added to the list
+            below automatically when a confident match is found.
+          </InfoHint>
+        </h3>
         <AudioRecorder entityType="hospitalization" entityId={id} onExtractedFields={applyExtractedFields} />
         <input
           type="date"
@@ -1058,11 +1061,11 @@ export default function HospitalizationDetailPage() {
           <button type="button" onClick={createInvoice} disabled={creatingInvoice}>
             {creatingInvoice ? 'Creating...' : '🧾 Create'}
           </button>
-          <p className="visit-meta">
+          <InfoHint>
             Opens a new invoice and imports every medication/goods/service logged across the
             whole worksheet as a line item — typically done at discharge. You can still add more
             items to the invoice afterward.
-          </p>
+          </InfoHint>
         </>
       )}
 

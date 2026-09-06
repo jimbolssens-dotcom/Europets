@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS } from '@/lib/catalogGrouping';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
+import InfoHint from '@/app/_components/InfoHint';
 
 const emptyForm = {
   name: '',
@@ -483,11 +484,13 @@ export default function CatalogPage() {
       </form>
 
       <div className="card">
-        <h2>{MAIN_CATEGORY_LABELS[activeTab]} Subcategories</h2>
-        <p className="visit-meta">
-          Keep adding to this list as the clinic offers new {MAIN_CATEGORY_LABELS[activeTab].toLowerCase()}{' '}
-          subdivisions — new ones show up immediately in Add {MAIN_CATEGORY_LABELS[activeTab]} above.
-        </p>
+        <h2>
+          {MAIN_CATEGORY_LABELS[activeTab]} Subcategories{' '}
+          <InfoHint>
+            Keep adding to this list as the clinic offers new {MAIN_CATEGORY_LABELS[activeTab].toLowerCase()}{' '}
+            subdivisions — new ones show up immediately in Add {MAIN_CATEGORY_LABELS[activeTab]} above.
+          </InfoHint>
+        </h2>
         {subcategoryError && <p className="error">{subcategoryError}</p>}
         {tabSubcategories.length === 0 && <p>No subcategories yet.</p>}
         <ul className="subcategory-list">

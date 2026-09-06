@@ -1726,6 +1726,30 @@ button.secondary:hover {
   margin: 0.25rem 0 0.75rem;
 }
 
+.info-hint {
+  display: inline-block;
+}
+
+.info-hint-toggle {
+  background: transparent;
+  border: none;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.info-hint-toggle:hover {
+  opacity: 1;
+  background: var(--pink-tint);
+}
+
+.info-hint-text {
+  display: block;
+  max-width: 32rem;
+}
+
 /* A labeled date field in the Add Patient form (app/(admin)/patients) —
    the form's other fields rely on placeholder text alone, which a date
    input can't show, so these two get a small visible label instead. */
