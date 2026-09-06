@@ -4,7 +4,10 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { attachCages } from '@/lib/attachCages';
+import { compressAttachmentsForClosedRecord } from '@/lib/attachmentCompression';
 import { NextResponse } from 'next/server';
+
+export const maxDuration = 60;
 
 // Next.js can otherwise cache a GET route handler's response (it has no
 // dynamic API calls of its own to signal it shouldn't) — the client
@@ -74,5 +77,26 @@ export async function PATCH(request, { params }) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  if (update.status === 'discharged') {
+    // The case is closed — its photos won't be pulled up again the way
+    // they are during an active admission, so shrink them now. Best-effort:
+    // never let a compression hiccup fail the discharge itself.
+    try {
+      const { data: notes } = await supabase
+        .from('hospitalization_notes')
+        .select('id')
+        .eq('hospitalization_id', params.id);
+
+      const entityRefs = [
+        { entity_type: 'hospitalization', entity_id: params.id },
+        ...(notes || []).map((n) => ({ entity_type: 'hospitalization_note', entity_id: n.id })),
+      ];
+      await compressAttachmentsForClosedRecord(entityRefs);
+    } catch {
+      // See comment above — this is cleanup, not part of discharging the patient.
+    }
+  }
+
   return NextResponse.json(await attachCages(data));
 }

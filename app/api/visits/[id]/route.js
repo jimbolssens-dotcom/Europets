@@ -11,7 +11,10 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { lockExtractedTeeth } from '@/lib/dentalChartLayout';
+import { compressAttachmentsForClosedRecord, isXrayDiagnostic } from '@/lib/attachmentCompression';
 import { NextResponse } from 'next/server';
+
+export const maxDuration = 60;
 
 const VALID_STATUSES = ['in_progress', 'complete'];
 const RECORD_FIELDS = [
@@ -112,6 +115,29 @@ export async function PATCH(request, { params }) {
       if (locked && JSON.stringify(locked) !== JSON.stringify(patient.dental_chart)) {
         await supabase.from('patients').update({ dental_chart: locked }).eq('id', data.patient_id);
       }
+    }
+
+    // The consult is done — its photos won't be pulled up again the way
+    // they are while active, so shrink them now to save Storage space.
+    // Best-effort: never let a compression hiccup fail the actual
+    // "complete this consult" action, which has already succeeded above.
+    try {
+      const [{ data: diagnostics }, { data: surgicalReports }, { data: dentalReports }] = await Promise.all([
+        supabase.from('diagnostics').select('id, type, goods_services(name)').eq('visit_id', params.id),
+        supabase.from('surgical_reports').select('id').eq('visit_id', params.id),
+        supabase.from('dental_reports').select('id').eq('visit_id', params.id),
+      ]);
+
+      const entityRefs = [
+        ...(diagnostics || []).map((d) => ({ entity_type: 'diagnostic', entity_id: d.id })),
+        ...(surgicalReports || []).map((r) => ({ entity_type: 'surgical_report', entity_id: r.id })),
+        ...(dentalReports || []).map((r) => ({ entity_type: 'dental_report', entity_id: r.id })),
+      ];
+      const xrayEntityIds = new Set((diagnostics || []).filter(isXrayDiagnostic).map((d) => d.id));
+
+      await compressAttachmentsForClosedRecord(entityRefs, xrayEntityIds);
+    } catch {
+      // See comment above — this is cleanup, not part of completing the consult.
     }
   }
 
