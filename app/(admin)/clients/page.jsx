@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { uploadAttachment } from '@/lib/attachments';
 import ScanIdButton from '@/app/_components/ScanIdButton';
 import { phoneSearchDigits } from '@/lib/phoneMatch';
-import ClientPhonesEditor, { emptyPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
+import ClientPhonesEditor, { emptyPhoneRow, initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
 
 const emptyForm = {
   full_name: '',
@@ -200,7 +200,7 @@ export default function ClientsPage() {
     const phones = (client.client_phones || []).map(toEditableRow);
     setEditForm({
       full_name: client.full_name,
-      phones: phones.length > 0 ? phones : [emptyPhoneRow(true)],
+      phones: phones.length > 0 ? phones : [initialPhoneRow(client.phone)],
       emirates_id: client.emirates_id || '',
       trn: client.trn || '',
       email: client.email || '',

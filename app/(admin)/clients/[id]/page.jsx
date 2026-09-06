@@ -9,7 +9,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import ScanIdButton from '@/app/_components/ScanIdButton';
-import ClientPhonesEditor, { emptyPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
+import ClientPhonesEditor, { initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
 import { uploadAttachment } from '@/lib/attachments';
 import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder, openEmailReminder } from '@/lib/paymentReminders';
 
@@ -149,7 +149,7 @@ export default function ClientDetailPage() {
     const phones = (client.client_phones || []).map(toEditableRow);
     setEditForm({
       full_name: client.full_name || '',
-      phones: phones.length > 0 ? phones : [emptyPhoneRow(true)],
+      phones: phones.length > 0 ? phones : [initialPhoneRow(client.phone)],
       emirates_id: client.emirates_id || '',
       trn: client.trn || '',
       email: client.email || '',

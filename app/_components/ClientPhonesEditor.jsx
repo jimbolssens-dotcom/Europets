@@ -18,6 +18,19 @@ export function emptyPhoneRow(isFirst) {
   return { phone: '', label: '', useCustomLabel: false, is_whatsapp: isFirst };
 }
 
+// A client from before migrations/055_client_phones has no client_phones
+// rows at all yet — their number only lives in the legacy clients.phone
+// column. Starting the editor from a truly blank row in that case would
+// silently wipe that number on save (normalizeClientPhones drops blank
+// rows, and syncClientWhatsappPhone then clears clients.phone to match).
+// Pre-filling from the legacy value here is what makes editing a
+// never-migrated client's other fields (name, address, ...) safe.
+export function initialPhoneRow(legacyPhone) {
+  return legacyPhone
+    ? { phone: legacyPhone, label: 'Mobile', useCustomLabel: false, is_whatsapp: true }
+    : emptyPhoneRow(true);
+}
+
 // Turns a saved {phone, label, is_whatsapp} row (from client_phones) back
 // into this editor's shape, correctly detecting a custom label so it
 // doesn't silently disappear behind a blank "Label..." dropdown.
