@@ -529,6 +529,28 @@ create index idx_consent_forms_visit on consent_forms(visit_id);
 create index idx_consent_forms_hospitalization on consent_forms(hospitalization_id);
 create index idx_consent_forms_patient on consent_forms(patient_id);
 
+-- A link sent to a client (via WhatsApp) to review and digitally sign a
+-- consent form themselves, as an alternative to signing in person on a
+-- staff device — see migration 061. On submission this creates the real,
+-- authoritative row above (consent_form_id), the same way an in-person
+-- signature does; nothing about consent_forms itself changes.
+create table consent_form_requests (
+    id uuid primary key default gen_random_uuid(),
+    status text not null default 'pending',  -- pending (link sent, not signed yet), submitted
+    visit_id uuid references visits(id),
+    hospitalization_id uuid references hospitalizations(id),
+    form_type text not null check (
+        form_type in ('surgery_standard_neuter', 'surgery_complex', 'hospitalization', 'dental')
+    ),
+    sent_to_phone text,
+    consent_form_id uuid references consent_forms(id),
+    created_at timestamptz default now(),
+    submitted_at timestamptz
+);
+
+create index idx_consent_form_requests_visit on consent_form_requests(visit_id);
+create index idx_consent_form_requests_hospitalization on consent_form_requests(hospitalization_id);
+
 -- ============ ATTACHMENTS ============
 -- Generic file attachment, reusable across diagnostics, reports, and
 -- hospitalization notes. Files live in the "consult-files" Storage bucket.
@@ -819,5 +841,6 @@ alter table review_requests disable row level security;
 alter table nomod_payment_links disable row level security;
 alter table catalog_subcategories disable row level security;
 alter table consent_forms disable row level security;
+alter table consent_form_requests disable row level security;
 alter table patient_alerts disable row level security;
 alter table invoice_payments disable row level security;

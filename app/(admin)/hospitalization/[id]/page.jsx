@@ -72,6 +72,7 @@ export default function HospitalizationDetailPage() {
   });
   const [consentSubmitting, setConsentSubmitting] = useState(false);
   const [consentError, setConsentError] = useState(null);
+  const [sendingConsentLink, setSendingConsentLink] = useState(false);
   const [expandedDay, setExpandedDay] = useState(null);
   const [dayAddForm, setDayAddForm] = useState(emptyDayAddForm);
   const [dayAddSubmitting, setDayAddSubmitting] = useState(false);
@@ -347,6 +348,38 @@ export default function HospitalizationDetailPage() {
     setConsentSubmitting(false);
   }
 
+  // Alternative to signing in person: sends the owner a link to review and
+  // digitally sign (by typing their name) on their own phone, then WhatsApps
+  // it — same pattern as sendConsentLink on the consult page.
+  async function sendConsentLink() {
+    setConsentError(null);
+    setSendingConsentLink(true);
+    const res = await fetch('/api/consent-form-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        hospitalization_id: id,
+        form_type: 'hospitalization',
+        sent_to_phone: admission.clients?.phone || null,
+      }),
+    });
+    const data = await res.json().catch(() => null);
+    setSendingConsentLink(false);
+    if (!res.ok) {
+      setConsentError(data?.error || 'Failed to generate a consent link');
+      return;
+    }
+    const url = `${window.location.origin}/portal/consent/${data.id}`;
+    const digits = (admission.clients?.phone || '').replace(/\D/g, '');
+    const message = `Hi ${admission.clients?.full_name || 'there'}! Please review and sign this consent form for ${admission.patients?.name || 'your pet'}: ${url}`;
+    if (digits.length > 3) {
+      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+    } else {
+      await navigator.clipboard.writeText(url);
+      setConsentError('No phone number on file — link copied to clipboard instead.');
+    }
+  }
+
   async function createInvoice() {
     setCreatingInvoice(true);
     setInvoiceError(null);
@@ -546,9 +579,14 @@ export default function HospitalizationDetailPage() {
               </option>
             ))}
           </select>
-          <button type="submit" disabled={consentSubmitting}>
-            {consentSubmitting ? 'Saving...' : 'Sign & Save Consent Form'}
-          </button>
+          <div className="consent-form-actions">
+            <button type="submit" disabled={consentSubmitting}>
+              {consentSubmitting ? 'Saving...' : 'Sign & Save Consent Form'}
+            </button>
+            <button type="button" onClick={sendConsentLink} disabled={sendingConsentLink}>
+              {sendingConsentLink ? 'Sending...' : '📤 Send via WhatsApp to Sign'}
+            </button>
+          </div>
         </form>
       </details>
 

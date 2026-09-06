@@ -1749,6 +1749,12 @@ button.secondary:hover {
   color: #333;
 }
 
+.consent-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .note-empty {
   color: #999;
 }

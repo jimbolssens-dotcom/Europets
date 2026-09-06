@@ -7,7 +7,8 @@
 //        and snapshotted onto the record, so it can't be tampered with.
 
 import { supabase } from '@/lib/supabaseClient';
-import { CONSENT_FORM_TYPES, CONSENT_FORM_ATTACHMENT, buildConsentFormText } from '@/lib/consentTemplates';
+import { CONSENT_FORM_TYPES } from '@/lib/consentTemplates';
+import { createSignedConsentForm } from '@/lib/consentForms';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -54,72 +55,17 @@ export async function POST(request) {
     return NextResponse.json({ error: 'signed_by_name is required' }, { status: 400 });
   }
 
-  const attachment = CONSENT_FORM_ATTACHMENT[form_type];
-  if (attachment === 'visit' && !visit_id) {
-    return NextResponse.json({ error: `${form_type} must be signed against a visit_id` }, { status: 400 });
-  }
-  if (attachment === 'hospitalization' && !hospitalization_id) {
-    return NextResponse.json(
-      { error: `${form_type} must be signed against a hospitalization_id` },
-      { status: 400 }
-    );
-  }
+  const result = await createSignedConsentForm({
+    visitId: visit_id,
+    hospitalizationId: hospitalization_id,
+    formType: form_type,
+    signedByName: signed_by_name,
+    signedByRelationship: signed_by_relationship,
+    staffWitnessId: staff_witness_id,
+  });
 
-  // Look up the patient (and its owner) through whichever record this form
-  // attaches to — never trust a client-supplied patient_id/client_id,
-  // since the signed text and liability record has to reflect who's
-  // actually on file.
-  let patientId;
-  let clientId;
-  let patient;
-  if (attachment === 'visit') {
-    const { data: visit, error: visitError } = await supabase
-      .from('visits')
-      .select('patient_id, client_id, patients(name, sex)')
-      .eq('id', visit_id)
-      .single();
-    if (visitError || !visit) {
-      return NextResponse.json({ error: 'visit not found' }, { status: 404 });
-    }
-    patientId = visit.patient_id;
-    clientId = visit.client_id;
-    patient = visit.patients;
-  } else {
-    const { data: admission, error: admissionError } = await supabase
-      .from('hospitalizations')
-      .select('patient_id, client_id, patients(name, sex)')
-      .eq('id', hospitalization_id)
-      .single();
-    if (admissionError || !admission) {
-      return NextResponse.json({ error: 'admission not found' }, { status: 404 });
-    }
-    patientId = admission.patient_id;
-    clientId = admission.client_id;
-    patient = admission.patients;
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
-
-  const form_text = buildConsentFormText(form_type, patient || {});
-
-  const { data, error } = await supabase
-    .from('consent_forms')
-    .insert([
-      {
-        patient_id: patientId,
-        client_id: clientId,
-        visit_id: attachment === 'visit' ? visit_id : null,
-        hospitalization_id: attachment === 'hospitalization' ? hospitalization_id : null,
-        form_type,
-        form_text,
-        signed_by_name: signed_by_name.trim(),
-        signed_by_relationship: signed_by_relationship || null,
-        staff_witness_id: staff_witness_id || null,
-      },
-    ])
-    .select('*, staff(full_name)')
-    .single();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(result.data, { status: 201 });
 }

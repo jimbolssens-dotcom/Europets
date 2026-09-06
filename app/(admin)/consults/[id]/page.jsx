@@ -103,6 +103,7 @@ export default function ConsultDetailPage() {
   });
   const [consentSubmitting, setConsentSubmitting] = useState(false);
   const [consentError, setConsentError] = useState(null);
+  const [sendingConsentLink, setSendingConsentLink] = useState(false);
 
   const [hospReason, setHospReason] = useState('');
   const [admitting, setAdmitting] = useState(false);
@@ -405,6 +406,42 @@ export default function ConsultDetailPage() {
       });
     }
     setConsentSubmitting(false);
+  }
+
+  // Alternative to signing in person: sends the owner a link to review and
+  // digitally sign (by typing their name) on their own phone, then WhatsApps
+  // it — same pattern as sendBookingLink/sendReviewLink on the client page.
+  async function sendConsentLink() {
+    if (!consentForm.form_type) {
+      setConsentError('Select a consent form first');
+      return;
+    }
+    setConsentError(null);
+    setSendingConsentLink(true);
+    const res = await fetch('/api/consent-form-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        visit_id: id,
+        form_type: consentForm.form_type,
+        sent_to_phone: consult.clients?.phone || null,
+      }),
+    });
+    const data = await res.json().catch(() => null);
+    setSendingConsentLink(false);
+    if (!res.ok) {
+      setConsentError(data?.error || 'Failed to generate a consent link');
+      return;
+    }
+    const url = `${window.location.origin}/portal/consent/${data.id}`;
+    const digits = (consult.clients?.phone || '').replace(/\D/g, '');
+    const message = `Hi ${consult.clients?.full_name}! Please review and sign this consent form for ${consult.patients?.name}: ${url}`;
+    if (digits.length > 3) {
+      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+    } else {
+      await navigator.clipboard.writeText(url);
+      setConsentError('No phone number on file — link copied to clipboard instead.');
+    }
   }
 
   async function deleteTreatmentItem(itemId) {
@@ -1115,9 +1152,14 @@ export default function ConsultDetailPage() {
               </option>
             ))}
           </select>
-          <button type="submit" disabled={consentSubmitting}>
-            {consentSubmitting ? 'Saving...' : 'Sign & Save Consent Form'}
-          </button>
+          <div className="consent-form-actions">
+            <button type="submit" disabled={consentSubmitting}>
+              {consentSubmitting ? 'Saving...' : 'Sign & Save Consent Form'}
+            </button>
+            <button type="button" onClick={sendConsentLink} disabled={sendingConsentLink}>
+              {sendingConsentLink ? 'Sending...' : '📤 Send via WhatsApp to Sign'}
+            </button>
+          </div>
         </form>
 
         <h3>Hospitalization</h3>

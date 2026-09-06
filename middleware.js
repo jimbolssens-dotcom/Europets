@@ -31,6 +31,7 @@ const PUBLIC_PATTERNS = [
   /^\/portal(\/.*)?$/,
   /^\/api\/new-client-qr$/,
   /^\/api\/intake-requests\/[^/]+$/, // by id only — the public form's own GET/PATCH
+  /^\/api\/consent-form-requests\/[^/]+$/, // by id only — the remote-signing page's own GET/POST
   /^\/api\/hospitalizations\/[^/]+$/, // by id only — the client portal's status read
   /^\/api\/hospitalizations\/[^/]+\/notes$/, // by id only, not /notes/[noteId]
   /^\/api\/hospitalizations\/[^/]+\/request-update$/,
