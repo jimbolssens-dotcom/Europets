@@ -30,6 +30,8 @@ a {
 }
 
 button {
+  appearance: none;
+  -webkit-appearance: none;
   padding: 0.5rem 1.25rem;
   background: var(--pink);
   color: white;
