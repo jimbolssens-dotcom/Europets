@@ -1727,27 +1727,47 @@ button.secondary:hover {
 }
 
 .info-hint {
+  position: relative;
   display: inline-block;
 }
 
 .info-hint-toggle {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem !important;
+  height: 1.2rem !important;
+  padding: 0 !important;
+  border-radius: 50%;
   background: transparent;
   border: none;
-  padding: 0.1rem 0.3rem;
-  font-size: 0.9rem;
-  line-height: 1;
+  color: #444;
   cursor: pointer;
-  opacity: 0.6;
+  vertical-align: middle;
+  opacity: 0.75;
 }
 
-.info-hint-toggle:hover {
+.info-hint-toggle:hover,
+.info-hint-toggle[aria-expanded='true'] {
   opacity: 1;
-  background: var(--pink-tint);
+  color: #000;
 }
 
-.info-hint-text {
-  display: block;
-  max-width: 32rem;
+.info-hint-popover {
+  position: absolute;
+  z-index: 20;
+  top: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(16rem, calc(100vw - 2rem));
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.2);
 }
 
 /* A labeled date field in the Add Patient form (app/(admin)/patients) —
