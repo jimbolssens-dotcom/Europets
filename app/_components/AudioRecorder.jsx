@@ -209,7 +209,15 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
                   Remove
                 </button>
               </div>
-              <audio controls src={recordingUrl(r.file_path)} style={{ width: '100%' }} />
+              {r.file_path ? (
+                <audio controls src={recordingUrl(r.file_path)} style={{ width: '100%' }} />
+              ) : (
+                r.status === 'done' && (
+                  <p className="recorder-audio-deleted">
+                    Audio deleted after transcription — see the transcript/summary below.
+                  </p>
+                )
+              )}
               {r.status === 'error' && r.error_message && (
                 <p className="error">{r.error_message}</p>
               )}
