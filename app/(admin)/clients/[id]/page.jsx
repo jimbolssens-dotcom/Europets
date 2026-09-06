@@ -9,6 +9,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import ScanIdButton from '@/app/_components/ScanIdButton';
+import ClientPhonesEditor, { emptyPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
 import { uploadAttachment } from '@/lib/attachments';
 import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder, openEmailReminder } from '@/lib/paymentReminders';
 
@@ -22,6 +23,11 @@ export default function ClientDetailPage() {
   const [bookingLinkError, setBookingLinkError] = useState(null);
   const [sendingReviewLink, setSendingReviewLink] = useState(false);
   const [reviewLinkError, setReviewLinkError] = useState(null);
+
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState(null);
 
   const load = () =>
     Promise.all([
@@ -139,6 +145,44 @@ export default function ClientDetailPage() {
     load();
   }
 
+  function startEdit() {
+    const phones = (client.client_phones || []).map(toEditableRow);
+    setEditForm({
+      full_name: client.full_name || '',
+      phones: phones.length > 0 ? phones : [emptyPhoneRow(true)],
+      emirates_id: client.emirates_id || '',
+      trn: client.trn || '',
+      email: client.email || '',
+      address: client.address || '',
+    });
+    setEditError(null);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setEditError(null);
+  }
+
+  async function saveEdit(e) {
+    e.preventDefault();
+    setSavingEdit(true);
+    setEditError(null);
+    const res = await fetch(`/api/clients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
+    });
+    const data = await res.json();
+    setSavingEdit(false);
+    if (!res.ok) {
+      setEditError(data.error || 'Failed to save client');
+      return;
+    }
+    setEditing(false);
+    load();
+  }
+
   if (loading) return <p>Loading client...</p>;
   if (!client || client.error) return <p>Client not found.</p>;
 
@@ -155,17 +199,71 @@ export default function ClientDetailPage() {
       <h1>
         {client.full_name} <span>(Client #{client.client_number})</span>
       </h1>
-      <p>
-        {(client.client_phones || []).length > 0
-          ? client.client_phones
-              .map((p) => `${p.phone} (${p.label}${p.is_whatsapp ? ' · WhatsApp' : ''})`)
-              .join(' · ')
-          : client.phone}{' '}
-        · {client.email}
-        {client.address ? ` · ${client.address}` : ''}
-        {client.emirates_id ? ` · Emirates ID: ${client.emirates_id}` : ''}
-        {client.trn ? ` · TRN: ${client.trn}` : ''}
-      </p>
+
+      {editing ? (
+        <form className="card" onSubmit={saveEdit}>
+          {editError && <p className="error">{editError}</p>}
+          <label>
+            Full name
+            <input
+              value={editForm.full_name}
+              onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+              required
+            />
+          </label>
+          <ClientPhonesEditor
+            phones={editForm.phones}
+            onChange={(phones) => setEditForm({ ...editForm, phones })}
+            groupName="client-edit"
+          />
+          <label>
+            Emirates ID
+            <input
+              value={editForm.emirates_id}
+              onChange={(e) => setEditForm({ ...editForm, emirates_id: e.target.value })}
+            />
+          </label>
+          <label>
+            TRN (only if a VAT-registered business)
+            <input value={editForm.trn} onChange={(e) => setEditForm({ ...editForm, trn: e.target.value })} />
+          </label>
+          <label>
+            Email
+            <input
+              type="email"
+              value={editForm.email}
+              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+            />
+          </label>
+          <label>
+            Address
+            <input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
+          </label>
+          <div className="home-links">
+            <button type="submit" disabled={savingEdit}>
+              {savingEdit ? 'Saving...' : 'Save'}
+            </button>
+            <button type="button" onClick={cancelEdit} disabled={savingEdit}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <p>
+          {(client.client_phones || []).length > 0
+            ? client.client_phones
+                .map((p) => `${p.phone} (${p.label}${p.is_whatsapp ? ' · WhatsApp' : ''})`)
+                .join(' · ')
+            : client.phone}{' '}
+          · {client.email}
+          {client.address ? ` · ${client.address}` : ''}
+          {client.emirates_id ? ` · Emirates ID: ${client.emirates_id}` : ''}
+          {client.trn ? ` · TRN: ${client.trn}` : ''}{' '}
+          <button type="button" onClick={startEdit}>
+            Edit
+          </button>
+        </p>
+      )}
 
       <div className="card financial-overview">
         <div className="financial-overview-total">
@@ -234,10 +332,7 @@ export default function ClientDetailPage() {
       {reviewLinkError && <p className="error">{reviewLinkError}</p>}
 
       <h2>Emirates ID</h2>
-      <ScanIdButton
-        label={client.emirates_id ? '📷 Re-scan' : '📷 Scan'}
-        onScanned={handleScanned}
-      />
+      {!client.emirates_id && <ScanIdButton onScanned={handleScanned} />}
       <AttachmentSection entityType="client" entityId={id} />
 
       <h2>Patients</h2>

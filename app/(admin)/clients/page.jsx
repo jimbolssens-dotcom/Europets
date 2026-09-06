@@ -406,11 +406,13 @@ export default function ClientsPage() {
                           value={editForm.emirates_id}
                           onChange={(e) => setEditForm({ ...editForm, emirates_id: e.target.value })}
                         />
-                        <ScanIdButton
-                          label="📷"
-                          uploadLabel="🖼️"
-                          onScanned={(scanned) => handleEditScanned(c.id, scanned)}
-                        />
+                        {!editForm.emirates_id && (
+                          <ScanIdButton
+                            label="📷"
+                            uploadLabel="🖼️"
+                            onScanned={(scanned) => handleEditScanned(c.id, scanned)}
+                          />
+                        )}
                         <input
                           placeholder="TRN (business)"
                           value={editForm.trn}
