@@ -96,6 +96,17 @@ export default function SettingsPage() {
       </div>
 
       <h2>
+        More{' '}
+        <InfoHint>Used less often than the main nav pages — tucked in here to keep that bar readable.</InfoHint>
+      </h2>
+      <div className="home-links">
+        <a href="/reviews">Reviews</a>
+        <a href="/catalog">Catalog</a>
+        <a href="/policies">Policies</a>
+        <a href="/accounting">Accounting</a>
+      </div>
+
+      <h2>
         Clinic Identity{' '}
         <InfoHint>This appears on every Tax Invoice PDF — required for UAE FTA VAT compliance.</InfoHint>
       </h2>

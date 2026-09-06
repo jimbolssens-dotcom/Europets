@@ -117,13 +117,6 @@ export default function AdminLayout({ children }) {
           </a>
           <a href="/consults">Consults</a>
           <a
-            href="/reviews"
-            className={hasPendingReviewRequest ? 'nav-update-requested' : ''}
-            title={hasPendingReviewRequest ? 'A review is waiting for moderation' : undefined}
-          >
-            Reviews{hasPendingReviewRequest && ' 🔔'}
-          </a>
-          <a
             href="/hospitalization"
             className={hasPendingUpdateRequest ? 'nav-update-requested' : ''}
             title={hasPendingUpdateRequest ? 'A client is waiting for an update' : undefined}
@@ -132,14 +125,16 @@ export default function AdminLayout({ children }) {
           </a>
           <a href="/vaccinations">Vaccinations</a>
           <a href="/invoices">Invoices</a>
-          <a href="/accounting">Accounting</a>
-          <a href="/catalog">Catalog</a>
-          <a href="/policies">Policies</a>
           <a href="/mobile" title="Mobile recording app" aria-label="Mobile recording app" className="settings-link">
             📱
           </a>
-          <a href="/settings" title="Settings" aria-label="Settings" className="settings-link">
-            ⚙️
+          <a
+            href="/settings"
+            title={hasPendingReviewRequest ? 'Settings — a review is waiting for moderation' : 'Settings'}
+            aria-label="Settings"
+            className={`settings-link${hasPendingReviewRequest ? ' nav-update-requested' : ''}`}
+          >
+            ⚙️{hasPendingReviewRequest && ' 🔔'}
           </a>
           <button
             type="button"
