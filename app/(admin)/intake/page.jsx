@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useIntakeReview } from '@/lib/useIntakeReview';
 import { usePossibleClientMatches } from '@/lib/usePossibleClientMatches';
 import IntakeReviewCard from '@/app/_components/IntakeReviewCard';
+import InfoHint from '@/app/_components/InfoHint';
 
 function formatDateTime(dateStr) {
   return new Date(dateStr).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -146,14 +147,16 @@ export default function IntakePage() {
 
   return (
     <div>
-      <h1>Client Invites</h1>
-      <p className="visit-meta">
-        Enter a caller&apos;s number and send them a link — a fresh one is created and drafted in
-        WhatsApp in one step. If the number&apos;s already registered, it automatically sends their
-        existing-client link (their own pets, no need to re-enter their details); otherwise it sends
-        the normal new-client form. Submissions land here for review — approving creates the
-        client/patient records and books any requested appointment.
-      </p>
+      <h1>
+        Client Invites{' '}
+        <InfoHint>
+          Enter a caller&apos;s number and send them a link — a fresh one is created and drafted
+          in WhatsApp in one step. If the number&apos;s already registered, it automatically sends
+          their existing-client link (their own pets, no need to re-enter their details);
+          otherwise it sends the normal new-client form. Submissions land here for review —
+          approving creates the client/patient records and books any requested appointment.
+        </InfoHint>
+      </h1>
 
       {error && <p className="error">{error}</p>}
 
@@ -236,11 +239,13 @@ export default function IntakePage() {
 
       {submitted.length > 0 && (
         <>
-          <h2>Needs Review</h2>
-          <p className="visit-meta">
-            A submission that also requested an appointment is reviewed on the{' '}
-            <a href="/appointments">Appointments</a> page instead, next to the schedule.
-          </p>
+          <h2>
+            Needs Review{' '}
+            <InfoHint>
+              A submission that also requested an appointment is reviewed on the{' '}
+              <a href="/appointments">Appointments</a> page instead, next to the schedule.
+            </InfoHint>
+          </h2>
           {submitted.map((r) => (
             <IntakeReviewCard
               key={r.id}

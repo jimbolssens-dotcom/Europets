@@ -5,6 +5,8 @@
 
 'use client';
 
+import InfoHint from '@/app/_components/InfoHint';
+
 export default function VaccinationForm({
   species,
   speciesClass,
@@ -20,7 +22,13 @@ export default function VaccinationForm({
 }) {
   return (
     <form className="card" onSubmit={(e) => e.preventDefault()}>
-      <h3>Add Vaccination</h3>
+      <h3>
+        Add Vaccination{' '}
+        <InfoHint>
+          Primary Booster schedules the core vaccine for a 1-month booster and, if rabies isn&apos;t
+          checked above, adds a rabies reminder for that same date.
+        </InfoHint>
+      </h3>
       {error && <p className="error">{error}</p>}
       {protocolsError && (
         <p className="error">
@@ -90,10 +98,6 @@ export default function VaccinationForm({
         onChange={(e) => setForm({ ...form, notes: e.target.value })}
       />
 
-      <p className="visit-meta" style={{ margin: 0 }}>
-        Primary Booster schedules the core vaccine for a 1-month booster and, if rabies isn&apos;t
-        checked above, adds a rabies reminder for that same date.
-      </p>
       <div className="vaccine-submit-actions">
         <button
           type="button"

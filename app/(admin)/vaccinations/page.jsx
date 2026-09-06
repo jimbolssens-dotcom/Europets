@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import InfoHint from '@/app/_components/InfoHint';
 
 function daysUntil(dateStr) {
   const today = new Date();
@@ -134,11 +135,14 @@ export default function VaccinationsDuePage() {
 
   return (
     <div>
-      <h1>Vaccination Reminders</h1>
-      <p className="visit-meta">
-        Due and overdue vaccinations across every patient. WhatsApp/Email drafts a pre-filled
-        reminder for you to send — there&apos;s no connected service to send these on their own yet.
-      </p>
+      <h1>
+        Vaccination Reminders{' '}
+        <InfoHint>
+          Due and overdue vaccinations across every patient. WhatsApp/Email drafts a pre-filled
+          reminder for you to send — there&apos;s no connected service to send these on their own
+          yet.
+        </InfoHint>
+      </h1>
 
       <div className="window-filter">
         {WINDOWS.map((w) => (

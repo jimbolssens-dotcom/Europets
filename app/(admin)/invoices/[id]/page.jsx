@@ -15,6 +15,7 @@ import VoiceNoteBox from '@/app/_components/VoiceNoteBox';
 import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { printPdfUrl } from '@/lib/printPdf';
+import InfoHint from '@/app/_components/InfoHint';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -362,14 +363,17 @@ export default function InvoiceDetailPage() {
 
       {medicationLineItems.length > 0 && (
         <div className="card dispensing-labels">
-          <h3>Dispensing Labels</h3>
-          <p className="visit-meta">
-            Instructions carry straight over from the treatment plan entered during the consult —
-            review/edit here if needed, then print just that one label; nothing goes to the printer
-            until you click its button. Labels are sized for the Brother QL-800 (62mm continuous
-            tape). If nothing was dictated or typed during the consult, record a plain voice note
-            below instead — it isn&apos;t transcribed or printed, just kept for reference.
-          </p>
+          <h3>
+            Dispensing Labels{' '}
+            <InfoHint>
+              Instructions carry straight over from the treatment plan entered during the consult
+              — review/edit here if needed, then print just that one label; nothing goes to the
+              printer until you click its button. Labels are sized for the Brother QL-800 (62mm
+              continuous tape). If nothing was dictated or typed during the consult, record a
+              plain voice note below instead — it isn&apos;t transcribed or printed, just kept for
+              reference.
+            </InfoHint>
+          </h3>
           {labelsError && <p className="error">{labelsError}</p>}
           <ul className="dispensing-labels-list">
             {medicationLineItems.map((li) => {

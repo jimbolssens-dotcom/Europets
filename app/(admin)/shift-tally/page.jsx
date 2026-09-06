@@ -12,6 +12,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import InfoHint from '@/app/_components/InfoHint';
 
 const PAYMENT_LABELS = {
   cash: 'Cash',
@@ -57,10 +58,13 @@ export default function ShiftTallyPage() {
 
   return (
     <div>
-      <h1>Shift Tally</h1>
-      <p className="visit-meta">
-        Every payment logged in the selected half-day — count it against the till before handover.
-      </p>
+      <h1>
+        Shift Tally{' '}
+        <InfoHint>
+          Every payment logged in the selected half-day — count it against the till before
+          handover.
+        </InfoHint>
+      </h1>
 
       <div className="action-row">
         <label>

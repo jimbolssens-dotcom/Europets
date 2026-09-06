@@ -5,6 +5,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import InfoHint from '@/app/_components/InfoHint';
 
 const emptyForm = {
   legal_name: '',
@@ -83,8 +84,10 @@ export default function SettingsPage() {
     <div>
       <h1>Clinic Settings</h1>
 
-      <h2>Rooms &amp; Staff</h2>
-      <p className="visit-meta">Managed occasionally, not day to day — tucked in here instead of the main nav.</p>
+      <h2>
+        Rooms &amp; Staff{' '}
+        <InfoHint>Managed occasionally, not day to day — tucked in here instead of the main nav.</InfoHint>
+      </h2>
       <div className="home-links">
         <a href="/rooms">Rooms</a>
         <a href="/staff">Staff</a>
@@ -92,10 +95,10 @@ export default function SettingsPage() {
         <a href="/vaccine-protocols">Vaccine Protocols</a>
       </div>
 
-      <h2>Clinic Identity</h2>
-      <p className="visit-meta">
-        This appears on every Tax Invoice PDF — required for UAE FTA VAT compliance.
-      </p>
+      <h2>
+        Clinic Identity{' '}
+        <InfoHint>This appears on every Tax Invoice PDF — required for UAE FTA VAT compliance.</InfoHint>
+      </h2>
       <form className="card" onSubmit={handleSubmit}>
         {error && <p className="error">{error}</p>}
         {saved && !error && <p style={{ color: '#1a7a3d' }}>Saved.</p>}
@@ -136,11 +139,13 @@ export default function SettingsPage() {
           />
         </label>
 
-        <h3>Medication Administration Fees</h3>
-        <p className="visit-meta">
-          Charged automatically as a second invoice line whenever a medication is invoiced with
-          that method — see the Catalog page to mark which methods each medication supports.
-        </p>
+        <h3>
+          Medication Administration Fees{' '}
+          <InfoHint>
+            Charged automatically as a second invoice line whenever a medication is invoiced with
+            that method — see the Catalog page to mark which methods each medication supports.
+          </InfoHint>
+        </h3>
         <label>
           Dispensing fee (AED)
           <input
@@ -172,13 +177,15 @@ export default function SettingsPage() {
           />
         </label>
 
-        <h3>Post-Op Care Baselines</h3>
-        <p className="visit-meta">
-          The standard care instructions we hand out after a surgical or dental procedure —
-          approve the wording here once. Whenever a vet drafts a specific patient&apos;s post-op
-          release form with AI on the consult page, this is the baseline it starts from and
-          departs from only where that case&apos;s own notes give a clear reason to.
-        </p>
+        <h3>
+          Post-Op Care Baselines{' '}
+          <InfoHint>
+            The standard care instructions we hand out after a surgical or dental procedure —
+            approve the wording here once. Whenever a vet drafts a specific patient&apos;s post-op
+            release form with AI on the consult page, this is the baseline it starts from and
+            departs from only where that case&apos;s own notes give a clear reason to.
+          </InfoHint>
+        </h3>
         <label>
           Surgical baseline
           <textarea
@@ -198,12 +205,14 @@ export default function SettingsPage() {
           />
         </label>
 
-        <h3>Client Self-Booking Hours</h3>
-        <p className="visit-meta">
-          The two windows a client can request a consult/spay/castration/dental slot in on the
-          booking portal — a slot only shows up within these hours, and only with a doctor the
-          roster flags in for that kind (Staff Roster page).
-        </p>
+        <h3>
+          Client Self-Booking Hours{' '}
+          <InfoHint>
+            The two windows a client can request a consult/spay/castration/dental slot in on the
+            booking portal — a slot only shows up within these hours, and only with a doctor the
+            roster flags in for that kind (Staff Roster page).
+          </InfoHint>
+        </h3>
         <label>
           Morning window start
           <input

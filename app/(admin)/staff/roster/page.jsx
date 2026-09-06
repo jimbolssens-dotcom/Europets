@@ -12,6 +12,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { buildStaffColorMap, ROLE_SECTION_TINTS } from '@/lib/staffColors';
+import InfoHint from '@/app/_components/InfoHint';
 
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const SHIFTS = ['morning', 'afternoon'];
@@ -257,14 +258,16 @@ export default function StaffRosterPage() {
       <p>
         <a href="/staff">&larr; Staff</a>
       </p>
-      <h1>Staff Roster</h1>
-      <p className="visit-meta">
-        Click a cell to add or remove a staff member from that morning/afternoon. Staff can also do
-        this themselves from the mobile app&apos;s My Schedule page. Once they&apos;re on a shift, the{' '}
-        <strong>C</strong>/<strong>S</strong> badges say whether it covers Consult and/or
-        Surgery/Dental bookings — the client self-booking form only offers a slot with a doctor
-        flagged in for that kind.
-      </p>
+      <h1>
+        Staff Roster{' '}
+        <InfoHint>
+          Click a cell to add or remove a staff member from that morning/afternoon. Staff can also
+          do this themselves from the mobile app&apos;s My Schedule page. Once they&apos;re on a
+          shift, the <strong>C</strong>/<strong>S</strong> badges say whether it covers Consult
+          and/or Surgery/Dental bookings — the client self-booking form only offers a slot with a
+          doctor flagged in for that kind.
+        </InfoHint>
+      </h1>
       {error && <p className="error">{error}</p>}
 
       <div className="roster-layout">
@@ -330,10 +333,10 @@ export default function StaffRosterPage() {
             <button type="button" className="button-link" onClick={copyPreviousWeek} disabled={copying}>
               🔁 {copying ? 'Copying...' : 'Copy Week'}
             </button>
-            <span className="visit-meta">
-              Fills in this week from last week&apos;s roster, for every staff member at once — won&apos;t
-              touch shifts already on this week.
-            </span>
+            <InfoHint>
+              Fills in this week from last week&apos;s roster, for every staff member at once —
+              won&apos;t touch shifts already on this week.
+            </InfoHint>
           </div>
           {copyMessage && <p className="visit-meta roster-copy-message">{copyMessage}</p>}
 

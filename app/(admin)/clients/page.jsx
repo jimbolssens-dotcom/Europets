@@ -13,6 +13,7 @@ import { uploadAttachment } from '@/lib/attachments';
 import ScanIdButton from '@/app/_components/ScanIdButton';
 import { phoneSearchDigits } from '@/lib/phoneMatch';
 import ClientPhonesEditor, { emptyPhoneRow, initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
+import InfoHint from '@/app/_components/InfoHint';
 
 const emptyForm = {
   full_name: '',
@@ -296,10 +297,8 @@ export default function ClientsPage() {
           <h2>Add Client</h2>
           {error && <p className="error">{error}</p>}
           <ScanIdButton onScanned={handleAddScanned} />
-          <p className="visit-meta" style={{ margin: 0 }}>
-            Scans the card and fills in name + Emirates ID below.
-            {idScanFile && ' Photo ready — will attach once the client is saved.'}
-          </p>
+          <InfoHint>Scans the card and fills in name + Emirates ID below.</InfoHint>
+          {idScanFile && <p className="visit-meta">Photo ready — will attach once the client is saved.</p>}
           <input
             placeholder="Full name"
             required

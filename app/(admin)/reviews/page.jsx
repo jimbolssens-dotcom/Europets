@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import InfoHint from '@/app/_components/InfoHint';
 
 function formatDateTime(dateStr) {
   return new Date(dateStr).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -84,11 +85,14 @@ export default function ReviewsPage() {
 
   return (
     <div>
-      <h1>Reviews</h1>
-      <p className="visit-meta">
-        Send clients a review link from their own client page (&ldquo;⭐ Request a Review&rdquo;). Submissions
-        land here for moderation — approving is what makes a review show up on the public website.
-      </p>
+      <h1>
+        Reviews{' '}
+        <InfoHint>
+          Send clients a review link from their own client page (&ldquo;⭐ Request a Review&rdquo;).
+          Submissions land here for moderation — approving is what makes a review show up on the
+          public website.
+        </InfoHint>
+      </h1>
 
       {error && <p className="error">{error}</p>}
 

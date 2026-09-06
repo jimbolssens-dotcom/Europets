@@ -686,7 +686,7 @@ export default function HospitalizationDetailPage() {
                 <button type="button" disabled={dayAddSubmitting} onClick={() => addDayMedication(group.entries)}>
                   {dayAddSubmitting ? 'Adding...' : '+ Add'}
                 </button>
-                <p className="visit-meta">Attaches to the most recent entry logged this day.</p>
+                <InfoHint>Attaches to the most recent entry logged this day.</InfoHint>
               </div>
             </div>
           )}

@@ -8,6 +8,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import InfoHint from '@/app/_components/InfoHint';
 
 const emptyForm = { name: '', species: 'cat', core: true, interval_months: '12' };
 
@@ -113,12 +114,14 @@ export default function VaccineProtocolsPage() {
 
   return (
     <div>
-      <h1>Vaccine Protocols</h1>
-      <p className="visit-meta">
-        The standard vaccines offered per species — shown on a patient&apos;s Add Vaccination form,
-        filtered to their species automatically. Deactivate a protocol you no longer offer instead
-        of deleting it, so past records stay intact.
-      </p>
+      <h1>
+        Vaccine Protocols{' '}
+        <InfoHint>
+          The standard vaccines offered per species — shown on a patient&apos;s Add Vaccination
+          form, filtered to their species automatically. Deactivate a protocol you no longer offer
+          instead of deleting it, so past records stay intact.
+        </InfoHint>
+      </h1>
       {rowError && <p className="error">{rowError}</p>}
       <div className="split">
         <div className="split-main">

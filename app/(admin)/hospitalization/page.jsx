@@ -22,6 +22,7 @@ import CagePicker from '@/app/_components/CagePicker';
 import SearchSelect from '@/app/_components/SearchSelect';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { isWithinOfficeHours } from '@/lib/officeHours';
+import InfoHint from '@/app/_components/InfoHint';
 
 const DRAG_THRESHOLD = 6;
 const emptyAdmitForm = { client_id: '', patient_id: '', cage_id: '', reason: '' };
@@ -378,12 +379,12 @@ export default function HospitalizationPage() {
       {error && <p className="error">{error}</p>}
 
       <div hidden={activeTab !== 'layout'}>
-        <p className="visit-meta">
+        <InfoHint>
           Tap or click an occupied cage to open that case&apos;s file, or drag it onto another cage
           to move that patient there (drag onto an occupied cage to swap the two). An empty cage
           can also be assigned one of the currently admitted, unassigned patients from its
           dropdown.
-        </p>
+        </InfoHint>
 
         <CageFloorPlan
           cages={cages}

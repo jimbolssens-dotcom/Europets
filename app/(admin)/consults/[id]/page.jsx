@@ -27,6 +27,7 @@ import { subcategoryName, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
+import InfoHint from '@/app/_components/InfoHint';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
 // catalog link — kept only to label those old rows.
@@ -750,7 +751,13 @@ export default function ConsultDetailPage() {
         </div>
 
         <div>
-        <h3>Diagnostics</h3>
+        <h3>
+          Diagnostics{' '}
+          <InfoHint>
+            Also adds this test to the Treatment Plan, ready to invoice. Upload blood work PDFs,
+            x-rays, or ultrasound scans on each entry above once it&apos;s added.
+          </InfoHint>
+        </h3>
         <form className="card" onSubmit={addDiagnostic}>
           {diagError && <p className="error">{diagError}</p>}
           <CatalogPicker
@@ -772,10 +779,6 @@ export default function ConsultDetailPage() {
             onChange={(e) => setDiagForm({ ...diagForm, result: e.target.value })}
           />
           <button type="submit">Add</button>
-          <p className="visit-meta">
-            Also adds this test to the Treatment Plan, ready to invoice. Upload blood work PDFs,
-            x-rays, or ultrasound scans on each entry above once it's added.
-          </p>
         </form>
 
         {diagnostics.map((d) => (
@@ -906,10 +909,10 @@ export default function ConsultDetailPage() {
             <button type="button" onClick={createInvoice} disabled={creatingInvoice}>
               {creatingInvoice ? 'Creating...' : '🧾 Create'}
             </button>
-            <p className="visit-meta">
+            <InfoHint>
               Opens a new invoice and imports every item above as a line item. You can still add
               more items on the invoice itself afterward.
-            </p>
+            </InfoHint>
           </>
         )}
       </div>
