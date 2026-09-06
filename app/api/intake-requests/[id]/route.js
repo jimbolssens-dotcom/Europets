@@ -20,6 +20,7 @@ import { NextResponse } from 'next/server';
 import { CLIENT_APPOINTMENT_TYPES, CLIENT_APPOINTMENT_TYPE_LABELS, appointmentTypeAllowedForSex } from '@/lib/appointmentBooking';
 import { seedCoreVaccinationsFromLastGiven } from '@/lib/vaccinationSeeding';
 import { findAppointmentConflict } from '@/lib/appointmentScheduling';
+import { phoneSearchDigits, clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
@@ -32,6 +33,54 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'intake request not found' }, { status: 404 });
   }
   return NextResponse.json(data);
+}
+
+// A blank QR-scan link (see /portal/intake/new) starts with no client_id,
+// so the public form defaults to the full new-client questionnaire. This
+// lets someone who's already a client short-circuit that by checking
+// their own WhatsApp number — an unambiguous match re-points this same
+// link at their client record (same effect as staff sending them their
+// own "existing client" link from the Clients page), so the form can
+// switch straight to picking one of their own pets. No match, more than
+// one, or a link that's already tied to a client (or already submitted)
+// all just fail soft — the client-facing page falls back to the normal
+// new-client form rather than surfacing an error.
+async function linkExistingClient(id, phone) {
+  const { data: existing, error: existingError } = await supabase
+    .from('intake_requests')
+    .select('status, client_id')
+    .eq('id', id)
+    .single();
+  if (existingError || !existing) {
+    return NextResponse.json({ error: 'intake request not found' }, { status: 404 });
+  }
+  if (existing.status !== 'pending' || existing.client_id) {
+    return NextResponse.json({ matched: false });
+  }
+
+  const digits = phoneSearchDigits(phone);
+  if (!digits || digits.length < 8) {
+    return NextResponse.json({ matched: false });
+  }
+
+  const extraIds = await clientIdsWithPhoneLike(supabase, `%${digits}%`);
+  const orFilter =
+    extraIds.length > 0 ? `phone.ilike.%${digits}%,id.in.(${extraIds.join(',')})` : `phone.ilike.%${digits}%`;
+  const { data: matches } = await supabase.from('clients').select('id').or(orFilter);
+  if (!matches || matches.length !== 1) {
+    return NextResponse.json({ matched: false });
+  }
+
+  const { data, error } = await supabase
+    .from('intake_requests')
+    .update({ client_id: matches[0].id, sent_to_phone: phone })
+    .eq('id', id)
+    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg, sex))')
+    .single();
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ matched: true, request: data });
 }
 
 async function submit(id, body) {
@@ -388,6 +437,7 @@ export async function PATCH(request, { params }) {
   const body = await request.json();
 
   if (body.action === 'submit') return submit(params.id, body);
+  if (body.action === 'link_existing_client') return linkExistingClient(params.id, body.phone);
   if (body.action === 'approve' || body.action === 'reject') {
     return review(params.id, body.action, body.client_id, body.room_id, {
       vetId: body.vet_id,

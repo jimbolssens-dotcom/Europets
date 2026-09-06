@@ -12,6 +12,13 @@
 //     leak another client's data. Add a new pet instead if the one they
 //     want isn't listed.
 //
+// A brand-new-client link (typically the fixed QR-code URL — see
+// /portal/intake/new) also offers a self-service way into the existing-
+// client mode above: "Already a client?" lets them check their own
+// WhatsApp number, and an unambiguous match re-points this same link at
+// their file (see PATCH .../link_existing_client) instead of them filling
+// in owner details a second time.
+//
 // Either way, once exactly one pet is in play, they can optionally
 // request a 15-min consult or a standard spay/castration/dental slot, or
 // — for anything else — send a free-text description of what's needed
@@ -67,6 +74,16 @@ export default function IntakePortalPage() {
   const [emiratesId, setEmiratesId] = useState('');
   const [notes, setNotes] = useState('');
   const [pets, setPets] = useState([emptyPet()]);
+
+  // A blank QR-scan link starts with no client_id — this lets someone
+  // who's already a client skip the whole new-client questionnaire by
+  // checking their own WhatsApp number instead. A match re-points the
+  // link at their file (see PATCH .../link_existing_client) and the page
+  // just re-renders in existing-client mode, same as a link staff sent
+  // straight from the Clients page.
+  const [lookupPhone, setLookupPhone] = useState('+971 ');
+  const [lookingUp, setLookingUp] = useState(false);
+  const [lookupNotFound, setLookupNotFound] = useState(false);
 
   // Existing-client mode only: which of their own pets was picked, or
   // 'new' to show the add-a-pet fields (exactly one, not a repeatable list
@@ -258,6 +275,25 @@ export default function IntakePortalPage() {
     return days;
   }, []);
 
+  async function checkExistingClient(e) {
+    e.preventDefault();
+    setLookupNotFound(false);
+    setLookingUp(true);
+    const res = await fetch(`/api/intake-requests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'link_existing_client', phone: lookupPhone }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setLookingUp(false);
+    if (data?.matched && data.request) {
+      setRequest(data.request);
+      setPetChoice(null);
+    } else {
+      setLookupNotFound(true);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
@@ -366,6 +402,31 @@ export default function IntakePortalPage() {
               ? 'Pick your pet below (or add a new one), then request an appointment if you’d like.'
               : "Please fill in your details and your pet's details below — it'll be ready and waiting when you come in."}
           </p>
+
+          {!isExistingClient && (
+            <div className="card intake-existing-check">
+              <h2>Already a client?</h2>
+              <p className="visit-meta">Enter your WhatsApp number and we&apos;ll pull up your file.</p>
+              <div className="intake-existing-check-row">
+                <input
+                  type="tel"
+                  value={lookupPhone}
+                  onChange={(e) => {
+                    setLookupPhone(e.target.value);
+                    setLookupNotFound(false);
+                  }}
+                />
+                <button type="button" onClick={checkExistingClient} disabled={lookingUp}>
+                  {lookingUp ? 'Checking...' : 'Check'}
+                </button>
+              </div>
+              {lookupNotFound && (
+                <p className="visit-meta">
+                  We couldn&apos;t find a file for that number — no problem, just fill in your details below.
+                </p>
+              )}
+            </div>
+          )}
 
           <form className="card intake-form" onSubmit={handleSubmit}>
             {error && <p className="error">{error}</p>}

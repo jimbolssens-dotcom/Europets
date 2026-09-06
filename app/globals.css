@@ -2753,6 +2753,21 @@ button.secondary:hover {
   margin: 1rem 0 1.5rem;
 }
 
+.intake-existing-check {
+  margin-bottom: 1rem;
+}
+
+.intake-existing-check-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.intake-existing-check-row input {
+  flex: 1;
+  min-width: 160px;
+}
+
 .intake-quick-send input {
   padding: 0.5rem;
   border: 1px solid #ccc;
