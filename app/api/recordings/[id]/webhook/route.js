@@ -154,13 +154,12 @@ export async function POST(request, { params }) {
         .eq('id', recording.entity_id)
         .single();
 
-      const stamp = `[AI recording, ${new Date().toLocaleString()}]`;
       const update = {};
       for (const field of CONSULT_TEXT_FIELDS) {
         const extracted = fields[field]?.trim();
         if (!extracted) continue;
         const existing = visit?.[field]?.trim();
-        update[field] = existing ? `${existing}\n\n${stamp}\n${extracted}` : extracted;
+        update[field] = existing ? `${existing}\n\n${extracted}` : extracted;
       }
       // Numeric vitals can't be "appended" the way text can — only set
       // them if the vet hasn't already recorded a value, so a manual entry

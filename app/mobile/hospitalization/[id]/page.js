@@ -104,8 +104,7 @@ export default function MobileHospitalizationPage() {
       if (fields.temperature_c != null && !next.temperature_c) next.temperature_c = fields.temperature_c;
       if (fields.condition && !next.condition) next.condition = fields.condition;
       if (fields.notes) {
-        const stamp = `[AI recording, ${new Date().toLocaleString()}]`;
-        next.notes = next.notes ? `${next.notes}\n\n${stamp}\n${fields.notes}` : fields.notes;
+        next.notes = next.notes ? `${next.notes}\n\n${fields.notes}` : fields.notes;
       }
       return next;
     });
