@@ -73,6 +73,28 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entityType, entityId]);
 
+  // Fallback for when AssemblyAI's webhook never arrives, or never finishes
+  // processing within the platform's function timeout (a long consult
+  // transcript run through the summarize + structured-extraction Claude
+  // calls plus catalog matching can add up) — without this, a recording
+  // would get stuck at "processing" forever with no error ever shown.
+  useEffect(() => {
+    const processingIds = items.filter((r) => r.status === 'processing').map((r) => r.id);
+    if (processingIds.length === 0) return;
+    const interval = setInterval(() => {
+      Promise.all(
+        processingIds.map((id) => fetch(`/api/recordings/${id}/refresh`, { method: 'POST' }).catch(() => {}))
+      ).then(load);
+    }, 10000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
+
+  async function checkNow(id) {
+    await fetch(`/api/recordings/${id}/refresh`, { method: 'POST' }).catch(() => {});
+    load();
+  }
+
   // Once a dictation has finished transcribing and its text has been
   // extracted into the report/consult it belongs to, the raw audio has no
   // further purpose — it's cleaned up automatically the moment the user
@@ -120,7 +142,12 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
       };
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        // Use whatever format the browser actually recorded in (varies by
+        // browser/OS — e.g. audio/mp4 on Safari vs audio/webm on Chrome),
+        // not a hardcoded one, so the uploaded file's content-type matches
+        // its real encoding. A mismatch here can make AssemblyAI unable to
+        // decode the file at all.
+        const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
         setUploading(true);
         try {
           await uploadRecording({ entityType, entityId, blob });
@@ -173,6 +200,11 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
                 <span className={`recorder-status recorder-status-${r.status}`}>
                   {STATUS_LABEL[r.status] || r.status}
                 </span>
+                {r.status === 'processing' && (
+                  <button type="button" onClick={() => checkNow(r.id)}>
+                    Check now
+                  </button>
+                )}
                 <button type="button" onClick={() => removeRecording(r.id)}>
                   Remove
                 </button>

@@ -3,31 +3,10 @@
 // transcription job finishes. We don't trust the webhook body's content —
 // it only tells us to go re-fetch the transcript (over an authenticated
 // call) using the AssemblyAI job id we stored ourselves when submitting it.
-//
-// On success: for a consult recording, break the transcript down into the
-// Vitals & Exam fields — weight/temperature/body condition score plus
-// anamnesis/findings/diagnosis/prognosis/treatment_notes — and write those
-// onto the visit directly. A text field already filled in by the vet is
-// appended to (with a timestamp marker) rather than overwritten; a numeric
-// vital is only set if it's still empty, since there's no sensible way to
-// "append" to a number. Diagnostic tests and treatments/medications
-// mentioned as actually ordered/given are matched against the
-// goods_services catalog (the extraction prompt is given the catalog's
-// own names so the model echoes them verbatim) and added to the
-// Diagnostics/Treatment Plan lists directly, the same as picking them
-// from CatalogPicker would. For a surgery or dental recording, one call
-// drafts the whole client-facing report (what was done + home-care
-// instructions, grounded in the clinic's baseline and, for dental, the
-// patient's chart — see generateClientReport) straight into
-// surgical_reports.ai_summary / dental_reports.ai_summary — no separate
-// "generate post-op instructions" step. For a
-// hospitalization recording, break it down into the worksheet-entry
-// fields (appetite/weight/temperature/condition/notes) plus any
-// medications/tests given, matched against the catalog the same way —
-// but since that worksheet entry is an unsaved draft form, not an
-// existing row, the result is stored on recordings.extracted_fields
-// instead of written to a table; the page picks it up from there. Either
-// way, mark the recording done.
+// The actual processing (summarize, extract structured fields, write them
+// into the visit/report, mark done) lives in lib/recordingProcessing.js,
+// shared with the [id]/refresh route below — that route is the fallback
+// for when this webhook never arrives, or never finishes in time.
 //
 // AssemblyAI may redeliver this webhook (e.g. on a retry) — recording.status
 // is checked up front so a redelivery is a no-op instead of double-writing
@@ -35,27 +14,17 @@
 // diagnostics/treatments a second time.
 
 import { supabase } from '@/lib/supabaseClient';
-import { getTranscript } from '@/lib/assemblyai';
-import {
-  summarizeTranscript,
-  generateClientReport,
-  extractConsultFields,
-  extractHospitalizationNoteFields,
-} from '@/lib/anthropicClient';
-import { matchCatalogItem } from '@/lib/catalogMatch';
-import { describeDentalChart } from '@/lib/dentalChartLayout';
+import { resolveRecording } from '@/lib/recordingProcessing';
 import { NextResponse } from 'next/server';
 
-// This route makes two sequential Claude calls (summarizeTranscript, then
-// extractConsultFields) plus several Supabase round-trips for catalog
-// matching — easily past Vercel's default serverless timeout, especially
-// with Opus 5's adaptive thinking on the structured-extraction call. Other
-// routes that call Claude in this app (voice-to-text, scan-id) already set
-// this for the same reason.
+// This route makes two Claude calls (summarizeTranscript and
+// extractConsultFields, run in parallel — see recordingProcessing.js)
+// plus several Supabase round-trips for catalog matching — easily past
+// Vercel's default serverless timeout, especially with Opus 5's adaptive
+// thinking on the structured-extraction call. Other routes that call
+// Claude in this app (voice-to-text, scan-id) already set this for the
+// same reason.
 export const maxDuration = 60;
-
-const CONSULT_TEXT_FIELDS = ['anamnesis', 'findings', 'diagnosis', 'prognosis', 'treatment_notes'];
-const CONSULT_NUMERIC_FIELDS = ['weight_kg', 'temperature_c', 'body_condition_score'];
 
 export async function POST(request, { params }) {
   const { data: recording, error: fetchError } = await supabase
@@ -76,198 +45,8 @@ export async function POST(request, { params }) {
   }
 
   try {
-    const job = await getTranscript(recording.assemblyai_transcript_id);
-
-    if (job.status === 'error') {
-      await supabase
-        .from('recordings')
-        .update({ status: 'error', error_message: job.error || 'Transcription failed' })
-        .eq('id', recording.id);
-      return NextResponse.json({ ok: true });
-    }
-    if (job.status !== 'completed') {
-      // Webhook fired for an intermediate state — nothing to do yet.
-      return NextResponse.json({ ok: true });
-    }
-
-    const transcript = job.text || '';
-    const hasSpeech = transcript.trim().length > 0;
-    const isProcedureReport = recording.entity_type === 'surgical_report' || recording.entity_type === 'dental_report';
-
-    let summary;
-    if (!hasSpeech) {
-      summary = '(No speech detected in recording.)';
-    } else if (isProcedureReport) {
-      // One dictation produces the whole client-facing report — what was
-      // done today plus home-care instructions — grounded in the clinic's
-      // approved baseline (Settings) and, for dental, the patient's
-      // current dental chart (see app/_components/DentalChart.jsx), so
-      // extractions/missing teeth marked there but not necessarily
-      // narrated tooth-by-tooth still end up named in the report.
-      const table = recording.entity_type === 'surgical_report' ? 'surgical_reports' : 'dental_reports';
-      const baselineColumn =
-        recording.entity_type === 'surgical_report' ? 'surgical_postop_baseline' : 'dental_postop_baseline';
-      const procedureType = recording.entity_type === 'surgical_report' ? 'surgical' : 'dental';
-
-      const [{ data: report }, { data: clinic }] = await Promise.all([
-        supabase.from(table).select('visits(patients(name, species, dental_chart))').eq('id', recording.entity_id).single(),
-        supabase.from('clinic_settings').select(baselineColumn).eq('id', true).maybeSingle(),
-      ]);
-      const patient = report?.visits?.patients;
-
-      summary = await generateClientReport({
-        procedureType,
-        transcript,
-        patientName: patient?.name,
-        species: patient?.species,
-        baseline: clinic?.[baselineColumn],
-        dentalChartContext:
-          procedureType === 'dental' && patient ? describeDentalChart(patient.species, patient.dental_chart) : null,
-      });
-    } else {
-      summary = await summarizeTranscript(transcript, recording.entity_type);
-    }
-
-    await supabase
-      .from('recordings')
-      .update({ status: 'done', transcript, summary })
-      .eq('id', recording.id);
-
-    if (recording.entity_type === 'visit' && hasSpeech) {
-      // Fetch the catalog first — the extraction prompt is grounded with
-      // these exact names so the model echoes them verbatim instead of
-      // paraphrasing (e.g. "Anaemia PCR panel" vs. the catalog's "PCR
-      // Anemia panel"), which a fuzzy match after the fact would miss.
-      const [{ data: tests }, { data: productsAndServices }] = await Promise.all([
-        supabase.from('goods_services').select('id, name').eq('main_category', 'test').eq('active', true),
-        supabase.from('goods_services').select('id, name').in('main_category', ['product', 'service']).eq('active', true),
-      ]);
-
-      const fields = await extractConsultFields(transcript, {
-        testNames: (tests || []).map((t) => t.name),
-        productServiceNames: (productsAndServices || []).map((t) => t.name),
-      });
-
-      const { data: visit } = await supabase
-        .from('visits')
-        .select([...CONSULT_TEXT_FIELDS, ...CONSULT_NUMERIC_FIELDS, 'patient_id'].join(', '))
-        .eq('id', recording.entity_id)
-        .single();
-
-      const update = {};
-      for (const field of CONSULT_TEXT_FIELDS) {
-        const extracted = fields[field]?.trim();
-        if (!extracted) continue;
-        const existing = visit?.[field]?.trim();
-        update[field] = existing ? `${existing}\n\n${extracted}` : extracted;
-      }
-      // Numeric vitals can't be "appended" the way text can — only set
-      // them if the vet hasn't already recorded a value, so a manual entry
-      // is never silently overwritten.
-      for (const field of CONSULT_NUMERIC_FIELDS) {
-        const value = fields[field];
-        if (value === null || value === undefined) continue;
-        if (visit?.[field] !== null && visit?.[field] !== undefined) continue;
-        update[field] = value;
-      }
-
-      if (Object.keys(update).length > 0) {
-        await supabase.from('visits').update(update).eq('id', recording.entity_id);
-        if (update.weight_kg !== undefined && visit?.patient_id) {
-          await supabase.from('patients').update({ current_weight_kg: update.weight_kg }).eq('id', visit.patient_id);
-        }
-      }
-
-      if (fields.diagnostics_ordered?.length) {
-        for (const name of fields.diagnostics_ordered) {
-          const match = matchCatalogItem(name, tests || []);
-          if (!match) continue;
-
-          const { data: treatmentItem, error: itemError } = await supabase
-            .from('treatment_items')
-            .insert([{ visit_id: recording.entity_id, goods_service_id: match.id, quantity: 1 }])
-            .select()
-            .single();
-          if (itemError) continue;
-
-          const { error: diagError } = await supabase
-            .from('diagnostics')
-            .insert([{ visit_id: recording.entity_id, goods_service_id: match.id, treatment_item_id: treatmentItem.id }]);
-          if (diagError) {
-            await supabase.from('treatment_items').delete().eq('id', treatmentItem.id);
-          }
-        }
-      }
-
-      if (fields.treatments_given?.length) {
-        for (const t of fields.treatments_given) {
-          const match = matchCatalogItem(t.name, productsAndServices || []);
-          if (!match) continue;
-
-          await supabase.from('treatment_items').insert([
-            {
-              visit_id: recording.entity_id,
-              goods_service_id: match.id,
-              instructions: t.instructions || null,
-              quantity: t.quantity || 1,
-            },
-          ]);
-        }
-      }
-    } else if (recording.entity_type === 'surgical_report' && hasSpeech) {
-      await supabase
-        .from('surgical_reports')
-        .update({ ai_summary: summary })
-        .eq('id', recording.entity_id);
-    } else if (recording.entity_type === 'dental_report' && hasSpeech) {
-      await supabase
-        .from('dental_reports')
-        .update({ ai_summary: summary })
-        .eq('id', recording.entity_id);
-    } else if (recording.entity_type === 'hospitalization' && hasSpeech) {
-      // The worksheet entry this is for doesn't exist as a row yet (it's
-      // an unsaved draft form) — store the extraction on the recording
-      // itself; the page reads it back to fill in that draft's still-
-      // empty fields instead of us writing to a hospitalization_notes row.
-      const { data: catalogItems } = await supabase
-        .from('goods_services')
-        .select('id, name')
-        .eq('active', true);
-
-      const fields = await extractHospitalizationNoteFields(
-        transcript,
-        (catalogItems || []).map((c) => c.name)
-      );
-
-      const matchedItems = (fields.items_given || [])
-        .map((item) => {
-          const match = matchCatalogItem(item.name, catalogItems || []);
-          if (!match) return null;
-          return {
-            goods_service_id: match.id,
-            name: match.name,
-            instructions: item.instructions || null,
-            quantity: item.quantity || 1,
-          };
-        })
-        .filter(Boolean);
-
-      await supabase
-        .from('recordings')
-        .update({
-          extracted_fields: {
-            appetite: fields.appetite || null,
-            weight_kg: fields.weight_kg ?? null,
-            temperature_c: fields.temperature_c ?? null,
-            condition: fields.condition || null,
-            notes: fields.notes || null,
-            items: matchedItems,
-          },
-        })
-        .eq('id', recording.id);
-    }
-
-    return NextResponse.json({ ok: true });
+    const result = await resolveRecording(recording);
+    return NextResponse.json(result);
   } catch (err) {
     await supabase
       .from('recordings')
