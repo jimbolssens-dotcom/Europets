@@ -4233,3 +4233,41 @@ form.card.admit-patient-form {
   }
 }
 
+/* Culture reminder banner */
+
+.culture-reminder {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--pink-tint);
+  color: var(--pink-dark);
+  border-bottom: 1px solid var(--pink);
+  padding: 0.6rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.culture-reminder-text {
+  flex: 1;
+}
+
+.culture-reminder-dismiss {
+  background: none;
+  border: none;
+  color: var(--pink-dark);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  flex-shrink: 0;
+}
+
+.culture-reminder-dismiss:hover {
+  opacity: 0.7;
+}
+
+.mobile-app .culture-reminder {
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+}
+
