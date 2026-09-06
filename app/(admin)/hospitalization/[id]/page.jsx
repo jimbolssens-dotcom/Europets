@@ -581,10 +581,10 @@ export default function HospitalizationDetailPage() {
           </select>
           <div className="consent-form-actions">
             <button type="submit" disabled={consentSubmitting}>
-              {consentSubmitting ? 'Saving...' : 'Sign & Save Consent Form'}
+              {consentSubmitting ? 'Saving...' : 'Sign'}
             </button>
             <button type="button" onClick={sendConsentLink} disabled={sendingConsentLink}>
-              {sendingConsentLink ? 'Sending...' : '📤 Send via WhatsApp to Sign'}
+              {sendingConsentLink ? 'Sending...' : 'WhatsApp'}
             </button>
           </div>
         </form>

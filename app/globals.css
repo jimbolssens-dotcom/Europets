@@ -30,11 +30,11 @@ a {
 }
 
 button {
-  padding: 0.4rem 1rem;
+  padding: 0.5rem 1.25rem;
   background: var(--pink);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 999px;
   cursor: pointer;
   font-weight: 600;
   font-size: 0.9rem;
@@ -93,7 +93,7 @@ button:disabled {
   color: white;
   font-weight: 700;
   font-size: 1.3rem;
-  border-radius: 8px;
+  border-radius: 999px;
   text-decoration: none;
 }
 
@@ -1282,7 +1282,7 @@ button.secondary:hover {
   width: 100%;
   padding: 0.9rem;
   font-size: 1rem;
-  border-radius: 10px;
+  border-radius: 999px;
 }
 
 .roster-block-actions button:not(.secondary) {
@@ -1710,7 +1710,7 @@ button.secondary:hover {
   background: transparent;
   color: #b00020;
   border: 1px solid #b00020;
-  border-radius: 4px;
+  border-radius: 999px;
 }
 
 .pending-items-list li button:hover {
@@ -2842,7 +2842,7 @@ button.secondary:hover {
 
 .intake-slot-button {
   border: 1px solid #ddd;
-  border-radius: 6px;
+  border-radius: 999px;
   background: #fafafa;
   color: var(--ink);
   padding: 0.35rem 0.4rem;
