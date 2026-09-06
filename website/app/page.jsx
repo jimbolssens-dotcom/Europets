@@ -25,7 +25,7 @@ export default function HomePage() {
               Kind, careful veterinary care, <em>the way it should be.</em>
             </h1>
             <p className="hero-lede">
-              Europets Clinic offers wellness care, dentistry, diagnostics, and surgery for your pets — led by Dr.
+              Europets Clinic offers wellness care, dentistry, diagnostics, and surgery for your pets, led by Dr.
               Jim Bolssens and a team who treat every patient like their own.
             </p>
             <div className="hero-actions">

@@ -1,6 +1,6 @@
 import { CONTACT, HOURS } from '@/lib/content';
 
-export const metadata = { title: 'Contact — Europets Clinic' };
+export const metadata = { title: 'Contact - Europets Clinic' };
 
 export default function ContactPage() {
   const mapsQuery = encodeURIComponent(CONTACT.address.join(', ') + ', Europets Clinic');

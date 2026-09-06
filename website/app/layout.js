@@ -19,9 +19,9 @@ const karla = Karla({
 });
 
 export const metadata = {
-  title: 'Europets Clinic — Sharjah',
+  title: 'Europets Clinic - Sharjah',
   description:
-    'Independent veterinary clinic in Sharjah since 2005 — wellness, dentistry, diagnostics, and surgery for your pets. Book an appointment online.',
+    'Independent veterinary clinic in Sharjah since 2005. Wellness, dentistry, diagnostics, and surgery for your pets. Book an appointment online.',
 };
 
 export default function RootLayout({ children }) {

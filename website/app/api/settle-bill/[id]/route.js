@@ -86,13 +86,13 @@ export async function POST(request, { params }) {
   try {
     nomodLink = await createPaymentLink({
       amount,
-      title: `Europets Clinic — Invoice #${invoice.invoice_number}`,
+      title: `Europets Clinic: Invoice #${invoice.invoice_number}`,
       itemName: 'Outstanding balance',
       successUrl: `${origin}/settle-bill/${params.id}?paid=1`,
       failureUrl: `${origin}/settle-bill/${params.id}?paid=0`,
     });
   } catch (err) {
-    return NextResponse.json({ error: 'payments are temporarily unavailable — please try again shortly' }, { status: 502 });
+    return NextResponse.json({ error: 'payments are temporarily unavailable, please try again shortly' }, { status: 502 });
   }
 
   const { data: link, error: insertError } = await supabaseServer
@@ -102,7 +102,7 @@ export async function POST(request, { params }) {
     .single();
 
   if (insertError) {
-    return NextResponse.json({ error: 'something went wrong — please try again' }, { status: 500 });
+    return NextResponse.json({ error: 'something went wrong, please try again' }, { status: 500 });
   }
   return NextResponse.json({ url: link.url });
 }

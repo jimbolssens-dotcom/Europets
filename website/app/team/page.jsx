@@ -1,6 +1,6 @@
 import { VETS, TEAM } from '@/lib/content';
 
-export const metadata = { title: 'Our Team — Europets Clinic' };
+export const metadata = { title: 'Our Team - Europets Clinic' };
 
 function initials(name) {
   return name
@@ -39,7 +39,7 @@ export default function TeamPage() {
         <h1 className="page-title">A team that knows your pet by name</h1>
         <p className="page-lede">
           Every member of our team is committed to giving each patient the compassionate, attentive care they
-          deserve — whether they&apos;re behind the front desk or in the operating room.
+          deserve, whether they&apos;re behind the front desk or in the operating room.
         </p>
 
         <h2 className="team-section-heading">Veterinarians</h2>

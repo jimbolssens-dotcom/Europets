@@ -72,7 +72,7 @@ export async function POST(request, { params }) {
     .eq('id', params.id);
 
   if (error) {
-    return NextResponse.json({ error: 'something went wrong — please try again' }, { status: 500 });
+    return NextResponse.json({ error: 'something went wrong, please try again' }, { status: 500 });
   }
   return NextResponse.json({ ok: true });
 }

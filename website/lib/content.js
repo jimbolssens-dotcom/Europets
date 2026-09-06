@@ -20,7 +20,7 @@ export const HOURS = {
   days: 'Monday – Sunday',
   reception: '8am – 2pm  |  4pm – 7pm',
   consultations: '9:30am – 10:45am  |  4:30pm – 6:45pm',
-  note: 'By appointment only — please complete pet registration before your visit.',
+  note: 'By appointment only. Please complete pet registration before your visit.',
 };
 
 export const SERVICES = [
@@ -35,7 +35,7 @@ export const SERVICES = [
   {
     name: 'Diagnostics',
     description:
-      'Digital X-ray, ultrasound, endoscopy (gastroscopy, colonoscopy, cystoscopy), and an in-house lab for microscopy, blood work, and PCR testing — most results the same day.',
+      'Digital X-ray, ultrasound, endoscopy (gastroscopy, colonoscopy, cystoscopy), and an in-house lab for microscopy, blood work, and PCR testing, with most results the same day.',
   },
   {
     name: 'Surgery',
@@ -45,7 +45,7 @@ export const SERVICES = [
   {
     name: 'Hospitalization',
     description:
-      'ICU-level care for patients who need to stay with us — IV pumps, heat lamps, and oxygen cages — with daily updates for owners.',
+      'ICU-level care for patients who need to stay with us, including IV pumps, heat lamps, and oxygen cages, with daily updates for owners.',
   },
   {
     name: 'Rehabilitation',
@@ -91,8 +91,8 @@ export const NAV_LINKS = [
 export const STORY = {
   founded: 2005,
   paragraphs: [
-    "Dr. Jim Bolssens grew up around veterinary medicine — his father was a vet too — and after moving to the UAE in 2004, he saw a real need for quality veterinary care in Sharjah. He opened Europets Clinic in 2005 as a one-man practice.",
-    "Two decades on, that one-man practice has grown into a full team of vets and support staff — but we've stayed a fully independent, veterinarian-owned clinic by choice. No corporate group, no chain playbook. Just the same personal, homely approach we started with, focused on genuinely good care at a reasonable price.",
+    "Dr. Jim Bolssens grew up around veterinary medicine (his father was a vet too), and after moving to the UAE in 2004, he saw a real need for quality veterinary care in Sharjah. He opened Europets Clinic in 2005 as a one-man practice.",
+    "Two decades on, that one-man practice has grown into a full team of vets and support staff, but we've stayed a fully independent, veterinarian-owned clinic by choice. No corporate group, no chain playbook. Just the same personal, homely approach we started with, focused on genuinely good care at a reasonable price.",
     "That independence is also what lets us invest in equipment most clinics our size don't have in-house: digital X-ray, ultrasound, endoscopy, and a full in-house lab, alongside the surgical and hospitalization capability to handle far more than routine cases.",
   ],
 };
@@ -108,5 +108,5 @@ export const EQUIPMENT = [
 
 export const COMMUNITY = {
   heading: "Supporting the UAE's stray community",
-  body: "We work closely with the stray cat and dog support community across the UAE, and we're proud to play our part in that effort. It's built into how we operate, not a side promotion — the animals who need it most getting the same standard of care as any other patient.",
+  body: "We work closely with the stray cat and dog support community across the UAE, and we're proud to play our part in that effort. It's built into how we operate, not a side promotion: the animals who need it most get the same standard of care as any other patient.",
 };

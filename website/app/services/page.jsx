@@ -1,6 +1,6 @@
 import { BOOKING_URL, SERVICES } from '@/lib/content';
 
-export const metadata = { title: 'Services — Europets Clinic' };
+export const metadata = { title: 'Services - Europets Clinic' };
 
 const DETAILS = {
   'Wellness & Vaccinations': [
@@ -28,7 +28,7 @@ export default function ServicesPage() {
         <span className="eyebrow">What we treat</span>
         <h1 className="page-title">Complete care, under one roof</h1>
         <p className="page-lede">
-          From routine wellness visits to complex surgery, our team offers all major veterinary services in-house —
+          From routine wellness visits to complex surgery, our team offers all major veterinary services in-house,
           so your pet gets seen, diagnosed, and treated without being sent elsewhere.
         </p>
 

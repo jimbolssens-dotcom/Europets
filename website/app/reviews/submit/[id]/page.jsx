@@ -46,7 +46,7 @@ export default function SubmitReviewPage() {
     setSubmitting(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error || 'Something went wrong — please try again.');
+      setError(data.error || 'Something went wrong. Please try again.');
       return;
     }
     setState('done');
@@ -78,7 +78,7 @@ export default function SubmitReviewPage() {
       <div className="section">
         <div className="container review-submit-narrow">
           <h1 className="page-title">Already submitted</h1>
-          <p className="page-lede">This review link has already been used — thank you for taking the time!</p>
+          <p className="page-lede">This review link has already been used. Thank you for taking the time!</p>
         </div>
       </div>
     );
@@ -102,7 +102,7 @@ export default function SubmitReviewPage() {
       <div className="container review-submit-narrow">
         <span className="eyebrow">Tell us how we did</span>
         <h1 className="page-title">{firstName ? `Hi ${firstName}, how was your visit?` : 'How was your visit?'}</h1>
-        <p className="page-lede">Your feedback helps other pet owners in Sharjah find good care — and helps us keep improving.</p>
+        <p className="page-lede">Your feedback helps other pet owners in Sharjah find good care, and helps us keep improving.</p>
 
         <form className="card review-submit-form" onSubmit={handleSubmit}>
           <div className="star-picker" role="radiogroup" aria-label="Rating">

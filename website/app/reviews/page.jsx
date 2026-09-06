@@ -1,7 +1,7 @@
 import { supabaseServer } from '@/lib/supabaseServer';
 import { BOOKING_URL } from '@/lib/content';
 
-export const metadata = { title: 'Reviews — Europets Clinic' };
+export const metadata = { title: 'Reviews - Europets Clinic' };
 export const revalidate = 300;
 
 function Stars({ rating }) {
@@ -29,11 +29,11 @@ export default async function ReviewsPage() {
         <span className="eyebrow">What pet owners say</span>
         <h1 className="page-title">Reviews from our clients</h1>
         <p className="page-lede">
-          Every review here comes from a real client we&apos;ve treated at Europets — nothing is written by us.
+          Every review here comes from a real client we&apos;ve treated at Europets. Nothing is written by us.
         </p>
 
         {reviews.length === 0 && (
-          <p className="reviews-empty">We&apos;re just getting started collecting reviews here — check back soon.</p>
+          <p className="reviews-empty">We&apos;re just getting started collecting reviews here. Check back soon.</p>
         )}
 
         <div className="reviews-grid">

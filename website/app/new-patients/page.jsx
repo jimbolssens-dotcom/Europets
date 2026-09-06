@@ -1,6 +1,6 @@
 import { APP_URL, BOOKING_URL } from '@/lib/content';
 
-export const metadata = { title: 'New Patients — Europets Clinic' };
+export const metadata = { title: 'New Patients - Europets Clinic' };
 
 export default function NewPatientsPage() {
   return (
@@ -18,7 +18,7 @@ export default function NewPatientsPage() {
             <li>
               <div>
                 <strong>Register your details</strong>
-                <span>Your info and your pet&apos;s — name, species, breed, and a bit of history.</span>
+                <span>Your info and your pet&apos;s: name, species, breed, and a bit of history.</span>
               </div>
             </li>
             <li>

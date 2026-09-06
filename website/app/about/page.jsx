@@ -1,6 +1,6 @@
 import { BOOKING_URL, STORY, EQUIPMENT, COMMUNITY } from '@/lib/content';
 
-export const metadata = { title: 'About Us — Europets Clinic' };
+export const metadata = { title: 'About Us - Europets Clinic' };
 
 export default function AboutPage() {
   return (
@@ -17,8 +17,8 @@ export default function AboutPage() {
 
         <h2 className="team-section-heading">What we&apos;re equipped for</h2>
         <p className="page-lede">
-          Staying independent means we invest in the clinic, not a corporate parent — equipment most practices our
-          size would refer out for.
+          Staying independent means we invest in the clinic, not a corporate parent. That includes equipment most
+          practices our size would refer out for.
         </p>
         <div className="equipment-grid">
           {EQUIPMENT.map((item) => (

@@ -69,7 +69,7 @@ export default function SettleBillPage() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setPaying(false);
-      setError(data.error || 'Something went wrong — please try again.');
+      setError(data.error || 'Something went wrong. Please try again.');
       return;
     }
     window.location.href = data.url;
@@ -118,7 +118,7 @@ export default function SettleBillPage() {
       <div className="section">
         <div className="container review-submit-narrow">
           <h1 className="page-title">All settled</h1>
-          <p className="page-lede">This invoice is already fully paid — thank you!</p>
+          <p className="page-lede">This invoice is already fully paid. Thank you!</p>
         </div>
       </div>
     );
@@ -131,17 +131,17 @@ export default function SettleBillPage() {
         <h1 className="page-title">
           {invoice.client_first_name ? `Hi ${invoice.client_first_name}, settle your bill` : 'Settle your bill'}
         </h1>
-        <p className="page-lede">Pay securely online with Nomod — no need to come in with cash or a card.</p>
+        <p className="page-lede">Pay securely online with Nomod. No need to come in with cash or a card.</p>
 
         {returnedFromNomod === 'success' && (
           <p className="settle-bill-notice">
-            Thanks! We&apos;re confirming your payment now — this can take a few minutes to show here.
+            Thanks! We&apos;re confirming your payment now. This can take a few minutes to show here.
             If the balance below doesn&apos;t update shortly, don&apos;t worry, we&apos;ll have it recorded on our end.
           </p>
         )}
         {returnedFromNomod === 'failure' && (
           <p className="settle-bill-notice settle-bill-notice-error">
-            That payment didn&apos;t go through. No charge was made — feel free to try again below.
+            That payment didn&apos;t go through. No charge was made. Feel free to try again below.
           </p>
         )}
 
