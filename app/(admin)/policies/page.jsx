@@ -281,7 +281,17 @@ export default function PoliciesPage() {
               <p className="policies-updated">
                 Last updated {new Date(selected.updated_at).toLocaleString()}
               </p>
-              <div className="policies-content-box">{selected.content || '(No content yet.)'}</div>
+              <div className="policies-content-box">
+                {(selected.content || '(No content yet.)').split('\n').map((line, i) =>
+                  line.trim() === '' ? (
+                    <div key={i} className="policies-content-blank" />
+                  ) : (
+                    <p key={i} className="policies-content-line">
+                      {line}
+                    </p>
+                  )
+                )}
+              </div>
             </div>
           )}
         </div>
