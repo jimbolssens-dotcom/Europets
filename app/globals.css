@@ -73,7 +73,7 @@ button:disabled {
   padding: 0.5rem 1.1rem;
   background: var(--pink);
   color: white;
-  border-radius: 4px;
+  border-radius: 999px;
   font-weight: 600;
   font-size: 0.9rem;
   text-decoration: none;
@@ -3624,7 +3624,7 @@ form.card.admit-patient-form {
   padding: 0.7rem;
   margin-bottom: 0.75rem;
   border: 1px solid var(--pink);
-  border-radius: 8px;
+  border-radius: 999px;
   background: white;
   color: var(--pink-dark);
   font-weight: 700;
@@ -3663,7 +3663,7 @@ form.card.admit-patient-form {
   flex: 1;
   padding: 0.6rem;
   border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 999px;
   background: #fafafa;
   font-weight: 600;
   font-size: 0.9rem;
