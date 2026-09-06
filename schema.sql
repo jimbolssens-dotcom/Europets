@@ -818,7 +818,8 @@ create table attachments (
     file_name text,
     content_type text,
     uploaded_by uuid references staff(id),
-    created_at timestamptz default now()
+    created_at timestamptz default now(),
+    compressed_at timestamptz  -- set once its image has been shrunk down after its case closed (see lib/attachmentCompression.js); null means still full-size/untouched
 );
 
 -- ============ CONSULT NOTES ============
