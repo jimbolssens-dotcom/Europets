@@ -983,7 +983,7 @@ export default function AppointmentsPage() {
             />
 
             <button type="submit" disabled={submitting || !form.time || !form.room_id}>
-              {submitting ? 'Booking...' : 'Book Appointment'}
+              {submitting ? 'Booking...' : 'Book'}
             </button>
           </form>
         </div>
@@ -1024,7 +1024,7 @@ export default function AppointmentsPage() {
                 <td>
                   {a.status === 'booked' && a.patient_id && (
                     <button type="button" onClick={() => checkIn(a.id)}>
-                      Check In
+                      Checkin
                     </button>
                   )}
                   {a.status === 'checked_in' && <a href="/consults">View Consult</a>}

@@ -78,10 +78,10 @@ export default function AttachmentSection({ entityType, entityId }) {
       )}
       <div className="attachment-actions">
         <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={uploading}>
-          📷 Take Photo
+          📷 Photo
         </button>
         <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-          📎 Add File
+          📎 File
         </button>
         {uploading && <span> Uploading...</span>}
       </div>

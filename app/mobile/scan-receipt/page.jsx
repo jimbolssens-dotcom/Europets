@@ -183,7 +183,7 @@ export default function MobileScanReceiptPage() {
           </select>
 
           <button type="submit" disabled={submitting || !form.amount}>
-            {submitting ? 'Saving...' : 'Save Expense'}
+            {submitting ? 'Saving...' : 'Save'}
           </button>
           <button type="button" onClick={startOver} disabled={submitting}>
             Cancel

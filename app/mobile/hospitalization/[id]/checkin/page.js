@@ -191,10 +191,10 @@ export default function MobileHospitalizationCheckinPage() {
             )}
             <div className="attachment-actions">
               <button type="button" onClick={() => cameraInputRef.current?.click()}>
-                📷 Take Photo
+                📷 Photo
               </button>
               <button type="button" onClick={() => fileInputRef.current?.click()}>
-                📎 Add File
+                📎 File
               </button>
             </div>
             <input
@@ -209,7 +209,7 @@ export default function MobileHospitalizationCheckinPage() {
           </div>
 
           <button type="button" onClick={saveCheckin} disabled={submitting || !hasAnySelection}>
-            {submitting ? 'Saving...' : '✅ Save Check-In'}
+            {submitting ? 'Saving...' : '✅ Save'}
           </button>
 
           <button

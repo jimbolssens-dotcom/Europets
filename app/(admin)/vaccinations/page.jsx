@@ -203,7 +203,7 @@ export default function VaccinationsDuePage() {
                       <span className="visit-meta"> Reminded {formatDate(lastReminded.slice(0, 10))}</span>
                     ) : (
                       <button type="button" onClick={() => markReminded(g.rows.map((r) => r.id))}>
-                        Mark Reminded
+                        Done
                       </button>
                     )}
                   </td>

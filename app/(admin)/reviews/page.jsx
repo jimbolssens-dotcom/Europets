@@ -112,7 +112,7 @@ export default function ReviewsPage() {
                   </td>
                   <td>
                     <button type="button" onClick={() => copyLink(r.id)}>
-                      {copiedId === r.id ? 'Copied!' : '🔗 Copy Link'}
+                      {copiedId === r.id ? 'Copied!' : '🔗 Copy'}
                     </button>
                   </td>
                   <td>{formatDateTime(r.created_at)}</td>

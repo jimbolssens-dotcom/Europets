@@ -345,7 +345,7 @@ function PatientsPageInner() {
             />
           </label>
           <button type="submit" disabled={submitting || clients.length === 0}>
-            {submitting ? 'Saving...' : 'Add Patient'}
+            {submitting ? 'Saving...' : 'Add'}
           </button>
           {clients.length === 0 && <p>Add a client first.</p>}
         </form>

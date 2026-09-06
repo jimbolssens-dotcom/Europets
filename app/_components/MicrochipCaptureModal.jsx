@@ -12,7 +12,7 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function MicrochipCaptureModal({ patientName, confirmLabel = 'Save & Continue', onCancel, onConfirm }) {
+export default function MicrochipCaptureModal({ patientName, confirmLabel = 'Save', onCancel, onConfirm }) {
   const [number, setNumber] = useState('');
   const [date, setDate] = useState(today());
   const [error, setError] = useState(null);

@@ -55,7 +55,7 @@ export default function ClientReportEditor({ reportId, apiBase, savedReport, onS
       <textarea rows={9} value={draft} onChange={(e) => { setDraft(e.target.value); setDirty(true); }} />
       <div className="home-links">
         <button type="button" onClick={save} disabled={saving || !dirty}>
-          {saving ? 'Saving...' : 'Save Edits'}
+          {saving ? 'Saving...' : 'Save'}
         </button>
         {dirty && <span className="share-hint">Unsaved changes — sharing uses the last saved version.</span>}
       </div>

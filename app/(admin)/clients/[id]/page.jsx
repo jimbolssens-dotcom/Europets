@@ -182,14 +182,14 @@ export default function ClientDetailPage() {
               onClick={() => openWhatsAppReminder(client.phone, client.full_name, outstandingInvoices)}
               disabled={!client.phone}
             >
-              💬 Remind via WhatsApp
+              💬 WhatsApp
             </button>
             <button
               type="button"
               onClick={() => openEmailReminder(client.email, client.full_name, outstandingInvoices)}
               disabled={!client.email}
             >
-              ✉️ Remind via Email
+              ✉️ Email
             </button>
           </div>
         )}
@@ -224,10 +224,10 @@ export default function ClientDetailPage() {
 
       <p>
         <button type="button" onClick={sendBookingLink} disabled={sendingLink}>
-          {sendingLink ? 'Sending...' : '📅 Send Invite'}
+          {sendingLink ? 'Sending...' : '📅 Invite'}
         </button>{' '}
         <button type="button" onClick={sendReviewLink} disabled={sendingReviewLink}>
-          {sendingReviewLink ? 'Sending...' : '⭐ Request a Review'}
+          {sendingReviewLink ? 'Sending...' : '⭐ Review'}
         </button>
       </p>
       {bookingLinkError && <p className="error">{bookingLinkError}</p>}
@@ -235,7 +235,7 @@ export default function ClientDetailPage() {
 
       <h2>Emirates ID</h2>
       <ScanIdButton
-        label={client.emirates_id ? '📷 Re-scan Emirates ID' : '📷 Scan Emirates ID'}
+        label={client.emirates_id ? '📷 Re-scan' : '📷 Scan'}
         onScanned={handleScanned}
       />
       <AttachmentSection entityType="client" entityId={id} />

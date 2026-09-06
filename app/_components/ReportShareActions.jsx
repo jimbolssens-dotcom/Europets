@@ -26,7 +26,7 @@ export default function ReportShareActions({ apiBase, reportId, client, patient,
   return (
     <div className="share-actions">
       <a className="share-btn" href={`${apiBase}/${reportId}/report-pdf`} target="_blank" rel="noreferrer">
-        📄 Download PDF
+        📄 Download
       </a>
       <button type="button" className="share-btn" onClick={shareViaWhatsApp} disabled={!client?.phone}>
         💬 WhatsApp

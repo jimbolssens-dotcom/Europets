@@ -116,8 +116,8 @@ export default function HospitalizationPortalPage() {
               {requestingUpdate
                 ? 'Sending...'
                 : admission.update_requested_at
-                ? '🔔 Update Requested'
-                : '🔔 Request an Update'}
+                ? '🔔 Requested'
+                : '🔔 Request'}
             </button>
             {admission.update_requested_at && (
               <>

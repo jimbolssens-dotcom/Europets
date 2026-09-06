@@ -683,7 +683,7 @@ export default function HospitalizationDetailPage() {
                   onChange={(e) => setDayAddForm({ ...dayAddForm, quantity: e.target.value })}
                 />
                 <button type="button" disabled={dayAddSubmitting} onClick={() => addDayMedication(group.entries)}>
-                  {dayAddSubmitting ? 'Adding...' : `+ Add ${ADD_ITEM_LABELS[dayAddCategory]}`}
+                  {dayAddSubmitting ? 'Adding...' : '+ Add'}
                 </button>
                 <p className="visit-meta">Attaches to the most recent entry logged this day.</p>
               </div>
@@ -852,7 +852,7 @@ export default function HospitalizationDetailPage() {
                         onChange={(e) => setNoteAddItemForm({ ...noteAddItemForm, quantity: e.target.value })}
                       />
                       <button type="button" disabled={noteAddItemSubmitting} onClick={() => addItemToNote(n.id)}>
-                        {noteAddItemSubmitting ? 'Adding...' : `+ Add ${ADD_ITEM_LABELS[noteAddCategory]}`}
+                        {noteAddItemSubmitting ? 'Adding...' : '+ Add'}
                       </button>
                     </div>
                   </div>
@@ -1036,12 +1036,12 @@ export default function HospitalizationDetailPage() {
             onChange={(e) => setPendingItemForm({ ...pendingItemForm, quantity: e.target.value })}
           />
           <button type="button" className="secondary" onClick={addPendingItem}>
-            {`+ Add ${ADD_ITEM_LABELS[pendingItemCategory]}`}
+            + Add
           </button>
         </fieldset>
 
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Saving...' : 'Add Entry'}
+          {submitting ? 'Saving...' : 'Add'}
         </button>
       </form>
       </div>
@@ -1056,7 +1056,7 @@ export default function HospitalizationDetailPage() {
         <>
           {invoiceError && <p className="error">{invoiceError}</p>}
           <button type="button" onClick={createInvoice} disabled={creatingInvoice}>
-            {creatingInvoice ? 'Creating...' : '🧾 Create Invoice from Worksheet'}
+            {creatingInvoice ? 'Creating...' : '🧾 Create'}
           </button>
           <p className="visit-meta">
             Opens a new invoice and imports every medication/goods/service logged across the
@@ -1068,16 +1068,16 @@ export default function HospitalizationDetailPage() {
 
       <div className="share-actions">
         <button type="button" className="share-btn" onClick={downloadSummaryPdf}>
-          📄 Summary PDF
+          📄 Summary
         </button>
         <button type="button" className="share-btn" onClick={shareViaWhatsApp}>
-          💬 Share PDF
+          💬 Share
         </button>
         <button type="button" className="share-btn" onClick={sharePortalLink}>
-          🔗 Share Portal Link
+          🔗 Link
         </button>
         <button type="button" className="share-btn" onClick={copyPortalLink}>
-          {linkCopied ? 'Copied!' : 'Copy Link'}
+          {linkCopied ? 'Copied!' : 'Copy'}
         </button>
       </div>
       <p className="share-hint">

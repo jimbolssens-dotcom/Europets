@@ -63,7 +63,7 @@ export default function VoiceNoteBox({ lineItemId, path, onUploaded, onCleared }
       <div className="voice-note-box">
         <audio controls src={voiceNoteUrl(path)} />
         <button type="button" className="secondary" onClick={remove} disabled={uploading}>
-          {uploading ? 'Removing...' : '🗑 Remove Voice Note'}
+          {uploading ? 'Removing...' : '🗑 Remove'}
         </button>
       </div>
     );
@@ -74,7 +74,7 @@ export default function VoiceNoteBox({ lineItemId, path, onUploaded, onCleared }
       {error && <p className="error">{error}</p>}
       {!recording ? (
         <button type="button" className="secondary" onClick={startRecording} disabled={uploading}>
-          {uploading ? 'Uploading...' : '🎙️ Record Voice Note'}
+          {uploading ? 'Uploading...' : '🎙️ Record'}
         </button>
       ) : (
         <button type="button" className="recorder-stop" onClick={stopRecording}>

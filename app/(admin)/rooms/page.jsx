@@ -172,7 +172,7 @@ export default function RoomsPage() {
           <option value="surgery">Surgery</option>
         </select>
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Saving...' : 'Add Room'}
+          {submitting ? 'Saving...' : 'Add'}
         </button>
       </form>
       </div>

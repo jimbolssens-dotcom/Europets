@@ -502,7 +502,7 @@ export default function HospitalizationPage() {
                     onChange={(e) => setAdmitForm({ ...admitForm, reason: e.target.value })}
                   />
                   <button type="submit" disabled={admitSubmitting}>
-                    {admitSubmitting ? 'Admitting...' : 'Admit Patient'}
+                    {admitSubmitting ? 'Admitting...' : 'Admit'}
                   </button>
                 </div>
 

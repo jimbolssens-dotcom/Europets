@@ -227,7 +227,7 @@ export default function StaffPage() {
           />
         </label>
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Saving...' : 'Add Staff'}
+          {submitting ? 'Saving...' : 'Add'}
         </button>
       </form>
       </div>

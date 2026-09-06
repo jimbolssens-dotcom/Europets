@@ -237,7 +237,7 @@ export default function VaccineProtocolsPage() {
               onChange={(e) => setForm({ ...form, interval_months: e.target.value })}
             />
             <button type="submit" disabled={submitting}>
-              {submitting ? 'Saving...' : 'Add Protocol'}
+              {submitting ? 'Saving...' : 'Add'}
             </button>
           </form>
         </div>

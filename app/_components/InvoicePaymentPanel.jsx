@@ -155,7 +155,7 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
               ))}
             </select>
             <button type="submit" disabled={submitting || !amount || !paymentMethod || !receivedBy}>
-              {submitting ? 'Logging...' : 'Log Payment'}
+              {submitting ? 'Logging...' : 'Log'}
             </button>
             <button
               type="button"

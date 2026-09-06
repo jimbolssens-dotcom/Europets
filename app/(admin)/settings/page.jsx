@@ -238,7 +238,7 @@ export default function SettingsPage() {
         </label>
 
         <button type="submit" disabled={saving}>
-          {saving ? 'Saving...' : 'Save Settings'}
+          {saving ? 'Saving...' : 'Save'}
         </button>
       </form>
     </div>

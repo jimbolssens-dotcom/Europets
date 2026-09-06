@@ -478,7 +478,7 @@ export default function CatalogPage() {
           </label>
         )}
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Saving...' : `Add ${MAIN_CATEGORY_LABELS[activeTab]}`}
+          {submitting ? 'Saving...' : 'Add'}
         </button>
       </form>
 

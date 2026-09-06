@@ -12,8 +12,8 @@ import { useRef, useState } from 'react';
 
 export default function ScanIdButton({
   onScanned,
-  label = '📷 Scan Emirates ID',
-  uploadLabel = '🖼️ Upload ID Photo',
+  label = '📷 Scan',
+  uploadLabel = '🖼️ Upload',
 }) {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState(null);

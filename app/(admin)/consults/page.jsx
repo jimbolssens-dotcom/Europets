@@ -235,7 +235,7 @@ export default function ConsultsPage() {
           ))}
         </select>
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Starting...' : 'Start Consult'}
+          {submitting ? 'Starting...' : 'Start'}
         </button>
       </form>
       </div>

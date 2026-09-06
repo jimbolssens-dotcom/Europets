@@ -328,7 +328,7 @@ export default function StaffRosterPage() {
 
           <div className="roster-copy-week">
             <button type="button" className="button-link" onClick={copyPreviousWeek} disabled={copying}>
-              🔁 {copying ? 'Copying...' : 'Copy Previous Week (All Staff)'}
+              🔁 {copying ? 'Copying...' : 'Copy Week'}
             </button>
             <span className="visit-meta">
               Fills in this week from last week&apos;s roster, for every staff member at once — won&apos;t

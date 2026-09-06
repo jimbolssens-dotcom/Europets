@@ -117,7 +117,7 @@ export default function CatalogPicker({
 
       {!adding ? (
         <button type="button" className="secondary catalog-picker-add-toggle" onClick={startAdding}>
-          + Add New {MAIN_CATEGORY_LABELS[activeCategory]}
+          + New
         </button>
       ) : (
         <div className="catalog-picker-inline-add">
@@ -159,7 +159,7 @@ export default function CatalogPicker({
             onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
           />
           <button type="button" onClick={createItem} disabled={creating}>
-            {creating ? 'Adding...' : 'Save & Select'}
+            {creating ? 'Adding...' : 'Select'}
           </button>
           <button type="button" className="secondary" onClick={() => setAdding(false)}>
             Cancel

@@ -134,7 +134,7 @@ export default function ConsentSigningPage() {
             />
           </label>
           <button type="submit" disabled={submitting}>
-            {submitting ? 'Signing...' : 'Sign & Submit'}
+            {submitting ? 'Signing...' : 'Sign'}
           </button>
         </form>
       </div>

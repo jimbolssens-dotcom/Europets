@@ -195,7 +195,7 @@ export default function MobileSchedulePage() {
           <p className="mobile-subtitle">
             {me?.full_name || 'You'} ·{' '}
             <button type="button" className="mobile-link-btn" onClick={switchStaff}>
-              Not you? Switch
+              Switch
             </button>
           </p>
 
@@ -227,7 +227,7 @@ export default function MobileSchedulePage() {
             onClick={repeatLastWeek}
             disabled={repeating || loadingEntries}
           >
-            {repeating ? 'Repeating...' : '🔁 Repeat Last Week'}
+            {repeating ? 'Repeating...' : '🔁 Repeat'}
           </button>
           {repeatMessage && <p className="mobile-subtitle">{repeatMessage}</p>}
 

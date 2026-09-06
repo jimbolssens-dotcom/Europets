@@ -49,7 +49,7 @@ function LoginForm() {
         onChange={(e) => setPincode(e.target.value)}
       />
       <button type="submit" disabled={submitting}>
-        {submitting ? 'Checking...' : 'Log In'}
+        {submitting ? 'Checking...' : 'Login'}
       </button>
     </form>
   );

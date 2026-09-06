@@ -275,11 +275,11 @@ export default function InvoiceDetailPage() {
       </p>
       <p>
         <button type="button" onClick={downloadTaxInvoice}>
-          📄 Download Tax Invoice (PDF)
+          📄 Download
         </button>{' '}
         {editable && (
           <button type="button" onClick={sendPaymentLink}>
-            💳 Send Payment Link
+            💳 Send
           </button>
         )}
       </p>
@@ -354,7 +354,7 @@ export default function InvoiceDetailPage() {
               onChange={(e) => setQuantity(e.target.value)}
             />
             <button type="submit" disabled={submitting || !goodsServiceId}>
-              {`+ Add ${ADD_ITEM_LABELS[addCategory]}`}
+              + Add
             </button>
           </div>
         </form>
@@ -389,7 +389,7 @@ export default function InvoiceDetailPage() {
                     onCleared={() => saveLineItemVoiceNote(li.id, null)}
                   />
                   <button type="button" onClick={() => printLabel(li)} disabled={printingLabelId === li.id}>
-                    {printingLabelId === li.id ? 'Printing...' : '🏷️ Print Label'}
+                    {printingLabelId === li.id ? 'Printing...' : '🏷️ Print'}
                   </button>
                 </li>
               );
@@ -404,7 +404,7 @@ export default function InvoiceDetailPage() {
       {microchipModalOpen && (
         <MicrochipCaptureModal
           patientName={patientName}
-          confirmLabel="Save & Add to Invoice"
+          confirmLabel="Save"
           onCancel={() => setMicrochipModalOpen(false)}
           onConfirm={confirmMicrochip}
         />

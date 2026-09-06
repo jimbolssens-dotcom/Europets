@@ -102,7 +102,7 @@ export default function ClientPhonesEditor({ phones, onChange, groupName }) {
         </div>
       ))}
       <button type="button" className="secondary client-phone-add" onClick={addRow}>
-        + Add a phone number
+        + Add
       </button>
     </div>
   );

@@ -43,14 +43,14 @@ export default function DentalChart({ species, value, onChange, saving }) {
           className={mode === 'extracted' ? 'dental-mode-btn active' : 'dental-mode-btn'}
           onClick={() => setMode('extracted')}
         >
-          🔴 Mark Extracted
+          🔴 Extracted
         </button>
         <button
           type="button"
           className={mode === 'missing' ? 'dental-mode-btn active' : 'dental-mode-btn'}
           onClick={() => setMode('missing')}
         >
-          🟢 Mark Missing
+          🟢 Missing
         </button>
         {saving && <span className="visit-meta">Saving...</span>}
       </div>

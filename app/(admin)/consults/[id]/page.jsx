@@ -741,7 +741,7 @@ export default function ConsultDetailPage() {
             />
           </label>
           <button type="submit" disabled={savingRecord}>
-            {savingRecord ? 'Saving...' : 'Save Record'}
+            {savingRecord ? 'Saving...' : 'Save'}
           </button>
         </form>
 
@@ -771,7 +771,7 @@ export default function ConsultDetailPage() {
             value={diagForm.result}
             onChange={(e) => setDiagForm({ ...diagForm, result: e.target.value })}
           />
-          <button type="submit">Add Diagnostic</button>
+          <button type="submit">Add</button>
           <p className="visit-meta">
             Also adds this test to the Treatment Plan, ready to invoice. Upload blood work PDFs,
             x-rays, or ultrasound scans on each entry above once it's added.
@@ -846,13 +846,13 @@ export default function ConsultDetailPage() {
             value={treatForm.quantity}
             onChange={(e) => setTreatForm({ ...treatForm, quantity: e.target.value })}
           />
-          <button type="submit">{`+ Add ${ADD_ITEM_LABELS[treatCategory]}`}</button>
+          <button type="submit">+ Add</button>
         </form>
 
         {microchipModalOpen && (
           <MicrochipCaptureModal
             patientName={consult.patients?.name}
-            confirmLabel="Save & Add to Treatment Plan"
+            confirmLabel="Save"
             onCancel={() => setMicrochipModalOpen(false)}
             onConfirm={confirmMicrochip}
           />
@@ -904,7 +904,7 @@ export default function ConsultDetailPage() {
         ) : (
           <>
             <button type="button" onClick={createInvoice} disabled={creatingInvoice}>
-              {creatingInvoice ? 'Creating...' : '🧾 Create Invoice from Treatment Plan'}
+              {creatingInvoice ? 'Creating...' : '🧾 Create'}
             </button>
             <p className="visit-meta">
               Opens a new invoice and imports every item above as a line item. You can still add
@@ -922,7 +922,7 @@ export default function ConsultDetailPage() {
         <h3>Dental Reports</h3>
         <div className="card">
           <button type="button" onClick={startDictateDentalReport} disabled={dictatingDental}>
-            🎤 {dictatingDental ? 'Starting...' : 'Dictate New Dental Report'}
+            🎤 {dictatingDental ? 'Starting...' : 'Dictate'}
           </button>
           <details>
             <summary>Or add manually</summary>
@@ -959,7 +959,7 @@ export default function ConsultDetailPage() {
                   onChange={(e) => setDentalForm({ ...dentalForm, notes: e.target.value })}
                 />
               </label>
-              <button type="submit">Add Dental Report</button>
+              <button type="submit">Add</button>
             </form>
           </details>
         </div>
@@ -1013,7 +1013,7 @@ export default function ConsultDetailPage() {
         <h3>Surgical Reports</h3>
         <div className="card">
           <button type="button" onClick={startDictateSurgicalReport} disabled={dictatingSurgical}>
-            🎤 {dictatingSurgical ? 'Starting...' : 'Dictate New Surgical Report'}
+            🎤 {dictatingSurgical ? 'Starting...' : 'Dictate'}
           </button>
           <details>
             <summary>Or add manually</summary>
@@ -1045,7 +1045,7 @@ export default function ConsultDetailPage() {
                   onChange={(e) => setSurgForm({ ...surgForm, notes: e.target.value })}
                 />
               </label>
-              <button type="submit">Add Surgical Report</button>
+              <button type="submit">Add</button>
             </form>
           </details>
         </div>
@@ -1154,10 +1154,10 @@ export default function ConsultDetailPage() {
           </select>
           <div className="consent-form-actions">
             <button type="submit" disabled={consentSubmitting}>
-              {consentSubmitting ? 'Saving...' : 'Sign & Save Consent Form'}
+              {consentSubmitting ? 'Saving...' : 'Sign'}
             </button>
             <button type="button" onClick={sendConsentLink} disabled={sendingConsentLink}>
-              {sendingConsentLink ? 'Sending...' : '📤 Send via WhatsApp to Sign'}
+              {sendingConsentLink ? 'Sending...' : '📤 WhatsApp'}
             </button>
           </div>
         </form>

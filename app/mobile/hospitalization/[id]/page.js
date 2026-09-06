@@ -283,10 +283,10 @@ export default function MobileHospitalizationPage() {
               )}
               <div className="attachment-actions">
                 <button type="button" onClick={() => stagedCameraInputRef.current?.click()}>
-                  📷 Take Photo
+                  📷 Photo
                 </button>
                 <button type="button" onClick={() => stagedFileInputRef.current?.click()}>
-                  📎 Add File
+                  📎 File
                 </button>
               </div>
               <input
@@ -337,12 +337,12 @@ export default function MobileHospitalizationPage() {
                 onChange={(e) => setPendingItemForm({ ...pendingItemForm, quantity: e.target.value })}
               />
               <button type="button" className="secondary" onClick={addPendingItem}>
-                + Add Item
+                + Add
               </button>
             </fieldset>
 
             <button type="submit" disabled={submitting}>
-              {submitting ? 'Saving...' : 'Save Entry'}
+              {submitting ? 'Saving...' : 'Save'}
             </button>
           </form>
 

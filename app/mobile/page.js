@@ -87,7 +87,7 @@ export default function MobileHomePage() {
             <h1 className="mobile-greeting">Hello, {firstName || 'there'}!</h1>
           </div>
           <button type="button" className="mobile-link-btn" onClick={switchStaff}>
-            Not you? Switch
+            Switch
           </button>
 
           {me?.role === 'cleaner' ? (

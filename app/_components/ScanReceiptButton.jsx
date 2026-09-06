@@ -12,8 +12,8 @@ import { useRef, useState } from 'react';
 
 export default function ScanReceiptButton({
   onScanned,
-  label = '📷 Scan Receipt',
-  uploadLabel = '🖼️ Upload Receipt Photo',
+  label = '📷 Scan',
+  uploadLabel = '🖼️ Upload',
 }) {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState(null);

@@ -165,7 +165,7 @@ export default function IntakePage() {
           onChange={(e) => setQuickPhone(e.target.value)}
         />
         <button type="button" onClick={sendNewLink} disabled={sending}>
-          {sending ? 'Sending...' : '💬 Send Invite via WhatsApp'}
+          {sending ? 'Sending...' : '💬 WhatsApp'}
         </button>
       </div>
 
@@ -201,7 +201,7 @@ export default function IntakePage() {
                 <tr key={r.id}>
                   <td>
                     <button type="button" onClick={() => copyLink(r.id)}>
-                      {copiedId === r.id ? 'Copied!' : '🔗 Copy Link'}
+                      {copiedId === r.id ? 'Copied!' : '🔗 Copy'}
                     </button>
                     {r.client_id && (
                       <>

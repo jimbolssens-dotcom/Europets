@@ -31,10 +31,10 @@ export default function MobileError({ error, reset }) {
         {error?.digest && ` (digest: ${error.digest})`}
       </p>
       <button type="button" onClick={() => reset()}>
-        Try Again
+        Retry
       </button>
       <button type="button" className="mobile-secondary-action" onClick={() => window.location.reload()}>
-        Reload Page
+        Reload
       </button>
     </div>
   );

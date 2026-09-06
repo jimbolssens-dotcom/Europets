@@ -169,7 +169,7 @@ export default function IntakeReviewCard({
                   onClick={() => review(r.id, 'approve', c.id, r, c.full_name)}
                   disabled={reviewing?.id === r.id}
                 >
-                  {reviewing?.id === r.id ? 'Working...' : 'Attach pet(s) to this client'}
+                  {reviewing?.id === r.id ? 'Working...' : 'Attach'}
                 </button>
               </li>
             ))}
@@ -194,7 +194,7 @@ export default function IntakeReviewCard({
           {reviewing?.id === r.id && reviewing.action === 'approve'
             ? 'Approving...'
             : matches.length > 0
-              ? 'Create as New Client Anyway'
+              ? 'Create Anyway'
               : 'Approve'}
         </button>
         <button

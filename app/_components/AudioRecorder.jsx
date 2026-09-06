@@ -155,11 +155,11 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
       <div className="recorder-controls">
         {!recording ? (
           <button type="button" onClick={startRecording} disabled={uploading}>
-            {uploading ? 'Uploading...' : '● Start Recording'}
+            {uploading ? 'Uploading...' : '● Record'}
           </button>
         ) : (
           <button type="button" className="recorder-stop" onClick={stopRecording}>
-            <span className="recorder-dot" /> Stop Recording
+            <span className="recorder-dot" /> Stop
           </button>
         )}
       </div>

@@ -195,7 +195,7 @@ function InvoiceCard({ summary, catalog, subcategories, staff, onCatalogChange, 
               onChange={(e) => setQuantity(e.target.value)}
             />
             <button type="submit" disabled={submitting || !goodsServiceId}>
-              {`+ Add ${ADD_ITEM_LABELS[addCategory]}`}
+              + Add
             </button>
           </div>
         </form>
@@ -352,7 +352,7 @@ export default function InvoicesPage() {
           ))}
         </select>
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Opening...' : 'Open Invoice'}
+          {submitting ? 'Opening...' : 'Open'}
         </button>
       </form>
       </div>

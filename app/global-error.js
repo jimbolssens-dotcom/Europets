@@ -25,10 +25,10 @@ export default function GlobalError({ error, reset }) {
           {error?.digest && ` (digest: ${error.digest})`}
         </p>
         <button type="button" onClick={() => reset()}>
-          Try Again
+          Retry
         </button>
         <button type="button" onClick={() => window.location.reload()} style={{ marginLeft: '0.5rem' }}>
-          Reload Page
+          Reload
         </button>
       </body>
     </html>
