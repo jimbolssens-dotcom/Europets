@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import SearchBox from '../_components/SearchBox';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
+import CultureReminderBanner from '../_components/CultureReminderBanner';
 import { supabase } from '@/lib/supabaseClient';
 
 // Wraps every internal staff page (everything except the public client
@@ -151,6 +152,7 @@ export default function AdminLayout({ children }) {
           </button>
         </div>
       </nav>
+      <CultureReminderBanner />
       <main className="content">{children}</main>
     </>
   );

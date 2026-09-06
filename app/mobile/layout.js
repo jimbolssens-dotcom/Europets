@@ -13,6 +13,7 @@
 // under /mobile, not the desktop admin site or the client portal.
 
 import AppVersionWatcher from '@/app/_components/AppVersionWatcher';
+import CultureReminderBanner from '@/app/_components/CultureReminderBanner';
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -38,6 +39,7 @@ export default function MobileLayout({ children }) {
   return (
     <div className="mobile-app">
       <AppVersionWatcher />
+      <CultureReminderBanner />
       {children}
     </div>
   );
