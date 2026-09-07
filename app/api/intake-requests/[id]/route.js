@@ -90,6 +90,7 @@ async function submit(id, body) {
     email,
     address,
     emirates_id,
+    emirate,
     patients,
     notes,
     selected_patient_id,
@@ -202,6 +203,7 @@ async function submit(id, body) {
       email: isExistingClient ? undefined : email || null,
       address: isExistingClient ? undefined : address || null,
       emirates_id: isExistingClient ? undefined : emirates_id || null,
+      emirate: isExistingClient ? undefined : emirate || null,
       patients: newPets,
       selected_patient_id: selected_patient_id || null,
       notes: notes || null,
@@ -320,6 +322,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
         email: intake.email,
         address: intake.address,
         emirates_id: intake.emirates_id,
+        emirate: intake.emirate,
       }])
       .select()
       .single();

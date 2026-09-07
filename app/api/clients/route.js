@@ -51,7 +51,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { full_name, phones, emirates_id, trn, email, address } = body;
+  const { full_name, phones, emirates_id, trn, email, address, emirate } = body;
 
   if (!full_name) {
     return NextResponse.json({ error: 'full_name is required' }, { status: 400 });
@@ -74,6 +74,7 @@ export async function POST(request) {
         trn: trn || null,
         email,
         address,
+        emirate: emirate || null,
       },
     ])
     .select()

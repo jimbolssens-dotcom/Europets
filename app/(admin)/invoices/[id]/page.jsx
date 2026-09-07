@@ -245,6 +245,24 @@ export default function InvoiceDetailPage() {
     window.open(`/api/invoices/${id}/tax-invoice-pdf?t=${Date.now()}`, '_blank');
   }
 
+  // Unlike downloadTaxInvoice, this needs a stable URL a client can open
+  // themselves with no login — the tax-invoice-pdf route is carved out of
+  // the staff PIN gate for exactly this (see middleware.js) — so no
+  // cache-busting param here; whatever they open always regenerates the
+  // PDF fresh from the route's own no-store headers regardless.
+  function sendInvoiceViaWhatsApp() {
+    setPaymentLinkError(null);
+    const url = `${window.location.origin}/api/invoices/${id}/tax-invoice-pdf`;
+    const digits = (invoice.clients?.phone || '').replace(/\D/g, '');
+    const message = `Hi ${invoice.clients?.full_name || ''}! Here is your invoice from Europets Clinic: ${url}`;
+    if (digits.length > 3) {
+      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+    } else {
+      navigator.clipboard.writeText(url);
+      setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
+    }
+  }
+
   if (loading || !invoice) return <p>Loading invoice...</p>;
   if (invoice.error) return <p>Invoice not found.</p>;
 
@@ -277,6 +295,9 @@ export default function InvoiceDetailPage() {
       <p>
         <button type="button" onClick={downloadTaxInvoice}>
           📄 Download
+        </button>{' '}
+        <button type="button" onClick={sendInvoiceViaWhatsApp}>
+          💬 WhatsApp
         </button>{' '}
         {editable && (
           <button type="button" onClick={sendPaymentLink}>

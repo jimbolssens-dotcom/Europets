@@ -52,6 +52,8 @@ create table clients (
     trn text,                -- client's own VAT Tax Registration Number, if a registered business
     email text,
     address text,
+    emirate text,             -- which of the 7 emirates they're based in (see lib/emirates.js);
+                               -- distinct from emirates_id above
     legacy_outstanding_balance numeric(10,2),  -- carried over from the old clinic software at import,
                                                 -- reference only; not linked to any invoice here (migration 069)
     created_at timestamptz default now()
@@ -213,7 +215,10 @@ create table visits (
     findings text,                   -- physical exam findings
     diagnosis text,
     prognosis text,
-    treatment_notes text
+    treatment_notes text,
+    ai_summary text                  -- client-facing consult report, generated on
+                                      -- completion (migration 072) — see
+                                      -- lib/anthropicClient.js#generateConsultReport
 );
 
 -- ============ DIAGNOSTICS ============
@@ -628,6 +633,7 @@ create table intake_requests (
     email text,
     address text,
     emirates_id text,
+    emirate text,             -- which of the 7 emirates they're based in (see lib/emirates.js)
     patients jsonb not null default '[]',  -- [{name, species, breed, date_of_birth, sex, microchip_number}], filled in by the client
     notes text,
     submitted_at timestamptz,

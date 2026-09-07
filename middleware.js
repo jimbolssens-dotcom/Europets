@@ -37,15 +37,19 @@ const PUBLIC_PATTERNS = [
   /^\/api\/hospitalizations\/[^/]+\/request-update$/,
   /^\/api\/booking-availability(\/.*)?$/,
   /^\/api\/app-version$/, // polled by AppVersionWatcher on every page, staff and portal alike
-  // Report PDFs staff share straight to the client's phone/inbox via a
-  // WhatsApp/email link (see ReportShareActions) — by id only, a read-only
-  // GET of one specific unguessable report, same trust level as the other
-  // by-id-only entries above.
-  /^\/api\/visits\/[^/]+\/report-pdf$/,
+  // Report/invoice PDFs staff link directly to a client via WhatsApp/email
+  // (see ReportShareActions and the invoice/consult pages) — these need to
+  // open for the client with no login, same reasoning as the rest of this
+  // list. Each still only exposes the one record its UUID names, nothing
+  // broader. (This carve-out was missing when the staff gate below was
+  // first added, silently breaking every one of these "send to owner"
+  // buttons — see migration/PR history around 2026-09-07.)
+  /^\/api\/invoices\/[^/]+\/tax-invoice-pdf$/,
   /^\/api\/surgical-reports\/[^/]+\/report-pdf$/,
   /^\/api\/ultrasound-reports\/[^/]+\/report-pdf$/,
   /^\/api\/xray-reports\/[^/]+\/report-pdf$/,
   /^\/api\/dental-reports\/[^/]+\/report-pdf$/,
+  /^\/api\/visits\/[^/]+\/report-pdf$/,
 ];
 
 function isPublicPath(pathname, method) {

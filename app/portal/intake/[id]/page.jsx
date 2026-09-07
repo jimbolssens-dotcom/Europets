@@ -33,6 +33,7 @@ import { useParams } from 'next/navigation';
 import SpeciesField from '@/app/_components/SpeciesField';
 import PetAttributeField from '@/app/_components/PetAttributeField';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
+import { EMIRATES } from '@/lib/emirates';
 import {
   clientAppointmentTypeEntriesForSex,
   clientBookingDurationMinutes,
@@ -72,6 +73,7 @@ export default function IntakePortalPage() {
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [emiratesId, setEmiratesId] = useState('');
+  const [emirate, setEmirate] = useState('');
   const [notes, setNotes] = useState('');
   const [pets, setPets] = useState([emptyPet()]);
 
@@ -344,6 +346,7 @@ export default function IntakePortalPage() {
         email,
         address,
         emirates_id: emiratesId,
+        emirate,
         notes,
         patients: newPetsToSubmit,
         selected_patient_id: selectedPatientId,
@@ -453,6 +456,17 @@ export default function IntakePortalPage() {
                 <label>
                   Emirates ID number (optional)
                   <input value={emiratesId} onChange={(e) => setEmiratesId(e.target.value)} />
+                </label>
+                <label>
+                  Emirate (optional)
+                  <select value={emirate} onChange={(e) => setEmirate(e.target.value)}>
+                    <option value="">Select...</option>
+                    {EMIRATES.map((e) => (
+                      <option key={e} value={e}>
+                        {e}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </>
             )}

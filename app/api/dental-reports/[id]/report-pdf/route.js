@@ -4,8 +4,8 @@
 // instructions, drafted by generateClientReport) plus any photos
 // attached to the report, as a PDF — for staff to download/print, or
 // linked directly in the WhatsApp/email "send to owner" buttons on the
-// consult page (this route needs no auth, same as the rest of this
-// app's PDF routes, since there's no staff auth to begin with).
+// consult page. Public — no staff login — via a specific carve-out in
+// middleware.js, since a client needs to be able to open this link.
 //
 // Generating this PDF is also what locks this visit's extracted teeth
 // to "missing" on the patient's permanent chart (see lockExtractedTeeth)
