@@ -64,6 +64,19 @@ export default function PatientDetailPage() {
   const vac = useVaccinations(id, patient?.species);
   const patientAlerts = usePatientAlerts(id);
 
+  async function toggleDeceased() {
+    const nextDeceased = !patient.deceased;
+    if (nextDeceased && !confirm(`Mark ${patient.name} as deceased (RIP)?`)) return;
+    const res = await fetch(`/api/patients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deceased: nextDeceased }),
+    });
+    if (res.ok) {
+      setPatient((prev) => ({ ...prev, deceased: nextDeceased }));
+    }
+  }
+
   async function updateDentalChart(newChart) {
     setSavingDentalChart(true);
     const res = await fetch(`/api/patients/${id}`, {
@@ -94,7 +107,10 @@ export default function PatientDetailPage() {
         </a>{' '}
         <a href={`/consults?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
           New Consult
-        </a>
+        </a>{' '}
+        <button type="button" className="button-link" onClick={toggleDeceased}>
+          {patient.deceased ? 'Undo RIP' : 'Mark as RIP 🐾'}
+        </button>
       </h1>
 
       <div className="patient-alerts-panel patient-alerts-panel-static">
