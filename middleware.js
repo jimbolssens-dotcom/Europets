@@ -30,10 +30,8 @@ const PUBLIC_PATTERNS = [
   /^\/api\/login$/,
   /^\/portal(\/.*)?$/,
   /^\/api\/new-client-qr$/,
-  /^\/api\/intake-requests\/[^/]+$/, // by id only — the public form's own GET/PATCH
+  /^\/api\/intake-requests\/[^/]+$/, // by id only — the public form's own GET/PATCH (PATCH's staff-only actions re-check the cookie themselves — see isStaffRequest in that route)
   /^\/api\/consent-form-requests\/[^/]+$/, // by id only — the remote-signing page's own GET/POST
-  /^\/api\/hospitalizations\/[^/]+$/, // by id only — the client portal's status read
-  /^\/api\/hospitalizations\/[^/]+\/notes$/, // by id only, not /notes/[noteId]
   /^\/api\/hospitalizations\/[^/]+\/request-update$/,
   /^\/api\/booking-availability(\/.*)?$/,
   /^\/api\/app-version$/, // polled by AppVersionWatcher on every page, staff and portal alike
@@ -48,8 +46,16 @@ const PUBLIC_PATTERNS = [
   /^\/api\/dental-reports\/[^/]+\/report-pdf$/,
 ];
 
+// Hospitalization by-id and its /notes are public for the client portal's
+// read-only status/worksheet view, but each also has a staff-only write
+// (PATCH the admission — status/room/cage/reason; POST a worksheet entry)
+// under the same path — a plain path-only pattern would expose those too,
+// so these two need the same GET-only carve-out as /api/staff below.
+const HOSPITALIZATION_READ_PATTERNS = [/^\/api\/hospitalizations\/[^/]+$/, /^\/api\/hospitalizations\/[^/]+\/notes$/];
+
 function isPublicPath(pathname, method) {
   if (pathname === '/api/staff' && method === 'GET') return true; // vet picker on the booking form
+  if (method === 'GET' && HOSPITALIZATION_READ_PATTERNS.some((re) => re.test(pathname))) return true;
   return PUBLIC_PATTERNS.some((re) => re.test(pathname));
 }
 

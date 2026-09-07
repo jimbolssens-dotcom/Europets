@@ -21,6 +21,7 @@ import { CLIENT_APPOINTMENT_TYPES, CLIENT_APPOINTMENT_TYPE_LABELS, appointmentTy
 import { seedCoreVaccinationsFromLastGiven } from '@/lib/vaccinationSeeding';
 import { findAppointmentConflict } from '@/lib/appointmentScheduling';
 import { phoneSearchDigits, clientIdsWithPhoneLike } from '@/lib/phoneMatch';
+import { isStaffRequest } from '@/lib/staffAuth';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
@@ -436,6 +437,19 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
 export async function PATCH(request, { params }) {
   const body = await request.json();
 
+  // This route is reachable without the staff PIN (middleware treats it
+  // as public, by id, since the client's own 'submit' — and the portal's
+  // own-number 'link_existing_client' lookup — need to be) but 'approve'/
+  // 'reject'/'update_phone' are staff-only review actions layered onto
+  // the same PATCH method later. Middleware can't tell those apart (it
+  // only sees path + method, not the body), so this is the backstop:
+  // without it, anyone holding (or guessing) an intake_request id could
+  // approve their own submission against an arbitrary client_id, or
+  // silently reassign who an unsent invite link goes to.
+  if (['approve', 'reject', 'update_phone'].includes(body.action) && !(await isStaffRequest(request))) {
+    return NextResponse.json({ error: 'Staff login required at /login' }, { status: 401 });
+  }
+
   if (body.action === 'submit') return submit(params.id, body);
   if (body.action === 'link_existing_client') return linkExistingClient(params.id, body.phone);
   if (body.action === 'approve' || body.action === 'reject') {
@@ -462,7 +476,14 @@ export async function PATCH(request, { params }) {
   return NextResponse.json({ error: 'unknown action' }, { status: 400 });
 }
 
+// Cancelling an unused invite link is a staff action (see the "Cancel"
+// button on the Client Invites page) — same backstop as above, since
+// this whole path is public at the middleware level for GET/PATCH.
 export async function DELETE(request, { params }) {
+  if (!(await isStaffRequest(request))) {
+    return NextResponse.json({ error: 'Staff login required at /login' }, { status: 401 });
+  }
+
   const { error } = await supabase.from('intake_requests').delete().eq('id', params.id);
 
   if (error) {
