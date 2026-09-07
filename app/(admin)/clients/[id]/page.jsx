@@ -31,6 +31,10 @@ export default function ClientDetailPage() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState(null);
 
+  const [legacyPaymentAmount, setLegacyPaymentAmount] = useState('');
+  const [recordingLegacyPayment, setRecordingLegacyPayment] = useState(false);
+  const [legacyPaymentError, setLegacyPaymentError] = useState(null);
+
   const load = () =>
     Promise.all([
       fetch(`/api/clients/${id}`).then((res) => res.json()),
@@ -208,6 +212,35 @@ export default function ClientDetailPage() {
     load();
   }
 
+  // Knocks a payment off the carried-over old-system balance, clamped at
+  // zero — for the common case of a client paying down what they owed the
+  // old software over time, without having to open the full Edit form and
+  // retype the whole remaining figure by hand.
+  async function recordLegacyPayment(e) {
+    e.preventDefault();
+    const amount = Number(legacyPaymentAmount);
+    if (!amount || amount <= 0) {
+      setLegacyPaymentError('Enter an amount paid');
+      return;
+    }
+    setRecordingLegacyPayment(true);
+    setLegacyPaymentError(null);
+    const newBalance = Math.max(0, Math.round((client.legacy_outstanding_balance - amount) * 100) / 100);
+    const res = await fetch(`/api/clients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ legacy_outstanding_balance: newBalance }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setRecordingLegacyPayment(false);
+    if (!res.ok) {
+      setLegacyPaymentError(data.error || 'Failed to record payment');
+      return;
+    }
+    setLegacyPaymentAmount('');
+    load();
+  }
+
   if (loading) return <p>Loading client...</p>;
   if (!client || client.error) return <p>Client not found.</p>;
 
@@ -304,14 +337,33 @@ export default function ClientDetailPage() {
       )}
 
       {client.legacy_outstanding_balance > 0 && (
-        <p className="legacy-balance-note">
-          ⚠️ Old system balance: AED {money(client.legacy_outstanding_balance)}{' '}
-          <InfoHint>
-            Carried over from the previous clinic software at import — not reflected in any
-            invoice here. Check the old records before writing it off or invoicing it, then
-            clear it from Edit once reconciled.
-          </InfoHint>
-        </p>
+        <div className="legacy-balance-note">
+          <p>
+            ⚠️ Old system balance: AED {money(client.legacy_outstanding_balance)}{' '}
+            <InfoHint>
+              Carried over from the previous clinic software at import — not reflected in any
+              invoice here. Record what they pay off below as it comes in, or clear it from
+              Edit once fully reconciled.
+            </InfoHint>
+          </p>
+          <form className="legacy-balance-payment-form" onSubmit={recordLegacyPayment}>
+            {legacyPaymentError && <p className="error">{legacyPaymentError}</p>}
+            <label>
+              Record payment (AED)
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="Amount paid"
+                value={legacyPaymentAmount}
+                onChange={(e) => setLegacyPaymentAmount(e.target.value)}
+              />
+            </label>
+            <button type="submit" disabled={recordingLegacyPayment}>
+              {recordingLegacyPayment ? 'Saving...' : 'Record Payment'}
+            </button>
+          </form>
+        </div>
       )}
 
       <div className="card financial-overview">

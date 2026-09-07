@@ -3031,8 +3031,35 @@ button.secondary:hover {
   border-radius: 6px;
   padding: 0.6rem 0.9rem;
   margin: 0.75rem 0;
+}
+
+.legacy-balance-note > p {
+  margin: 0 0 0.5rem;
   font-weight: 600;
   color: #8a6116;
+}
+
+.legacy-balance-payment-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  font-weight: normal;
+}
+
+.legacy-balance-payment-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  color: #8a6116;
+  gap: 0.2rem;
+}
+
+.legacy-balance-payment-form input {
+  width: 8rem;
+}
+
+.legacy-balance-payment-form .error {
+  margin: 0 0 0.4rem;
 }
 
 .possible-duplicate-warning p {
