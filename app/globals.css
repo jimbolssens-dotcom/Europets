@@ -970,6 +970,23 @@ button.secondary:hover {
   border-radius: 4px;
 }
 
+.diagnostic-result-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0.5rem 0;
+}
+
+.diagnostic-result-row textarea {
+  flex: 1;
+  min-width: 180px;
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  resize: vertical;
+}
+
 /* Compact, low-emphasis sharing controls — tucked below the main
    workflow (e.g. the day-to-day worksheet) rather than competing with it
    for attention at the top of the page. */

@@ -15,7 +15,7 @@ function isImage(attachment) {
   );
 }
 
-export default function AttachmentSection({ entityType, entityId }) {
+export default function AttachmentSection({ entityType, entityId, onUploaded }) {
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -38,8 +38,9 @@ export default function AttachmentSection({ entityType, entityId }) {
     setUploading(true);
     setError(null);
     try {
-      await uploadAttachment({ entityType, entityId, file });
+      const attachment = await uploadAttachment({ entityType, entityId, file });
       load();
+      if (onUploaded) await onUploaded(file, attachment);
     } catch (err) {
       setError(err.message);
     }

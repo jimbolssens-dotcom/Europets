@@ -74,6 +74,10 @@ export default function ConsultDetailPage() {
   const [diagnostics, setDiagnostics] = useState([]);
   const [diagForm, setDiagForm] = useState({ goods_service_id: '', description: '', result: '' });
   const [diagError, setDiagError] = useState(null);
+  const [resultDrafts, setResultDrafts] = useState({});
+  const [savingResultId, setSavingResultId] = useState(null);
+  const [extractingResultId, setExtractingResultId] = useState(null);
+  const [extractResultError, setExtractResultError] = useState({});
 
   const [treatmentItems, setTreatmentItems] = useState([]);
   const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1' });
@@ -361,6 +365,47 @@ export default function ConsultDetailPage() {
     setDiagForm({ goods_service_id: '', description: '', result: '' });
     loadDiagnostics();
     loadTreatmentItems();
+  }
+
+  async function saveDiagnosticResult(diagId) {
+    setSavingResultId(diagId);
+    const res = await fetch(`/api/diagnostics/${diagId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result: resultDrafts[diagId] ?? '' }),
+    });
+    setSavingResultId(null);
+    if (res.ok) {
+      loadDiagnostics();
+    }
+  }
+
+  // A photo attached to a diagnostic (a lab panel, an imaging reading,
+  // ...) gets read by AI and its result values dropped straight into the
+  // diagnostic's result field, on top of whatever's already there — the
+  // photo itself still saves as a regular attachment either way.
+  async function handleDiagnosticPhotoUploaded(diagId, testName, file) {
+    if (!file.type.startsWith('image/')) return;
+    setExtractingResultId(diagId);
+    setExtractResultError((prev) => ({ ...prev, [diagId]: null }));
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('test_name', testName || '');
+      const res = await fetch(`/api/diagnostics/${diagId}/extract-result`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setExtractResultError((prev) => ({ ...prev, [diagId]: data.error || 'Failed to read result from photo' }));
+      } else {
+        setResultDrafts((prev) => ({ ...prev, [diagId]: data.result }));
+        loadDiagnostics();
+      }
+    } finally {
+      setExtractingResultId(null);
+    }
   }
 
   async function deleteDiagnostic(diagId) {
@@ -907,12 +952,28 @@ export default function ConsultDetailPage() {
                 </button>
               </div>
               {d.description && <p>{d.description}</p>}
-              {d.result && (
-                <p>
-                  <strong>Result:</strong> {d.result}
-                </p>
-              )}
-              <AttachmentSection entityType="diagnostic" entityId={d.id} />
+              <div className="diagnostic-result-row">
+                <textarea
+                  placeholder="Result (add once it's back, or attach a photo below to have it read automatically)"
+                  rows={3}
+                  value={resultDrafts[d.id] ?? d.result ?? ''}
+                  onChange={(e) => setResultDrafts({ ...resultDrafts, [d.id]: e.target.value })}
+                />
+                <button
+                  type="button"
+                  onClick={() => saveDiagnosticResult(d.id)}
+                  disabled={savingResultId === d.id}
+                >
+                  {savingResultId === d.id ? 'Saving...' : 'Save Result'}
+                </button>
+              </div>
+              {extractingResultId === d.id && <p className="visit-meta">🔎 Reading result from photo...</p>}
+              {extractResultError[d.id] && <p className="error">{extractResultError[d.id]}</p>}
+              <AttachmentSection
+                entityType="diagnostic"
+                entityId={d.id}
+                onUploaded={(file) => handleDiagnosticPhotoUploaded(d.id, testName, file)}
+              />
 
               {isUltrasoundTest(testName) && (
                 <div className="postop-panel">
