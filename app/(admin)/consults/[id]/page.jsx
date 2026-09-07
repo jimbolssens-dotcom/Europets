@@ -20,6 +20,7 @@ import CatalogPicker from '@/app/_components/CatalogPicker';
 import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
+import { isXrayTest } from '@/lib/xrayProduct';
 import ReportShareActions from '@/app/_components/ReportShareActions';
 import ClientReportEditor from '@/app/_components/ClientReportEditor';
 import DentalChart from '@/app/_components/DentalChart';
@@ -99,6 +100,10 @@ export default function ConsultDetailPage() {
   const [dictatingUltrasoundFor, setDictatingUltrasoundFor] = useState(null); // diagnostic id currently starting a report
   const [autoRecordUltrasoundId, setAutoRecordUltrasoundId] = useState(null);
 
+  const [xrayReports, setXrayReports] = useState([]);
+  const [dictatingXrayFor, setDictatingXrayFor] = useState(null); // diagnostic id currently starting a report
+  const [autoRecordXrayId, setAutoRecordXrayId] = useState(null);
+
   const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
 
   const [consentForms, setConsentForms] = useState([]);
@@ -169,6 +174,11 @@ export default function ConsultDetailPage() {
       .then((res) => res.json())
       .then((data) => setUltrasoundReports(Array.isArray(data) ? data : []));
 
+  const loadXrayReports = () =>
+    fetch(`/api/xray-reports?visit_id=${id}`)
+      .then((res) => res.json())
+      .then((data) => setXrayReports(Array.isArray(data) ? data : []));
+
   const loadInvoiceInfo = () =>
     fetch(`/api/invoices?visit_id=${id}`)
       .then((res) => res.json())
@@ -189,6 +199,7 @@ export default function ConsultDetailPage() {
     loadSurgicalReports();
     loadDentalReports();
     loadUltrasoundReports();
+    loadXrayReports();
     loadInvoiceInfo();
     loadConsentForms();
 
@@ -225,6 +236,7 @@ export default function ConsultDetailPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'surgical_reports', filter: `visit_id=eq.${id}` }, loadSurgicalReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dental_reports', filter: `visit_id=eq.${id}` }, loadDentalReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ultrasound_reports', filter: `visit_id=eq.${id}` }, loadUltrasoundReports)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'xray_reports', filter: `visit_id=eq.${id}` }, loadXrayReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices', filter: `visit_id=eq.${id}` }, loadInvoiceInfo)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'consent_forms', filter: `visit_id=eq.${id}` }, loadConsentForms)
       .subscribe();
@@ -571,6 +583,22 @@ export default function ConsultDetailPage() {
     }
   }
 
+  // Same pattern, for an X-ray diagnostic entry.
+  async function startDictateXrayReport(diagnosticId) {
+    setDictatingXrayFor(diagnosticId);
+    const res = await fetch('/api/xray-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId }),
+    });
+    const data = await res.json();
+    setDictatingXrayFor(null);
+    if (res.ok) {
+      setAutoRecordXrayId(data.id);
+      loadXrayReports();
+    }
+  }
+
   async function createInvoice() {
     setCreatingInvoice(true);
     const res = await fetch(`/api/visits/${id}/invoice`, { method: 'POST' });
@@ -860,6 +888,7 @@ export default function ConsultDetailPage() {
             ? catalog.find((c) => c.id === d.goods_service_id)?.name || 'Test'
             : LEGACY_DIAGNOSTIC_TYPE_LABELS[d.type] || d.type;
           const ultrasoundReport = ultrasoundReports.find((r) => r.diagnostic_id === d.id);
+          const xrayReport = xrayReports.find((r) => r.diagnostic_id === d.id);
 
           return (
             <div key={d.id} className="visit-card">
@@ -915,6 +944,48 @@ export default function ConsultDetailPage() {
                         client={consult.clients}
                         patient={consult.patients}
                         reportLabel="ultrasound report"
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+
+              {isXrayTest(testName) && (
+                <div className="postop-panel">
+                  <h4>X-ray Report</h4>
+                  {!xrayReport ? (
+                    <button
+                      type="button"
+                      onClick={() => startDictateXrayReport(d.id)}
+                      disabled={dictatingXrayFor === d.id}
+                    >
+                      🎤 {dictatingXrayFor === d.id ? 'Starting...' : 'Dictate Report'}
+                    </button>
+                  ) : (
+                    <>
+                      <p className="visit-meta">
+                        {xrayReport.staff?.full_name || 'unassigned'} ·{' '}
+                        {xrayReport.performed_at ? new Date(xrayReport.performed_at).toLocaleString() : ''}
+                      </p>
+                      <AudioRecorder
+                        entityType="xray_report"
+                        entityId={xrayReport.id}
+                        autoStart={xrayReport.id === autoRecordXrayId}
+                      />
+                      <AttachmentSection entityType="xray_report" entityId={xrayReport.id} />
+                      <ClientReportEditor
+                        reportId={xrayReport.id}
+                        apiBase="/api/xray-reports"
+                        savedReport={xrayReport.ai_summary}
+                        onSaved={loadXrayReports}
+                      />
+                      <h4>Share X-ray Report</h4>
+                      <ReportShareActions
+                        reportId={xrayReport.id}
+                        apiBase="/api/xray-reports"
+                        client={consult.clients}
+                        patient={consult.patients}
+                        reportLabel="x-ray report"
                       />
                     </>
                   )}

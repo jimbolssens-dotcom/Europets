@@ -738,6 +738,21 @@ create table ultrasound_reports (
     created_at timestamptz default now()
 );
 
+-- ============ X-RAY REPORTS ============
+-- Same as ultrasound_reports above, triggered from a specific X-ray entry
+-- in diagnostics (migration 073).
+create table xray_reports (
+    id uuid primary key default gen_random_uuid(),
+    visit_id uuid references visits(id) on delete cascade not null,
+    diagnostic_id uuid references diagnostics(id) on delete set null,
+    performed_by uuid references staff(id),
+    findings text,
+    notes text,
+    ai_summary text,          -- populated by AI elaboration of the dictated findings
+    performed_at timestamptz default now(),
+    created_at timestamptz default now()
+);
+
 -- ============ HOSPITALIZATION ============
 -- Standalone multi-day admission, optionally started from a consult.
 create table hospitalizations (
@@ -1123,7 +1138,7 @@ create policy "Public delete consult-files" on storage.objects
 -- supabase_realtime publication for those subscriptions to receive anything.
 alter publication supabase_realtime add table
     clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items,
-    diagnostics, treatment_items, surgical_reports, dental_reports, ultrasound_reports,
+    diagnostics, treatment_items, surgical_reports, dental_reports, ultrasound_reports, xray_reports,
     hospitalizations, hospitalization_notes, attachments, recordings, clinic_settings,
     vaccine_protocols, vaccinations, intake_requests, expenses, staff_roster_entries, review_requests,
     nomod_payment_links, policy_categories, policies;
@@ -1154,6 +1169,7 @@ alter table treatment_items disable row level security;
 alter table surgical_reports disable row level security;
 alter table dental_reports disable row level security;
 alter table ultrasound_reports disable row level security;
+alter table xray_reports disable row level security;
 alter table hospitalizations disable row level security;
 alter table cages disable row level security;
 alter table hospitalization_notes disable row level security;
