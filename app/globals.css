@@ -865,12 +865,6 @@ button.secondary:hover {
   margin-bottom: 0.6rem;
 }
 
-.patient-alerts-panel-static h2 {
-  margin: 0 0 0.6rem;
-  font-size: 1.1rem;
-  color: #8a6116;
-}
-
 /* Quick-glance link to a patient's past consults on the consult page —
    neutral/pink (not the amber of .patient-alerts-panel) since it's
    reference material, not a standing warning. Collapsed by default so it

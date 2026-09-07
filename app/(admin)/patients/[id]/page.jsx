@@ -99,28 +99,26 @@ export default function PatientDetailPage() {
       <p>
         <a href="/patients">&larr; All patients</a>
       </p>
-      <h1>
-        {patient.name} <span>(Patient #{patient.patient_number})</span>
-        {patient.deceased && <span className="error"> · Deceased</span>}{' '}
-        <a href={`/appointments?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
-          Book Appointment
-        </a>{' '}
-        <a href={`/consults?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
-          New Consult
-        </a>{' '}
-        <button
-          type="button"
-          className="button-link"
-          style={{ fontSize: 'inherit' }}
-          onClick={toggleDeceased}
-        >
-          {patient.deceased ? 'Undo RIP' : 'Mark as RIP 🐾'}
-        </button>
-      </h1>
-
-      <div className="patient-alerts-panel patient-alerts-panel-static">
-        <h2>⚠️ Long-Term Patient Notes</h2>
-        <PatientAlerts {...patientAlerts} staff={staff} />
+      <div className="consult-header-row">
+        <h1>
+          {patient.name} <span>(Patient #{patient.patient_number})</span>
+          {patient.deceased && <span className="error"> · Deceased</span>}{' '}
+          <a href={`/appointments?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
+            Book Appointment
+          </a>{' '}
+          <a href={`/consults?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
+            New Consult
+          </a>{' '}
+          <button type="button" className="button-link" onClick={toggleDeceased}>
+            {patient.deceased ? 'Undo RIP' : 'Mark as RIP 🐾'}
+          </button>
+        </h1>
+        <details className="patient-alerts-panel" open={patientAlerts.alerts.length > 0}>
+          <summary>
+            ⚠️ Long-Term Patient Notes {patientAlerts.alerts.length > 0 && `(${patientAlerts.alerts.length})`}
+          </summary>
+          <PatientAlerts {...patientAlerts} staff={staff} />
+        </details>
       </div>
 
       <div className="split">
