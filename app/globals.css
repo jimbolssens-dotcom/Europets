@@ -1215,6 +1215,12 @@ button.secondary:hover {
   margin-top: 0.25rem;
 }
 
+.edit-appointment-modal {
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
 /* Not-on-roster booking alert (app/appointments) — deliberately loud: a
    vet who isn't on the staff roster for that date+shift is a hard block,
    so this needs to actually stop reception rather than read as one more

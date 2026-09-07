@@ -19,6 +19,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import SearchSelect from '@/app/_components/SearchSelect';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
+import EditAppointmentModal from '@/app/_components/EditAppointmentModal';
 import AppointmentRequestsPanel from '@/app/_components/AppointmentRequestsPanel';
 import { buildStaffColorMap, UNASSIGNED_STAFF_COLOR } from '@/lib/staffColors';
 
@@ -211,7 +212,9 @@ function AppointmentsPageInner() {
   const [dragSelect, setDragSelect] = useState(null); // { roomId, startMinutes, endMinutes } — click-and-drag on empty grid to pick a multi-slot range
   const [dragMove, setDragMove] = useState(null); // { appointmentId, roomId, startMinutes } — dragging an existing block to a new time/room
   const [dragResize, setDragResize] = useState(null); // { appointmentId, duration } — dragging a surgery block's bottom edge
+  const [editingAppointment, setEditingAppointment] = useState(null); // the appointment shown in the Edit Appointment modal, or null
   const bookingFormRef = useRef(null);
+  const pendingClickTimeoutRef = useRef(null); // delays opening the edit modal on a plain click, so a following double-click (open the consult) can cancel it first
   const scheduleWrapRef = useRef(null);
   const scheduleHeight = (CLOSE_HOUR - OPEN_HOUR) * 60 * pixelsPerMinute;
 
@@ -262,6 +265,12 @@ function AppointmentsPageInner() {
   useEffect(() => {
     if (rosterBlock) playAlertBeep();
   }, [rosterBlock]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingClickTimeoutRef.current) clearTimeout(pendingClickTimeoutRef.current);
+    };
+  }, []);
 
   // Re-measure whenever something above the schedule could have changed its
   // height (the vet legend wrapping to a second line, the "Loading..."
@@ -485,7 +494,27 @@ function AppointmentsPageInner() {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
       setDragMove(null);
-      if (!moved) return;
+      if (!moved) {
+        // A plain click (no drag) opens the Edit Appointment modal — delayed
+        // briefly so a following second click (a double-click, which opens
+        // the consult instead — see onDoubleClick below) can cancel it. A
+        // double-click fires its own separate mousedown/mouseup pair for
+        // the second click, landing back here — if a timeout from the
+        // first click is already pending, this second click cancels it
+        // immediately rather than scheduling (and leaking) another one;
+        // onDoubleClick's own clear is just a backstop for a slower
+        // double-click that lands after the first one already fired.
+        if (pendingClickTimeoutRef.current) {
+          clearTimeout(pendingClickTimeoutRef.current);
+          pendingClickTimeoutRef.current = null;
+        } else {
+          pendingClickTimeoutRef.current = setTimeout(() => {
+            pendingClickTimeoutRef.current = null;
+            openEditModal(appointment);
+          }, 250);
+        }
+        return;
+      }
       const { roomId, startMinutes } = resolve(upEvent.clientX, upEvent.clientY);
       if (roomId === originalRoomId && startMinutes === originalStartMinutes) return;
       patchAppointment(appointment.id, {
@@ -563,10 +592,14 @@ function AppointmentsPageInner() {
     return res.ok;
   }
 
-  // Saves a dragged move/resize (see startMoveAppointment, startResizeAppointment).
-  // Mirrors submitAppointment's error handling — including the same
-  // not-on-roster alert, reused for a drag by tagging its retry payload
-  // __reschedule so addToRosterAndBook knows to PATCH instead of POST.
+  // Saves a dragged move/resize (see startMoveAppointment, startResizeAppointment)
+  // or an Edit Appointment modal submit. Mirrors submitAppointment's error
+  // handling — including the same not-on-roster alert, reused here by
+  // tagging its retry payload __reschedule so addToRosterAndBook knows to
+  // PATCH instead of POST. Returns { ok, rosterBlocked, error } rather than
+  // a plain boolean so a caller that needs to know *why* it failed (the
+  // edit modal, which stays open on a plain error but closes to let the
+  // full-screen roster alert take over) can tell the two apart.
   async function patchAppointment(appointmentId, body) {
     const res = await fetch(`/api/appointments/${appointmentId}`, {
       method: 'PATCH',
@@ -585,15 +618,42 @@ function AppointmentsPageInner() {
           shift: data.shift,
           payload: { __reschedule: true, appointmentId, body },
         });
-      } else {
-        setScheduleError(data?.error || 'Failed to update the appointment');
+        return { ok: false, rosterBlocked: true };
       }
-      return false;
+      const message = data?.error || 'Failed to update the appointment';
+      setScheduleError(message);
+      return { ok: false, rosterBlocked: false, error: message };
     }
     setScheduleError(null);
     setRosterBlock(null);
     loadMonth();
-    return true;
+    return { ok: true };
+  }
+
+  function openEditModal(appointment) {
+    if (pendingClickTimeoutRef.current) {
+      clearTimeout(pendingClickTimeoutRef.current);
+      pendingClickTimeoutRef.current = null;
+    }
+    setScheduleError(null);
+    setEditingAppointment(appointment);
+  }
+
+  function closeEditModal() {
+    setEditingAppointment(null);
+  }
+
+  // Roster-blocked: close the modal and let the full-screen alert (already
+  // set by patchAppointment) take over, same as a blocked drag. Any other
+  // failure: keep the modal open and hand its error back for inline
+  // display. Success: close it — patchAppointment already reloaded the month.
+  async function handleEditSave(body) {
+    const result = await patchAppointment(editingAppointment.id, body);
+    if (result.ok || result.rosterBlocked) {
+      setEditingAppointment(null);
+      return {};
+    }
+    return { error: result.error };
   }
 
   // "Add to Roster" on the not-on-roster alert: add the vet to the roster
@@ -909,10 +969,18 @@ function AppointmentsPageInner() {
                               borderColor: color.fg,
                               color: color.fg,
                             }}
-                            title={canDrag ? 'Drag to reschedule · Double-click to open the consult' : 'Double-click to open the consult'}
+                            title={
+                              canDrag
+                                ? 'Click to edit · Drag to reschedule · Double-click to open the consult'
+                                : 'Double-click to open the consult'
+                            }
                             onClick={(e) => e.stopPropagation()}
                             onDoubleClick={(e) => {
                               e.stopPropagation();
+                              if (pendingClickTimeoutRef.current) {
+                                clearTimeout(pendingClickTimeoutRef.current);
+                                pendingClickTimeoutRef.current = null;
+                              }
                               openConsult(a);
                             }}
                             onMouseDown={(e) => startMoveAppointment(e, a)}
@@ -1121,6 +1189,16 @@ function AppointmentsPageInner() {
             </div>
           </div>
         </div>
+      )}
+
+      {editingAppointment && (
+        <EditAppointmentModal
+          appointment={editingAppointment}
+          rooms={rooms}
+          vets={vets}
+          onClose={closeEditModal}
+          onSave={handleEditSave}
+        />
       )}
     </div>
   );
