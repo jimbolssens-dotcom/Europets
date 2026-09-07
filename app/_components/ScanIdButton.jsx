@@ -2,23 +2,16 @@
 // Reads a photo of an Emirates ID card via /api/clients/scan-id and hands
 // back { full_name, emirates_id, file } — the caller decides what to do
 // with the extracted fields and the photo itself (fill a form, attach to
-// a client, etc.). Offers two ways to get the photo in: the camera
-// directly (opens the device camera on phones/tablets), or picking an
-// already-taken photo from the gallery/files.
+// a client, etc.). One button, opening the device camera directly.
 
 'use client';
 
 import { useRef, useState } from 'react';
 
-export default function ScanIdButton({
-  onScanned,
-  label = '📷 Scan',
-  uploadLabel = '🖼️ Upload',
-}) {
+export default function ScanIdButton({ onScanned, label = '📷 Scan' }) {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState(null);
   const cameraInputRef = useRef(null);
-  const uploadInputRef = useRef(null);
 
   async function handleFile(e) {
     const file = e.target.files[0];
@@ -55,9 +48,6 @@ export default function ScanIdButton({
       <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={scanning}>
         {scanning ? 'Reading ID...' : label}
       </button>
-      <button type="button" onClick={() => uploadInputRef.current?.click()} disabled={scanning}>
-        {scanning ? 'Reading ID...' : uploadLabel}
-      </button>
       {error && <span className="voice-btn-error">{error}</span>}
       <input
         ref={cameraInputRef}
@@ -67,7 +57,6 @@ export default function ScanIdButton({
         onChange={handleFile}
         hidden
       />
-      <input ref={uploadInputRef} type="file" accept="image/*" onChange={handleFile} hidden />
     </span>
   );
 }

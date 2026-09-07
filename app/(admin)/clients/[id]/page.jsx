@@ -7,7 +7,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import AttachmentSection from '@/app/_components/AttachmentSection';
 import ScanIdButton from '@/app/_components/ScanIdButton';
 import ClientPhonesEditor, { initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
 import InfoHint from '@/app/_components/InfoHint';
@@ -438,7 +437,6 @@ export default function ClientDetailPage() {
 
       <h2>Emirates ID</h2>
       {!client.emirates_id && <ScanIdButton onScanned={handleScanned} />}
-      <AttachmentSection entityType="client" entityId={id} />
 
       <h2>Patients</h2>
       <table>
