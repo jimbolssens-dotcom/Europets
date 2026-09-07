@@ -35,7 +35,7 @@ create index idx_staff_roster_entries_date on staff_roster_entries(date);
 create index idx_staff_roster_entries_staff on staff_roster_entries(staff_id);
 
 -- Shared by clients.client_number and patients.patient_number (see
--- migrations/062) — the clinic's old system pulled a new client's number
+-- migrations/068) — the clinic's old system pulled a new client's number
 -- from the same running counter as patient numbers, so a client's first
 -- patient always carries the same number as the client itself. See the
 -- set_first_patient_number trigger below patients for the other half of
@@ -53,7 +53,7 @@ create table clients (
     email text,
     address text,
     legacy_outstanding_balance numeric(10,2),  -- carried over from the old clinic software at import,
-                                                -- reference only; not linked to any invoice here (migration 063)
+                                                -- reference only; not linked to any invoice here (migration 069)
     created_at timestamptz default now()
 );
 

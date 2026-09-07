@@ -1,4 +1,4 @@
--- Migration 062: shared client/patient numbering
+-- Migration 068: shared client/patient numbering
 --
 -- The clinic's old system pulled a new client's number from the same
 -- running counter as patient numbers, so a client's very first patient

@@ -1,4 +1,4 @@
--- Migration 063: legacy outstanding balance
+-- Migration 069: legacy outstanding balance
 --
 -- Carries over each client's outstanding balance from the old clinic
 -- software at import time, purely as a reference note -- it is not tied to
