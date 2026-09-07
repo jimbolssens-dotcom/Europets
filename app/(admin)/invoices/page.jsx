@@ -8,7 +8,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
-import SearchSelect from '@/app/_components/SearchSelect';
+import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 
@@ -217,7 +217,7 @@ const emptyForm = { client_id: '', visit_id: '' };
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
-  const [clients, setClients] = useState([]);
+  const [selectedOwner, setSelectedOwner] = useState(null); // { id, full_name } for the client currently picked below
   const [visits, setVisits] = useState([]);
   const [catalog, setCatalog] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
@@ -243,13 +243,11 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/clients').then((res) => res.json()),
       fetch('/api/visits').then((res) => res.json()),
       fetch('/api/goods-services?active=true').then((res) => res.json()),
       fetch('/api/catalog-subcategories').then((res) => res.json()),
       fetch('/api/staff').then((res) => res.json()),
-    ]).then(([clientsData, visitsData, catalogData, subcategoriesData, staffData]) => {
-      setClients(Array.isArray(clientsData) ? clientsData : []);
+    ]).then(([visitsData, catalogData, subcategoriesData, staffData]) => {
       setVisits(Array.isArray(visitsData) ? visitsData : []);
       setCatalog(Array.isArray(catalogData) ? catalogData : []);
       setSubcategories(Array.isArray(subcategoriesData) ? subcategoriesData : []);
@@ -283,6 +281,7 @@ export default function InvoicesPage() {
       setError(data.error || 'Failed to open invoice');
     } else {
       setForm(emptyForm);
+      setSelectedOwner(null);
       loadInvoices(statusFilter);
     }
     setSubmitting(false);
@@ -331,14 +330,32 @@ export default function InvoicesPage() {
       <form className="card" onSubmit={handleSubmit}>
         <h2>Open Invoice</h2>
         {error && <p className="error">{error}</p>}
-        <SearchSelect
-          items={clients}
-          value={form.client_id}
-          onChange={(client_id) => setForm({ ...form, client_id, visit_id: '' })}
-          getLabel={(c) => c.full_name}
-          getSubLabel={(c) => c.phone}
-          placeholder="Select client..."
-        />
+        {selectedOwner ? (
+          <p className="booking-owner-picked">
+            Client: <strong>{selectedOwner.full_name}</strong>{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedOwner(null);
+                setForm({ ...form, client_id: '', visit_id: '' });
+              }}
+            >
+              Change
+            </button>
+          </p>
+        ) : (
+          <ClientOrPatientSearch
+            placeholder="Search for the client..."
+            onPickClient={(c) => {
+              setSelectedOwner({ id: c.id, full_name: c.full_name });
+              setForm({ ...form, client_id: c.id, visit_id: '' });
+            }}
+            onPickPatient={(p) => {
+              setSelectedOwner({ id: p.client_id, full_name: p.clients?.full_name || '' });
+              setForm({ ...form, client_id: p.client_id, visit_id: '' });
+            }}
+          />
+        )}
         <select
           disabled={!form.client_id}
           value={form.visit_id}

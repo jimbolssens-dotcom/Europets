@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabaseClient';
 import CageFloorPlan from '@/app/_components/CageFloorPlan';
 import CagePicker from '@/app/_components/CagePicker';
 import SearchSelect from '@/app/_components/SearchSelect';
+import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { isWithinOfficeHours } from '@/lib/officeHours';
 import InfoHint from '@/app/_components/InfoHint';
@@ -120,8 +121,8 @@ export default function HospitalizationPage() {
   const [activeTab, setActiveTab] = useState('layout');
   const [admissions, setAdmissions] = useState([]);
   const [cages, setCages] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [patients, setPatients] = useState([]);
+  const [selectedOwner, setSelectedOwner] = useState(null); // { id, full_name } for the owner currently picked in the admit form
+  const [clientPatients, setClientPatients] = useState([]); // that owner's own pets, for the patient picker below
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [drag, setDrag] = useState(null); // { hospId, patientName, fromCageId, x, y, moved, overCageId }
@@ -146,20 +147,16 @@ export default function HospitalizationPage() {
 
   useEffect(() => {
     loadAdmissions();
-    Promise.all([
-      fetch('/api/cages').then((res) => res.json()),
-      fetch('/api/clients').then((res) => res.json()),
-      fetch('/api/patients').then((res) => res.json()),
-    ]).then(([cagesData, clientsData, patientsData]) => {
-      if (Array.isArray(cagesData)) {
-        setCages(cagesData);
-      } else {
-        setCages([]);
-        setError(cagesData?.error || 'Failed to load the cage layout');
-      }
-      setClients(Array.isArray(clientsData) ? clientsData : []);
-      setPatients(Array.isArray(patientsData) ? patientsData : []);
-    });
+    fetch('/api/cages')
+      .then((res) => res.json())
+      .then((cagesData) => {
+        if (Array.isArray(cagesData)) {
+          setCages(cagesData);
+        } else {
+          setCages([]);
+          setError(cagesData?.error || 'Failed to load the cage layout');
+        }
+      });
 
     const channel = supabase
       .channel('hospitalizations-changes')
@@ -284,9 +281,23 @@ export default function HospitalizationPage() {
 
   function openAdmit() {
     setAdmitForm(emptyAdmitForm);
+    setSelectedOwner(null);
     setAdmitError(null);
     setAdmitOpen(true);
   }
+
+  // Loads the owner's own pets once one is picked, on demand rather than
+  // the whole patients table — the clinic's historical import made that
+  // table tens of thousands of rows.
+  useEffect(() => {
+    if (!admitForm.client_id) {
+      setClientPatients([]);
+      return;
+    }
+    fetch(`/api/patients?client_id=${admitForm.client_id}`)
+      .then((res) => res.json())
+      .then((data) => setClientPatients(Array.isArray(data) ? data : []));
+  }, [admitForm.client_id]);
 
   async function handleAdmitSubmit(e) {
     e.preventDefault();
@@ -316,7 +327,6 @@ export default function HospitalizationPage() {
 
   const admitted = admissions.filter((a) => a.status === 'admitted');
   const discharged = admissions.filter((a) => a.status === 'discharged').slice(0, 20);
-  const patientsForClient = patients.filter((p) => p.client_id === admitForm.client_id);
   const occupancy = Object.fromEntries(admitted.filter((a) => a.cage_id).map((a) => [a.cage_id, a]));
   const unassignedAdmitted = admitted.filter((a) => !a.cage_id);
   const occupiedCageIds = new Set(Object.keys(occupancy));
@@ -480,16 +490,34 @@ export default function HospitalizationPage() {
               {admitError && <p className="error">{admitError}</p>}
               <div className="admit-patient-row">
                 <div className="admit-patient-fields">
+                  {selectedOwner ? (
+                    <p className="booking-owner-picked">
+                      Owner: <strong>{selectedOwner.full_name}</strong>{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedOwner(null);
+                          setAdmitForm({ ...admitForm, client_id: '', patient_id: '' });
+                        }}
+                      >
+                        Change
+                      </button>
+                    </p>
+                  ) : (
+                    <ClientOrPatientSearch
+                      placeholder="Search for the owner..."
+                      onPickClient={(c) => {
+                        setSelectedOwner({ id: c.id, full_name: c.full_name });
+                        setAdmitForm({ ...admitForm, client_id: c.id, patient_id: '' });
+                      }}
+                      onPickPatient={(p) => {
+                        setSelectedOwner({ id: p.client_id, full_name: p.clients?.full_name || '' });
+                        setAdmitForm({ ...admitForm, client_id: p.client_id, patient_id: p.id });
+                      }}
+                    />
+                  )}
                   <SearchSelect
-                    items={clients}
-                    value={admitForm.client_id}
-                    onChange={(client_id) => setAdmitForm({ ...admitForm, client_id, patient_id: '' })}
-                    getLabel={(c) => c.full_name}
-                    getSubLabel={(c) => c.phone}
-                    placeholder="Select owner..."
-                  />
-                  <SearchSelect
-                    items={patientsForClient}
+                    items={clientPatients}
                     value={admitForm.patient_id}
                     onChange={(patient_id) => setAdmitForm({ ...admitForm, patient_id })}
                     getLabel={(p) => p.name}

@@ -11,7 +11,7 @@ import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import SpeciesField from '@/app/_components/SpeciesField';
 import PetAttributeField from '@/app/_components/PetAttributeField';
-import SearchSelect from '@/app/_components/SearchSelect';
+import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
 
 const emptyForm = {
@@ -65,7 +65,7 @@ function PatientsPageInner() {
   const [searching, setSearching] = useState(false);
   const [search, setSearch] = useState(emptySearch);
 
-  const [clients, setClients] = useState([]);
+  const [selectedOwner, setSelectedOwner] = useState(null); // { id, full_name } for the owner picked below
   const [form, setForm] = useState({ ...emptyForm, client_id: prefilledClientId });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -90,10 +90,20 @@ function PatientsPageInner() {
   };
 
   useEffect(() => {
-    // Only the Add Patient form's owner dropdown needs the full client list.
-    fetch('/api/clients')
-      .then((res) => res.json())
-      .then((data) => setClients(Array.isArray(data) ? data : []));
+    // Resolves the owner pre-filled from the client just added (see
+    // /clients' createClient, which redirects here) directly by id,
+    // rather than fetching every client to look it up in — the clinic's
+    // historical import put ~9,500 clients in that table, which made the
+    // old approach both slow and, worse, silently wrong whenever the new
+    // client fell outside whatever page a plain unfiltered fetch happened
+    // to return, leaving the owner field looking blank/unselected.
+    if (prefilledClientId) {
+      fetch(`/api/clients/${prefilledClientId}`)
+        .then((res) => res.json())
+        .then((client) => {
+          if (client && !client.error) setSelectedOwner({ id: client.id, full_name: client.full_name });
+        });
+    }
 
     const channel = supabase
       .channel('patients-changes')
@@ -147,7 +157,10 @@ function PatientsPageInner() {
     if (!res.ok) {
       setError(data.error || 'Failed to create patient');
     } else {
-      setForm(emptyForm);
+      // Keeps the owner selected — the same client often has more than one
+      // pet to add in a row (matches the same "keep the client" pattern on
+      // the Appointments booking form).
+      setForm({ ...emptyForm, client_id: form.client_id });
       if (hasSearched) runSearch(search);
     }
     setSubmitting(false);
@@ -261,23 +274,33 @@ function PatientsPageInner() {
         <form className="card" onSubmit={handleSubmit}>
           <h2>Add Patient</h2>
           {error && <p className="error">{error}</p>}
-          {prefilledClientId && (
-            <p className="visit-meta" style={{ margin: 0 }}>
-              Owner pre-filled from the client you just added
-              {clients.find((c) => c.id === prefilledClientId)
-                ? ` — ${clients.find((c) => c.id === prefilledClientId).full_name}`
-                : ''}
-              .
+          {selectedOwner ? (
+            <p className="booking-owner-picked">
+              {prefilledClientId ? 'Owner pre-filled from the client you just added: ' : 'Owner: '}
+              <strong>{selectedOwner.full_name}</strong>{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedOwner(null);
+                  setForm({ ...form, client_id: '' });
+                }}
+              >
+                Change
+              </button>
             </p>
+          ) : (
+            <ClientOrPatientSearch
+              placeholder="Search for the owner..."
+              onPickClient={(c) => {
+                setSelectedOwner({ id: c.id, full_name: c.full_name });
+                setForm({ ...form, client_id: c.id });
+              }}
+              onPickPatient={(p) => {
+                setSelectedOwner({ id: p.client_id, full_name: p.clients?.full_name || '' });
+                setForm({ ...form, client_id: p.client_id });
+              }}
+            />
           )}
-          <SearchSelect
-            items={clients}
-            value={form.client_id}
-            onChange={(client_id) => setForm({ ...form, client_id })}
-            getLabel={(c) => c.full_name}
-            getSubLabel={(c) => c.phone}
-            placeholder="Select owner..."
-          />
           <input
             placeholder="Patient name"
             required
@@ -344,10 +367,9 @@ function PatientsPageInner() {
               onChange={(e) => setForm({ ...form, last_vaccination_date: e.target.value })}
             />
           </label>
-          <button type="submit" disabled={submitting || clients.length === 0}>
+          <button type="submit" disabled={submitting}>
             {submitting ? 'Saving...' : 'Add'}
           </button>
-          {clients.length === 0 && <p>Add a client first.</p>}
         </form>
       </div>
 
