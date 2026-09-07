@@ -875,6 +875,13 @@ create table recordings (
     extracted_fields jsonb,
     error_message text,
     assemblyai_transcript_id text,
+    -- Claim marker so only one concurrent resolveRecording run actually
+    -- does the (non-idempotent) work of inserting treatment items and
+    -- appending extracted text — see lib/recordingProcessing.js. Without
+    -- this, AssemblyAI redelivering a slow webhook, or a "Check now" click
+    -- landing while a run is still in flight, could both pass the
+    -- still-processing check and both fully process the same recording.
+    claimed_at timestamptz,
     created_at timestamptz default now()
 );
 
