@@ -982,18 +982,27 @@ create index invoice_payments_invoice_id_idx on invoice_payments(invoice_id);
 -- so it's always for the invoice's current real balance. Tracked here so a
 -- repeat visit reuses a still-pending link, and so the webhook has
 -- something to match a completed payment back to (migration 058).
+--
+-- A link targets exactly one of invoice_id (settle one invoice) or
+-- client_id (a "campaign" link for a client's whole outstanding balance,
+-- website/app/settle-bill/owner/[clientId] — see migration 066). Paying a
+-- client_id link allocates the amount across that client's outstanding
+-- invoices oldest-first (lib/nomodPayments#recordNomodOwnerPayment).
 create table nomod_payment_links (
     id uuid primary key default gen_random_uuid(),
-    invoice_id uuid references invoices(id) not null,
+    invoice_id uuid references invoices(id),
+    client_id uuid references clients(id),
     nomod_link_id text,  -- Nomod's own id for this link — what the webhook matches on
     url text not null,
     amount numeric(10,2) not null,
     status text not null default 'pending',  -- pending, paid, cancelled
     created_at timestamptz default now(),
-    paid_at timestamptz
+    paid_at timestamptz,
+    constraint nomod_payment_links_target_check check ((invoice_id is not null) <> (client_id is not null))
 );
 
 create index idx_nomod_payment_links_invoice_id on nomod_payment_links(invoice_id);
+create index idx_nomod_payment_links_client_id on nomod_payment_links(client_id);
 create unique index idx_nomod_payment_links_nomod_link_id on nomod_payment_links(nomod_link_id) where nomod_link_id is not null;
 
 -- ============ ACCOUNTING: EXPENSES ============
