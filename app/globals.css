@@ -3005,6 +3005,16 @@ button.secondary:hover {
   font-size: 0.9rem;
 }
 
+.legacy-balance-note {
+  background: #fff8ec;
+  border: 1px solid #f0c674;
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  margin: 0.75rem 0;
+  font-weight: 600;
+  color: #8a6116;
+}
+
 .possible-duplicate-warning p {
   margin: 0 0 0.4rem;
   font-weight: 600;

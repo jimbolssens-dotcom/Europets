@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import ScanIdButton from '@/app/_components/ScanIdButton';
 import ClientPhonesEditor, { initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
+import InfoHint from '@/app/_components/InfoHint';
 import { uploadAttachment } from '@/lib/attachments';
 import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder, openEmailReminder } from '@/lib/paymentReminders';
 
@@ -154,6 +155,7 @@ export default function ClientDetailPage() {
       trn: client.trn || '',
       email: client.email || '',
       address: client.address || '',
+      legacy_outstanding_balance: client.legacy_outstanding_balance ?? '',
     });
     setEditError(null);
     setEditing(true);
@@ -239,6 +241,19 @@ export default function ClientDetailPage() {
             Address
             <input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
           </label>
+          <label>
+            Old system balance (AED){' '}
+            <InfoHint>
+              Carried over from the previous clinic software at import — not linked to any
+              invoice here. Clear it once you&apos;ve reconciled it against the old records.
+            </InfoHint>
+            <input
+              type="number"
+              step="0.01"
+              value={editForm.legacy_outstanding_balance}
+              onChange={(e) => setEditForm({ ...editForm, legacy_outstanding_balance: e.target.value })}
+            />
+          </label>
           <div className="home-links">
             <button type="submit" disabled={savingEdit}>
               {savingEdit ? 'Saving...' : 'Save'}
@@ -262,6 +277,17 @@ export default function ClientDetailPage() {
           <button type="button" onClick={startEdit}>
             Edit
           </button>
+        </p>
+      )}
+
+      {client.legacy_outstanding_balance > 0 && (
+        <p className="legacy-balance-note">
+          ⚠️ Old system balance: AED {money(client.legacy_outstanding_balance)}{' '}
+          <InfoHint>
+            Carried over from the previous clinic software at import — not reflected in any
+            invoice here. Check the old records before writing it off or invoicing it, then
+            clear it from Edit once reconciled.
+          </InfoHint>
         </p>
       )}
 

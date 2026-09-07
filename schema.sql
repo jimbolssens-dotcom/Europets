@@ -34,16 +34,26 @@ create table staff_roster_entries (
 create index idx_staff_roster_entries_date on staff_roster_entries(date);
 create index idx_staff_roster_entries_staff on staff_roster_entries(staff_id);
 
+-- Shared by clients.client_number and patients.patient_number (see
+-- migrations/062) — the clinic's old system pulled a new client's number
+-- from the same running counter as patient numbers, so a client's first
+-- patient always carries the same number as the client itself. See the
+-- set_first_patient_number trigger below patients for the other half of
+-- that rule.
+create sequence clinic_number_seq;
+
 -- ============ CLIENTS ============
 create table clients (
     id uuid primary key default gen_random_uuid(),
-    client_number bigint generated always as identity unique,  -- human-facing client number
+    client_number bigint not null default nextval('clinic_number_seq') unique,  -- human-facing client number
     full_name text not null,
     phone text,               -- synced to whichever client_phones row is_whatsapp=true (see below)
     emirates_id text,        -- UAE Emirates ID number, typed or read off a scanned card
     trn text,                -- client's own VAT Tax Registration Number, if a registered business
     email text,
     address text,
+    legacy_outstanding_balance numeric(10,2),  -- carried over from the old clinic software at import,
+                                                -- reference only; not linked to any invoice here (migration 063)
     created_at timestamptz default now()
 );
 
@@ -70,7 +80,7 @@ create index client_phones_phone_idx on client_phones (phone);
 -- ============ PATIENTS ============
 create table patients (
     id uuid primary key default gen_random_uuid(),
-    patient_number bigint generated always as identity unique,  -- human-facing patient number
+    patient_number bigint not null default nextval('clinic_number_seq') unique,  -- human-facing patient number
     client_id uuid references clients(id) on delete cascade,
     name text not null,
     species text not null,           -- dog, cat, etc.
@@ -87,6 +97,28 @@ create table patients (
     notes text,
     created_at timestamptz default now()
 );
+
+-- A client's first-ever patient reuses the client's own number rather
+-- than drawing a new one from clinic_number_seq (see the comment above
+-- clients). A trigger, not application code, so the rule holds no
+-- matter which code path creates the patient row.
+create or replace function set_first_patient_number()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.client_id is not null and not exists (
+    select 1 from patients where client_id = new.client_id
+  ) then
+    select client_number into new.patient_number from clients where id = new.client_id;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger patients_first_number
+  before insert on patients
+  for each row execute function set_first_patient_number();
 
 -- ============ ROOMS ============
 create table rooms (
