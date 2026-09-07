@@ -1122,6 +1122,7 @@ alter publication supabase_realtime add table
 alter table staff disable row level security;
 alter table staff_roster_entries disable row level security;
 alter table clients disable row level security;
+alter table client_phones disable row level security;
 alter table patients disable row level security;
 alter table rooms disable row level security;
 alter table appointments disable row level security;
