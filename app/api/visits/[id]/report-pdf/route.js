@@ -31,7 +31,8 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'consult not found' }, { status: 404 });
   }
 
-  const [{ data: diagnostics }, { data: treatmentItems }] = await Promise.all([
+  const [{ data: clinic }, { data: diagnostics }, { data: treatmentItems }] = await Promise.all([
+    supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
     supabase.from('diagnostics').select('*').eq('visit_id', params.id).order('created_at', { ascending: true }),
     supabase
       .from('treatment_items')
@@ -42,6 +43,7 @@ export async function GET(request, { params }) {
 
   const pdfBytes = await buildConsultReportPdf({
     visit,
+    clinic,
     diagnostics: diagnostics || [],
     treatmentItems: treatmentItems || [],
   });
