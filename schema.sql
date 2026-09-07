@@ -860,7 +860,8 @@ create table recordings (
     id uuid primary key default gen_random_uuid(),
     entity_type text not null,       -- 'visit', 'surgical_report', or 'hospitalization'
     entity_id uuid not null,
-    file_path text not null,         -- path within the consult-files bucket
+    file_path text,                  -- path within the consult-files bucket; null once the
+                                      -- audio is deleted after transcription (migration 067)
     file_name text,
     status text not null default 'processing',  -- 'processing', 'done', 'error'
     transcript text,
