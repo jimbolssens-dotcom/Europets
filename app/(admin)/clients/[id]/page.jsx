@@ -11,6 +11,7 @@ import AttachmentSection from '@/app/_components/AttachmentSection';
 import ScanIdButton from '@/app/_components/ScanIdButton';
 import ClientPhonesEditor, { initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
 import { uploadAttachment } from '@/lib/attachments';
+import { EMIRATES } from '@/lib/emirates';
 import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder, openEmailReminder } from '@/lib/paymentReminders';
 
 export default function ClientDetailPage() {
@@ -177,6 +178,7 @@ export default function ClientDetailPage() {
       trn: client.trn || '',
       email: client.email || '',
       address: client.address || '',
+      emirate: client.emirate || '',
     });
     setEditError(null);
     setEditing(true);
@@ -262,6 +264,17 @@ export default function ClientDetailPage() {
             Address
             <input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
           </label>
+          <label>
+            Emirate
+            <select value={editForm.emirate} onChange={(e) => setEditForm({ ...editForm, emirate: e.target.value })}>
+              <option value="">Select...</option>
+              {EMIRATES.map((e) => (
+                <option key={e} value={e}>
+                  {e}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="home-links">
             <button type="submit" disabled={savingEdit}>
               {savingEdit ? 'Saving...' : 'Save'}
@@ -280,6 +293,7 @@ export default function ClientDetailPage() {
             : client.phone}{' '}
           · {client.email}
           {client.address ? ` · ${client.address}` : ''}
+          {client.emirate ? ` · ${client.emirate}` : ''}
           {client.emirates_id ? ` · Emirates ID: ${client.emirates_id}` : ''}
           {client.trn ? ` · TRN: ${client.trn}` : ''}{' '}
           <button type="button" onClick={startEdit}>
