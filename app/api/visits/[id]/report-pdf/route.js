@@ -40,7 +40,7 @@ export async function GET(request, { params }) {
       .order('created_at', { ascending: true }),
     supabase
       .from('treatment_items')
-      .select('*, goods_services(name)')
+      .select('*, goods_services(name, main_category)')
       .eq('visit_id', params.id)
       .order('created_at', { ascending: true }),
   ]);
