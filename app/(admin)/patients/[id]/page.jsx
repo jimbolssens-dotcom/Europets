@@ -88,7 +88,13 @@ export default function PatientDetailPage() {
       </p>
       <h1>
         {patient.name} <span>(Patient #{patient.patient_number})</span>
-        {patient.deceased && <span className="error"> · Deceased</span>}
+        {patient.deceased && <span className="error"> · Deceased</span>}{' '}
+        <a href={`/appointments?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
+          Book Appointment
+        </a>{' '}
+        <a href={`/consults?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
+          New Consult
+        </a>
       </h1>
 
       <div className="patient-alerts-panel patient-alerts-panel-static">

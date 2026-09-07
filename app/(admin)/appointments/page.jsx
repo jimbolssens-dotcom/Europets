@@ -14,10 +14,11 @@
 
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import SearchSelect from '@/app/_components/SearchSelect';
+import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import AppointmentRequestsPanel from '@/app/_components/AppointmentRequestsPanel';
 import { buildStaffColorMap, UNASSIGNED_STAFF_COLOR } from '@/lib/staffColors';
 
@@ -174,15 +175,28 @@ const emptyForm = {
 };
 
 export default function AppointmentsPage() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <AppointmentsPageInner />
+    </Suspense>
+  );
+}
+
+// A ?client_id=&patient_id= deep link (see the patient page's "Book
+// Appointment" button) is read via useSearchParams below, which requires a
+// Suspense boundary around it — split out into its own component so the
+// wrapper above stays a plain server-renderable shell.
+function AppointmentsPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonthIndex, setViewMonthIndex] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState(todayISODate());
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [clients, setClients] = useState([]);
-  const [patients, setPatients] = useState([]);
+  const [selectedOwner, setSelectedOwner] = useState(null); // { id, full_name } for the client currently picked in the booking form
+  const [clientPatients, setClientPatients] = useState([]); // that owner's own pets, for the patient picker below the search box
   const [rooms, setRooms] = useState([]);
   const [vets, setVets] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -219,13 +233,9 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/clients').then((res) => res.json()),
-      fetch('/api/patients').then((res) => res.json()),
       fetch('/api/rooms').then((res) => res.json()),
       fetch('/api/staff?role=vet').then((res) => res.json()),
-    ]).then(([clientsData, patientsData, roomsData, vetsData]) => {
-      setClients(Array.isArray(clientsData) ? clientsData : []);
-      setPatients(Array.isArray(patientsData) ? patientsData : []);
+    ]).then(([roomsData, vetsData]) => {
       setRooms(Array.isArray(roomsData) ? roomsData : []);
       setVets(Array.isArray(vetsData) ? vetsData : []);
     });
@@ -303,10 +313,39 @@ export default function AppointmentsPage() {
     });
   }, [dayAppointments, dragMove, dragResize, selectedDate]);
 
-  const patientsForClient = useMemo(
-    () => patients.filter((p) => p.client_id === form.client_id),
-    [patients, form.client_id]
-  );
+  // Loads the owner's own pets once one is picked (either from the search
+  // box directly, or resolved from a client_id/patient_id deep link below)
+  // — fetched on demand per-owner rather than the whole patients table, now
+  // that the clinic's historical import makes that table tens of thousands
+  // of rows.
+  useEffect(() => {
+    if (!form.client_id) {
+      setClientPatients([]);
+      return;
+    }
+    fetch(`/api/patients?client_id=${form.client_id}`)
+      .then((res) => res.json())
+      .then((data) => setClientPatients(Array.isArray(data) ? data : []));
+  }, [form.client_id]);
+
+  // A "Book Appointment" link elsewhere (the patient detail page) can land
+  // here with ?client_id=&patient_id= already known — resolve the owner's
+  // name for display and pre-fill the booking form, scrolled into view,
+  // instead of making staff search for who they just came from.
+  useEffect(() => {
+    const clientId = searchParams.get('client_id');
+    const patientId = searchParams.get('patient_id');
+    if (!clientId) return;
+    fetch(`/api/clients/${clientId}`)
+      .then((res) => res.json())
+      .then((client) => {
+        if (!client || client.error) return;
+        setSelectedOwner({ id: client.id, full_name: client.full_name });
+        setForm((f) => ({ ...f, client_id: clientId, patient_id: patientId || '' }));
+        bookingFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function selectDay(d) {
     setSelectedDate(toISODate(d));
@@ -910,17 +949,35 @@ export default function AppointmentsPage() {
                 : 'Click a spot on the schedule to pick a room and time'}
             </p>
 
-            <SearchSelect
-              items={clients}
-              value={form.client_id}
-              onChange={(client_id) => setForm({ ...form, client_id, patient_id: '' })}
-              getLabel={(c) => c.full_name}
-              getSubLabel={(c) => c.phone}
-              placeholder="Select owner..."
-            />
+            {selectedOwner ? (
+              <p className="booking-owner-picked">
+                Owner: <strong>{selectedOwner.full_name}</strong>{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedOwner(null);
+                    setForm({ ...form, client_id: '', patient_id: '' });
+                  }}
+                >
+                  Change
+                </button>
+              </p>
+            ) : (
+              <ClientOrPatientSearch
+                placeholder="Search clients or patients..."
+                onPickClient={(c) => {
+                  setSelectedOwner({ id: c.id, full_name: c.full_name });
+                  setForm({ ...form, client_id: c.id, patient_id: '' });
+                }}
+                onPickPatient={(p) => {
+                  setSelectedOwner({ id: p.client_id, full_name: p.clients?.full_name || '' });
+                  setForm({ ...form, client_id: p.client_id, patient_id: p.id });
+                }}
+              />
+            )}
 
             <SearchSelect
-              items={patientsForClient}
+              items={clientPatients}
               value={form.patient_id}
               onChange={(patient_id) => setForm({ ...form, patient_id })}
               getLabel={(p) => p.name}
