@@ -1375,6 +1375,19 @@ button.secondary:hover {
   padding: 0.5rem 1.25rem;
 }
 
+.settings-cleanup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.settings-cleanup p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
 .visit-board {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
@@ -2568,6 +2581,13 @@ button.secondary:hover {
   margin-left: auto;
   padding: 0.15rem 0.5rem;
   font-size: 0.75rem;
+}
+
+.recorder-audio-deleted {
+  margin-top: 0.5rem;
+  color: #777;
+  font-size: 0.85rem;
+  font-style: italic;
 }
 
 .recorder-summary {
@@ -4066,5 +4086,231 @@ form.card.admit-patient-form {
 .voice-note-box audio {
   height: 2.25rem;
   max-width: 100%;
+}
+
+/* Policies & Procedures manual */
+
+.page-subtitle {
+  color: #666;
+  margin-top: -0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.policies-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.policies-toc {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.policies-category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.policies-category-header input {
+  flex: 1;
+  min-width: 0;
+}
+
+.policies-category-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.policies-category-actions button {
+  font-size: 0.75rem;
+  color: #888;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.policies-category-actions button:hover {
+  color: #333;
+  text-decoration: underline;
+}
+
+.policies-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.policies-list-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #333;
+}
+
+.policies-list-item:hover {
+  background: #eee;
+}
+
+.policies-list-item.active {
+  background: #333;
+  color: #fff;
+}
+
+.policies-add-link {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+}
+
+.policies-add-link:hover {
+  color: #333;
+  text-decoration: underline;
+}
+
+.policies-add-form {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.policies-add-form input {
+  flex: 1;
+  min-width: 120px;
+}
+
+.policies-detail {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 1.5rem;
+  min-height: 300px;
+}
+
+.policies-empty {
+  color: #888;
+}
+
+.policies-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.policies-detail-header h2 {
+  margin: 0;
+}
+
+.policies-detail-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.policies-updated {
+  color: #888;
+  font-size: 0.8rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.policies-content-box {
+  line-height: 1.6;
+}
+
+/* Content is stored as plain text with manual numbering/bullets
+   ("1. ...", "- ..."), rendered one line per <p> — this hanging indent
+   makes a wrapped second line align under the text after the marker
+   instead of falling back to the left margin. */
+.policies-content-line {
+  margin: 0;
+  padding-left: 1.4em;
+  text-indent: -1.4em;
+}
+
+.policies-content-blank {
+  height: 0.9em;
+}
+
+.policies-title-input {
+  width: 100%;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.policies-content-input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  padding: 0.75rem;
+}
+
+@media (max-width: 800px) {
+  .policies-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Culture reminder banner */
+
+.culture-reminder {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--pink-tint);
+  color: var(--pink-dark);
+  border-bottom: 1px solid var(--pink);
+  padding: 0.6rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.culture-reminder-text {
+  flex: 1;
+}
+
+.culture-reminder-dismiss {
+  background: none;
+  border: none;
+  color: var(--pink-dark);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  flex-shrink: 0;
+}
+
+.culture-reminder-dismiss:hover {
+  opacity: 0.7;
+}
+
+.mobile-app .culture-reminder {
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
 }
 

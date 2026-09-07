@@ -24,6 +24,7 @@ export default function ClientDetailPage() {
   const [bookingLinkError, setBookingLinkError] = useState(null);
   const [sendingReviewLink, setSendingReviewLink] = useState(false);
   const [reviewLinkError, setReviewLinkError] = useState(null);
+  const [paymentLinkError, setPaymentLinkError] = useState(null);
 
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
@@ -126,6 +127,28 @@ export default function ClientDetailPage() {
     } else {
       await navigator.clipboard.writeText(url);
       setReviewLinkError('No phone number on file — link copied to clipboard instead.');
+    }
+  }
+
+  // Points the client at a "Settle Your Bill" page scoped to their whole
+  // account (website/app/settle-bill/owner/[clientId]) rather than one
+  // invoice — for a campaign link that pays off whatever they currently
+  // owe across all their outstanding invoices, oldest-first (see
+  // website/lib/nomodPayments#recordNomodOwnerPayment). Same pattern as
+  // the per-invoice "Send" button on the invoice page: no link is
+  // generated here, the website builds the actual Nomod link lazily for
+  // whatever the balance happens to be when the client opens it.
+  function sendPaymentLink() {
+    setPaymentLinkError(null);
+    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
+    const url = `${websiteUrl}/settle-bill/owner/${id}`;
+    const digits = (client.phone || '').replace(/\D/g, '');
+    const message = `Hi ${client.full_name}! You can settle your outstanding balance with Europets Clinic online here: ${url}`;
+    if (digits.length > 3) {
+      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+    } else {
+      navigator.clipboard.writeText(url);
+      setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
     }
   }
 
@@ -315,8 +338,12 @@ export default function ClientDetailPage() {
             >
               ✉️ Email
             </button>
+            <button type="button" onClick={sendPaymentLink}>
+              💳 Pay All
+            </button>
           </div>
         )}
+        {paymentLinkError && <p className="error">{paymentLinkError}</p>}
 
         {outstandingInvoices.length > 0 ? (
           <table className="financial-overview-table">
