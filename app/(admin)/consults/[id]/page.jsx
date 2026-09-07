@@ -628,6 +628,25 @@ export default function ConsultDetailPage() {
         </button>
       </div>
 
+      {consult.status === 'complete' && (
+        <div className="card">
+          <ClientReportEditor
+            reportId={id}
+            apiBase="/api/visits"
+            savedReport={consult.ai_summary}
+            onSaved={loadConsult}
+          />
+          <h4>Share Consult Report</h4>
+          <ReportShareActions
+            reportId={id}
+            apiBase="/api/visits"
+            client={consult.clients}
+            patient={consult.patients}
+            reportLabel="consult report"
+          />
+        </div>
+      )}
+
       <div className="consult-tabs">
         {CONSULT_TABS.map((tab) => (
           <button

@@ -12,6 +12,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { lockExtractedTeeth } from '@/lib/dentalChartLayout';
 import { compressAttachmentsForClosedRecord, isXrayDiagnostic } from '@/lib/attachmentCompression';
+import { generateConsultReport } from '@/lib/anthropicClient';
 import { NextResponse } from 'next/server';
 
 export const maxDuration = 60;
@@ -27,6 +28,10 @@ const RECORD_FIELDS = [
   'prognosis',
   'treatment_notes',
 ];
+// Editable straight from ClientReportEditor (see ReportShareActions'
+// surgical/dental precedent) — not one of the vet's own record fields
+// above, so it stays out of RECORD_FIELDS and is handled separately.
+const CLIENT_REPORT_FIELD = 'ai_summary';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
@@ -50,6 +55,9 @@ export async function PATCH(request, { params }) {
   const update = {};
   for (const field of RECORD_FIELDS) {
     if (body[field] !== undefined) update[field] = body[field] === '' ? null : body[field];
+  }
+  if (body[CLIENT_REPORT_FIELD] !== undefined) {
+    update[CLIENT_REPORT_FIELD] = body[CLIENT_REPORT_FIELD];
   }
 
   if (status !== undefined) {
@@ -92,6 +100,36 @@ export async function PATCH(request, { params }) {
       .from('appointments')
       .update({ status: 'complete' })
       .eq('id', data.appointment_id);
+  }
+
+  // Draft the client-facing report now, from whatever's in the record at
+  // completion time — staff still review/edit it (ClientReportEditor)
+  // before sharing, same as the surgical/dental reports. Best-effort:
+  // never let a Claude hiccup fail the "complete this consult" action,
+  // which has already succeeded above.
+  if (status === 'complete') {
+    try {
+      const { data: patient } = await supabase
+        .from('patients')
+        .select('name, species')
+        .eq('id', data.patient_id)
+        .single();
+      const clientReport = await generateConsultReport({
+        patientName: patient?.name,
+        species: patient?.species,
+        anamnesis: data.anamnesis,
+        findings: data.findings,
+        diagnosis: data.diagnosis,
+        prognosis: data.prognosis,
+        treatmentNotes: data.treatment_notes,
+      });
+      if (clientReport) {
+        await supabase.from('visits').update({ ai_summary: clientReport }).eq('id', params.id);
+        data.ai_summary = clientReport;
+      }
+    } catch {
+      // See comment above — this is a nice-to-have draft, not part of completing the consult.
+    }
   }
 
   // Completing a consult "locks in" this visit's dental work — any tooth

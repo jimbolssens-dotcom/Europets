@@ -181,7 +181,10 @@ create table visits (
     findings text,                   -- physical exam findings
     diagnosis text,
     prognosis text,
-    treatment_notes text
+    treatment_notes text,
+    ai_summary text                  -- client-facing consult report, generated on
+                                      -- completion (migration 068) — see
+                                      -- lib/anthropicClient.js#generateConsultReport
 );
 
 -- ============ DIAGNOSTICS ============
