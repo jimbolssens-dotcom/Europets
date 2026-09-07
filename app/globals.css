@@ -76,6 +76,14 @@ button:disabled {
   border-radius: 999px;
   font-weight: 600;
   font-size: 0.9rem;
+  /* Without an explicit value, line-height: normal is derived from the
+     tallest font actually used on the line — a color-emoji glyph (e.g.
+     🐾 on the RIP button) carries different metrics than the surrounding
+     system-ui text and measures ~1px taller, so an emoji-bearing pill
+     rendered fractionally taller than its plain-text siblings. Pinning
+     it removes that per-content variance so every pill is identical
+     regardless of what's inside it. */
+  line-height: 1;
   text-decoration: none;
   white-space: nowrap;
 }
