@@ -102,6 +102,12 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setCheckErrors((prev) => ({ ...prev, [id]: data.error || `Check failed (${res.status})` }));
+      } else if (data.status && data.status !== 'done') {
+        // A successful check that didn't finish the recording — surface
+        // what the server actually saw (e.g. still processing on
+        // AssemblyAI's side) instead of leaving this indistinguishable
+        // from the button silently doing nothing.
+        setCheckErrors((prev) => ({ ...prev, [id]: `Checked — server says: ${data.status}` }));
       }
     } catch (err) {
       setCheckErrors((prev) => ({ ...prev, [id]: err.message || 'Network error — check your connection' }));
