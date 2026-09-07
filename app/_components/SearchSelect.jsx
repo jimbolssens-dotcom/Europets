@@ -27,12 +27,16 @@ export default function SearchSelect({
 
   // Keep the displayed text in sync when the selection changes from
   // outside — the parent resetting the form after submit, or clearing this
-  // field because a preceding one (e.g. owner) changed.
+  // field because a preceding one (e.g. owner) changed. Also re-syncs when
+  // `items` itself arrives late (e.g. a value pre-filled from a deep link
+  // before its options have finished loading) — safe to depend on since
+  // `items` is a state array that only gets a new reference when it
+  // actually changes, not a plain prop that's re-created every render.
   useEffect(() => {
     const current = items.find((i) => i.id === value) || null;
     setQuery(current ? getLabel(current) : '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [value, items]);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -85,7 +89,7 @@ export default function SearchSelect({
       {open && !disabled && (
         <div className="search-dropdown">
           {filtered.length === 0 && <p className="search-empty">{emptyMessage}</p>}
-          {filtered.slice(0, 50).map((item) => (
+          {filtered.map((item) => (
             <button key={item.id} type="button" className="search-result" onClick={() => pick(item)}>
               <strong>{getLabel(item)}</strong>
               {getSubLabel && <span>{getSubLabel(item)}</span>}

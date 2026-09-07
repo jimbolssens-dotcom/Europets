@@ -67,6 +67,7 @@ export default function ConsultDetailPage() {
   const [record, setRecord] = useState(null);
   const [savingRecord, setSavingRecord] = useState(false);
   const [recordError, setRecordError] = useState(null);
+  const [vetChangeError, setVetChangeError] = useState(null);
 
   const [diagnostics, setDiagnostics] = useState([]);
   const [diagForm, setDiagForm] = useState({ goods_service_id: '', description: '', result: '' });
@@ -280,6 +281,23 @@ export default function ConsultDetailPage() {
       loadConsult();
     }
     setSavingRecord(false);
+  }
+
+  // Reassigning the doctor mid-consult (or after) — a handoff between vets,
+  // or fixing who actually saw the patient. Works regardless of status.
+  async function changeVet(vetId) {
+    setVetChangeError(null);
+    const res = await fetch(`/api/visits/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attending_vet_id: vetId || null }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setVetChangeError(data.error || 'Failed to change the vet');
+      return;
+    }
+    loadConsult();
   }
 
   async function completeConsult() {
@@ -580,8 +598,42 @@ export default function ConsultDetailPage() {
       <p>
         Owner: <a href={`/clients/${consult.clients?.id}`}>{consult.clients?.full_name}</a> ·
         Patient: <a href={`/patients/${consult.patients?.id}`}>record</a> · Room:{' '}
-        {consult.rooms?.name} · Vet: {consult.staff?.full_name || 'unassigned'}
+        {consult.rooms?.name} · Vet:{' '}
+        <select
+          className="consult-vet-select"
+          value={consult.attending_vet_id || ''}
+          onChange={(e) => changeVet(e.target.value)}
+        >
+          <option value="">Unassigned</option>
+          {staff
+            .filter((s) => s.role === 'vet')
+            .map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.full_name}
+              </option>
+            ))}
+        </select>
       </p>
+      {vetChangeError && <p className="error">{vetChangeError}</p>}
+
+      <div className="consult-report-share">
+        {consult.status === 'complete' && (
+          <ClientReportEditor
+            reportId={id}
+            apiBase="/api/visits"
+            savedReport={consult.ai_summary}
+            onSaved={loadConsult}
+          />
+        )}
+        <h4>Share Consult Report</h4>
+        <ReportShareActions
+          reportId={id}
+          apiBase="/api/visits"
+          client={consult.clients}
+          patient={consult.patients}
+          reportLabel="consult report"
+        />
+      </div>
 
       {previousVisits.length > 0 && (
         <details className="consult-history-panel">
@@ -627,25 +679,6 @@ export default function ConsultDetailPage() {
           Delete Consult
         </button>
       </div>
-
-      {consult.status === 'complete' && (
-        <div className="card">
-          <ClientReportEditor
-            reportId={id}
-            apiBase="/api/visits"
-            savedReport={consult.ai_summary}
-            onSaved={loadConsult}
-          />
-          <h4>Share Consult Report</h4>
-          <ReportShareActions
-            reportId={id}
-            apiBase="/api/visits"
-            client={consult.clients}
-            patient={consult.patients}
-            reportLabel="consult report"
-          />
-        </div>
-      )}
 
       <div className="consult-tabs">
         {CONSULT_TABS.map((tab) => (

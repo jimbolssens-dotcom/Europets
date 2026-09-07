@@ -15,7 +15,7 @@
 export const PRESET_PHONE_LABELS = ['Mobile', 'Home', 'Work', 'Husband', 'Wife', 'Maid', 'Driver', 'Other'];
 
 export function emptyPhoneRow(isFirst) {
-  return { phone: '', label: '', useCustomLabel: false, is_whatsapp: isFirst };
+  return { phone: '+971 ', label: '', useCustomLabel: false, is_whatsapp: isFirst };
 }
 
 // A client from before migrations/055_client_phones has no client_phones

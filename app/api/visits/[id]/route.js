@@ -27,6 +27,7 @@ const RECORD_FIELDS = [
   'diagnosis',
   'prognosis',
   'treatment_notes',
+  'attending_vet_id', // reassigning the doctor mid-consult (or after) — e.g. a handoff between vets
 ];
 // Editable straight from ClientReportEditor (see ReportShareActions'
 // surgical/dental precedent) — not one of the vet's own record fields

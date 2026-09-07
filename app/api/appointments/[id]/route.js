@@ -2,29 +2,42 @@
 // PATCH /api/appointments/:id
 //   { status }                                    -> status-only update
 //     (check-in, cancel, etc. — unchanged behavior)
-//   { room_id?, start_time?, duration_minutes?, date?, shift? }
-//     -> reschedule: move to a new time/room and/or resize the duration,
-//        from dragging an appointment block on the schedule. Any field
-//        left out keeps its current value. Runs the same overlap + staff
-//        roster checks as booking a new appointment (see
+//   { room_id?, start_time?, duration_minutes?, vet_id?, type?, patient_id?, reason?, date?, shift? }
+//     -> edit: reschedule (drag-to-move/resize on the schedule) and/or
+//        change patient, vet, type, or reason (the Edit Appointment modal).
+//        Any field left out keeps its current value. Runs the same overlap
+//        + staff roster checks as booking a new appointment (see
 //        lib/appointmentScheduling.js and app/api/appointments/route.js),
-//        excluding the appointment from its own conflict check. duration_
-//        minutes is only valid on a surgery appointment — consult is a
-//        fixed 15 minutes, same rule as booking one.
+//        excluding the appointment from its own conflict check.
+//        duration_minutes is only meaningful for a surgery appointment —
+//        consult is a fixed 15 minutes, same rule as booking one; switching
+//        type to surgery without a duration defaults to one increment.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
-import { SURGERY_INCREMENT_MINUTES, findAppointmentConflict, checkStaffRoster } from '@/lib/appointmentScheduling';
+import {
+  CONSULT_DURATION_MINUTES,
+  SURGERY_INCREMENT_MINUTES,
+  findAppointmentConflict,
+  checkStaffRoster,
+} from '@/lib/appointmentScheduling';
 
 const VALID_STATUSES = ['booked', 'checked_in', 'in_progress', 'complete', 'cancelled'];
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { status, room_id, start_time, duration_minutes, date, shift } = body;
+  const { status, room_id, start_time, duration_minutes, vet_id, type, patient_id, reason, date, shift } = body;
 
-  const isReschedule = room_id !== undefined || start_time !== undefined || duration_minutes !== undefined;
+  const isEdit =
+    room_id !== undefined ||
+    start_time !== undefined ||
+    duration_minutes !== undefined ||
+    vet_id !== undefined ||
+    type !== undefined ||
+    patient_id !== undefined ||
+    reason !== undefined;
 
-  if (!isReschedule) {
+  if (!isEdit) {
     if (!status || !VALID_STATUSES.includes(status)) {
       return NextResponse.json(
         { error: `status must be one of ${VALID_STATUSES.join(', ')}` },
@@ -54,27 +67,45 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'appointment not found' }, { status: 404 });
   }
   if (current.status === 'cancelled' || current.status === 'complete') {
-    return NextResponse.json({ error: `cannot reschedule a ${current.status} appointment` }, { status: 409 });
+    return NextResponse.json({ error: `cannot edit a ${current.status} appointment` }, { status: 409 });
   }
 
   const nextRoomId = room_id || current.room_id;
+  const nextVetId = vet_id !== undefined ? vet_id || null : current.vet_id;
+  const nextType = type === 'surgery' || type === 'consult' ? type : current.type;
+  const nextReason = reason !== undefined ? reason || null : current.reason;
+
+  let nextPatientId = current.patient_id;
+  let nextClientId = current.client_id;
+  if (patient_id !== undefined && patient_id !== current.patient_id) {
+    const { data: patient, error: patientError } = await supabase
+      .from('patients')
+      .select('client_id')
+      .eq('id', patient_id)
+      .single();
+    if (patientError || !patient) {
+      return NextResponse.json({ error: 'patient not found' }, { status: 400 });
+    }
+    nextPatientId = patient_id;
+    nextClientId = patient.client_id;
+  }
 
   let nextDuration = current.duration_minutes;
-  if (duration_minutes !== undefined) {
-    if (current.type !== 'surgery') {
-      return NextResponse.json(
-        { error: 'consult appointments are a fixed 15 minutes and cannot be resized' },
-        { status: 400 }
-      );
+  if (nextType === 'consult') {
+    nextDuration = CONSULT_DURATION_MINUTES;
+  } else {
+    if (duration_minutes !== undefined) {
+      nextDuration = Number(duration_minutes);
+    } else if (current.type !== 'surgery') {
+      nextDuration = SURGERY_INCREMENT_MINUTES;
     }
-    nextDuration = Number(duration_minutes);
     if (
       !Number.isInteger(nextDuration) ||
       nextDuration < SURGERY_INCREMENT_MINUTES ||
       nextDuration % SURGERY_INCREMENT_MINUTES !== 0
     ) {
       return NextResponse.json(
-        { error: `duration_minutes must be a multiple of ${SURGERY_INCREMENT_MINUTES}` },
+        { error: `surgery duration_minutes must be a multiple of ${SURGERY_INCREMENT_MINUTES}` },
         { status: 400 }
       );
     }
@@ -88,7 +119,7 @@ export async function PATCH(request, { params }) {
 
   const { conflict, error: conflictError } = await findAppointmentConflict(supabase, {
     roomId: nextRoomId,
-    vetId: current.vet_id,
+    vetId: nextVetId,
     startTime: nextStartTime,
     endTime: nextEndTime,
     excludeId: params.id,
@@ -103,7 +134,7 @@ export async function PATCH(request, { params }) {
     );
   }
 
-  const rosterResult = await checkStaffRoster(supabase, { vetId: current.vet_id, date, shift });
+  const rosterResult = await checkStaffRoster(supabase, { vetId: nextVetId, date, shift });
   if (rosterResult.error) {
     return NextResponse.json({ error: rosterResult.error.message }, { status: 500 });
   }
@@ -112,7 +143,7 @@ export async function PATCH(request, { params }) {
       {
         error: `${rosterResult.vetName} isn't on the staff roster for that ${shift} (${date}).`,
         code: 'not_on_roster',
-        vet_id: current.vet_id,
+        vet_id: nextVetId,
         vet_name: rosterResult.vetName,
         date,
         shift,
@@ -124,9 +155,14 @@ export async function PATCH(request, { params }) {
   const { data, error } = await supabase
     .from('appointments')
     .update({
+      patient_id: nextPatientId,
+      client_id: nextClientId,
       room_id: nextRoomId,
+      vet_id: nextVetId,
+      type: nextType,
       start_time: nextStartTime.toISOString(),
       duration_minutes: nextDuration,
+      reason: nextReason,
     })
     .eq('id', params.id)
     .select()

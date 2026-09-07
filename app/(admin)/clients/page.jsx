@@ -15,6 +15,7 @@ import { phoneSearchDigits } from '@/lib/phoneMatch';
 import ClientPhonesEditor, { emptyPhoneRow, initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
 import InfoHint from '@/app/_components/InfoHint';
 import { EMIRATES } from '@/lib/emirates';
+import { money } from '@/lib/paymentReminders';
 
 const emptyForm = {
   full_name: '',
@@ -390,6 +391,13 @@ export default function ClientsPage() {
                   <th>Email</th>
                   <th>Address</th>
                   <th>Emirate</th>
+                  <th>
+                    Old Balance{' '}
+                    <InfoHint>
+                      Outstanding balance carried over from the previous clinic software at
+                      import — reference only, not linked to invoices here.
+                    </InfoHint>
+                  </th>
                   <th></th>
                 </tr>
               </thead>
@@ -457,6 +465,9 @@ export default function ClientsPage() {
                         </select>
                       </td>
                       <td>
+                        {c.legacy_outstanding_balance > 0 ? `AED ${money(c.legacy_outstanding_balance)}` : '—'}
+                      </td>
+                      <td>
                         <button type="button" onClick={() => saveEdit(c.id)}>
                           Save
                         </button>
@@ -485,6 +496,9 @@ export default function ClientsPage() {
                       <td>{c.email}</td>
                       <td>{c.address}</td>
                       <td>{c.emirate || '—'}</td>
+                      <td>
+                        {c.legacy_outstanding_balance > 0 ? `AED ${money(c.legacy_outstanding_balance)}` : '—'}
+                      </td>
                       <td>
                         <button type="button" onClick={() => startEdit(c)}>
                           Edit

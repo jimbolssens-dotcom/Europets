@@ -6,9 +6,11 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import SearchSelect from '@/app/_components/SearchSelect';
+import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 
 function elapsedMinutes(startedAt) {
   return Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000));
@@ -17,9 +19,22 @@ function elapsedMinutes(startedAt) {
 const emptyWalkIn = { client_id: '', patient_id: '', room_id: '', attending_vet_id: '' };
 
 export default function ConsultsPage() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <ConsultsPageInner />
+    </Suspense>
+  );
+}
+
+// A ?client_id=&patient_id= deep link (see the patient page's "New
+// Consult" button) is read via useSearchParams below, which requires a
+// Suspense boundary around it — split out into its own component so the
+// wrapper above stays a plain server-renderable shell.
+function ConsultsPageInner() {
+  const searchParams = useSearchParams();
   const [consults, setConsults] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [patients, setPatients] = useState([]);
+  const [selectedOwner, setSelectedOwner] = useState(null); // { id, full_name } for the client currently picked below
+  const [clientPatients, setClientPatients] = useState([]); // that owner's own pets, for the patient picker
   const [rooms, setRooms] = useState([]);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +42,7 @@ export default function ConsultsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [rowError, setRowError] = useState(null);
+  const walkInFormRef = useRef(null);
 
   const loadConsults = () =>
     fetch('/api/visits')
@@ -39,13 +55,9 @@ export default function ConsultsPage() {
   useEffect(() => {
     loadConsults();
     Promise.all([
-      fetch('/api/clients').then((res) => res.json()),
-      fetch('/api/patients').then((res) => res.json()),
       fetch('/api/rooms').then((res) => res.json()),
       fetch('/api/staff').then((res) => res.json()),
-    ]).then(([clientsData, patientsData, roomsData, staffData]) => {
-      setClients(Array.isArray(clientsData) ? clientsData : []);
-      setPatients(Array.isArray(patientsData) ? patientsData : []);
+    ]).then(([roomsData, staffData]) => {
       setRooms(Array.isArray(roomsData) ? roomsData : []);
       setStaff(Array.isArray(staffData) ? staffData : []);
     });
@@ -60,6 +72,40 @@ export default function ConsultsPage() {
     return () => {
       supabase.removeChannel(channel);
     };
+  }, []);
+
+  // Loads the owner's own pets once one is picked (either from the search
+  // box directly, or resolved from a client_id/patient_id deep link below)
+  // — fetched on demand per-owner rather than the whole patients table, now
+  // that the clinic's historical import makes that table tens of thousands
+  // of rows.
+  useEffect(() => {
+    if (!walkIn.client_id) {
+      setClientPatients([]);
+      return;
+    }
+    fetch(`/api/patients?client_id=${walkIn.client_id}`)
+      .then((res) => res.json())
+      .then((data) => setClientPatients(Array.isArray(data) ? data : []));
+  }, [walkIn.client_id]);
+
+  // A "New Consult" link elsewhere (the patient detail page) can land here
+  // with ?client_id=&patient_id= already known — resolve the owner's name
+  // for display and pre-fill the walk-in form, scrolled into view, instead
+  // of making staff search for who they just came from.
+  useEffect(() => {
+    const clientId = searchParams.get('client_id');
+    const patientId = searchParams.get('patient_id');
+    if (!clientId) return;
+    fetch(`/api/clients/${clientId}`)
+      .then((res) => res.json())
+      .then((client) => {
+        if (!client || client.error) return;
+        setSelectedOwner({ id: client.id, full_name: client.full_name });
+        setWalkIn((w) => ({ ...w, client_id: clientId, patient_id: patientId || '' }));
+        walkInFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleWalkIn(e) {
@@ -86,6 +132,7 @@ export default function ConsultsPage() {
       setError(data.error || 'Failed to start consult');
     } else {
       setWalkIn(emptyWalkIn);
+      setSelectedOwner(null);
       loadConsults();
     }
     setSubmitting(false);
@@ -113,7 +160,6 @@ export default function ConsultsPage() {
     .sort((a, b) => new Date(b.ended_at || b.started_at) - new Date(a.ended_at || a.started_at))
     .slice(0, 20);
 
-  const patientsForClient = patients.filter((p) => p.client_id === walkIn.client_id);
   const vets = staff.filter((s) => s.role === 'vet');
 
   return (
@@ -191,19 +237,37 @@ export default function ConsultsPage() {
       </div>
 
       <div className="split-aside">
-      <form className="card" onSubmit={handleWalkIn}>
+      <form className="card" onSubmit={handleWalkIn} ref={walkInFormRef}>
         <h2>Start Walk-in Consult</h2>
         {error && <p className="error">{error}</p>}
+        {selectedOwner ? (
+          <p className="booking-owner-picked">
+            Owner: <strong>{selectedOwner.full_name}</strong>{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedOwner(null);
+                setWalkIn({ ...walkIn, client_id: '', patient_id: '' });
+              }}
+            >
+              Change
+            </button>
+          </p>
+        ) : (
+          <ClientOrPatientSearch
+            placeholder="Search clients or patients..."
+            onPickClient={(c) => {
+              setSelectedOwner({ id: c.id, full_name: c.full_name });
+              setWalkIn({ ...walkIn, client_id: c.id, patient_id: '' });
+            }}
+            onPickPatient={(p) => {
+              setSelectedOwner({ id: p.client_id, full_name: p.clients?.full_name || '' });
+              setWalkIn({ ...walkIn, client_id: p.client_id, patient_id: p.id });
+            }}
+          />
+        )}
         <SearchSelect
-          items={clients}
-          value={walkIn.client_id}
-          onChange={(client_id) => setWalkIn({ ...walkIn, client_id, patient_id: '' })}
-          getLabel={(c) => c.full_name}
-          getSubLabel={(c) => c.phone}
-          placeholder="Select owner..."
-        />
-        <SearchSelect
-          items={patientsForClient}
+          items={clientPatients}
           value={walkIn.patient_id}
           onChange={(patient_id) => setWalkIn({ ...walkIn, patient_id })}
           getLabel={(p) => p.name}
