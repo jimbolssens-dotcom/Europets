@@ -1466,6 +1466,18 @@ button.secondary:hover {
    top-right next to the patient name instead of its own full-width line
    below — like .page-header, but flex-start aligned since the notes panel
    can expand much taller than the heading when open. */
+.consult-report-share {
+  margin: 0.75rem 0;
+}
+
+.consult-vet-select {
+  display: inline-block;
+  width: auto;
+  padding: 0.1rem 0.3rem;
+  font-size: inherit;
+  font-family: inherit;
+}
+
 .consult-header-row {
   display: flex;
   justify-content: space-between;

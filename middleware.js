@@ -37,6 +37,13 @@ const PUBLIC_PATTERNS = [
   /^\/api\/hospitalizations\/[^/]+\/request-update$/,
   /^\/api\/booking-availability(\/.*)?$/,
   /^\/api\/app-version$/, // polled by AppVersionWatcher on every page, staff and portal alike
+  // Report PDFs staff share straight to the client's phone/inbox via a
+  // WhatsApp/email link (see ReportShareActions) — by id only, a read-only
+  // GET of one specific unguessable report, same trust level as the other
+  // by-id-only entries above.
+  /^\/api\/visits\/[^/]+\/report-pdf$/,
+  /^\/api\/surgical-reports\/[^/]+\/report-pdf$/,
+  /^\/api\/dental-reports\/[^/]+\/report-pdf$/,
 ];
 
 function isPublicPath(pathname, method) {

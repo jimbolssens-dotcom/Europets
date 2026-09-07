@@ -26,6 +26,7 @@ const RECORD_FIELDS = [
   'diagnosis',
   'prognosis',
   'treatment_notes',
+  'attending_vet_id', // reassigning the doctor mid-consult (or after) — e.g. a handoff between vets
 ];
 
 export async function GET(request, { params }) {
