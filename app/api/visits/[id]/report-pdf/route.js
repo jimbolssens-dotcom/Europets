@@ -33,7 +33,11 @@ export async function GET(request, { params }) {
 
   const [{ data: clinic }, { data: diagnostics }, { data: treatmentItems }] = await Promise.all([
     supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
-    supabase.from('diagnostics').select('*').eq('visit_id', params.id).order('created_at', { ascending: true }),
+    supabase
+      .from('diagnostics')
+      .select('*, goods_services(name)')
+      .eq('visit_id', params.id)
+      .order('created_at', { ascending: true }),
     supabase
       .from('treatment_items')
       .select('*, goods_services(name)')
