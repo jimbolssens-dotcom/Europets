@@ -46,6 +46,8 @@ const PUBLIC_PATTERNS = [
   // buttons — see migration/PR history around 2026-09-07.)
   /^\/api\/invoices\/[^/]+\/tax-invoice-pdf$/,
   /^\/api\/surgical-reports\/[^/]+\/report-pdf$/,
+  /^\/api\/ultrasound-reports\/[^/]+\/report-pdf$/,
+  /^\/api\/xray-reports\/[^/]+\/report-pdf$/,
   /^\/api\/dental-reports\/[^/]+\/report-pdf$/,
   /^\/api\/visits\/[^/]+\/report-pdf$/,
 ];
