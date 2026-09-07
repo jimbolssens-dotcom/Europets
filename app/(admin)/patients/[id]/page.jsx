@@ -108,7 +108,12 @@ export default function PatientDetailPage() {
         <a href={`/consults?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
           New Consult
         </a>{' '}
-        <button type="button" className="button-link" onClick={toggleDeceased}>
+        <button
+          type="button"
+          className="button-link"
+          style={{ fontSize: 'inherit' }}
+          onClick={toggleDeceased}
+        >
           {patient.deceased ? 'Undo RIP' : 'Mark as RIP 🐾'}
         </button>
       </h1>
