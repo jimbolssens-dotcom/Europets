@@ -19,6 +19,7 @@ import PatientAlerts from '@/app/_components/PatientAlerts';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
+import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import ReportShareActions from '@/app/_components/ReportShareActions';
 import ClientReportEditor from '@/app/_components/ClientReportEditor';
 import DentalChart from '@/app/_components/DentalChart';
@@ -94,6 +95,10 @@ export default function ConsultDetailPage() {
   const [autoRecordDentalId, setAutoRecordDentalId] = useState(null);
   const [savingDentalChart, setSavingDentalChart] = useState(false);
 
+  const [ultrasoundReports, setUltrasoundReports] = useState([]);
+  const [dictatingUltrasoundFor, setDictatingUltrasoundFor] = useState(null); // diagnostic id currently starting a report
+  const [autoRecordUltrasoundId, setAutoRecordUltrasoundId] = useState(null);
+
   const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
 
   const [consentForms, setConsentForms] = useState([]);
@@ -159,6 +164,11 @@ export default function ConsultDetailPage() {
       .then((res) => res.json())
       .then((data) => setDentalReports(Array.isArray(data) ? data : []));
 
+  const loadUltrasoundReports = () =>
+    fetch(`/api/ultrasound-reports?visit_id=${id}`)
+      .then((res) => res.json())
+      .then((data) => setUltrasoundReports(Array.isArray(data) ? data : []));
+
   const loadInvoiceInfo = () =>
     fetch(`/api/invoices?visit_id=${id}`)
       .then((res) => res.json())
@@ -178,6 +188,7 @@ export default function ConsultDetailPage() {
     loadTreatmentItems();
     loadSurgicalReports();
     loadDentalReports();
+    loadUltrasoundReports();
     loadInvoiceInfo();
     loadConsentForms();
 
@@ -213,6 +224,7 @@ export default function ConsultDetailPage() {
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'surgical_reports', filter: `visit_id=eq.${id}` }, loadSurgicalReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dental_reports', filter: `visit_id=eq.${id}` }, loadDentalReports)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ultrasound_reports', filter: `visit_id=eq.${id}` }, loadUltrasoundReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices', filter: `visit_id=eq.${id}` }, loadInvoiceInfo)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'consent_forms', filter: `visit_id=eq.${id}` }, loadConsentForms)
       .subscribe();
@@ -541,6 +553,24 @@ export default function ConsultDetailPage() {
     }
   }
 
+  // Same pattern as the dental/surgical "Dictate" button, but scoped to
+  // one specific Ultrasound diagnostic entry (diagnosticId) rather than a
+  // standalone section — a consult can have more than one scan.
+  async function startDictateUltrasoundReport(diagnosticId) {
+    setDictatingUltrasoundFor(diagnosticId);
+    const res = await fetch('/api/ultrasound-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId }),
+    });
+    const data = await res.json();
+    setDictatingUltrasoundFor(null);
+    if (res.ok) {
+      setAutoRecordUltrasoundId(data.id);
+      loadUltrasoundReports();
+    }
+  }
+
   async function createInvoice() {
     setCreatingInvoice(true);
     const res = await fetch(`/api/visits/${id}/invoice`, { method: 'POST' });
@@ -825,27 +855,74 @@ export default function ConsultDetailPage() {
           <button type="submit">Add</button>
         </form>
 
-        {diagnostics.map((d) => (
-          <div key={d.id} className="visit-card">
-            <div className="visit-header">
-              <strong>
-                {d.goods_service_id
-                  ? catalog.find((c) => c.id === d.goods_service_id)?.name || 'Test'
-                  : LEGACY_DIAGNOSTIC_TYPE_LABELS[d.type] || d.type}
-              </strong>
-              <button type="button" onClick={() => deleteDiagnostic(d.id)}>
-                Remove
-              </button>
+        {diagnostics.map((d) => {
+          const testName = d.goods_service_id
+            ? catalog.find((c) => c.id === d.goods_service_id)?.name || 'Test'
+            : LEGACY_DIAGNOSTIC_TYPE_LABELS[d.type] || d.type;
+          const ultrasoundReport = ultrasoundReports.find((r) => r.diagnostic_id === d.id);
+
+          return (
+            <div key={d.id} className="visit-card">
+              <div className="visit-header">
+                <strong>{testName}</strong>
+                <button type="button" onClick={() => deleteDiagnostic(d.id)}>
+                  Remove
+                </button>
+              </div>
+              {d.description && <p>{d.description}</p>}
+              {d.result && (
+                <p>
+                  <strong>Result:</strong> {d.result}
+                </p>
+              )}
+              <AttachmentSection entityType="diagnostic" entityId={d.id} />
+
+              {isUltrasoundTest(testName) && (
+                <div className="postop-panel">
+                  <h4>Ultrasound Report</h4>
+                  {!ultrasoundReport ? (
+                    <button
+                      type="button"
+                      onClick={() => startDictateUltrasoundReport(d.id)}
+                      disabled={dictatingUltrasoundFor === d.id}
+                    >
+                      🎤 {dictatingUltrasoundFor === d.id ? 'Starting...' : 'Dictate Report'}
+                    </button>
+                  ) : (
+                    <>
+                      <p className="visit-meta">
+                        {ultrasoundReport.staff?.full_name || 'unassigned'} ·{' '}
+                        {ultrasoundReport.performed_at
+                          ? new Date(ultrasoundReport.performed_at).toLocaleString()
+                          : ''}
+                      </p>
+                      <AudioRecorder
+                        entityType="ultrasound_report"
+                        entityId={ultrasoundReport.id}
+                        autoStart={ultrasoundReport.id === autoRecordUltrasoundId}
+                      />
+                      <AttachmentSection entityType="ultrasound_report" entityId={ultrasoundReport.id} />
+                      <ClientReportEditor
+                        reportId={ultrasoundReport.id}
+                        apiBase="/api/ultrasound-reports"
+                        savedReport={ultrasoundReport.ai_summary}
+                        onSaved={loadUltrasoundReports}
+                      />
+                      <h4>Share Ultrasound Report</h4>
+                      <ReportShareActions
+                        reportId={ultrasoundReport.id}
+                        apiBase="/api/ultrasound-reports"
+                        client={consult.clients}
+                        patient={consult.patients}
+                        reportLabel="ultrasound report"
+                      />
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-            {d.description && <p>{d.description}</p>}
-            {d.result && (
-              <p>
-                <strong>Result:</strong> {d.result}
-              </p>
-            )}
-            <AttachmentSection entityType="diagnostic" entityId={d.id} />
-          </div>
-        ))}
+          );
+        })}
         </div>
         </div>
       </div>

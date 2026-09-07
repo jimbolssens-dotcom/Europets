@@ -43,6 +43,7 @@ const PUBLIC_PATTERNS = [
   // by-id-only entries above.
   /^\/api\/visits\/[^/]+\/report-pdf$/,
   /^\/api\/surgical-reports\/[^/]+\/report-pdf$/,
+  /^\/api\/ultrasound-reports\/[^/]+\/report-pdf$/,
   /^\/api\/dental-reports\/[^/]+\/report-pdf$/,
 ];
 
