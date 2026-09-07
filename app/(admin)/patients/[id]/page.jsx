@@ -110,7 +110,13 @@ export default function PatientDetailPage() {
             New Consult
           </a>{' '}
           <button type="button" className="button-link" onClick={toggleDeceased}>
-            {patient.deceased ? 'Undo RIP' : 'Mark as RIP 🐾'}
+            {patient.deceased ? (
+              'Undo RIP'
+            ) : (
+              <>
+                Mark as RIP <span style={{ fontSize: '0.8em' }}>🐾</span>
+              </>
+            )}
           </button>
         </h1>
         <details className="patient-alerts-panel" open={patientAlerts.alerts.length > 0}>
