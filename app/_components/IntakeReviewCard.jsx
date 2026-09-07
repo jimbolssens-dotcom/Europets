@@ -52,6 +52,7 @@ export default function IntakeReviewCard({
         </p>
       )}
       {!compact && r.address && <p className="visit-meta">{r.address}</p>}
+      {!compact && r.emirate && <p className="visit-meta">{r.emirate}</p>}
       {!compact && r.emirates_id && <p className="visit-meta">Emirates ID: {r.emirates_id}</p>}
       <ul>
         {r.selected_patient && (

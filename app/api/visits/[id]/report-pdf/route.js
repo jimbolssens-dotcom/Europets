@@ -1,7 +1,12 @@
 // app/api/visits/[id]/report-pdf/route.js
-// GET /api/visits/:id/report-pdf -> a PDF summary of this consult (vitals,
-// exam notes, diagnostics, treatment plan), for the vet to download and
-// send to the client (e.g. attach in WhatsApp or an email).
+// GET /api/visits/:id/report-pdf -> a PDF summary of this consult: the
+// AI-drafted client report (see generateConsultReport in
+// lib/anthropicClient.js), if one's been generated, followed by the full
+// record — vitals, exam notes, diagnostics, treatment plan — for the vet
+// to download and send to the client, or linked directly in the
+// WhatsApp/email "send to owner" buttons on the consult page. Public —
+// no staff login — same carve-out as the surgical/dental report-pdf
+// routes (see middleware.js).
 
 import { supabase } from '@/lib/supabaseClient';
 import { buildConsultReportPdf } from '@/lib/consultReportPdf';

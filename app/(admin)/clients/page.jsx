@@ -14,6 +14,7 @@ import ScanIdButton from '@/app/_components/ScanIdButton';
 import { phoneSearchDigits } from '@/lib/phoneMatch';
 import ClientPhonesEditor, { emptyPhoneRow, initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
 import InfoHint from '@/app/_components/InfoHint';
+import { EMIRATES } from '@/lib/emirates';
 import { money } from '@/lib/paymentReminders';
 
 const emptyForm = {
@@ -23,6 +24,7 @@ const emptyForm = {
   trn: '',
   email: '',
   address: '',
+  emirate: '',
 };
 const emptySearch = { client_number: '', name: '', phone: '', emirates_id: '', email: '', address: '' };
 
@@ -207,6 +209,7 @@ export default function ClientsPage() {
       trn: client.trn || '',
       email: client.email || '',
       address: client.address || '',
+      emirate: client.emirate || '',
     });
     setRowError(null);
   }
@@ -328,6 +331,14 @@ export default function ClientsPage() {
             value={form.address}
             onChange={(e) => updateForm({ address: e.target.value })}
           />
+          <select value={form.emirate} onChange={(e) => updateForm({ emirate: e.target.value })}>
+            <option value="">Emirate...</option>
+            {EMIRATES.map((e) => (
+              <option key={e} value={e}>
+                {e}
+              </option>
+            ))}
+          </select>
 
           {possibleDuplicates?.length > 0 && (
             <div className="possible-duplicate-warning">
@@ -379,6 +390,7 @@ export default function ClientsPage() {
                   <th>Emirates ID</th>
                   <th>Email</th>
                   <th>Address</th>
+                  <th>Emirate</th>
                   <th>
                     Old Balance{' '}
                     <InfoHint>
@@ -436,6 +448,19 @@ export default function ClientsPage() {
                         />
                       </td>
                       <td>
+                        <select
+                          value={editForm.emirate}
+                          onChange={(e) => setEditForm({ ...editForm, emirate: e.target.value })}
+                        >
+                          <option value="">—</option>
+                          {EMIRATES.map((em) => (
+                            <option key={em} value={em}>
+                              {em}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
                         {c.legacy_outstanding_balance > 0 ? `AED ${money(c.legacy_outstanding_balance)}` : '—'}
                       </td>
                       <td>
@@ -466,6 +491,7 @@ export default function ClientsPage() {
                       <td>{c.emirates_id || '—'}</td>
                       <td>{c.email}</td>
                       <td>{c.address}</td>
+                      <td>{c.emirate || '—'}</td>
                       <td>
                         {c.legacy_outstanding_balance > 0 ? `AED ${money(c.legacy_outstanding_balance)}` : '—'}
                       </td>

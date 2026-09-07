@@ -675,6 +675,14 @@ export default function ConsultDetailPage() {
       {vetChangeError && <p className="error">{vetChangeError}</p>}
 
       <div className="consult-report-share">
+        {consult.status === 'complete' && (
+          <ClientReportEditor
+            reportId={id}
+            apiBase="/api/visits"
+            savedReport={consult.ai_summary}
+            onSaved={loadConsult}
+          />
+        )}
         <h4>Share Consult Report</h4>
         <ReportShareActions
           reportId={id}
