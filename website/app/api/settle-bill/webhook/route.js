@@ -14,7 +14,7 @@
 // docs (as reviewed 2026-09-05) don't cover webhooks at all.
 
 import { verifyWebhookSignature } from '@/lib/nomod';
-import { recordNomodPayment } from '@/lib/nomodPayments';
+import { recordNomodPayment, recordNomodOwnerPayment } from '@/lib/nomodPayments';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { NextResponse } from 'next/server';
 
@@ -46,7 +46,7 @@ export async function POST(request) {
 
   const { data: link, error: linkError } = await supabaseServer
     .from('nomod_payment_links')
-    .select('id, invoice_id, amount, status')
+    .select('id, invoice_id, client_id, amount, status')
     .eq('nomod_link_id', nomodLinkId)
     .single();
 
@@ -59,7 +59,12 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, already_processed: true });
   }
 
-  await recordNomodPayment(link, link.invoice_id);
+  // A link targets exactly one of invoice_id/client_id — see migration 066.
+  if (link.invoice_id) {
+    await recordNomodPayment(link, link.invoice_id);
+  } else {
+    await recordNomodOwnerPayment(link, link.client_id);
+  }
 
   return NextResponse.json({ ok: true });
 }

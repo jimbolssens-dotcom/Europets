@@ -1,10 +1,10 @@
 // website/lib/nomodPayments.js
-// Shared "record a Nomod payment against its invoice" logic — used both
-// by the webhook route (dormant/unverified — see lib/nomod.js) and by
-// reconcilePendingNomodLink below, which the Settle Your Bill page
-// triggers on every poll after a client returns from paying. Since
-// Nomod may not push webhooks at all, actively re-checking a pending
-// link's status via GET /v1/links/:id is the reliable path.
+// Shared "record a Nomod payment" logic — used both by the webhook route
+// (dormant/unverified — see lib/nomod.js) and by reconcilePendingNomodLink
+// / reconcilePendingNomodOwnerLink below, which the Settle Your Bill pages
+// trigger on every poll after a client returns from paying. Since Nomod
+// may not push webhooks at all, actively re-checking a pending link's
+// status via GET /v1/links/:id is the reliable path.
 
 import { supabaseServer } from '@/lib/supabaseServer';
 import { getPaymentLink, isPaidLinkStatus } from '@/lib/nomod';
@@ -27,27 +27,95 @@ export async function reconcilePendingNomodLink(invoiceId) {
 
   if (!pending?.nomod_link_id) return;
 
-  let remoteLink;
-  try {
-    remoteLink = await getPaymentLink(pending.nomod_link_id);
-  } catch {
-    return;
-  }
-
-  if (!isPaidLinkStatus(remoteLink.status)) return;
+  const remoteLink = await fetchIfPaid(pending.nomod_link_id);
+  if (!remoteLink) return;
 
   await recordNomodPayment(pending, invoiceId);
+}
+
+// Owner/"campaign" counterpart to reconcilePendingNomodLink — for a link
+// created against a client's total outstanding balance (see
+// website/app/api/settle-bill/owner/[clientId]) rather than one invoice.
+export async function reconcilePendingNomodOwnerLink(clientId) {
+  const { data: pending } = await supabaseServer
+    .from('nomod_payment_links')
+    .select('id, nomod_link_id, amount')
+    .eq('client_id', clientId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!pending?.nomod_link_id) return;
+
+  const remoteLink = await fetchIfPaid(pending.nomod_link_id);
+  if (!remoteLink) return;
+
+  await recordNomodOwnerPayment(pending, clientId);
+}
+
+async function fetchIfPaid(nomodLinkId) {
+  let remoteLink;
+  try {
+    remoteLink = await getPaymentLink(nomodLinkId);
+  } catch {
+    return null;
+  }
+  return isPaidLinkStatus(remoteLink.status) ? remoteLink : null;
 }
 
 // `link` needs just { id, amount } — the nomod_payment_links row, however
 // the caller found it (a status check here, or a webhook payload elsewhere).
 export async function recordNomodPayment(link, invoiceId) {
-  const now = new Date().toISOString();
+  await markLinkPaid(link.id);
+  await applyPaymentToInvoice(invoiceId, link.amount);
+}
 
-  await supabaseServer.from('nomod_payment_links').update({ status: 'paid', paid_at: now }).eq('id', link.id);
+// Applies a client-level Nomod payment across that client's outstanding
+// invoices, oldest first — fully settling each in turn until the paid
+// amount runs out (the last invoice it touches may only be partially
+// covered). The link's amount was fixed to the client's total outstanding
+// balance at creation time (see the owner settle-bill route), so a
+// leftover only happens if invoices changed underneath it (staff added or
+// voided one, or logged a manual payment) between link creation and
+// payment — in that case whatever doesn't fit an outstanding invoice is
+// left unapplied rather than guessed at; staff will see the mismatch on
+// the client's financial overview.
+export async function recordNomodOwnerPayment(link, clientId) {
+  await markLinkPaid(link.id);
+
+  const { data: invoices } = await supabaseServer
+    .from('invoices')
+    .select('id, total, amount_paid')
+    .eq('client_id', clientId)
+    .in('status', ['unpaid', 'partially_paid'])
+    .order('created_at', { ascending: true });
+
+  // Cents, not floats, so per-invoice rounding can't leave a stray 0.01
+  // sitting unapplied at the end.
+  let remainingCents = Math.round(Number(link.amount) * 100);
+  for (const invoice of invoices || []) {
+    if (remainingCents <= 0) break;
+    const balanceDueCents = Math.round((Number(invoice.total) - Number(invoice.amount_paid || 0)) * 100);
+    if (balanceDueCents <= 0) continue;
+    const applyCents = Math.min(remainingCents, balanceDueCents);
+    remainingCents -= applyCents;
+    await applyPaymentToInvoice(invoice.id, applyCents / 100);
+  }
+}
+
+async function markLinkPaid(linkId) {
+  await supabaseServer
+    .from('nomod_payment_links')
+    .update({ status: 'paid', paid_at: new Date().toISOString() })
+    .eq('id', linkId);
+}
+
+async function applyPaymentToInvoice(invoiceId, amount) {
+  const now = new Date().toISOString();
   await supabaseServer
     .from('invoice_payments')
-    .insert([{ invoice_id: invoiceId, amount: link.amount, payment_method: 'payment_link', paid_at: now }]);
+    .insert([{ invoice_id: invoiceId, amount, payment_method: 'payment_link', paid_at: now }]);
 
   const { data: invoice } = await supabaseServer
     .from('invoices')
