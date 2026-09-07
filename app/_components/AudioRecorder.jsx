@@ -27,6 +27,7 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
   const [error, setError] = useState(null);
   const [items, setItems] = useState([]);
   const [expanded, setExpanded] = useState({});
+  const [checkErrors, setCheckErrors] = useState({});
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   // Recordings already finished as of the initial load (or already
@@ -90,8 +91,21 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
+  // fetch() only rejects on a network-level failure (offline, DNS, connection
+  // refused) — a 4xx/5xx response resolves normally, so a plain `.catch()`
+  // here was silently swallowing real errors (e.g. AssemblyAI rejecting the
+  // job) and leaving the button looking like it did nothing at all.
   async function checkNow(id) {
-    await fetch(`/api/recordings/${id}/refresh`, { method: 'POST' }).catch(() => {});
+    setCheckErrors((prev) => ({ ...prev, [id]: null }));
+    try {
+      const res = await fetch(`/api/recordings/${id}/refresh`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCheckErrors((prev) => ({ ...prev, [id]: data.error || `Check failed (${res.status})` }));
+      }
+    } catch (err) {
+      setCheckErrors((prev) => ({ ...prev, [id]: err.message || 'Network error — check your connection' }));
+    }
     load();
   }
 
@@ -209,6 +223,7 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
                   Remove
                 </button>
               </div>
+              {checkErrors[r.id] && <p className="error">Check now: {checkErrors[r.id]}</p>}
               {r.file_path ? (
                 <audio controls src={recordingUrl(r.file_path)} style={{ width: '100%' }} />
               ) : (
