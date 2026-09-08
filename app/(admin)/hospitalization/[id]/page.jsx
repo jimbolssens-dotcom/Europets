@@ -27,6 +27,7 @@ import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
+import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -504,6 +505,7 @@ export default function HospitalizationDetailPage() {
       )}
       <p>
         Owner: <a href={`/clients/${admission.clients?.id}`}>{admission.clients?.full_name}</a> ·
+        Patient: <a href={`/patients/${admission.patients?.id}`}>record</a> ·
         Cage: {admission.cages?.name || '—'} · Admitted:{' '}
         {new Date(admission.admitted_at).toLocaleString()}
         {admission.discharged_at &&
@@ -542,6 +544,13 @@ export default function HospitalizationDetailPage() {
           <a href={`/consults/${admission.originating_visit_id}`}>View originating consult</a>
         </p>
       )}
+
+      <PatientHistoryPanel
+        patientId={admission.patient_id}
+        clientId={admission.client_id}
+        excludeHospitalizationId={id}
+        excludeVisitId={admission.originating_visit_id}
+      />
 
       <details className="case-files" open={consentForms.length === 0}>
         <summary>📝 Consent Forms {consentForms.length > 0 && `(${consentForms.length} signed)`}</summary>

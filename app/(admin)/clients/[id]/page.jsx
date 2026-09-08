@@ -13,6 +13,7 @@ import InfoHint from '@/app/_components/InfoHint';
 import { uploadAttachment } from '@/lib/attachments';
 import { EMIRATES } from '@/lib/emirates';
 import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder, openEmailReminder } from '@/lib/paymentReminders';
+import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -490,6 +491,8 @@ export default function ClientDetailPage() {
       <p>
         <a href={`/add?client_id=${client.id}`}>Add a patient for this client &rarr;</a>
       </p>
+
+      <PatientHistoryPanel clientId={client.id} showHospitalizations={false} title="Consult & Invoice History" />
     </div>
   );
 }

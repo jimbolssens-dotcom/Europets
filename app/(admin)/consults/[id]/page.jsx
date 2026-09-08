@@ -31,6 +31,7 @@ import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@
 import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
+import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
 // catalog link — kept only to label those old rows.
@@ -50,11 +51,6 @@ const CONSULT_TABS = [
   { id: 'procedures', label: '🩹 Procedures' },
   { id: 'admin', label: '📋 Consent & Admission' },
 ];
-
-function truncate(str, max = 160) {
-  const s = str.trim();
-  return s.length > max ? `${s.slice(0, max).trim()}…` : s;
-}
 
 export default function ConsultDetailPage() {
   const { id } = useParams();
@@ -128,7 +124,6 @@ export default function ConsultDetailPage() {
   const [invoiceInfo, setInvoiceInfo] = useState(null); // { id, status } of the active invoice, if any
   const [creatingInvoice, setCreatingInvoice] = useState(false);
 
-  const [previousVisits, setPreviousVisits] = useState([]);
 
   // Everything below groups into one of these four workflow stages instead
   // of the old side-by-side column pairing — each tab stays mounted (just
@@ -249,18 +244,6 @@ export default function ConsultDetailPage() {
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-
-  useEffect(() => {
-    if (!consult?.patient_id) return;
-    fetch(`/api/visits?patient_id=${consult.patient_id}&status=complete`)
-      .then((res) => res.json())
-      .then((data) => {
-        const list = (Array.isArray(data) ? data : [])
-          .filter((v) => v.id !== id)
-          .sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
-        setPreviousVisits(list);
-      });
-  }, [consult?.patient_id, id]);
 
   function appendRecordField(field, text) {
     setRecord((prev) => ({ ...prev, [field]: prev[field] ? `${prev[field]}\n${text}` : text }));
@@ -747,39 +730,7 @@ export default function ConsultDetailPage() {
         />
       </div>
 
-      {previousVisits.length > 0 && (
-        <details className="consult-history-panel">
-          <summary>🕓 Previous Consults ({previousVisits.length})</summary>
-          <ul className="consult-history-list">
-            {previousVisits.map((v) => (
-              <li key={v.id} className="consult-history-item">
-                <p className="visit-meta">
-                  <a href={`/consults/${v.id}`}>{new Date(v.started_at).toLocaleDateString()}</a>
-                  {v.staff?.full_name && ` · ${v.staff.full_name}`}
-                </p>
-                {v.anamnesis && (
-                  <p>
-                    <strong>Anamnesis:</strong> {truncate(v.anamnesis)}
-                  </p>
-                )}
-                {v.findings && (
-                  <p>
-                    <strong>Findings:</strong> {truncate(v.findings)}
-                  </p>
-                )}
-                {v.treatment_notes && (
-                  <p>
-                    <strong>Treatment:</strong> {truncate(v.treatment_notes)}
-                  </p>
-                )}
-                {!v.anamnesis && !v.findings && !v.treatment_notes && (
-                  <p className="note-empty">No record notes for this consult.</p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+      <PatientHistoryPanel patientId={consult.patient_id} clientId={consult.client_id} excludeVisitId={id} />
 
       <div className="action-row">
         {consult.status === 'in_progress' && (

@@ -2,6 +2,7 @@
 // GET  /api/visits?status=in_progress&room_id=X   -> list visits
 // GET  /api/visits?appointment_id=X                -> the visit started from that appointment
 // GET  /api/visits?patient_id=X                    -> a patient's consult history
+// GET  /api/visits?client_id=X                     -> an owner's consult history, across all their pets
 // POST /api/visits                                 -> start a visit (check-in)
 //
 // A visit is started either from an appointment (pass appointment_id — the
@@ -17,6 +18,7 @@ export async function GET(request) {
   const roomId = searchParams.get('room_id');
   const appointmentId = searchParams.get('appointment_id');
   const patientId = searchParams.get('patient_id');
+  const clientId = searchParams.get('client_id');
 
   let query = supabase
     .from('visits')
@@ -39,6 +41,9 @@ export async function GET(request) {
   }
   if (patientId) {
     query = query.eq('patient_id', patientId);
+  }
+  if (clientId) {
+    query = query.eq('client_id', clientId);
   }
 
   const { data, error } = await query;

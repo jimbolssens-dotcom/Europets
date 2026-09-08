@@ -1,6 +1,8 @@
 // app/api/hospitalizations/route.js
-// GET  /api/hospitalizations?status=admitted  -> list admissions
-// POST /api/hospitalizations                  -> admit a patient
+// GET  /api/hospitalizations?status=admitted    -> list admissions
+// GET  /api/hospitalizations?patient_id=X        -> a patient's admission history
+// GET  /api/hospitalizations?client_id=X         -> an owner's admission history, across all their pets
+// POST /api/hospitalizations                     -> admit a patient
 //
 // Can be started from a consult (pass originating_visit_id — the patient,
 // client, and room default from that visit) or standalone.
@@ -12,6 +14,8 @@ import { NextResponse } from 'next/server';
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
+  const patientId = searchParams.get('patient_id');
+  const clientId = searchParams.get('client_id');
 
   let query = supabase
     .from('hospitalizations')
@@ -20,6 +24,12 @@ export async function GET(request) {
 
   if (status) {
     query = query.eq('status', status);
+  }
+  if (patientId) {
+    query = query.eq('patient_id', patientId);
+  }
+  if (clientId) {
+    query = query.eq('client_id', clientId);
   }
 
   const { data, error } = await query;

@@ -16,6 +16,7 @@ import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
 import DentalChart from '@/app/_components/DentalChart';
+import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 
 const SEX_LABELS = {
   male: 'Male',
@@ -179,6 +180,12 @@ export default function PatientDetailPage() {
           <VaccinationForm {...vac} species={patient.species} staff={staff} />
         </div>
       </div>
+
+      <PatientHistoryPanel
+        patientId={patient.id}
+        clientId={patient.client_id}
+        title="Consults, Hospitalizations & Invoices"
+      />
 
       <h2>Vaccination History</h2>
       <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
