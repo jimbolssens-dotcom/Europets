@@ -1,15 +1,30 @@
 // app/search/page.jsx
-// Full search results for a query from the nav SearchBox — clients and
-// patients matched on name, phone, breed, or microchip number.
+// The Search tab — a normal page like every other nav tab (Invite,
+// Appointments, ...), not a dropdown over whatever page you were on.
+// Two independent multi-field searches, one for clients (client #, name,
+// phone) and one for patients (patient #, name, breed, microchip), each
+// AND-combining whatever fields are filled — via the same filtered
+// GET /api/clients and GET /api/patients endpoints the old standalone
+// Clients/Patients list pages used (now removed — this page plus /add
+// cover everything those did).
+//
+// Arriving here with ?q= (from the nav's own combined SearchBox's "View
+// all results" link) instead shows that single-query's results across
+// both clients and patients, same as this page always has.
 
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-function SearchResults() {
-  const searchParams = useSearchParams();
-  const q = searchParams.get('q') || '';
+const emptyClientSearch = { client_number: '', name: '', phone: '' };
+const emptyPatientSearch = { patient_number: '', name: '', breed: '', microchip: '' };
+
+function hasAnyTerm(search) {
+  return Object.values(search).some((v) => v.trim());
+}
+
+function QuickSearchResults({ q }) {
   const [results, setResults] = useState({ clients: [], patients: [] });
   const [loading, setLoading] = useState(false);
 
@@ -30,18 +45,10 @@ function SearchResults() {
   return (
     <div>
       <h1>Search Results</h1>
-      <p className="visit-meta">
-        {q ? (
-          <>
-            Showing results for &quot;{q}&quot;
-          </>
-        ) : (
-          'Enter a search term in the box above.'
-        )}
-      </p>
+      <p className="visit-meta">Showing results for &quot;{q}&quot;</p>
       {loading && <p>Searching...</p>}
 
-      {!loading && q && (
+      {!loading && (
         <>
           <h2>Clients ({results.clients.length})</h2>
           {results.clients.length === 0 ? (
@@ -115,10 +122,159 @@ function SearchResults() {
   );
 }
 
+function FieldSearch() {
+  const [clientSearch, setClientSearch] = useState(emptyClientSearch);
+  const [patientSearch, setPatientSearch] = useState(emptyPatientSearch);
+  const [clientResults, setClientResults] = useState([]);
+  const [patientResults, setPatientResults] = useState([]);
+  const [clientLoading, setClientLoading] = useState(false);
+  const [patientLoading, setPatientLoading] = useState(false);
+
+  useEffect(() => {
+    if (!hasAnyTerm(clientSearch)) {
+      setClientResults([]);
+      return;
+    }
+    setClientLoading(true);
+    const handle = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (clientSearch.client_number.trim()) params.set('client_number', clientSearch.client_number.trim());
+      if (clientSearch.name.trim()) params.set('name', clientSearch.name.trim());
+      if (clientSearch.phone.trim()) params.set('phone', clientSearch.phone.trim());
+      fetch(`/api/clients?${params.toString()}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setClientResults(Array.isArray(data) ? data.slice(0, 8) : []);
+          setClientLoading(false);
+        });
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [clientSearch]);
+
+  useEffect(() => {
+    if (!hasAnyTerm(patientSearch)) {
+      setPatientResults([]);
+      return;
+    }
+    setPatientLoading(true);
+    const handle = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (patientSearch.patient_number.trim()) params.set('patient_number', patientSearch.patient_number.trim());
+      if (patientSearch.name.trim()) params.set('name', patientSearch.name.trim());
+      if (patientSearch.breed.trim()) params.set('breed', patientSearch.breed.trim());
+      if (patientSearch.microchip.trim()) params.set('microchip', patientSearch.microchip.trim());
+      fetch(`/api/patients?${params.toString()}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setPatientResults(Array.isArray(data) ? data.slice(0, 8) : []);
+          setPatientLoading(false);
+        });
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [patientSearch]);
+
+  return (
+    <div>
+      <h1>Search</h1>
+      <div className="two-col">
+        <div className="card">
+          <h2>Search Clients</h2>
+          <div className="field-search-row">
+            <input
+              placeholder="Client #"
+              value={clientSearch.client_number}
+              onChange={(e) => setClientSearch({ ...clientSearch, client_number: e.target.value })}
+            />
+            <input
+              placeholder="Name"
+              value={clientSearch.name}
+              onChange={(e) => setClientSearch({ ...clientSearch, name: e.target.value })}
+            />
+            <input
+              placeholder="Phone"
+              value={clientSearch.phone}
+              onChange={(e) => setClientSearch({ ...clientSearch, phone: e.target.value })}
+            />
+          </div>
+          <div className="field-search-results">
+            {clientLoading && <p className="search-empty">Searching...</p>}
+            {!clientLoading && hasAnyTerm(clientSearch) && clientResults.length === 0 && (
+              <p className="search-empty">No matching clients.</p>
+            )}
+            {!clientLoading && !hasAnyTerm(clientSearch) && (
+              <p className="search-empty">Type a client # / name / phone to search.</p>
+            )}
+            {!clientLoading &&
+              clientResults.map((c) => (
+                <a key={c.id} href={`/clients/${c.id}`} className="search-result">
+                  <strong>{c.full_name}</strong>
+                  <span>
+                    Client #{c.client_number} · {c.phone || 'no phone'}
+                  </span>
+                </a>
+              ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <h2>Search Patients</h2>
+          <div className="field-search-row four">
+            <input
+              placeholder="Patient #"
+              value={patientSearch.patient_number}
+              onChange={(e) => setPatientSearch({ ...patientSearch, patient_number: e.target.value })}
+            />
+            <input
+              placeholder="Name"
+              value={patientSearch.name}
+              onChange={(e) => setPatientSearch({ ...patientSearch, name: e.target.value })}
+            />
+            <input
+              placeholder="Breed"
+              value={patientSearch.breed}
+              onChange={(e) => setPatientSearch({ ...patientSearch, breed: e.target.value })}
+            />
+            <input
+              placeholder="Microchip"
+              value={patientSearch.microchip}
+              onChange={(e) => setPatientSearch({ ...patientSearch, microchip: e.target.value })}
+            />
+          </div>
+          <div className="field-search-results">
+            {patientLoading && <p className="search-empty">Searching...</p>}
+            {!patientLoading && hasAnyTerm(patientSearch) && patientResults.length === 0 && (
+              <p className="search-empty">No matching patients.</p>
+            )}
+            {!patientLoading && !hasAnyTerm(patientSearch) && (
+              <p className="search-empty">Type a patient # / name / breed / microchip to search.</p>
+            )}
+            {!patientLoading &&
+              patientResults.map((p) => (
+                <a key={p.id} href={`/patients/${p.id}`} className="search-result">
+                  <strong>{p.name}</strong>
+                  <span>
+                    #{p.patient_number} · {p.species}
+                    {p.breed ? ` · ${p.breed}` : ''} · Owner: {p.clients?.full_name || '—'}
+                  </span>
+                </a>
+              ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SearchPageContent() {
+  const searchParams = useSearchParams();
+  const q = searchParams.get('q') || '';
+  return q.trim() ? <QuickSearchResults q={q} /> : <FieldSearch />;
+}
+
 export default function SearchPage() {
   return (
     <Suspense fallback={<p>Loading...</p>}>
-      <SearchResults />
+      <SearchPageContent />
     </Suspense>
   );
 }

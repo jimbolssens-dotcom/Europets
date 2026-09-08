@@ -253,7 +253,7 @@ export default function ClientDetailPage() {
   return (
     <div>
       <p>
-        <a href="/clients">&larr; All clients</a>
+        <a href="/search">&larr; Back to Search</a>
       </p>
       <h1>
         {client.full_name} <span>(Client #{client.client_number})</span>
@@ -488,7 +488,7 @@ export default function ClientDetailPage() {
         </tbody>
       </table>
       <p>
-        <a href="/patients">Add a patient for this client &rarr;</a>
+        <a href={`/add?client_id=${client.id}`}>Add a patient for this client &rarr;</a>
       </p>
     </div>
   );

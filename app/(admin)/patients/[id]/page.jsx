@@ -97,7 +97,7 @@ export default function PatientDetailPage() {
   return (
     <div>
       <p>
-        <a href="/patients">&larr; All patients</a>
+        <a href="/search">&larr; Back to Search</a>
       </p>
       <div className="consult-header-row">
         <h1>

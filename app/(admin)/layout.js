@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import SearchBox from '../_components/SearchBox';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
 import CultureReminderBanner from '../_components/CultureReminderBanner';
-import NavSearchPanel from '../_components/NavSearchPanel';
-import NavAddPanel from '../_components/NavAddPanel';
 import { supabase } from '@/lib/supabaseClient';
 
 // Wraps every internal staff page (everything except the public client
@@ -16,23 +14,6 @@ export default function AdminLayout({ children }) {
   const [hasPendingAppointmentRequest, setHasPendingAppointmentRequest] = useState(false);
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
   const [hasPendingReviewRequest, setHasPendingReviewRequest] = useState(false);
-  const [activePanel, setActivePanel] = useState(null); // null | 'search' | 'add'
-  const navPanelRef = useRef(null);
-
-  function togglePanel(name) {
-    setActivePanel((prev) => (prev === name ? null : name));
-  }
-
-  useEffect(() => {
-    if (!activePanel) return;
-    function handleClickOutside(e) {
-      if (navPanelRef.current && !navPanelRef.current.contains(e.target)) {
-        setActivePanel(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [activePanel]);
 
   // The Hospitalization nav link blinks the same way an individual cage
   // does on the Cage Layout page (see .cage-update-requested there) —
@@ -112,27 +93,14 @@ export default function AdminLayout({ children }) {
   return (
     <>
       <AppVersionWatcher />
-      <div className="nav-panel-anchor" ref={navPanelRef}>
-        <nav className="topnav">
+      <nav className="topnav">
         <a href="/" className="brand">
           <img src="/logo.png" alt="Europets Clinic" />
         </a>
         <SearchBox />
         <div className="topnav-links">
-          <button
-            type="button"
-            className={`nav-toggle${activePanel === 'search' ? ' active' : ''}`}
-            onClick={() => togglePanel('search')}
-          >
-            Search
-          </button>
-          <button
-            type="button"
-            className={`nav-toggle${activePanel === 'add' ? ' active' : ''}`}
-            onClick={() => togglePanel('add')}
-          >
-            Add
-          </button>
+          <a href="/search">Search</a>
+          <a href="/add">Add</a>
           <a
             href="/intake"
             className={hasPendingInviteRequest ? 'nav-update-requested' : ''}
@@ -178,10 +146,7 @@ export default function AdminLayout({ children }) {
             🚪
           </button>
         </div>
-        </nav>
-        {activePanel === 'search' && <NavSearchPanel />}
-        {activePanel === 'add' && <NavAddPanel />}
-      </div>
+      </nav>
       <CultureReminderBanner />
       <main className="content">{children}</main>
     </>

@@ -1400,84 +1400,23 @@ button.secondary:hover {
   padding: 0.5rem 1.25rem;
 }
 
-/* Nav Search/Add — replaces the old Clients/Patients nav links with two
-   dropdown panels reachable from every page (see NavSearchPanel,
-   NavAddPanel). .nav-panel-anchor wraps the nav so the panel can drop
-   down positioned relative to it, over whatever page is underneath,
-   without navigating away. The full Clients/Patients pages are
-   unchanged — "Open ... page" in the search panel still reaches them. */
-.nav-toggle {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  color: var(--ink);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.9rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-}
-
-.nav-toggle:hover,
-.nav-toggle.active {
-  /* The generic button:hover rule (globals.css, near the top) paints a
-     pink-dark background on hover; without overriding it here too, that
-     background lands on top of this rule's pink-dark text (same color as
-     the .active state below), making the label unreadable — background
-     must be reset explicitly since :hover here doesn't otherwise beat
-     button:hover's higher specificity for that property. */
-  background: none;
-  color: var(--pink-dark);
-  border-bottom-color: var(--pink);
-}
-
-.nav-panel-anchor {
-  position: relative;
-}
-
-.nav-panel {
-  position: absolute;
-  top: 100%;
-  left: 1.5rem;
-  right: 1.5rem;
-  background: white;
-  border: 1px solid #eee;
-  border-top: 3px solid var(--pink);
-  border-radius: 10px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
-  padding: 1.25rem 1.5rem 1.5rem;
-  z-index: 60;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.nav-panel-cols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-}
-
-.nav-panel-col h3 {
-  margin: 0 0 0.7rem;
-  font-size: 0.95rem;
-  color: var(--pink-dark);
-}
-
-.nav-panel-field-row {
+/* Search/Add pages (app/(admin)/search, app/(admin)/add) — real nav tabs
+   like every other page, not dropdown panels. Client/Patient multi-field
+   search rows and results list (Search page), plus the Add Client/Add
+   Patient form styling (Add page), both laid out with the standard
+   .two-col + .card pattern already used on the Clients/Patients pages. */
+.field-search-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.55rem;
   margin-bottom: 0.9rem;
 }
 
-.nav-panel-field-row.four {
+.field-search-row.four {
   grid-template-columns: repeat(4, 1fr);
 }
 
-.nav-panel-field-row input {
+.field-search-row input {
   width: 100%;
   padding: 0.45rem 0.6rem;
   border: 1px solid #ddd;
@@ -1485,7 +1424,7 @@ button.secondary:hover {
   font-size: 0.82rem;
 }
 
-.nav-panel-results {
+.field-search-results {
   border: 1px solid #eee;
   border-radius: 8px;
   max-height: 220px;
@@ -1493,51 +1432,18 @@ button.secondary:hover {
   background: #fcfcfb;
 }
 
-.nav-panel-results .search-result {
+.field-search-results .search-result {
   border-bottom: 1px solid #eee;
 }
 
-.nav-panel-results .search-result:last-child {
+.field-search-results .search-result:last-child {
   border-bottom: none;
 }
 
-.nav-add-form {
-  display: grid;
-  gap: 0.6rem;
-}
-
-.nav-add-form input,
-.nav-add-form select {
-  padding: 0.5rem 0.7rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-family: inherit;
-}
-
-.nav-add-form input:focus,
-.nav-add-form select:focus {
-  outline: none;
-  border-color: var(--pink);
-}
-
-.nav-add-form button[type='submit'] {
-  justify-self: start;
-}
-
-.nav-add-success {
-  color: var(--pink-dark);
-  font-weight: 600;
-}
-
-.nav-add-date-field {
-  display: grid;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  color: #777;
-}
-
-.nav-owner-picked {
+/* Add page (app/(admin)/add) — "Add Patient" owner picker, once an owner
+   has been picked via SingleTypeSearch instead of typed into a plain
+   select like the standalone Patients page's form. */
+.owner-picked-badge {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1545,12 +1451,6 @@ button.secondary:hover {
   background: var(--pink-tint);
   padding: 0.5rem 0.7rem;
   border-radius: 6px;
-}
-
-@media (max-width: 860px) {
-  .nav-panel-cols {
-    grid-template-columns: 1fr;
-  }
 }
 
 .settings-cleanup {
