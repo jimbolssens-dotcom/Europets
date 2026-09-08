@@ -906,6 +906,9 @@ export default function ConsultDetailPage() {
 
         <h3>Record Consult</h3>
         <AudioRecorder entityType="visit" entityId={id} />
+
+        <h3>Photos</h3>
+        <AttachmentSection entityType="visit" entityId={id} />
         </div>
 
         <div>
