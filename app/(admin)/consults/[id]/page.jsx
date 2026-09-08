@@ -690,56 +690,38 @@ export default function ConsultDetailPage() {
             ({consult.patients?.species}) — {consult.status}
           </span>
         </h1>
-        {(patientAlerts.alerts.length > 0 || consult?.patients?.id) && (
-          <details className="patient-alerts-panel" open={patientAlerts.alerts.length > 0}>
-            <summary>
-              ⚠️ Long-Term Patient Notes {patientAlerts.alerts.length > 0 && `(${patientAlerts.alerts.length})`}
-            </summary>
-            <PatientAlerts {...patientAlerts} staff={staff} />
-          </details>
-        )}
+        <div className="consult-header-actions">
+          <select
+            className="consult-vet-select"
+            value={consult.attending_vet_id || ''}
+            onChange={(e) => changeVet(e.target.value)}
+          >
+            <option value="">Unassigned</option>
+            {staff
+              .filter((s) => s.role === 'vet')
+              .map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.full_name}
+                </option>
+              ))}
+          </select>
+          {(patientAlerts.alerts.length > 0 || consult?.patients?.id) && (
+            <details className="patient-alerts-panel" open={patientAlerts.alerts.length > 0}>
+              <summary>
+                ⚠️ Long-Term Patient Notes {patientAlerts.alerts.length > 0 && `(${patientAlerts.alerts.length})`}
+              </summary>
+              <PatientAlerts {...patientAlerts} staff={staff} />
+            </details>
+          )}
+          <PatientHistoryPanel patientId={consult.patient_id} clientId={consult.client_id} excludeVisitId={id} />
+        </div>
       </div>
+      {vetChangeError && <p className="error">{vetChangeError}</p>}
       <p>
         Owner: <a href={`/clients/${consult.clients?.id}`}>{consult.clients?.full_name}</a> ·
         Patient: <a href={`/patients/${consult.patients?.id}`}>record</a> · Room:{' '}
-        {consult.rooms?.name} · Vet:{' '}
-        <select
-          className="consult-vet-select"
-          value={consult.attending_vet_id || ''}
-          onChange={(e) => changeVet(e.target.value)}
-        >
-          <option value="">Unassigned</option>
-          {staff
-            .filter((s) => s.role === 'vet')
-            .map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.full_name}
-              </option>
-            ))}
-        </select>
+        {consult.rooms?.name}
       </p>
-      {vetChangeError && <p className="error">{vetChangeError}</p>}
-
-      <div className="consult-report-share">
-        {consult.status === 'complete' && (
-          <ClientReportEditor
-            reportId={id}
-            apiBase="/api/visits"
-            savedReport={consult.ai_summary}
-            onSaved={loadConsult}
-          />
-        )}
-        <h4>Share Consult Report</h4>
-        <ReportShareActions
-          reportId={id}
-          apiBase="/api/visits"
-          client={consult.clients}
-          patient={consult.patients}
-          reportLabel="consult report"
-        />
-      </div>
-
-      <PatientHistoryPanel patientId={consult.patient_id} clientId={consult.client_id} excludeVisitId={id} />
 
       <div className="action-row">
         {consult.status === 'in_progress' && (
@@ -781,6 +763,26 @@ export default function ConsultDetailPage() {
           <summary className="button-link">🎙️ Record</summary>
           <div className="consult-action-dropdown">
             <AudioRecorder entityType="visit" entityId={id} />
+          </div>
+        </details>
+        <details className="consult-action-toggle">
+          <summary className="button-link">📄 Report</summary>
+          <div className="consult-action-dropdown">
+            {consult.status === 'complete' && (
+              <ClientReportEditor
+                reportId={id}
+                apiBase="/api/visits"
+                savedReport={consult.ai_summary}
+                onSaved={loadConsult}
+              />
+            )}
+            <ReportShareActions
+              reportId={id}
+              apiBase="/api/visits"
+              client={consult.clients}
+              patient={consult.patients}
+              reportLabel="consult report"
+            />
           </div>
         </details>
       </div>

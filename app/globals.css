@@ -1590,14 +1590,6 @@ button.secondary:hover {
   color: white;
 }
 
-/* Pairs the consult page's <h1> with the Long-Term Patient Notes toggle,
-   top-right next to the patient name instead of its own full-width line
-   below — like .page-header, but flex-start aligned since the notes panel
-   can expand much taller than the heading when open. */
-.consult-report-share {
-  margin: 0.75rem 0;
-}
-
 .consult-vet-select {
   display: inline-block;
   width: auto;
@@ -1606,6 +1598,11 @@ button.secondary:hover {
   font-family: inherit;
 }
 
+/* Pairs the consult page's <h1> with the vet picker, Long-Term Patient
+   Notes toggle, and Patient History toggle, top-right next to the patient
+   name instead of stacked in their own full-width lines below — like
+   .page-header, but flex-start aligned since those toggles can expand much
+   taller than the heading when open. */
 .consult-header-row {
   display: flex;
   justify-content: space-between;
@@ -1615,6 +1612,23 @@ button.secondary:hover {
 }
 
 .consult-header-row .patient-alerts-panel {
+  margin-bottom: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Vet picker, Long-Term Patient Notes, and Patient History, grouped
+   top-right next to the patient name — pulled out of the toolbar below so
+   that one shrinks to just its primary actions and Vitals & Exam starts
+   higher on the page. */
+.consult-header-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.consult-header-actions .consult-history-panel {
   margin-bottom: 0;
   min-width: 0;
   max-width: 100%;
