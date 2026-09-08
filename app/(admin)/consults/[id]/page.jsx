@@ -722,9 +722,6 @@ export default function ConsultDetailPage() {
       </p>
       {vetChangeError && <p className="error">{vetChangeError}</p>}
 
-      <h3>Photos</h3>
-      <AttachmentSection entityType="visit" entityId={id} />
-
       <div className="consult-report-share">
         {consult.status === 'complete' && (
           <ClientReportEditor
@@ -789,17 +786,25 @@ export default function ConsultDetailPage() {
         </button>
       </div>
 
-      <div className="consult-tabs">
-        {CONSULT_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`consult-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="consult-tabs-row">
+        <div className="consult-tabs">
+          {CONSULT_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`consult-tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <details className="consult-photos-toggle">
+          <summary>📷 Photos</summary>
+          <div className="consult-photos-dropdown">
+            <AttachmentSection entityType="visit" entityId={id} />
+          </div>
+        </details>
       </div>
 
       {/* Exam & Notes — the vet's own record: vitals, exam findings, the

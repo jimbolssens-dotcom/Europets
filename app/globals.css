@@ -1520,13 +1520,61 @@ button.secondary:hover {
 
 /* Workflow-stage tabs on the consult page (Exam & Notes / Treatment /
    Procedures / Consent & Admission) — same look as .catalog-tabs, kept as
-   its own class since the two aren't the same concern. */
-.consult-tabs {
+   its own class since the two aren't the same concern. Paired with the
+   Photos dropdown toggle on the same line via .consult-tabs-row. */
+.consult-tabs-row {
   display: flex;
-  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
   margin: 1rem 0 1.25rem;
   border-bottom: 2px solid var(--pink-tint);
   flex-wrap: wrap;
+}
+
+.consult-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Collapsed by default so it doesn't push Exam & Notes / Treatment /
+   etc. down the page — opens as a small dropdown instead, same visual
+   treatment as the app's other dropdown panels (search results, ...). */
+.consult-photos-toggle {
+  position: relative;
+}
+
+.consult-photos-toggle summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--pink-dark);
+  border-radius: 999px;
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+}
+
+.consult-photos-toggle summary::-webkit-details-marker {
+  display: none;
+}
+
+.consult-photos-toggle summary:hover,
+.consult-photos-toggle[open] summary {
+  background: var(--pink-tint);
+}
+
+.consult-photos-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  background: white;
+  border: 1px solid #eee;
+  border-top: 3px solid var(--pink);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+  padding: 1rem;
+  min-width: 280px;
 }
 
 .consult-tab {
