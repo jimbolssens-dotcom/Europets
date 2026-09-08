@@ -22,6 +22,7 @@ export default function MobileSurgeryPickerPage() {
   const [walkIns, setWalkIns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [startingId, setStartingId] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -41,13 +42,22 @@ export default function MobileSurgeryPickerPage() {
   }, []);
 
   async function startSurgicalReport(visit) {
-    const res = await fetch('/api/surgical-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: visit.id }),
-    });
-    const data = await res.json();
-    if (res.ok) router.push(`/mobile/surgery/${data.id}`);
+    setError(null);
+    try {
+      const res = await fetch('/api/surgical-reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visit_id: visit.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to start a surgical report — please try again');
+        return;
+      }
+      router.push(`/mobile/surgery/${data.id}`);
+    } catch (err) {
+      setError(err.message || 'Network error — check your connection and try again');
+    }
   }
 
   async function openPatient(appointment) {
@@ -55,15 +65,25 @@ export default function MobileSurgeryPickerPage() {
       startSurgicalReport(appointment.visit);
       return;
     }
+    setError(null);
     setStartingId(appointment.id);
-    const res = await fetch('/api/visits', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appointment_id: appointment.id }),
-    });
-    const data = await res.json();
-    setStartingId(null);
-    if (res.ok) startSurgicalReport(data);
+    try {
+      const res = await fetch('/api/visits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointment_id: appointment.id }),
+      });
+      const data = await res.json();
+      setStartingId(null);
+      if (!res.ok) {
+        setError(data.error || 'Failed to check in — please try again');
+        return;
+      }
+      startSurgicalReport(data);
+    } catch (err) {
+      setStartingId(null);
+      setError(err.message || 'Network error — check your connection and try again');
+    }
   }
 
   return (
@@ -71,6 +91,7 @@ export default function MobileSurgeryPickerPage() {
       <MobileHomeButton />
       <h1>🔪 Surgery Report</h1>
       <p className="mobile-hint">Pick a patient to dictate a surgical report.</p>
+      {error && <p className="error">{error}</p>}
 
       {loading ? (
         <p>Loading...</p>
