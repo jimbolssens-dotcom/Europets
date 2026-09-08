@@ -1520,8 +1520,7 @@ button.secondary:hover {
 
 /* Workflow-stage tabs on the consult page (Exam & Notes / Treatment /
    Procedures / Consent & Admission) — same look as .catalog-tabs, kept as
-   its own class since the two aren't the same concern. Paired with the
-   Photos dropdown toggle on the same line via .consult-tabs-row. */
+   its own class since the two aren't the same concern. */
 .consult-tabs-row {
   display: flex;
   justify-content: space-between;
@@ -1538,32 +1537,28 @@ button.secondary:hover {
   flex-wrap: wrap;
 }
 
-/* Collapsed by default so it doesn't push Exam & Notes / Treatment /
-   etc. down the page — opens as a small dropdown instead, same visual
-   treatment as the app's other dropdown panels (search results, ...). */
-.consult-photos-toggle {
+/* Dropdown toggles living in the consult page's top .action-row (Record,
+   Hospitalization, Photos) — collapsed by default so they don't push the
+   rest of the page down, opening as a small dropdown instead, same visual
+   treatment as the app's other dropdown panels (search results, ...). The
+   toggle itself (<summary>) is styled with .button-link so it reads as
+   just another pill in that row; this class only adds what a plain
+   .button-link doesn't already have — positioning context for its dropdown,
+   and clearing <summary>'s own default disclosure marker/cursor. */
+.consult-action-toggle {
   position: relative;
 }
 
-.consult-photos-toggle summary {
+.consult-action-toggle summary {
   cursor: pointer;
   list-style: none;
-  color: var(--pink-dark);
-  border-radius: 999px;
-  padding: 0.6rem 1.2rem;
-  font-weight: 600;
 }
 
-.consult-photos-toggle summary::-webkit-details-marker {
+.consult-action-toggle summary::-webkit-details-marker {
   display: none;
 }
 
-.consult-photos-toggle summary:hover,
-.consult-photos-toggle[open] summary {
-  background: var(--pink-tint);
-}
-
-.consult-photos-dropdown {
+.consult-action-dropdown {
   position: absolute;
   top: 100%;
   right: 0;

@@ -743,13 +743,46 @@ export default function ConsultDetailPage() {
 
       <div className="action-row">
         {consult.status === 'in_progress' && (
-          <button type="button" onClick={completeConsult}>
+          <button type="button" className="button-link" onClick={completeConsult}>
             Complete Consult
           </button>
         )}
-        <button type="button" onClick={deleteConsult}>
+        <button type="button" className="button-link" onClick={deleteConsult}>
           Delete Consult
         </button>
+        <button
+          type="button"
+          className="button-link"
+          onClick={() => (invoiceInfo ? router.push(`/invoices/${invoiceInfo.id}`) : createInvoice())}
+          disabled={creatingInvoice}
+        >
+          🧾 {invoiceInfo ? `Invoice (${invoiceInfo.status})` : creatingInvoice ? 'Creating...' : 'Invoice'}
+        </button>
+        <details className="consult-action-toggle">
+          <summary className="button-link">🏥 Hospitalization</summary>
+          <form className="consult-action-dropdown" onSubmit={admitToHospital}>
+            <input
+              placeholder="Reason for admission"
+              value={hospReason}
+              onChange={(e) => setHospReason(e.target.value)}
+            />
+            <button type="submit" disabled={admitting}>
+              {admitting ? 'Admitting...' : 'Admit'}
+            </button>
+          </form>
+        </details>
+        <details className="consult-action-toggle">
+          <summary className="button-link">📷 Photos</summary>
+          <div className="consult-action-dropdown">
+            <AttachmentSection entityType="visit" entityId={id} />
+          </div>
+        </details>
+        <details className="consult-action-toggle">
+          <summary className="button-link">🎙️ Record</summary>
+          <div className="consult-action-dropdown">
+            <AudioRecorder entityType="visit" entityId={id} />
+          </div>
+        </details>
       </div>
 
       <div className="consult-tabs-row">
@@ -765,12 +798,6 @@ export default function ConsultDetailPage() {
             </button>
           ))}
         </div>
-        <details className="consult-photos-toggle">
-          <summary>📷 Photos</summary>
-          <div className="consult-photos-dropdown">
-            <AttachmentSection entityType="visit" entityId={id} />
-          </div>
-        </details>
       </div>
 
       {/* Exam & Notes — the vet's own record: vitals, exam findings, the
@@ -884,8 +911,6 @@ export default function ConsultDetailPage() {
           </button>
         </form>
 
-        <h3>Record Consult</h3>
-        <AudioRecorder entityType="visit" entityId={id} />
         </div>
 
         <div>
@@ -1165,22 +1190,6 @@ export default function ConsultDetailPage() {
         </div>
         </div>
 
-        <h3>Invoice</h3>
-        {invoiceInfo ? (
-          <p>
-            <a href={`/invoices/${invoiceInfo.id}`}>View Invoice</a> ({invoiceInfo.status})
-          </p>
-        ) : (
-          <>
-            <button type="button" onClick={createInvoice} disabled={creatingInvoice}>
-              {creatingInvoice ? 'Creating...' : '🧾 Create'}
-            </button>
-            <InfoHint>
-              Opens a new invoice and imports every item above as a line item. You can still add
-              more items on the invoice itself afterward.
-            </InfoHint>
-          </>
-        )}
       </div>
 
       {/* Procedures — surgical and dental work, including the dental chart,
@@ -1434,18 +1443,6 @@ export default function ConsultDetailPage() {
           </div>
         </form>
 
-        <h3>Hospitalization</h3>
-        <form className="card" onSubmit={admitToHospital}>
-          <h3>Admit to Hospitalization</h3>
-          <input
-            placeholder="Reason for admission"
-            value={hospReason}
-            onChange={(e) => setHospReason(e.target.value)}
-          />
-          <button type="submit" disabled={admitting}>
-            {admitting ? 'Admitting...' : 'Admit'}
-          </button>
-        </form>
       </div>
 
       <PdfPreviewModal url={previewPdfUrl} onClose={() => setPreviewPdfUrl(null)} />
