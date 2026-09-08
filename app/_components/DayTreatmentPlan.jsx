@@ -1,0 +1,290 @@
+// app/_components/DayTreatmentPlan.jsx
+// A per-admission set of recurring/one-off care tasks (meds, checks,
+// routine care) shown as tap-to-log buttons — used on both the admin and
+// mobile hospitalization detail pages. Tapping a task posts a normal
+// worksheet entry (POST .../notes, tagged with plan_item_id) so it shows
+// up in the existing Day-to-day Worksheet below, same as anything typed
+// by hand; a catalog-linked task also gets a treatment_item so it still
+// reaches the invoice. The plan itself (the list of buttons) carries over
+// day to day until changed — only which taps count as "today" resets.
+
+'use client';
+
+import { useEffect, useState } from 'react';
+import AudioRecorder from '@/app/_components/AudioRecorder';
+import CatalogPicker from '@/app/_components/CatalogPicker';
+import { supabase } from '@/lib/supabaseClient';
+
+const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
+const QUICK_TASKS = ['Cage Cleaned', 'Water Changed', 'Food Given', 'Patient Checked', 'Walked / Exercised'];
+
+function todayISODate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalog, subcategories, onCatalogItemCreated }) {
+  const [planItems, setPlanItems] = useState([]);
+  const [todayNotes, setTodayNotes] = useState([]);
+  const [authorId, setAuthorId] = useState('');
+  const [loggingId, setLoggingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [showCatalogAdd, setShowCatalogAdd] = useState(false);
+  const [catalogGoodsServiceId, setCatalogGoodsServiceId] = useState('');
+  const [catalogInstructions, setCatalogInstructions] = useState('');
+  const [showCustomAdd, setShowCustomAdd] = useState(false);
+  const [customLabel, setCustomLabel] = useState('');
+  const [error, setError] = useState(null);
+
+  function loadPlanItems() {
+    fetch(`/api/hospitalizations/${hospitalizationId}/plan-items`)
+      .then((res) => res.json())
+      .then((data) => setPlanItems(Array.isArray(data) ? data : []));
+  }
+
+  function loadTodayNotes() {
+    fetch(`/api/hospitalizations/${hospitalizationId}/notes`)
+      .then((res) => res.json())
+      .then((data) => {
+        const today = todayISODate();
+        setTodayNotes(Array.isArray(data) ? data.filter((n) => n.plan_item_id && n.note_date === today) : []);
+      });
+  }
+
+  useEffect(() => {
+    loadPlanItems();
+    loadTodayNotes();
+    const remembered = localStorage.getItem(MOBILE_STAFF_STORAGE_KEY);
+    if (remembered) setAuthorId(remembered);
+
+    const channel = supabase
+      .channel(`day-plan-${hospitalizationId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hospitalization_plan_items', filter: `hospitalization_id=eq.${hospitalizationId}` },
+        loadPlanItems
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hospitalization_notes', filter: `hospitalization_id=eq.${hospitalizationId}` },
+        loadTodayNotes
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hospitalizationId]);
+
+  function handleAuthorChange(value) {
+    setAuthorId(value);
+    localStorage.setItem(MOBILE_STAFF_STORAGE_KEY, value);
+  }
+
+  function doneToday(planItemId) {
+    return todayNotes
+      .filter((n) => n.plan_item_id === planItemId)
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  }
+
+  async function logTask(item) {
+    setError(null);
+    setLoggingId(item.id);
+    const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        author_id: authorId || null,
+        note_date: todayISODate(),
+        notes: item.instructions ? `${item.label} — ${item.instructions}` : item.label,
+        plan_item_id: item.id,
+        treatment_items: item.goods_service_id ? [{ goods_service_id: item.goods_service_id, quantity: 1 }] : [],
+      }),
+    });
+    setLoggingId(null);
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || 'Failed to log task');
+      return;
+    }
+    loadTodayNotes();
+  }
+
+  async function addPlanItem(payload) {
+    setError(null);
+    const res = await fetch(`/api/hospitalizations/${hospitalizationId}/plan-items`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || 'Failed to add task');
+      return;
+    }
+    loadPlanItems();
+  }
+
+  async function addQuickTask(label) {
+    await addPlanItem({ label });
+  }
+
+  async function addCustomTask() {
+    if (!customLabel.trim()) return;
+    await addPlanItem({ label: customLabel.trim() });
+    setCustomLabel('');
+    setShowCustomAdd(false);
+  }
+
+  async function addCatalogTask() {
+    if (!catalogGoodsServiceId) return;
+    const item = catalog.find((c) => c.id === catalogGoodsServiceId);
+    if (!item) return;
+    await addPlanItem({ label: item.name, goods_service_id: item.id, instructions: catalogInstructions.trim() || null });
+    setCatalogGoodsServiceId('');
+    setCatalogInstructions('');
+    setShowCatalogAdd(false);
+  }
+
+  async function removePlanItem(id) {
+    if (!confirm('Remove this task from the plan? Past log entries are kept.')) return;
+    setDeletingId(id);
+    await fetch(`/api/hospitalization-plan-items/${id}`, { method: 'DELETE' });
+    setDeletingId(null);
+    loadPlanItems();
+  }
+
+  function authorName(id) {
+    return staff.find((s) => s.id === id)?.full_name || 'Unknown';
+  }
+
+  const existingLabels = new Set(planItems.map((t) => t.label));
+  const remainingQuickTasks = QUICK_TASKS.filter((q) => !existingLabels.has(q));
+
+  const logEntries = todayNotes
+    .map((n) => ({ ...n, planItem: planItems.find((p) => p.id === n.plan_item_id) }))
+    .filter((n) => n.planItem)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  return (
+    <div className="day-plan">
+      {error && <p className="error">{error}</p>}
+
+      <div className="day-plan-header">
+        <h3>Day Treatment Plan</h3>
+        <select className="day-plan-author" value={authorId} onChange={(e) => handleAuthorChange(e.target.value)}>
+          <option value="">Logging as...</option>
+          {staff.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.full_name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {planItems.length === 0 && <p className="visit-meta">No tasks on the plan yet — add one below.</p>}
+
+      <div className="day-plan-grid">
+        {planItems.map((item) => {
+          const done = doneToday(item.id);
+          const last = done[done.length - 1];
+          return (
+            <div key={item.id} className={`day-plan-task${done.length ? ' done' : ''}`}>
+              <button type="button" onClick={() => logTask(item)} disabled={loggingId === item.id}>
+                <span className="day-plan-task-label">{item.label}</span>
+                {item.instructions && <span className="day-plan-task-meta">{item.instructions}</span>}
+                <span className="day-plan-task-status">
+                  {loggingId === item.id
+                    ? 'Logging...'
+                    : done.length
+                      ? `✓ ${done.length > 1 ? `${done.length}× today · ` : ''}last ${formatTime(last.created_at)} · ${authorName(last.author_id)}`
+                      : 'Not done yet today'}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="day-plan-remove"
+                onClick={() => removePlanItem(item.id)}
+                disabled={deletingId === item.id}
+                title="Remove from plan"
+              >
+                &times;
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="day-plan-add-row">
+        <AudioRecorder entityType="hospitalization_plan" entityId={hospitalizationId} onExtractedFields={loadPlanItems} />
+        <button type="button" className="pill-btn" onClick={() => setShowCatalogAdd((v) => !v)}>
+          + From Catalog
+        </button>
+        <button type="button" className="pill-btn" onClick={() => setShowCustomAdd((v) => !v)}>
+          + Custom Task
+        </button>
+      </div>
+
+      {remainingQuickTasks.length > 0 && (
+        <div className="day-plan-chips">
+          {remainingQuickTasks.map((q) => (
+            <button type="button" key={q} className="chip" onClick={() => addQuickTask(q)}>
+              + {q}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showCatalogAdd && (
+        <div className="day-plan-catalog-add">
+          <CatalogPicker
+            catalog={catalog}
+            subcategories={subcategories}
+            value={catalogGoodsServiceId}
+            onChange={setCatalogGoodsServiceId}
+            onItemCreated={onCatalogItemCreated}
+          />
+          <input
+            placeholder="Instructions (e.g. PO with food, twice daily)"
+            value={catalogInstructions}
+            onChange={(e) => setCatalogInstructions(e.target.value)}
+          />
+          <button type="button" onClick={addCatalogTask} disabled={!catalogGoodsServiceId}>
+            Add to Plan
+          </button>
+        </div>
+      )}
+
+      {showCustomAdd && (
+        <div className="day-plan-custom-add">
+          <input
+            placeholder="Task name (e.g. Change bandage)"
+            value={customLabel}
+            onChange={(e) => setCustomLabel(e.target.value)}
+          />
+          <button type="button" onClick={addCustomTask} disabled={!customLabel.trim()}>
+            Add
+          </button>
+        </div>
+      )}
+
+      <h4 className="day-plan-log-header">Today&apos;s Log</h4>
+      {logEntries.length === 0 ? (
+        <p className="visit-meta">Nothing logged yet today.</p>
+      ) : (
+        <ul className="day-plan-log">
+          {logEntries.map((n) => (
+            <li key={n.id}>
+              <span className="day-plan-log-task">{n.planItem.label}</span>
+              <span className="day-plan-log-meta">
+                {formatTime(n.created_at)} &middot; {authorName(n.author_id)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function formatTime(iso) {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}

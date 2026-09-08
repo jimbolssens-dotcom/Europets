@@ -24,6 +24,7 @@ import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplate
 import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
+import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -590,6 +591,14 @@ export default function HospitalizationDetailPage() {
           </div>
         </form>
       </details>
+
+      <DayTreatmentPlan
+        hospitalizationId={id}
+        staff={staff}
+        catalog={catalog}
+        subcategories={subcategories}
+        onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+      />
 
       <div className="split">
       <div className="split-main">

@@ -808,6 +808,25 @@ create table hospitalization_notes (
     updated_at timestamptz default now()   -- bumped on every edit, so multiple touches in a day are visible
 );
 
+-- Day Treatment Plan: a per-admission set of recurring/one-off care tasks
+-- (meds, checks, routine care) shown as tap-to-log buttons on the
+-- hospitalization page (admin + mobile). Tapping one creates a normal
+-- hospitalization_notes row (see plan_item_id below) — the log is just
+-- what's already in the day-to-day worksheet, no separate audit table.
+create table hospitalization_plan_items (
+    id uuid primary key default gen_random_uuid(),
+    hospitalization_id uuid references hospitalizations(id) on delete cascade not null,
+    label text not null,                      -- button text, e.g. "Amoxicillin 250mg" or "Cage Cleaned"
+    goods_service_id uuid references goods_services(id),  -- set for a catalog-linked task (meds/services); null for routine care
+    instructions text,                        -- dosage/frequency, e.g. "PO with food, twice daily"
+    created_at timestamptz default now()
+);
+
+-- set null (not cascade) so deleting a plan item/button doesn't erase the
+-- historical worksheet entries it already created.
+alter table hospitalization_notes add column plan_item_id uuid
+    references hospitalization_plan_items(id) on delete set null;
+
 -- Deferred from treatment_items' own definition above, since it needs
 -- this table to exist first — medications, goods/services, and tests
 -- logged as part of a specific worksheet entry, consolidated into an
@@ -1145,7 +1164,7 @@ create policy "Public delete consult-files" on storage.objects
 alter publication supabase_realtime add table
     clients, patients, appointments, visits, consult_notes, invoices, invoice_line_items,
     diagnostics, treatment_items, surgical_reports, dental_reports, ultrasound_reports, xray_reports,
-    hospitalizations, hospitalization_notes, attachments, recordings, clinic_settings,
+    hospitalizations, hospitalization_notes, hospitalization_plan_items, attachments, recordings, clinic_settings,
     vaccine_protocols, vaccinations, intake_requests, expenses, staff_roster_entries, review_requests,
     nomod_payment_links, policy_categories, policies;
 
@@ -1179,6 +1198,7 @@ alter table xray_reports disable row level security;
 alter table hospitalizations disable row level security;
 alter table cages disable row level security;
 alter table hospitalization_notes disable row level security;
+alter table hospitalization_plan_items disable row level security;
 alter table attachments disable row level security;
 alter table recordings disable row level security;
 alter table clinic_settings disable row level security;

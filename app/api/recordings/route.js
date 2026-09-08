@@ -44,9 +44,15 @@ export async function POST(request) {
     );
   }
   if (
-    !['visit', 'surgical_report', 'dental_report', 'ultrasound_report', 'xray_report', 'hospitalization'].includes(
-      entity_type
-    )
+    ![
+      'visit',
+      'surgical_report',
+      'dental_report',
+      'ultrasound_report',
+      'xray_report',
+      'hospitalization',
+      'hospitalization_plan',
+    ].includes(entity_type)
   ) {
     return NextResponse.json({ error: 'invalid entity_type' }, { status: 400 });
   }

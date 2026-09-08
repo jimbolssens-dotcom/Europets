@@ -34,6 +34,7 @@ import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
+import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import { uploadAttachment } from '@/lib/attachments';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
@@ -210,6 +211,15 @@ export default function MobileHospitalizationPage() {
           <h1>{admission.cages?.name || 'No cage'} — {admission.patients?.name}</h1>
           <p className="mobile-subtitle">{admission.clients?.full_name}</p>
 
+          <DayTreatmentPlan
+            hospitalizationId={id}
+            staff={staff}
+            catalog={catalog}
+            subcategories={subcategories}
+            onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+          />
+
+          <h2 className="mobile-section-header">Add Worksheet Entry</h2>
           <p className="mobile-hint">
             Record an observation and it'll fill in Appetite, Weight, Temperature, Condition, and
             Notes below, plus match any medications/tests you mention against the catalog. Check

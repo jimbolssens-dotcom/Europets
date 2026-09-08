@@ -3521,6 +3521,220 @@ button.secondary:hover {
   background: rgba(0, 0, 0, 0.35);
 }
 
+/* Day Treatment Plan (DayTreatmentPlan.jsx) — tap-to-log task buttons on
+   the hospitalization page (admin + mobile). */
+.day-plan {
+  background: white;
+  border: 1px solid #eee;
+  border-top: 3px solid var(--pink);
+  border-radius: 10px;
+  padding: 1.1rem 1.3rem 1.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.day-plan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.day-plan-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--pink-dark);
+}
+
+.day-plan-author {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.day-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.day-plan-task {
+  position: relative;
+}
+
+.day-plan-task button:not(.day-plan-remove) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.65rem 0.8rem;
+  border: 1.5px solid #ddd;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+}
+
+.day-plan-task button:not(.day-plan-remove):hover {
+  border-color: var(--pink);
+}
+
+.day-plan-task.done button:not(.day-plan-remove) {
+  border-color: #3f8f5f;
+  background: #eaf6ee;
+}
+
+.day-plan-task-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.day-plan-task-meta {
+  font-size: 0.72rem;
+  color: #888;
+}
+
+.day-plan-task-status {
+  font-size: 0.72rem;
+  color: #bbb;
+}
+
+.day-plan-task.done .day-plan-task-status {
+  color: #3f8f5f;
+  font-weight: 600;
+}
+
+.day-plan-remove {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.4rem;
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.15rem 0.3rem;
+  cursor: pointer;
+}
+
+.day-plan-remove:hover {
+  color: var(--pink-dark);
+}
+
+.day-plan-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  border-top: 1px solid #eee;
+  padding-top: 0.9rem;
+}
+
+.day-plan-add-row .pill-btn {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--pink-tint);
+  background: white;
+  color: var(--pink-dark);
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.day-plan-add-row .pill-btn:hover {
+  background: var(--pink-tint);
+}
+
+.day-plan-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+
+.day-plan-chips .chip {
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px dashed #ddd;
+  background: #fcfcfb;
+  font-size: 0.75rem;
+  color: #777;
+  cursor: pointer;
+}
+
+.day-plan-chips .chip:hover {
+  border-color: var(--pink);
+  color: var(--pink-dark);
+}
+
+.day-plan-catalog-add,
+.day-plan-custom-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.7rem;
+}
+
+.day-plan-catalog-add input,
+.day-plan-custom-add input {
+  flex: 1;
+  min-width: 180px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-family: inherit;
+}
+
+.day-plan-log-header {
+  margin: 1rem 0 0.6rem;
+  font-size: 0.9rem;
+  color: var(--pink-dark);
+}
+
+.day-plan-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.day-plan-log li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  padding: 0.45rem 0.7rem;
+  background: #fcfcfb;
+  border: 1px solid #eee;
+  border-radius: 6px;
+}
+
+.day-plan-log-task {
+  font-weight: 600;
+}
+
+.day-plan-log-meta {
+  color: #888;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .day-plan-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* Hospitalization page: quick occupancy read above the Cage
    Layout/All Admissions tabs. */
 .hosp-stat-strip {
