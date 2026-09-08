@@ -48,9 +48,7 @@ export default function InvoiceDetailPage() {
   const [labelsError, setLabelsError] = useState(null);
   const [paymentLinkError, setPaymentLinkError] = useState(null);
   const [microchipModalOpen, setMicrochipModalOpen] = useState(false);
-  const [editingLineItemId, setEditingLineItemId] = useState(null);
-  const [editLineItemForm, setEditLineItemForm] = useState({ quantity: '', administration_method: '', instructions: '' });
-  const [savingLineItemEdit, setSavingLineItemEdit] = useState(false);
+  const [lineItemDrafts, setLineItemDrafts] = useState({}); // line item id -> { quantity, instructions } while typing, before it's saved on blur
   const [lineItemEditError, setLineItemEditError] = useState(null);
 
   const loadInvoice = () =>
@@ -188,43 +186,53 @@ export default function InvoiceDetailPage() {
   // Correcting an already-added line item — the wrong quantity was logged,
   // or an injection's SC/IM route was picked wrong — rather than removing
   // and re-adding it (which would lose its description/instructions).
-  function startEditLineItem(li) {
-    setEditingLineItemId(li.id);
-    setEditLineItemForm({
-      quantity: li.quantity,
-      administration_method: li.administration_method || '',
-      instructions: li.instructions || '',
-    });
+  // Quantity/instructions are typed into a local draft and only saved on
+  // blur (so each keystroke doesn't fire a request); the route picker
+  // saves immediately on change since picking an option is already a
+  // complete, deliberate action. Either way there's no separate Save step.
+  async function saveLineItemField(itemId, patch) {
     setLineItemEditError(null);
-  }
-
-  function cancelEditLineItem() {
-    setEditingLineItemId(null);
-    setLineItemEditError(null);
-  }
-
-  async function saveLineItemEdit(itemId) {
-    setSavingLineItemEdit(true);
-    setLineItemEditError(null);
-
     const res = await fetch(`/api/invoices/${id}/line-items/${itemId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        quantity: Number(editLineItemForm.quantity),
-        administration_method: editLineItemForm.administration_method || null,
-        instructions: editLineItemForm.instructions,
-      }),
+      body: JSON.stringify(patch),
     });
-    const data = await res.json();
-
     if (!res.ok) {
+      const data = await res.json();
       setLineItemEditError(data.error || 'Failed to save changes');
-    } else {
-      setEditingLineItemId(null);
-      loadInvoice();
+      return;
     }
-    setSavingLineItemEdit(false);
+    setLineItemDrafts((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+    loadInvoice();
+  }
+
+  function commitLineItemQuantity(li, value) {
+    const quantity = Number(value);
+    if (!value || Number.isNaN(quantity) || quantity <= 0 || quantity === Number(li.quantity)) {
+      setLineItemDrafts((prev) => {
+        const next = { ...prev };
+        delete next[li.id];
+        return next;
+      });
+      return;
+    }
+    saveLineItemField(li.id, { quantity });
+  }
+
+  function commitLineItemInstructions(li, value) {
+    if (value === (li.instructions || '')) {
+      setLineItemDrafts((prev) => {
+        const next = { ...prev };
+        delete next[li.id];
+        return next;
+      });
+      return;
+    }
+    saveLineItemField(li.id, { instructions: value });
   }
 
   // Dispensing labels: each medication line item prints independently —
@@ -362,6 +370,7 @@ export default function InvoiceDetailPage() {
         )}
       </p>
       {paymentLinkError && <p className="error">{paymentLinkError}</p>}
+      {lineItemEditError && <p className="error">{lineItemEditError}</p>}
 
       <table>
         <thead>
@@ -384,68 +393,58 @@ export default function InvoiceDetailPage() {
               {group.items.map((li) => {
                 const catalogItem = catalog.find((c) => c.id === li.goods_service_id);
                 const isInjectable = catalogItem?.administration_method === 'injectable';
-                return editingLineItemId === li.id ? (
-                  <tr key={li.id} className="invoice-line-item-editing">
+                const draft = lineItemDrafts[li.id];
+                return (
+                  <tr key={li.id}>
                     <td>{li.description}</td>
                     <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="qty-input"
-                        value={editLineItemForm.quantity}
-                        onChange={(e) => setEditLineItemForm({ ...editLineItemForm, quantity: e.target.value })}
-                      />
+                      {editable ? (
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="qty-input"
+                          value={draft?.quantity ?? li.quantity}
+                          onChange={(e) =>
+                            setLineItemDrafts({ ...lineItemDrafts, [li.id]: { ...draft, quantity: e.target.value } })
+                          }
+                          onBlur={(e) => commitLineItemQuantity(li, e.target.value)}
+                        />
+                      ) : (
+                        <>
+                          {li.quantity} {li.goods_services?.unit || ''}
+                        </>
+                      )}
                     </td>
                     <td>
-                      {isInjectable ? (
+                      {editable && isInjectable ? (
                         <AdministrationRoutePicker
-                          value={editLineItemForm.administration_method}
-                          onChange={(value) => setEditLineItemForm({ ...editLineItemForm, administration_method: value })}
+                          value={li.administration_method || ''}
+                          onChange={(value) => saveLineItemField(li.id, { administration_method: value })}
                         />
-                      ) : li.administration_method === 'dispense' ? (
-                        'Dispensed'
+                      ) : li.administration_method ? (
+                        ADMINISTRATION_METHOD_LABELS[li.administration_method]
                       ) : (
                         '—'
                       )}
                     </td>
                     <td>
-                      <input
-                        placeholder="Instructions"
-                        value={editLineItemForm.instructions}
-                        onChange={(e) => setEditLineItemForm({ ...editLineItemForm, instructions: e.target.value })}
-                      />
+                      {editable ? (
+                        <input
+                          placeholder="Instructions"
+                          value={draft?.instructions ?? (li.instructions || '')}
+                          onChange={(e) =>
+                            setLineItemDrafts({ ...lineItemDrafts, [li.id]: { ...draft, instructions: e.target.value } })
+                          }
+                          onBlur={(e) => commitLineItemInstructions(li, e.target.value)}
+                        />
+                      ) : (
+                        li.instructions || '—'
+                      )}
                     </td>
-                    <td>{money(li.unit_price)}</td>
-                    <td>{money(li.line_total)}</td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => saveLineItemEdit(li.id)}
-                        disabled={savingLineItemEdit || (isInjectable && !editLineItemForm.administration_method)}
-                      >
-                        {savingLineItemEdit ? 'Saving...' : 'Save'}
-                      </button>
-                      <button type="button" onClick={cancelEditLineItem} disabled={savingLineItemEdit}>
-                        Cancel
-                      </button>
-                      {lineItemEditError && <p className="error">{lineItemEditError}</p>}
-                    </td>
-                  </tr>
-                ) : (
-                  <tr key={li.id}>
-                    <td>{li.description}</td>
-                    <td>
-                      {li.quantity} {li.goods_services?.unit || ''}
-                    </td>
-                    <td>{li.administration_method ? ADMINISTRATION_METHOD_LABELS[li.administration_method] : '—'}</td>
-                    <td>{li.instructions || '—'}</td>
                     <td>{money(li.unit_price)}</td>
                     <td>{money(li.line_total)}</td>
                     {editable && (
                       <td>
-                        <button type="button" onClick={() => startEditLineItem(li)}>
-                          Edit
-                        </button>
                         <button type="button" onClick={() => removeLineItem(li.id)}>
                           Remove
                         </button>
