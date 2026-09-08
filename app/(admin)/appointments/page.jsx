@@ -743,6 +743,33 @@ function AppointmentsPageInner() {
     loadMonth();
   }
 
+  // Same "draft a pre-filled message, staff sends it themselves" pattern
+  // as Vaccination Reminders — there's no connected WhatsApp Business API
+  // to send these on their own yet. Marks reminder_sent_at once the chat
+  // opens; clicking again any time after that just re-sends.
+  function reminderMessage(a) {
+    const dateLabel = new Date(a.start_time).toLocaleDateString([], {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    });
+    const timeLabel = formatTime(a.start_time);
+    return `Hi ${a.clients?.full_name || 'there'}, this is a reminder that ${
+      a.patients?.name || 'your pet'
+    } has an appointment at Europets Clinic on ${dateLabel} at ${timeLabel}. See you then! — Europets Clinic`;
+  }
+
+  function sendReminder(a) {
+    const phone = (a.clients?.phone || '').replace(/\D/g, '');
+    if (!phone) return;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(reminderMessage(a))}`, '_blank');
+    fetch(`/api/appointments/${a.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mark_reminded: true }),
+    }).then(loadMonth);
+  }
+
   async function checkIn(appointmentId) {
     await fetch('/api/visits', {
       method: 'POST',
@@ -1153,10 +1180,18 @@ function AppointmentsPageInner() {
                     </button>
                   )}
                   {a.status === 'checked_in' && <a href="/consults">View Consult</a>}
+                  {a.status === 'booked' && a.clients?.phone && (
+                    <button type="button" onClick={() => sendReminder(a)}>
+                      💬 Remind
+                    </button>
+                  )}
                   {a.status !== 'cancelled' && a.status !== 'complete' && (
                     <button type="button" onClick={() => cancelAppointment(a.id)}>
                       Cancel
                     </button>
+                  )}
+                  {a.reminder_sent_at && (
+                    <span className="visit-meta"> Reminded {formatTime(a.reminder_sent_at)}</span>
                   )}
                 </td>
               </tr>

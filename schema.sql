@@ -192,6 +192,7 @@ create table appointments (
     -- Came from a client's own booking request (see intake_requests
     -- below) rather than staff booking it directly here (migration 050).
     client_requested boolean not null default false,
+    reminder_sent_at timestamptz,  -- last time staff drafted a WhatsApp reminder (migration 079)
     created_at timestamptz default now()
 );
 

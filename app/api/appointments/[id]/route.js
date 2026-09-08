@@ -2,6 +2,10 @@
 // PATCH /api/appointments/:id
 //   { status }                                    -> status-only update
 //     (check-in, cancel, etc. — unchanged behavior)
+//   { mark_reminded: true } | { clear_reminder: true }
+//     -> record/clear when a WhatsApp reminder was last sent (see
+//        reminder_sent_at, migration 079) — same pattern as vaccination
+//        reminders (app/api/vaccinations/[id]).
 //   { room_id?, start_time?, duration_minutes?, vet_id?, type?, patient_id?, reason?, date?, shift? }
 //     -> edit: reschedule (drag-to-move/resize on the schedule) and/or
 //        change patient, vet, type, or reason (the Edit Appointment modal).
@@ -27,6 +31,20 @@ const VALID_STATUSES = ['booked', 'checked_in', 'in_progress', 'complete', 'canc
 export async function PATCH(request, { params }) {
   const body = await request.json();
   const { status, room_id, start_time, duration_minutes, vet_id, type, patient_id, reason, date, shift } = body;
+
+  if (body.mark_reminded || body.clear_reminder) {
+    const { data, error } = await supabase
+      .from('appointments')
+      .update({ reminder_sent_at: body.mark_reminded ? new Date().toISOString() : null })
+      .eq('id', params.id)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json(data);
+  }
 
   const isEdit =
     room_id !== undefined ||
