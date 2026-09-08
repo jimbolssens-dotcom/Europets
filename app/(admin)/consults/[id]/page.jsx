@@ -722,6 +722,9 @@ export default function ConsultDetailPage() {
       </p>
       {vetChangeError && <p className="error">{vetChangeError}</p>}
 
+      <h3>Photos</h3>
+      <AttachmentSection entityType="visit" entityId={id} />
+
       <div className="consult-report-share">
         {consult.status === 'complete' && (
           <ClientReportEditor
@@ -906,9 +909,6 @@ export default function ConsultDetailPage() {
 
         <h3>Record Consult</h3>
         <AudioRecorder entityType="visit" entityId={id} />
-
-        <h3>Photos</h3>
-        <AttachmentSection entityType="visit" entityId={id} />
         </div>
 
         <div>
