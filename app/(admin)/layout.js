@@ -124,6 +124,7 @@ export default function AdminLayout({ children }) {
             Hospitalization{hasPendingUpdateRequest && ' 🔔'}
           </a>
           <a href="/vaccinations">Vaccinations</a>
+          <a href="/imaging-reports">Imaging Reports</a>
           <a href="/invoices">Invoices</a>
           <a href="/mobile" title="Mobile recording app" aria-label="Mobile recording app" className="settings-link">
             📱
