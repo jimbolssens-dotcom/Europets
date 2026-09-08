@@ -14,6 +14,7 @@ import { uploadAttachment } from '@/lib/attachments';
 import { EMIRATES } from '@/lib/emirates';
 import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder, openEmailReminder } from '@/lib/paymentReminders';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -98,7 +99,7 @@ export default function ClientDetailPage() {
     const digits = (client.phone || '').replace(/\D/g, '');
     const message = `Hi ${client.full_name}! Please pick or add your pet and request an appointment here: ${url}`;
     if (digits.length > 3) {
-      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+      openWhatsApp(client.phone, message);
     } else {
       await navigator.clipboard.writeText(url);
       setBookingLinkError('No phone number on file — link copied to clipboard instead.');
@@ -128,7 +129,7 @@ export default function ClientDetailPage() {
     const digits = (client.phone || '').replace(/\D/g, '');
     const message = `Hi ${client.full_name}! Thanks for visiting Europets Clinic — we'd love to hear how it went. Could you leave us a quick review here? ${url}`;
     if (digits.length > 3) {
-      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+      openWhatsApp(client.phone, message);
     } else {
       await navigator.clipboard.writeText(url);
       setReviewLinkError('No phone number on file — link copied to clipboard instead.');
@@ -150,7 +151,7 @@ export default function ClientDetailPage() {
     const digits = (client.phone || '').replace(/\D/g, '');
     const message = `Hi ${client.full_name}! You can settle your outstanding balance with Europets Clinic online here: ${url}`;
     if (digits.length > 3) {
-      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+      openWhatsApp(client.phone, message);
     } else {
       navigator.clipboard.writeText(url);
       setPaymentLinkError('No phone number on file — link copied to clipboard instead.');

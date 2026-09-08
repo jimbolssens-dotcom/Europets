@@ -18,6 +18,7 @@ import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { printPdfUrl } from '@/lib/printPdf';
 import InfoHint from '@/app/_components/InfoHint';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -292,7 +293,7 @@ export default function InvoiceDetailPage() {
     const digits = (invoice.clients?.phone || '').replace(/\D/g, '');
     const message = `Hi ${invoice.clients?.full_name || ''}! You can settle your Europets Clinic invoice online here: ${url}`;
     if (digits.length > 3) {
-      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+      openWhatsApp(invoice.clients?.phone, message);
     } else {
       navigator.clipboard.writeText(url);
       setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
@@ -317,7 +318,7 @@ export default function InvoiceDetailPage() {
     const digits = (invoice.clients?.phone || '').replace(/\D/g, '');
     const message = `Hi ${invoice.clients?.full_name || ''}! Here is your invoice from Europets Clinic: ${url}`;
     if (digits.length > 3) {
-      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+      openWhatsApp(invoice.clients?.phone, message);
     } else {
       navigator.clipboard.writeText(url);
       setPaymentLinkError('No phone number on file — link copied to clipboard instead.');

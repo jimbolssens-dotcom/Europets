@@ -55,9 +55,10 @@ appointments, full consult medical records, hospitalization, and invoicing.
 > its own — that needs the paid WhatsApp Business API (Meta business
 > verification, approved message templates, per-message cost). The
 > "Download Summary PDF" / "Share via WhatsApp" buttons on a hospitalization
-> page instead: download the PDF, then open `wa.me` with the client's
-> number and a drafted message — the vet still taps the attach icon in
-> WhatsApp once to pick the file they just downloaded.
+> page instead: download the PDF, then open the WhatsApp desktop/mobile app
+> (`whatsapp://send`) with the client's number and a drafted message — the
+> vet still taps the attach icon in WhatsApp once to pick the file they
+> just downloaded.
 
 > **Emirates ID scanning reads text, it doesn't crop a face photo.** Claude
 > reads the name and ID number off the card photo and fills in the form;

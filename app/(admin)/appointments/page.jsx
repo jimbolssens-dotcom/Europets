@@ -22,6 +22,7 @@ import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import EditAppointmentModal from '@/app/_components/EditAppointmentModal';
 import AppointmentRequestsPanel from '@/app/_components/AppointmentRequestsPanel';
 import { buildStaffColorMap, UNASSIGNED_STAFF_COLOR } from '@/lib/staffColors';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 const OPEN_HOUR = 8;
 const CLOSE_HOUR = 19;
@@ -760,9 +761,7 @@ function AppointmentsPageInner() {
   }
 
   function sendReminder(a) {
-    const phone = (a.clients?.phone || '').replace(/\D/g, '');
-    if (!phone) return;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(reminderMessage(a))}`, '_blank');
+    if (!openWhatsApp(a.clients?.phone, reminderMessage(a))) return;
     fetch(`/api/appointments/${a.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

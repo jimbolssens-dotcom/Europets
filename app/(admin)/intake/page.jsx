@@ -16,6 +16,7 @@ import { useIntakeReview } from '@/lib/useIntakeReview';
 import { usePossibleClientMatches } from '@/lib/usePossibleClientMatches';
 import IntakeReviewCard from '@/app/_components/IntakeReviewCard';
 import InfoHint from '@/app/_components/InfoHint';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 function formatDateTime(dateStr) {
   return new Date(dateStr).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -102,7 +103,7 @@ export default function IntakePage() {
       return;
     }
     const data = await res.json();
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(intakeMessage(data.id, Boolean(data.client_id)))}`, '_blank');
+    openWhatsApp(phone, intakeMessage(data.id, Boolean(data.client_id)));
     setQuickPhone('+971 ');
     setSending(false);
     load();
@@ -129,7 +130,7 @@ export default function IntakePage() {
         body: JSON.stringify({ action: 'update_phone', sent_to_phone: normalized }),
       });
     }
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(intakeMessage(r.id, Boolean(r.client_id)))}`, '_blank');
+    openWhatsApp(phone, intakeMessage(r.id, Boolean(r.client_id)));
     load();
   }
 

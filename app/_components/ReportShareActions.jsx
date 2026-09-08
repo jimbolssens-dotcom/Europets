@@ -8,15 +8,16 @@
 
 'use client';
 
+import { openWhatsApp } from '@/lib/whatsapp';
+
 export default function ReportShareActions({ apiBase, reportId, client, patient, reportLabel, pdfPath = 'report-pdf' }) {
   function reportPdfUrl() {
     return `${window.location.origin}${apiBase}/${reportId}/${pdfPath}`;
   }
 
   function shareViaWhatsApp() {
-    const phone = (client?.phone || '').replace(/\D/g, '');
     const message = `Hi ${client?.full_name || 'there'}, here is the ${reportLabel} for ${patient?.name || 'your pet'}: ${reportPdfUrl()}`;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    openWhatsApp(client?.phone, message);
   }
 
   function shareViaEmail() {

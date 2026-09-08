@@ -32,6 +32,7 @@ import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
 // catalog link — kept only to label those old rows.
@@ -524,7 +525,7 @@ export default function ConsultDetailPage() {
     const digits = (consult.clients?.phone || '').replace(/\D/g, '');
     const message = `Hi ${consult.clients?.full_name}! Please review and sign this consent form for ${consult.patients?.name}: ${url}`;
     if (digits.length > 3) {
-      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+      openWhatsApp(consult.clients?.phone, message);
     } else {
       await navigator.clipboard.writeText(url);
       setConsentError('No phone number on file — link copied to clipboard instead.');

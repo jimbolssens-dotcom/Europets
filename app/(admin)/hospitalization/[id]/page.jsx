@@ -28,6 +28,7 @@ import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -378,7 +379,7 @@ export default function HospitalizationDetailPage() {
     const digits = (admission.clients?.phone || '').replace(/\D/g, '');
     const message = `Hi ${admission.clients?.full_name || 'there'}! Please review and sign this consent form for ${admission.patients?.name || 'your pet'}: ${url}`;
     if (digits.length > 3) {
-      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+      openWhatsApp(admission.clients?.phone, message);
     } else {
       await navigator.clipboard.writeText(url);
       setConsentError('No phone number on file — link copied to clipboard instead.');
@@ -410,10 +411,8 @@ export default function HospitalizationDetailPage() {
   }
 
   function shareViaWhatsApp() {
-    const phone = (admission.clients?.phone || '').replace(/\D/g, '');
     const message = `Hi ${admission.clients?.full_name || 'there'}, here's the daily care update for ${admission.patients?.name || 'your pet'} during their stay with us. Please attach the summary PDF you just downloaded to this chat.`;
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+    openWhatsApp(admission.clients?.phone, message);
   }
 
   function portalUrl() {
@@ -421,10 +420,8 @@ export default function HospitalizationDetailPage() {
   }
 
   function sharePortalLink() {
-    const phone = (admission.clients?.phone || '').replace(/\D/g, '');
     const message = `Hi ${admission.clients?.full_name || 'there'}, you can follow ${admission.patients?.name || 'your pet'}'s care updates and photos here, live, for the rest of their stay with us: ${portalUrl()}`;
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+    openWhatsApp(admission.clients?.phone, message);
   }
 
   async function copyPortalLink() {

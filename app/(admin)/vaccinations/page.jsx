@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import InfoHint from '@/app/_components/InfoHint';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 function daysUntil(dateStr) {
   const today = new Date();
@@ -111,9 +112,7 @@ export default function VaccinationsDuePage() {
   }
 
   function draftWhatsApp(group) {
-    const phone = (group.patients?.clients?.phone || '').replace(/\D/g, '');
-    if (!phone) return;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(reminderMessage(group))}`, '_blank');
+    if (!openWhatsApp(group.patients?.clients?.phone, reminderMessage(group))) return;
     markReminded(group.rows.map((r) => r.id));
   }
 

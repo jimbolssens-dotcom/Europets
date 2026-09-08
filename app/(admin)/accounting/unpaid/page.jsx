@@ -1,9 +1,10 @@
 // app/accounting/unpaid/page.jsx
 // Unpaid invoices, oldest first, with enough client contact info to chase
-// a reminder in one click — reuses the same wa.me deep-link approach as
-// the Intake page's "Share via WhatsApp" (opens WhatsApp with a prefilled
-// message; nothing is sent server-side, no delivery tracking, matching
-// how basic this accounting module is meant to stay).
+// a reminder in one click — reuses the same whatsapp:// deep-link approach
+// as the Intake page's "Share via WhatsApp" (opens the WhatsApp desktop/
+// mobile app with a prefilled message; nothing is sent server-side, no
+// delivery tracking, matching how basic this accounting module is meant to
+// stay).
 
 'use client';
 
