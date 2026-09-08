@@ -1400,6 +1400,43 @@ button.secondary:hover {
   padding: 0.5rem 1.25rem;
 }
 
+/* Home dashboard's "Find"/"Add" panel — quick client/patient lookup and
+   creation without leaving the dashboard for the full Clients/Patients
+   pages (still reachable from the top nav for the full table/edit view). */
+.quick-panel {
+  margin-bottom: 1.5rem;
+}
+
+.quick-search-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.quick-search-row .search-box {
+  flex: 1 1 260px;
+}
+
+.quick-add-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.quick-add-form {
+  flex: 1 1 280px;
+}
+
+.quick-add-form h3 {
+  margin-top: 0;
+}
+
+.quick-add-success {
+  color: var(--pink-dark);
+  font-weight: 600;
+}
+
 .settings-cleanup {
   display: flex;
   align-items: center;

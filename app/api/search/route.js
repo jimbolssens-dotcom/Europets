@@ -1,6 +1,11 @@
 // app/api/search/route.js
-// GET /api/search?q=...&limit=N  -> clients and patients matching the query
-// against name, phone (clients), breed, and microchip number (patients).
+// GET /api/search?q=...&limit=N&type=client|patient  -> clients and/or
+// patients matching the query against name, phone (clients), breed, and
+// microchip number (patients). `type` restricts the search to just one
+// side (skipping the other table's query entirely) — used by
+// SingleTypeSearch's dedicated client-only/patient-only search fields;
+// omit it for the combined client+patient search (SearchBox,
+// ClientOrPatientSearch).
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -16,6 +21,9 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const q = sanitize(searchParams.get('q') || '');
   const limit = Math.min(Number(searchParams.get('limit')) || 8, 50);
+  const type = searchParams.get('type'); // 'client' | 'patient' | null (both)
+  const wantClients = type !== 'patient';
+  const wantPatients = type !== 'client';
 
   if (!q) {
     return NextResponse.json({ clients: [], patients: [] });
@@ -23,26 +31,30 @@ export async function GET(request) {
 
   const term = `%${q}%`;
 
-  const extraPhoneClientIds = await clientIdsWithPhoneLike(supabase, term);
-  const clientOrFilter =
-    extraPhoneClientIds.length > 0
-      ? `full_name.ilike.${term},phone.ilike.${term},id.in.(${extraPhoneClientIds.join(',')})`
-      : `full_name.ilike.${term},phone.ilike.${term}`;
+  const [clientsResult, patientsResult] = await Promise.all([
+    wantClients
+      ? (async () => {
+          const extraPhoneClientIds = await clientIdsWithPhoneLike(supabase, term);
+          const clientOrFilter =
+            extraPhoneClientIds.length > 0
+              ? `full_name.ilike.${term},phone.ilike.${term},id.in.(${extraPhoneClientIds.join(',')})`
+              : `full_name.ilike.${term},phone.ilike.${term}`;
+          return supabase.from('clients').select('*').or(clientOrFilter).order('full_name', { ascending: true }).limit(limit);
+        })()
+      : { data: [] },
+    wantPatients
+      ? supabase
+          .from('patients')
+          .select('*, clients(id, full_name, phone)')
+          .or(`name.ilike.${term},breed.ilike.${term},microchip_number.ilike.${term}`)
+          .order('name', { ascending: true })
+          .limit(limit)
+      : { data: [] },
+  ]);
 
-  const [{ data: clients, error: clientsError }, { data: patients, error: patientsError }] =
-    await Promise.all([
-      supabase.from('clients').select('*').or(clientOrFilter).order('full_name', { ascending: true }).limit(limit),
-      supabase
-        .from('patients')
-        .select('*, clients(id, full_name, phone)')
-        .or(`name.ilike.${term},breed.ilike.${term},microchip_number.ilike.${term}`)
-        .order('name', { ascending: true })
-        .limit(limit),
-    ]);
-
-  if (clientsError || patientsError) {
-    return NextResponse.json({ error: (clientsError || patientsError).message }, { status: 500 });
+  if (clientsResult.error || patientsResult.error) {
+    return NextResponse.json({ error: (clientsResult.error || patientsResult.error).message }, { status: 500 });
   }
 
-  return NextResponse.json({ clients: clients || [], patients: patients || [] });
+  return NextResponse.json({ clients: clientsResult.data || [], patients: patientsResult.data || [] });
 }
