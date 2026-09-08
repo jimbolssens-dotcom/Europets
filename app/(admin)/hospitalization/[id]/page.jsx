@@ -1,7 +1,8 @@
 // app/hospitalization/[id]/page.jsx
 // A single admission: status, and the day-to-day worksheet — one entry
-// per day covering appetite, condition, weight, temperature, and notes,
-// each with optional file attachments (e.g. a photo of a wound) and any
+// per day covering weight, temperature, and free-text notes (appetite/
+// condition just go in Notes rather than their own fields), each with
+// optional file attachments (e.g. a photo of a wound) and any
 // medications/goods/services given as part of that same entry. Everything
 // logged across every entry gets consolidated into one invoice at
 // discharge.
@@ -33,8 +34,6 @@ function todayISODate() {
 const emptyNoteForm = {
   note_date: todayISODate(),
   author_id: '',
-  appetite: '',
-  condition: '',
   temperature_c: '',
   weight_kg: '',
   notes: '',
@@ -155,20 +154,22 @@ export default function HospitalizationDetailPage() {
   }
 
   // Applies a recording's extracted fields to the still-unsaved "Add
-  // Worksheet Entry" draft — appetite/weight/temperature/condition only
-  // fill in if still empty (there's no sensible way to "append" to a
-  // select or a number), notes appends the same way a consult's text
-  // fields do, and matched catalog items are added to the pending list
-  // exactly as if "+ Add Item" had been clicked for each.
+  // Worksheet Entry" draft — weight/temperature only fill in if still
+  // empty (there's no sensible way to "append" to a number). appetite/
+  // condition/notes all fold into the one Notes field (no separate
+  // appetite/condition inputs anymore), appending the same way a
+  // consult's text fields do. Matched catalog items are added to the
+  // pending list exactly as if "+ Add Item" had been clicked for each.
   function applyExtractedFields(fields) {
     setNoteForm((prev) => {
       const next = { ...prev };
-      if (fields.appetite && !next.appetite) next.appetite = fields.appetite;
       if (fields.weight_kg != null && !next.weight_kg) next.weight_kg = fields.weight_kg;
       if (fields.temperature_c != null && !next.temperature_c) next.temperature_c = fields.temperature_c;
-      if (fields.condition && !next.condition) next.condition = fields.condition;
-      if (fields.notes) {
-        next.notes = next.notes ? `${next.notes}\n\n${fields.notes}` : fields.notes;
+      const extraNotes = [fields.appetite ? `Appetite: ${fields.appetite}` : null, fields.condition, fields.notes]
+        .filter(Boolean)
+        .join('\n');
+      if (extraNotes) {
+        next.notes = next.notes ? `${next.notes}\n\n${extraNotes}` : extraNotes;
       }
       return next;
     });
@@ -291,7 +292,6 @@ export default function HospitalizationDetailPage() {
     setEditNoteForm({
       note_date: n.note_date || todayISODate(),
       author_id: n.author_id || '',
-      appetite: n.appetite || '',
       drinking: n.drinking || '',
       stool: n.stool || '',
       urine: n.urine || '',
@@ -300,7 +300,6 @@ export default function HospitalizationDetailPage() {
       temperature_feel: n.temperature_feel || '',
       temperature_c: n.temperature_c ?? '',
       weight_kg: n.weight_kg ?? '',
-      condition: n.condition || '',
       notes: n.notes || '',
       client_summary: n.client_summary ?? (hasCheckinData(n) ? buildEmpathicCheckinText(n, admission?.patients?.name) : ''),
     });
@@ -730,28 +729,14 @@ export default function HospitalizationDetailPage() {
                       ))}
                     </select>
                   </label>
-                  {/* Appetite and the whole tile-based check-in field set
-                      (drinking/stool/urine/vomit/mood/temperature feel/
-                      medication/force-feeding) only apply to a cleaner's
-                      Quick Check-In entry, and aren't editable here — the
+                  {/* The whole tile-based check-in field set (drinking/
+                      stool/urine/vomit/mood/temperature feel/medication/
+                      force-feeding) only applies to a cleaner's Quick
+                      Check-In entry, and isn't editable here — the
                       client-facing text below is the single source of
                       truth for what the owner sees, and editing these
                       raw values wouldn't update that text, silently
                       leaving it wrong. Correct the text directly instead. */}
-                  {!hasCheckinData(n) && (
-                    <label className="worksheet-entry-edit-field">
-                      Appetite
-                      <select
-                        value={editNoteForm.appetite}
-                        onChange={(e) => setEditNoteForm({ ...editNoteForm, appetite: e.target.value })}
-                      >
-                        <option value="">Appetite...</option>
-                        <option value="good">Good</option>
-                        <option value="reduced">Reduced</option>
-                        <option value="none">None</option>
-                      </select>
-                    </label>
-                  )}
                   {hasCheckinData(n) && (
                     <label className="client-summary-edit-label">
                       What the owner sees on the portal
@@ -778,13 +763,6 @@ export default function HospitalizationDetailPage() {
                       step="0.1"
                       value={editNoteForm.temperature_c}
                       onChange={(e) => setEditNoteForm({ ...editNoteForm, temperature_c: e.target.value })}
-                    />
-                  </label>
-                  <label className="worksheet-entry-edit-field">
-                    General condition
-                    <input
-                      value={editNoteForm.condition}
-                      onChange={(e) => setEditNoteForm({ ...editNoteForm, condition: e.target.value })}
                     />
                   </label>
                   <label className="worksheet-entry-edit-field">
@@ -946,10 +924,10 @@ export default function HospitalizationDetailPage() {
         <h3>
           Add Worksheet Entry{' '}
           <InfoHint>
-            Record an observation and Claude will break it down and fill in Appetite, Weight,
-            Temperature, Condition, and Notes below — anything already filled in is kept.
-            Medications or tests you mention are matched against the catalog and added to the list
-            below automatically when a confident match is found.
+            Record an observation and Claude will break it down and fill in Weight, Temperature,
+            and Notes below — anything already filled in is kept. Medications or tests you mention
+            are matched against the catalog and added to the list below automatically when a
+            confident match is found.
           </InfoHint>
         </h3>
         <AudioRecorder entityType="hospitalization" entityId={id} onExtractedFields={applyExtractedFields} />
@@ -970,15 +948,6 @@ export default function HospitalizationDetailPage() {
             </option>
           ))}
         </select>
-        <select
-          value={noteForm.appetite}
-          onChange={(e) => setNoteForm({ ...noteForm, appetite: e.target.value })}
-        >
-          <option value="">Appetite...</option>
-          <option value="good">Good</option>
-          <option value="reduced">Reduced</option>
-          <option value="none">None</option>
-        </select>
         <input
           type="number"
           step="0.01"
@@ -992,11 +961,6 @@ export default function HospitalizationDetailPage() {
           placeholder="Temperature (°C)"
           value={noteForm.temperature_c}
           onChange={(e) => setNoteForm({ ...noteForm, temperature_c: e.target.value })}
-        />
-        <input
-          placeholder="General condition"
-          value={noteForm.condition}
-          onChange={(e) => setNoteForm({ ...noteForm, condition: e.target.value })}
         />
         <label>
           <span className="field-label-row">

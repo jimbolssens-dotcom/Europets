@@ -46,8 +46,6 @@ function todayISODate() {
 const emptyForm = {
   note_date: todayISODate(),
   author_id: '',
-  appetite: '',
-  condition: '',
   temperature_c: '',
   weight_kg: '',
   notes: '',
@@ -93,19 +91,20 @@ export default function MobileHospitalizationPage() {
     }
   }, [id]);
 
-  // Same merge rules as the desktop card: appetite/weight/temperature/
-  // condition only fill in if still empty (no sensible way to "append" to
-  // a select or a number), notes appends, matched items join the pending
-  // list as if "+ Add Item" had been tapped for each.
+  // Same merge rules as the desktop card: weight/temperature only fill in
+  // if still empty (no sensible way to "append" to a number). appetite/
+  // condition/notes all fold into the one Notes field (no separate
+  // appetite/condition inputs anymore).
   function applyExtractedFields(fields) {
     setForm((prev) => {
       const next = { ...prev };
-      if (fields.appetite && !next.appetite) next.appetite = fields.appetite;
       if (fields.weight_kg != null && !next.weight_kg) next.weight_kg = fields.weight_kg;
       if (fields.temperature_c != null && !next.temperature_c) next.temperature_c = fields.temperature_c;
-      if (fields.condition && !next.condition) next.condition = fields.condition;
-      if (fields.notes) {
-        next.notes = next.notes ? `${next.notes}\n\n${fields.notes}` : fields.notes;
+      const extraNotes = [fields.appetite ? `Appetite: ${fields.appetite}` : null, fields.condition, fields.notes]
+        .filter(Boolean)
+        .join('\n');
+      if (extraNotes) {
+        next.notes = next.notes ? `${next.notes}\n\n${extraNotes}` : extraNotes;
       }
       return next;
     });
@@ -221,9 +220,9 @@ export default function MobileHospitalizationPage() {
 
           <h2 className="mobile-section-header">Add Worksheet Entry</h2>
           <p className="mobile-hint">
-            Record an observation and it'll fill in Appetite, Weight, Temperature, Condition, and
-            Notes below, plus match any medications/tests you mention against the catalog. Check
-            it over, then tap Save Entry.
+            Record an observation and it'll fill in Weight, Temperature, and Notes below, plus
+            match any medications/tests you mention against the catalog. Check it over, then tap
+            Save Entry.
           </p>
           <AudioRecorder entityType="hospitalization" entityId={id} onExtractedFields={applyExtractedFields} />
 
@@ -245,12 +244,6 @@ export default function MobileHospitalizationPage() {
                 </option>
               ))}
             </select>
-            <select value={form.appetite} onChange={(e) => setForm({ ...form, appetite: e.target.value })}>
-              <option value="">Appetite...</option>
-              <option value="good">Good</option>
-              <option value="reduced">Reduced</option>
-              <option value="none">None</option>
-            </select>
             <input
               type="number"
               step="0.01"
@@ -264,11 +257,6 @@ export default function MobileHospitalizationPage() {
               placeholder="Temperature (°C)"
               value={form.temperature_c}
               onChange={(e) => setForm({ ...form, temperature_c: e.target.value })}
-            />
-            <input
-              placeholder="General condition"
-              value={form.condition}
-              onChange={(e) => setForm({ ...form, condition: e.target.value })}
             />
             <textarea
               rows={3}
