@@ -1,9 +1,13 @@
 // app/api/diagnostics/[id]/extract-result/route.js
 // POST /api/diagnostics/:id/extract-result  -> read a photo of a test
 // result (FormData: `image`, optional `test_name` for context) and append
-// the extracted text to this diagnostic's result field. The photo itself
-// is saved separately as a regular attachment (see AttachmentSection) —
-// this only reads it.
+// the extracted text to both this diagnostic's own result field AND the
+// consult's Tests field (visits.test_results — see migration 080), so a
+// vet reviewing Vitals & Exam sees every test result in one place instead
+// of having to open each diagnostic's own card. The photo itself is saved
+// separately as a regular attachment (see AttachmentSection); the consult
+// page deletes it once this call succeeds, since its contents are now
+// captured as text — this route only reads it, never deletes it itself.
 
 import { supabase } from '@/lib/supabaseClient';
 import { extractDiagnosticResult } from '@/lib/anthropicClient';
@@ -37,7 +41,7 @@ export async function POST(request, { params }) {
 
   const { data: diagnostic, error: fetchError } = await supabase
     .from('diagnostics')
-    .select('result')
+    .select('result, visit_id')
     .eq('id', params.id)
     .single();
   if (fetchError || !diagnostic) {
@@ -64,6 +68,27 @@ export async function POST(request, { params }) {
       .select()
       .single();
     if (error) throw error;
+
+    // Checked and thrown on failure, not best-effort — the consult page
+    // deletes the source photo as soon as this whole request succeeds (see
+    // the file header), so a silently-swallowed error here would mean the
+    // photo's gone with nothing to show for it in Vitals & Exam.
+    const { data: visit, error: visitFetchError } = await supabase
+      .from('visits')
+      .select('test_results')
+      .eq('id', diagnostic.visit_id)
+      .single();
+    if (visitFetchError) throw visitFetchError;
+
+    const testEntry = testName ? `${testName}: ${extracted}` : extracted;
+    const mergedTestResults = visit.test_results?.trim()
+      ? `${visit.test_results.trim()}\n\n${testEntry}`
+      : testEntry;
+    const { error: visitUpdateError } = await supabase
+      .from('visits')
+      .update({ test_results: mergedTestResults })
+      .eq('id', diagnostic.visit_id);
+    if (visitUpdateError) throw visitUpdateError;
 
     return NextResponse.json(data);
   } catch (err) {

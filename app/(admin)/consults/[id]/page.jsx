@@ -75,6 +75,7 @@ export default function ConsultDetailPage() {
   const [savingResultId, setSavingResultId] = useState(null);
   const [extractingResultId, setExtractingResultId] = useState(null);
   const [extractResultError, setExtractResultError] = useState({});
+  const [diagPhotoVersion, setDiagPhotoVersion] = useState({}); // bumped per-diagnostic to force its AttachmentSection to reload after an external delete
 
   const [treatmentItems, setTreatmentItems] = useState([]);
   const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1', administration_method: '' });
@@ -143,7 +144,7 @@ export default function ConsultDetailPage() {
           anamnesis: data.anamnesis ?? '',
           findings: data.findings ?? '',
           diagnosis: data.diagnosis ?? '',
-          prognosis: data.prognosis ?? '',
+          test_results: data.test_results ?? '',
           treatment_notes: data.treatment_notes ?? '',
         });
         setLoading(false);
@@ -277,7 +278,7 @@ export default function ConsultDetailPage() {
       anamnesis: record.anamnesis,
       findings: record.findings,
       diagnosis: record.diagnosis,
-      prognosis: record.prognosis,
+      test_results: record.test_results,
       treatment_notes: record.treatment_notes,
     };
 
@@ -365,10 +366,12 @@ export default function ConsultDetailPage() {
   }
 
   // A photo attached to a diagnostic (a lab panel, an imaging reading,
-  // ...) gets read by AI and its result values dropped straight into the
-  // diagnostic's result field, on top of whatever's already there — the
-  // photo itself still saves as a regular attachment either way.
-  async function handleDiagnosticPhotoUploaded(diagId, testName, file) {
+  // ...) gets read by AI and its result values dropped into both the
+  // diagnostic's own result field and the consult's Tests field (see
+  // migration 080) on top of whatever's already there. Once that's saved,
+  // the photo itself has done its job — same as a finished audio recording
+  // (see AudioRecorder) — so it's deleted rather than kept indefinitely.
+  async function handleDiagnosticPhotoUploaded(diagId, testName, file, attachment) {
     if (!file.type.startsWith('image/')) return;
     setExtractingResultId(diagId);
     setExtractResultError((prev) => ({ ...prev, [diagId]: null }));
@@ -383,9 +386,14 @@ export default function ConsultDetailPage() {
       const data = await res.json();
       if (!res.ok) {
         setExtractResultError((prev) => ({ ...prev, [diagId]: data.error || 'Failed to read result from photo' }));
-      } else {
-        setResultDrafts((prev) => ({ ...prev, [diagId]: data.result }));
-        loadDiagnostics();
+        return;
+      }
+      setResultDrafts((prev) => ({ ...prev, [diagId]: data.result }));
+      loadDiagnostics();
+      loadConsult();
+      if (attachment?.id) {
+        await fetch(`/api/attachments/${attachment.id}`, { method: 'DELETE' });
+        setDiagPhotoVersion((prev) => ({ ...prev, [diagId]: (prev[diagId] || 0) + 1 }));
       }
     } finally {
       setExtractingResultId(null);
@@ -843,11 +851,17 @@ export default function ConsultDetailPage() {
             />
           </label>
           <label>
-            Prognosis
+            <span className="field-label-row">
+              Tests
+              <InfoHint>
+                Fills in automatically as test-result photos are read on the right — see
+                Diagnostics.
+              </InfoHint>
+            </span>
             <textarea
               rows={2}
-              value={record.prognosis}
-              onChange={(e) => setRecord({ ...record, prognosis: e.target.value })}
+              value={record.test_results}
+              onChange={(e) => setRecord({ ...record, test_results: e.target.value })}
             />
           </label>
           <label>
@@ -881,6 +895,16 @@ export default function ConsultDetailPage() {
             x-rays, or ultrasound scans on each entry above once it&apos;s added.
           </InfoHint>
         </h3>
+        {diagnostics.length > 0 && (
+          <ReportShareActions
+            reportId={id}
+            apiBase="/api/visits"
+            pdfPath="test-report-pdf"
+            client={consult.clients}
+            patient={consult.patients}
+            reportLabel="test results"
+          />
+        )}
         <form className="card" onSubmit={addDiagnostic}>
           {diagError && <p className="error">{diagError}</p>}
           <CatalogPicker
@@ -940,7 +964,8 @@ export default function ConsultDetailPage() {
               <AttachmentSection
                 entityType="diagnostic"
                 entityId={d.id}
-                onUploaded={(file) => handleDiagnosticPhotoUploaded(d.id, testName, file)}
+                refreshKey={diagPhotoVersion[d.id]}
+                onUploaded={(file, attachment) => handleDiagnosticPhotoUploaded(d.id, testName, file, attachment)}
               />
 
               {isUltrasoundTest(testName) && (

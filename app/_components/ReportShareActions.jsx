@@ -2,13 +2,15 @@
 // Download/WhatsApp/email buttons for a surgical/dental report's PDF —
 // the AI-drafted client report (see ClientReportEditor) plus, for
 // dental, the chart. These just link straight to the report-pdf route,
-// which always reads the last-saved ai_summary.
+// which always reads the last-saved ai_summary. `pdfPath` defaults to the
+// usual `report-pdf` route name but can point at a different PDF route
+// under the same `apiBase/reportId` (e.g. the consult's test-report-pdf).
 
 'use client';
 
-export default function ReportShareActions({ apiBase, reportId, client, patient, reportLabel }) {
+export default function ReportShareActions({ apiBase, reportId, client, patient, reportLabel, pdfPath = 'report-pdf' }) {
   function reportPdfUrl() {
-    return `${window.location.origin}${apiBase}/${reportId}/report-pdf`;
+    return `${window.location.origin}${apiBase}/${reportId}/${pdfPath}`;
   }
 
   function shareViaWhatsApp() {
@@ -25,7 +27,7 @@ export default function ReportShareActions({ apiBase, reportId, client, patient,
 
   return (
     <div className="share-actions">
-      <a className="share-btn" href={`${apiBase}/${reportId}/report-pdf`} target="_blank" rel="noreferrer">
+      <a className="share-btn" href={`${apiBase}/${reportId}/${pdfPath}`} target="_blank" rel="noreferrer">
         📄 Download
       </a>
       <button type="button" className="share-btn" onClick={shareViaWhatsApp} disabled={!client?.phone}>

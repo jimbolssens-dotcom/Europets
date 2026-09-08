@@ -25,7 +25,7 @@ const RECORD_FIELDS = [
   'anamnesis',
   'findings',
   'diagnosis',
-  'prognosis',
+  'test_results',
   'treatment_notes',
   'attending_vet_id', // reassigning the doctor mid-consult (or after) — e.g. a handoff between vets
 ];
@@ -121,7 +121,7 @@ export async function PATCH(request, { params }) {
         anamnesis: data.anamnesis,
         findings: data.findings,
         diagnosis: data.diagnosis,
-        prognosis: data.prognosis,
+        testResults: data.test_results,
         treatmentNotes: data.treatment_notes,
       });
       if (clientReport) {

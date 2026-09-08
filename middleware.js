@@ -48,6 +48,7 @@ const PUBLIC_PATTERNS = [
   /^\/api\/xray-reports\/[^/]+\/report-pdf$/,
   /^\/api\/dental-reports\/[^/]+\/report-pdf$/,
   /^\/api\/visits\/[^/]+\/report-pdf$/,
+  /^\/api\/visits\/[^/]+\/test-report-pdf$/,
 ];
 
 // Hospitalization by-id and its /notes are public for the client portal's

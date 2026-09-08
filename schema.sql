@@ -215,7 +215,10 @@ create table visits (
     anamnesis text,                  -- client-reported history / complaint
     findings text,                   -- physical exam findings
     diagnosis text,
-    prognosis text,
+    test_results text,                -- accumulated diagnostic test results (migration 080,
+                                      -- was "prognosis") — appended one entry per test as
+                                      -- photos of results get read (see POST /api/diagnostics/
+                                      -- :id/extract-result)
     treatment_notes text,
     ai_summary text                  -- client-facing consult report, generated on
                                       -- completion (migration 072) — see

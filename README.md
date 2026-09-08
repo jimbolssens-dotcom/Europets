@@ -114,7 +114,7 @@ appointments, full consult medical records, hospitalization, and invoicing.
    still can when it's a coincidence, not a duplicate. Same check runs on
    intake approval (below) — both share `lib/phoneMatch.js`
 2. ✅ Appointments (15-min consult / 10-min surgery increments, conflict checked)
-3. ✅ Consults — full medical record (vitals, anamnesis, findings, prognosis),
+3. ✅ Consults — full medical record (vitals, anamnesis, findings, diagnostic test results),
    real-time notes, diagnostics, a treatment plan drawn from the catalog, and
    surgical/dental reports. Ordering a diagnostic picks straight from the
    catalog's Test items (grouped by subcategory, same as every other catalog

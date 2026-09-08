@@ -33,8 +33,8 @@ export default function MobileConsultPage() {
             {consult.clients?.full_name} · {consult.patients?.species}
           </p>
           <p className="mobile-hint">
-            Recording fills in Anamnesis, Findings, Diagnosis, Prognosis, and Treatment plan
-            directly, plus matches diagnostics/medications you mention against the catalog.
+            Recording fills in Anamnesis, Findings, Diagnosis, and Treatment plan directly, plus
+            matches diagnostics/medications you mention against the catalog.
             Nothing to save here — review or edit on the desktop consult page anytime.
           </p>
           <AudioRecorder entityType="visit" entityId={id} />

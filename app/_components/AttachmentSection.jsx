@@ -15,7 +15,7 @@ function isImage(attachment) {
   );
 }
 
-export default function AttachmentSection({ entityType, entityId, onUploaded }) {
+export default function AttachmentSection({ entityType, entityId, onUploaded, refreshKey }) {
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -29,8 +29,12 @@ export default function AttachmentSection({ entityType, entityId, onUploaded }) 
 
   useEffect(() => {
     load();
+    // refreshKey is optional — bump it from a parent that deletes an
+    // attachment on this entity from outside this component (e.g. once a
+    // diagnostic photo's contents have been extracted into text — see the
+    // consult page) so this list picks up the removal without a remount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityType, entityId]);
+  }, [entityType, entityId, refreshKey]);
 
   async function handleFileChange(e) {
     const file = e.target.files[0];
