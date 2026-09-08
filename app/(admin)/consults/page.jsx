@@ -154,7 +154,15 @@ function ConsultsPageInner() {
 
   if (loading) return <p>Loading consults...</p>;
 
-  const active = consults.filter((c) => c.status === 'in_progress');
+  // A consult stays 'in_progress' the whole time its patient is admitted to
+  // hospitalization (admitting doesn't touch the visit's status — see
+  // app/(admin)/consults/[id]/page.jsx's admitToHospital) — split those out
+  // of "Active" so the board isn't dominated by long-running hospital stays.
+  // The consult reappears here (still uncompleted) once discharged, ready
+  // to be closed out.
+  const inProgress = consults.filter((c) => c.status === 'in_progress');
+  const hospitalized = inProgress.filter((c) => (c.hospitalizations || []).some((h) => h.status === 'admitted'));
+  const active = inProgress.filter((c) => !hospitalized.includes(c));
   const completed = consults
     .filter((c) => c.status === 'complete')
     .sort((a, b) => new Date(b.ended_at || b.started_at) - new Date(a.ended_at || a.started_at))
@@ -200,6 +208,40 @@ function ConsultsPageInner() {
                 </td>
               </tr>
             ))}
+          </tbody>
+        </table>
+      )}
+
+      <h2>Hospitalized</h2>
+      {hospitalized.length === 0 ? (
+        <p>No hospitalized patients right now.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Patient</th>
+              <th>Owner</th>
+              <th>Vet</th>
+              <th>Admitted</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {hospitalized.map((c) => {
+              const hosp = c.hospitalizations?.find((h) => h.status === 'admitted');
+              return (
+                <tr key={c.id}>
+                  <td>{c.patients?.name}</td>
+                  <td>{c.clients?.full_name}</td>
+                  <td>{c.staff?.full_name || 'unassigned'}</td>
+                  <td>{hosp?.admitted_at ? new Date(hosp.admitted_at).toLocaleString() : '—'}</td>
+                  <td>
+                    {hosp && <a href={`/hospitalization/${hosp.id}`}>Hospitalization</a>}
+                    <a href={`/consults/${c.id}`}>Consult note</a>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

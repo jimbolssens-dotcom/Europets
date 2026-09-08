@@ -21,7 +21,10 @@ export async function GET(request) {
   let query = supabase
     .from('visits')
     .select(
-      '*, patients(name, species, current_weight_kg), clients(full_name, phone), rooms(name), staff(full_name)'
+      // hospitalizations(id, status) is a reverse embed via hospitalizations.originating_visit_id
+      // — lets the Consults board split out visits currently admitted to
+      // hospitalization (see app/(admin)/consults/page.jsx) without a second fetch.
+      '*, patients(name, species, current_weight_kg), clients(full_name, phone), rooms(name), staff(full_name), hospitalizations(id, status, admitted_at)'
     )
     .order('started_at', { ascending: true });
 
