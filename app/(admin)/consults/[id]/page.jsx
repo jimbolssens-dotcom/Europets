@@ -498,6 +498,12 @@ export default function ConsultDetailPage() {
     setConsentSubmitting(false);
   }
 
+  async function deleteConsentForm(formId) {
+    if (!confirm('Delete this signed consent form? This cannot be undone.')) return;
+    await fetch(`/api/consent-forms/${formId}`, { method: 'DELETE' });
+    loadConsentForms();
+  }
+
   // Alternative to signing in person: sends the owner a link to review and
   // digitally sign (by typing their name) on their own phone, then WhatsApps
   // it — same pattern as sendBookingLink/sendReviewLink on the client page.
@@ -1390,7 +1396,10 @@ export default function ConsultDetailPage() {
             </p>
             <a href={`/api/consent-forms/${cf.id}/pdf`} target="_blank" rel="noreferrer">
               📄 Download signed PDF
-            </a>
+            </a>{' '}
+            <button type="button" onClick={() => deleteConsentForm(cf.id)}>
+              Delete
+            </button>
           </div>
         ))}
         <form className="card" onSubmit={addConsentForm}>
