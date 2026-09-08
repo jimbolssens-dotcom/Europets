@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AudioRecorder from '@/app/_components/AudioRecorder';
+import AttachmentSection from '@/app/_components/AttachmentSection';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 
 export default function MobileConsultPage() {
@@ -37,6 +38,10 @@ export default function MobileConsultPage() {
             Nothing to save here — review or edit on the desktop consult page anytime.
           </p>
           <AudioRecorder entityType="visit" entityId={id} />
+
+          <h2 className="mobile-section-header">Photos</h2>
+          <AttachmentSection entityType="visit" entityId={id} />
+
           <a href={`/consults/${id}`} className="mobile-desktop-link">
             View full consult &rarr;
           </a>
