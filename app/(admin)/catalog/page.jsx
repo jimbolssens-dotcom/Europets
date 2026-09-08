@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS } from '@/lib/catalogGrouping';
-import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
+import { CATALOG_ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import InfoHint from '@/app/_components/InfoHint';
 
 const emptyForm = {
@@ -348,9 +348,8 @@ export default function CatalogPage() {
                       onChange={(e) => setEditForm({ ...editForm, administration_method: e.target.value })}
                     >
                       <option value="">Not a medication</option>
-                      <option value="dispense">Dispense</option>
-                      <option value="sc">SC</option>
-                      <option value="im">IM</option>
+                      <option value="dispense">Dispensed</option>
+                      <option value="injectable">Injectable</option>
                     </select>
                   </td>
                 )}
@@ -376,7 +375,7 @@ export default function CatalogPage() {
                 <td>{item.unit}</td>
                 {activeTab === 'product' && (
                   <td>
-                    {item.administration_method ? ADMINISTRATION_METHOD_LABELS[item.administration_method] : '—'}
+                    {item.administration_method ? CATALOG_ADMINISTRATION_METHOD_LABELS[item.administration_method] : '—'}
                   </td>
                 )}
                 <td>{item.active ? 'active' : 'inactive'}</td>
@@ -465,16 +464,16 @@ export default function CatalogPage() {
         />
         {activeTab === 'product' && (
           <label>
-            Administration method (if a medication — its fee, set in Settings, applies automatically
-            wherever it's added)
+            Administration method (if a medication — dispensed, or injectable with the exact SC/IM
+            route chosen each time it's given; either way its fee, set in Settings, applies
+            automatically wherever it's added)
             <select
               value={form.administration_method}
               onChange={(e) => setForm({ ...form, administration_method: e.target.value })}
             >
               <option value="">Not a medication</option>
-              <option value="dispense">Dispense</option>
-              <option value="sc">SC (subcutaneous)</option>
-              <option value="im">IM (intramuscular)</option>
+              <option value="dispense">Dispensed</option>
+              <option value="injectable">Injectable</option>
             </select>
           </label>
         )}

@@ -5,21 +5,22 @@
 // 'per_kg' pricing. If the invoice is linked to a visit and quantity is
 // omitted for a per_kg item, the patient's current weight is used.
 //
-// A medication with an administration method configured
-// (goods_services.administration_method — dispense/sc/im) automatically
-// gets that method's fee folded into this same line (short code appended
-// to the description, fee added to the total) rather than a separate
-// line — see lib/invoicing.js. Not something the caller chooses; waiving
-// it in the rare exceptional case is just editing/removing that line
-// from the invoice afterward.
+// A dispensed medication's fee is folded into this same line
+// automatically; an injectable one (goods_services.administration_method
+// — see migration 078) needs administration_method ('sc' or 'im') in the
+// body to say which route was used. Either way the fee (short code
+// appended to the description, amount added to the total) is applied the
+// same way — see lib/invoicing.js. Waiving it in the rare exceptional
+// case is just editing/removing that line from the invoice afterward.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 import { recomputeInvoiceTotals, applyAdministrationFee } from '@/lib/invoicing';
+import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 
 export async function POST(request, { params }) {
   const body = await request.json();
-  const { goods_service_id, quantity, description } = body;
+  const { goods_service_id, quantity, description, administration_method } = body;
 
   if (!goods_service_id) {
     return NextResponse.json({ error: 'goods_service_id is required' }, { status: 400 });
@@ -51,6 +52,11 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'quantity must be a positive number' }, { status: 400 });
   }
 
+  const resolved = resolveAdministrationMethod(item.administration_method, administration_method);
+  if (resolved.error) {
+    return NextResponse.json({ error: resolved.error }, { status: 400 });
+  }
+
   const unit_price = Number(item.base_price);
   const line_total = Math.round(unit_price * qty * 100) / 100;
 
@@ -61,16 +67,16 @@ export async function POST(request, { params }) {
     quantity: qty,
     unit_price,
     line_total,
-    administration_method: item.administration_method || null,
+    administration_method: resolved.administration_method,
   };
 
-  if (item.administration_method) {
+  if (resolved.administration_method) {
     const { data: clinicSettings } = await supabase
       .from('clinic_settings')
       .select('*')
       .eq('id', true)
       .maybeSingle();
-    row = applyAdministrationFee(row, item.administration_method, clinicSettings);
+    row = applyAdministrationFee(row, resolved.administration_method, clinicSettings);
   }
 
   const { data: lineItem, error: insertError } = await supabase

@@ -19,7 +19,7 @@ const EDITABLE_FIELDS = [
   'buying_price',
   'supplier',
 ];
-const ADMINISTRATION_METHODS = ['dispense', 'sc', 'im'];
+const ADMINISTRATION_METHODS = ['dispense', 'injectable'];
 
 export async function PATCH(request, { params }) {
   const body = await request.json();

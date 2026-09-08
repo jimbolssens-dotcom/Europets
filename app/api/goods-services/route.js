@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 
 const PRICING_TYPES = ['flat', 'per_kg', 'per_unit'];
-const ADMINISTRATION_METHODS = ['dispense', 'sc', 'im'];
+const ADMINISTRATION_METHODS = ['dispense', 'injectable'];
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);

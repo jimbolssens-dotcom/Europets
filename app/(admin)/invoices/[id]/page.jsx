@@ -9,6 +9,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import VoiceNoteBox from '@/app/_components/VoiceNoteBox';
@@ -37,6 +38,7 @@ export default function InvoiceDetailPage() {
   const [staff, setStaff] = useState([]);
   const [goodsServiceId, setGoodsServiceId] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [administrationMethod, setAdministrationMethod] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [addCategory, setAddCategory] = useState('product');
@@ -96,6 +98,7 @@ export default function InvoiceDetailPage() {
       body: JSON.stringify({
         goods_service_id: goodsServiceId,
         quantity: quantity ? Number(quantity) : undefined,
+        administration_method: administrationMethod || undefined,
       }),
     });
     const data = await res.json();
@@ -106,6 +109,7 @@ export default function InvoiceDetailPage() {
   async function addLineItem(e) {
     e.preventDefault();
     if (!goodsServiceId) return;
+    if (selected?.administration_method === 'injectable' && !administrationMethod) return;
 
     if (isMicrochipProduct(selected?.name)) {
       setMicrochipModalOpen(true);
@@ -118,6 +122,7 @@ export default function InvoiceDetailPage() {
       await postLineItem();
       setGoodsServiceId('');
       setQuantity('');
+      setAdministrationMethod('');
       loadInvoice();
     } catch (err) {
       setError(err.message);
@@ -158,6 +163,7 @@ export default function InvoiceDetailPage() {
 
     setGoodsServiceId('');
     setQuantity('');
+    setAdministrationMethod('');
     setMicrochipModalOpen(false);
     loadInvoice();
     return null;
@@ -271,7 +277,10 @@ export default function InvoiceDetailPage() {
   const lineItemGroups = groupLineItemsByCategory(invoice.line_items);
   const editable = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
   const columnCount = editable ? 5 : 4;
-  const medicationLineItems = invoice.line_items.filter((li) => li.goods_services?.main_category === 'product');
+  // Only the medications actually dispensed to go home get a printable
+  // label — an SC/IM injection given in-clinic (or a non-medication
+  // product) has nothing to print.
+  const medicationLineItems = invoice.line_items.filter((li) => li.administration_method === 'dispense');
 
   return (
     <div>
@@ -366,6 +375,9 @@ export default function InvoiceDetailPage() {
             onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
             onCategoryChange={setAddCategory}
           />
+          {selected?.administration_method === 'injectable' && (
+            <AdministrationRoutePicker value={administrationMethod} onChange={setAdministrationMethod} />
+          )}
           <div className="catalog-add-form-row">
             <input
               className="qty-input"
@@ -375,7 +387,10 @@ export default function InvoiceDetailPage() {
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
             />
-            <button type="submit" disabled={submitting || !goodsServiceId}>
+            <button
+              type="submit"
+              disabled={submitting || !goodsServiceId || (selected?.administration_method === 'injectable' && !administrationMethod)}
+            >
               + Add
             </button>
           </div>

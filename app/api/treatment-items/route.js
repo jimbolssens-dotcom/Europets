@@ -4,20 +4,23 @@
 //                                                           worksheet entry
 // POST /api/treatment-items                             -> add an item from the catalog, to
 //                                                           one or the other (exactly one).
-//                                                           If it's a medication with an
-//                                                           administration method configured
-//                                                           (goods_services.administration_method
-//                                                           — dispense/sc/im), that's copied
-//                                                           onto the item automatically; it
+//                                                           A dispensed medication's method is
+//                                                           copied on automatically; an
+//                                                           injectable one (goods_services
+//                                                           .administration_method — see
+//                                                           migration 078) needs the caller to
+//                                                           say which route was actually used,
+//                                                           via administration_method ('sc' or
+//                                                           'im') in the body. Either way it
 //                                                           drives an automatic fee line when
 //                                                           the treatment plan is invoiced (see
-//                                                           lib/invoicing.js). Not something the
-//                                                           caller chooses per booking anymore —
-//                                                           waiving it is just removing that fee
-//                                                           line from the invoice afterward.
+//                                                           lib/invoicing.js) — waiving it is
+//                                                           just removing that fee line from the
+//                                                           invoice afterward.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
+import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -47,7 +50,8 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { visit_id, hospitalization_note_id, goods_service_id, instructions, quantity } = body;
+  const { visit_id, hospitalization_note_id, goods_service_id, instructions, quantity, administration_method } =
+    body;
 
   if (!goods_service_id) {
     return NextResponse.json({ error: 'goods_service_id is required' }, { status: 400 });
@@ -75,6 +79,11 @@ export async function POST(request) {
     return NextResponse.json({ error: 'goods/service not found' }, { status: 400 });
   }
 
+  const resolved = resolveAdministrationMethod(catalogItem.administration_method, administration_method);
+  if (resolved.error) {
+    return NextResponse.json({ error: resolved.error }, { status: 400 });
+  }
+
   const { data, error } = await supabase
     .from('treatment_items')
     .insert([
@@ -84,7 +93,7 @@ export async function POST(request) {
         goods_service_id,
         instructions: instructions || null,
         quantity: quantity !== undefined && quantity !== '' ? Number(quantity) : 1,
-        administration_method: catalogItem.administration_method,
+        administration_method: resolved.administration_method,
       },
     ])
     .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price)')

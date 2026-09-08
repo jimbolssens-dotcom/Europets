@@ -17,6 +17,7 @@ import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
 import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
@@ -80,7 +81,7 @@ export default function ConsultDetailPage() {
   const [extractResultError, setExtractResultError] = useState({});
 
   const [treatmentItems, setTreatmentItems] = useState([]);
-  const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1' });
+  const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1', administration_method: '' });
   const [treatCategory, setTreatCategory] = useState('product');
   const [microchipModalOpen, setMicrochipModalOpen] = useState(false);
 
@@ -431,13 +432,14 @@ export default function ConsultDetailPage() {
     if (!treatForm.goods_service_id) return;
 
     const selected = catalog.find((c) => c.id === treatForm.goods_service_id);
+    if (selected?.administration_method === 'injectable' && !treatForm.administration_method) return;
     if (isMicrochipProduct(selected?.name)) {
       setMicrochipModalOpen(true);
       return;
     }
 
     await postTreatmentItem();
-    setTreatForm({ goods_service_id: '', instructions: '', quantity: '1' });
+    setTreatForm({ goods_service_id: '', instructions: '', quantity: '1', administration_method: '' });
     loadTreatmentItems();
   }
 
@@ -676,6 +678,7 @@ export default function ConsultDetailPage() {
   if (consult.error) return <p>Consult not found.</p>;
 
   const vets = staff.filter((s) => s.role === 'vet');
+  const selectedTreatItem = catalog.find((c) => c.id === treatForm.goods_service_id);
 
   return (
     <div>
@@ -1095,6 +1098,12 @@ export default function ConsultDetailPage() {
             onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
             onCategoryChange={setTreatCategory}
           />
+          {selectedTreatItem?.administration_method === 'injectable' && (
+            <AdministrationRoutePicker
+              value={treatForm.administration_method}
+              onChange={(value) => setTreatForm({ ...treatForm, administration_method: value })}
+            />
+          )}
           <div className="instructions-input-row">
             <input
               placeholder="Instructions (dosage, frequency, duration)"
@@ -1110,7 +1119,12 @@ export default function ConsultDetailPage() {
             value={treatForm.quantity}
             onChange={(e) => setTreatForm({ ...treatForm, quantity: e.target.value })}
           />
-          <button type="submit">+ Add</button>
+          <button
+            type="submit"
+            disabled={selectedTreatItem?.administration_method === 'injectable' && !treatForm.administration_method}
+          >
+            + Add
+          </button>
         </form>
 
         {microchipModalOpen && (

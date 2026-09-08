@@ -11,6 +11,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
+import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 
 // See app/api/hospitalizations/[id]/route.js — same caching gotcha, and
 // this is the route the client portal's Temp/Weight/Appetite fields
@@ -133,10 +134,10 @@ export async function POST(request, { params }) {
   let insertedItems = [];
   const pendingItems = (Array.isArray(treatment_items) ? treatment_items : []).filter((t) => t.goods_service_id);
 
-  // A medication's administration method (and its fee) is applied
-  // automatically from its catalog entry, not chosen per booking — look
-  // up whichever items are being added here so it can be copied onto
-  // each row (see lib/invoicing.js for where the fee itself gets added).
+  // A dispensed medication's method is applied automatically; an
+  // injectable one needs whichever route was actually chosen for it
+  // (t.administration_method, 'sc' or 'im' — see resolveAdministrationMethod)
+  // — look up each item's catalog classification to know which applies.
   let methodByGoodsServiceId = {};
   if (pendingItems.length > 0) {
     const { data: catalogItems } = await supabase
@@ -146,12 +147,22 @@ export async function POST(request, { params }) {
     methodByGoodsServiceId = Object.fromEntries((catalogItems || []).map((c) => [c.id, c.administration_method]));
   }
 
-  const itemRows = pendingItems.map((t) => ({
+  const resolvedMethods = pendingItems.map((t) =>
+    resolveAdministrationMethod(methodByGoodsServiceId[t.goods_service_id], t.administration_method)
+  );
+  const firstError = resolvedMethods.find((r) => r.error);
+  if (firstError) {
+    // The entry itself is already saved — surface the item failure rather
+    // than losing the note, same as an actual insert failure below.
+    return NextResponse.json({ error: firstError.error }, { status: 400 });
+  }
+
+  const itemRows = pendingItems.map((t, i) => ({
     hospitalization_note_id: note.id,
     goods_service_id: t.goods_service_id,
     instructions: t.instructions || null,
     quantity: t.quantity !== undefined && t.quantity !== '' ? Number(t.quantity) : 1,
-    administration_method: methodByGoodsServiceId[t.goods_service_id] || null,
+    administration_method: resolvedMethods[i].administration_method,
   }));
 
   if (itemRows.length > 0) {

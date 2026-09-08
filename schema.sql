@@ -281,10 +281,12 @@ create table goods_services (
     base_price numeric(10,2) not null,
     unit text,                       -- e.g. 'mg', 'ml', 'kg' (used when pricing_type != flat)
     active boolean default true,
-    administration_method text check (administration_method in ('dispense', 'sc', 'im')),
-        -- for a medication: how it's given, if it carries its own fee —
-        -- applied automatically wherever the medication is added, as a
-        -- second invoice line (see lib/invoicing.js)
+    administration_method text check (administration_method in ('dispense', 'injectable')),
+        -- for a medication: dispensed (fee applied automatically wherever
+        -- it's added, see lib/invoicing.js) or injectable — an injectable
+        -- one has its exact SC/IM route chosen each time it's actually
+        -- administered (treatment_items.administration_method below),
+        -- not fixed here (see migration 078)
     created_at timestamptz default now()
 );
 
@@ -819,6 +821,9 @@ create table hospitalization_plan_items (
     label text not null,                      -- button text, e.g. "Amoxicillin 250mg" or "Cage Cleaned"
     goods_service_id uuid references goods_services(id),  -- set for a catalog-linked task (meds/services); null for routine care
     instructions text,                        -- dosage/frequency, e.g. "PO with food, twice daily"
+    administration_method text check (administration_method in ('dispense', 'sc', 'im')),
+        -- chosen once when an injectable task is added to the plan (see
+        -- migration 078) and reused on every tap, rather than re-asked
     created_at timestamptz default now()
 );
 

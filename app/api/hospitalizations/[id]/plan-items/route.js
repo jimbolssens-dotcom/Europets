@@ -7,6 +7,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
+import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
@@ -23,10 +24,24 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   const body = await request.json();
-  const { label, goods_service_id, instructions } = body;
+  const { label, goods_service_id, instructions, administration_method } = body;
 
   if (!label) {
     return NextResponse.json({ error: 'label is required' }, { status: 400 });
+  }
+
+  let resolvedMethod = null;
+  if (goods_service_id) {
+    const { data: catalogItem } = await supabase
+      .from('goods_services')
+      .select('administration_method')
+      .eq('id', goods_service_id)
+      .single();
+    const resolved = resolveAdministrationMethod(catalogItem?.administration_method, administration_method);
+    if (resolved.error) {
+      return NextResponse.json({ error: resolved.error }, { status: 400 });
+    }
+    resolvedMethod = resolved.administration_method;
   }
 
   const { data, error } = await supabase
@@ -37,6 +52,7 @@ export async function POST(request, { params }) {
         label,
         goods_service_id: goods_service_id || null,
         instructions: instructions || null,
+        administration_method: resolvedMethod,
       },
     ])
     .select('*, goods_services(name)')

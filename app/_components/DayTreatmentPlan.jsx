@@ -13,6 +13,8 @@
 import { useEffect, useState } from 'react';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
+import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { supabase } from '@/lib/supabaseClient';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
@@ -31,6 +33,7 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
   const [showCatalogAdd, setShowCatalogAdd] = useState(false);
   const [catalogGoodsServiceId, setCatalogGoodsServiceId] = useState('');
   const [catalogInstructions, setCatalogInstructions] = useState('');
+  const [catalogAdministrationMethod, setCatalogAdministrationMethod] = useState('');
   const [showCustomAdd, setShowCustomAdd] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
   const [error, setError] = useState(null);
@@ -96,7 +99,9 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
         note_date: todayISODate(),
         notes: item.instructions ? `${item.label} — ${item.instructions}` : item.label,
         plan_item_id: item.id,
-        treatment_items: item.goods_service_id ? [{ goods_service_id: item.goods_service_id, quantity: 1 }] : [],
+        treatment_items: item.goods_service_id
+          ? [{ goods_service_id: item.goods_service_id, quantity: 1, administration_method: item.administration_method }]
+          : [],
       }),
     });
     setLoggingId(null);
@@ -138,9 +143,16 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
     if (!catalogGoodsServiceId) return;
     const item = catalog.find((c) => c.id === catalogGoodsServiceId);
     if (!item) return;
-    await addPlanItem({ label: item.name, goods_service_id: item.id, instructions: catalogInstructions.trim() || null });
+    if (item.administration_method === 'injectable' && !catalogAdministrationMethod) return;
+    await addPlanItem({
+      label: item.name,
+      goods_service_id: item.id,
+      instructions: catalogInstructions.trim() || null,
+      administration_method: catalogAdministrationMethod || null,
+    });
     setCatalogGoodsServiceId('');
     setCatalogInstructions('');
+    setCatalogAdministrationMethod('');
     setShowCatalogAdd(false);
   }
 
@@ -189,7 +201,10 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
           return (
             <div key={item.id} className={`day-plan-task${done.length ? ' done' : ''}`}>
               <button type="button" onClick={() => logTask(item)} disabled={loggingId === item.id}>
-                <span className="day-plan-task-label">{item.label}</span>
+                <span className="day-plan-task-label">
+                  {item.label}
+                  {item.administration_method && ` (${ADMINISTRATION_METHOD_LABELS[item.administration_method]})`}
+                </span>
                 {item.instructions && <span className="day-plan-task-meta">{item.instructions}</span>}
                 <span className="day-plan-task-status">
                   {loggingId === item.id
@@ -242,12 +257,23 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
             onChange={setCatalogGoodsServiceId}
             onItemCreated={onCatalogItemCreated}
           />
+          {catalog.find((c) => c.id === catalogGoodsServiceId)?.administration_method === 'injectable' && (
+            <AdministrationRoutePicker value={catalogAdministrationMethod} onChange={setCatalogAdministrationMethod} />
+          )}
           <input
             placeholder="Instructions (e.g. PO with food, twice daily)"
             value={catalogInstructions}
             onChange={(e) => setCatalogInstructions(e.target.value)}
           />
-          <button type="button" onClick={addCatalogTask} disabled={!catalogGoodsServiceId}>
+          <button
+            type="button"
+            onClick={addCatalogTask}
+            disabled={
+              !catalogGoodsServiceId ||
+              (catalog.find((c) => c.id === catalogGoodsServiceId)?.administration_method === 'injectable' &&
+                !catalogAdministrationMethod)
+            }
+          >
             Add to Plan
           </button>
         </div>
