@@ -34,6 +34,7 @@ import SpeciesField from '@/app/_components/SpeciesField';
 import PetAttributeField from '@/app/_components/PetAttributeField';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
 import { EMIRATES } from '@/lib/emirates';
+import { classifySpecies } from '@/lib/species';
 import {
   clientAppointmentTypeEntriesForSex,
   clientBookingDurationMinutes,
@@ -51,6 +52,7 @@ function emptyPet() {
     microchip_number: '',
     microchip_implanted_at: '',
     last_vaccination_date: '',
+    last_vaccination_protocol_id: '',
     weight_kg: '',
   };
 }
@@ -112,6 +114,8 @@ export default function IntakePortalPage() {
   const [surgeryDays, setSurgeryDays] = useState([]);
   const [loadingSurgeryDays, setLoadingSurgeryDays] = useState(false);
 
+  const [vaccineProtocols, setVaccineProtocols] = useState([]);
+
   useEffect(() => {
     fetch(`/api/intake-requests/${id}`)
       .then((res) => res.json())
@@ -125,13 +129,35 @@ export default function IntakePortalPage() {
     fetch('/api/staff?role=vet')
       .then((res) => res.json())
       .then((data) => setVets(Array.isArray(data) ? data : []));
+    fetch('/api/vaccine-protocols')
+      .then((res) => res.json())
+      .then((data) => setVaccineProtocols(Array.isArray(data) ? data : []));
   }, [id]);
 
   const isExistingClient = Boolean(request?.client_id);
   const ownPatients = request?.clients?.patients || [];
 
+  // Species-gated on purpose (see updatePet's own reset of this field) —
+  // an owner can only pick from protocols that actually apply to the
+  // species they've already chosen, so a cat/dog vaccine mismatch can never
+  // reach staff for approval.
+  function vaccineOptionsForSpecies(species) {
+    const kind = classifySpecies(species);
+    if (!kind) return [];
+    return vaccineProtocols.filter((p) => p.active !== false && classifySpecies(p.species) === kind);
+  }
+
   function updatePet(index, field, value) {
-    setPets(pets.map((p, i) => (i === index ? { ...p, [field]: value } : p)));
+    setPets(
+      pets.map((p, i) => {
+        if (i !== index) return p;
+        // Changing species can invalidate an already-picked vaccine type
+        // (e.g. switching Dog -> Cat after picking "Rabies (Canine)") — clear
+        // it rather than silently submitting a mismatched species/vaccine.
+        if (field === 'species') return { ...p, species: value, last_vaccination_protocol_id: '' };
+        return { ...p, [field]: value };
+      })
+    );
   }
 
   function addPet() {
@@ -581,6 +607,23 @@ export default function IntakePortalPage() {
                         onChange={(e) => updatePet(0, 'last_vaccination_date', e.target.value)}
                       />
                     </label>
+                    <label>
+                      Which vaccine (optional)
+                      <select
+                        value={pets[0].last_vaccination_protocol_id}
+                        onChange={(e) => updatePet(0, 'last_vaccination_protocol_id', e.target.value)}
+                        disabled={!pets[0].species}
+                      >
+                        <option value="">
+                          {pets[0].species ? 'Select...' : 'Select a species first'}
+                        </option>
+                        {vaccineOptionsForSpecies(pets[0].species).map((vp) => (
+                          <option key={vp.id} value={vp.id}>
+                            {vp.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                 )}
               </>
@@ -676,6 +719,21 @@ export default function IntakePortalPage() {
                         value={pet.last_vaccination_date}
                         onChange={(e) => updatePet(i, 'last_vaccination_date', e.target.value)}
                       />
+                    </label>
+                    <label>
+                      Which vaccine (optional)
+                      <select
+                        value={pet.last_vaccination_protocol_id}
+                        onChange={(e) => updatePet(i, 'last_vaccination_protocol_id', e.target.value)}
+                        disabled={!pet.species}
+                      >
+                        <option value="">{pet.species ? 'Select...' : 'Select a species first'}</option>
+                        {vaccineOptionsForSpecies(pet.species).map((vp) => (
+                          <option key={vp.id} value={vp.id}>
+                            {vp.name}
+                          </option>
+                        ))}
+                      </select>
                     </label>
                   </div>
                 ))}

@@ -7,6 +7,7 @@
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { CLIENT_APPOINTMENT_TYPE_LABELS } from '@/lib/appointmentBooking';
 
 function formatDateTime(dateStr) {
@@ -17,8 +18,15 @@ function formatApptTime(dateStr) {
   return new Date(dateStr).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-function petSummary(p) {
-  return [p.name, p.species, p.breed, p.microchip_number && `chip ${p.microchip_number}`]
+function petSummary(p, protocolNamesById) {
+  const vaccineBit = p.last_vaccination_date
+    ? `last vaccinated ${new Date(`${p.last_vaccination_date}T00:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}${
+        p.last_vaccination_protocol_id && protocolNamesById[p.last_vaccination_protocol_id]
+          ? ` (${protocolNamesById[p.last_vaccination_protocol_id]})`
+          : ''
+      }`
+    : null;
+  return [p.name, p.species, p.breed, p.microchip_number && `chip ${p.microchip_number}`, vaccineBit]
     .filter(Boolean)
     .join(' · ');
 }
@@ -38,6 +46,16 @@ export default function IntakeReviewCard({
   compact,
 }) {
   const matches = possibleMatches?.[r.id] || [];
+
+  const [protocolNamesById, setProtocolNamesById] = useState({});
+  useEffect(() => {
+    fetch('/api/vaccine-protocols')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!Array.isArray(data)) return;
+        setProtocolNamesById(Object.fromEntries(data.map((p) => [p.id, p.name])));
+      });
+  }, []);
 
   return (
     <div className={compact ? 'intake-review-card intake-review-card-compact' : 'intake-review-card'}>
@@ -59,7 +77,7 @@ export default function IntakeReviewCard({
           <li>{[r.selected_patient.name, r.selected_patient.species, r.selected_patient.breed].filter(Boolean).join(' · ')} (existing pet)</li>
         )}
         {(r.patients || []).map((p, i) => (
-          <li key={i}>{petSummary(p)}</li>
+          <li key={i}>{petSummary(p, protocolNamesById)}</li>
         ))}
       </ul>
       {r.notes && <p className="visit-meta">Notes: {r.notes}</p>}

@@ -59,6 +59,7 @@ const HOSPITALIZATION_READ_PATTERNS = [/^\/api\/hospitalizations\/[^/]+$/, /^\/a
 
 function isPublicPath(pathname, method) {
   if (pathname === '/api/staff' && method === 'GET') return true; // vet picker on the booking form
+  if (pathname === '/api/vaccine-protocols' && method === 'GET') return true; // last-vaccination-type picker on the intake form
   if (method === 'GET' && HOSPITALIZATION_READ_PATTERNS.some((re) => re.test(pathname))) return true;
   return PUBLIC_PATTERNS.some((re) => re.test(pathname));
 }

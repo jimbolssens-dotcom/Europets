@@ -18,7 +18,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 import { CLIENT_APPOINTMENT_TYPES, CLIENT_APPOINTMENT_TYPE_LABELS, appointmentTypeAllowedForSex } from '@/lib/appointmentBooking';
-import { seedCoreVaccinationsFromLastGiven } from '@/lib/vaccinationSeeding';
+import { seedCoreVaccinationsFromLastGiven, seedVaccinationFromIntake } from '@/lib/vaccinationSeeding';
 import { findAppointmentConflict } from '@/lib/appointmentScheduling';
 import { phoneSearchDigits, clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { isStaffRequest } from '@/lib/staffAuth';
@@ -375,15 +375,26 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
   // Puts each new pet with a last vaccination date onto the existing
   // Vaccination Reminders dashboard a year out — same as the desktop Add
   // Patient form (see lib/vaccinationSeeding.js). insertedPatients comes
-  // back in the same order as patientRows/intake.patients above.
+  // back in the same order as patientRows/intake.patients above. When the
+  // owner named the exact vaccine given (the portal form's species-gated
+  // picker), seed just that one protocol instead of every core protocol for
+  // the species blind; fall back to the blunt seeding for older in-flight
+  // submissions that only ever collected a bare date.
   await Promise.all(
     insertedPatients.map((row, i) =>
-      seedCoreVaccinationsFromLastGiven(
-        supabase,
-        row.id,
-        intake.patients[i]?.species,
-        intake.patients[i]?.last_vaccination_date
-      )
+      intake.patients[i]?.last_vaccination_protocol_id
+        ? seedVaccinationFromIntake(
+            supabase,
+            row.id,
+            intake.patients[i].last_vaccination_protocol_id,
+            intake.patients[i]?.last_vaccination_date
+          )
+        : seedCoreVaccinationsFromLastGiven(
+            supabase,
+            row.id,
+            intake.patients[i]?.species,
+            intake.patients[i]?.last_vaccination_date
+          )
     )
   );
 
