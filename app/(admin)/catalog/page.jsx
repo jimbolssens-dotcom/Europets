@@ -96,6 +96,19 @@ export default function CatalogPage() {
     setSubmitting(false);
   }
 
+  // A one-field change (this is the whole reason this column exists) —
+  // saves immediately on change rather than requiring the full row-edit
+  // mode, since that mode's many columns can run wider than the screen
+  // and push this exact field out of view.
+  async function updateAdministrationMethod(item, value) {
+    await fetch(`/api/goods-services/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ administration_method: value }),
+    });
+    loadItems();
+  }
+
   async function deleteItem(item) {
     if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
     setDeleteError(null);
@@ -261,7 +274,7 @@ export default function CatalogPage() {
             <th>Unit</th>
             {activeTab === 'product' && <th>Admin Methods</th>}
             <th>Status</th>
-            <th></th>
+            <th className="catalog-actions-cell"></th>
           </tr>
         </thead>
         <tbody>
@@ -354,7 +367,7 @@ export default function CatalogPage() {
                   </td>
                 )}
                 <td>{item.active ? 'active' : 'inactive'}</td>
-                <td>
+                <td className="catalog-actions-cell">
                   <button type="button" onClick={() => saveEdit(item.id)} disabled={savingEdit}>
                     {savingEdit ? 'Saving...' : 'Save'}
                   </button>
@@ -374,12 +387,19 @@ export default function CatalogPage() {
                 <td>{item.supplier || '—'}</td>
                 <td>{item.unit}</td>
                 {activeTab === 'product' && (
-                  <td>
-                    {item.administration_method ? CATALOG_ADMINISTRATION_METHOD_LABELS[item.administration_method] : '—'}
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <select
+                      value={item.administration_method || ''}
+                      onChange={(e) => updateAdministrationMethod(item, e.target.value || null)}
+                    >
+                      <option value="">Not a medication</option>
+                      <option value="dispense">Dispensed</option>
+                      <option value="injectable">Injectable</option>
+                    </select>
                   </td>
                 )}
                 <td>{item.active ? 'active' : 'inactive'}</td>
-                <td>
+                <td className="catalog-actions-cell">
                   <button
                     type="button"
                     onClick={(e) => {

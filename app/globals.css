@@ -592,6 +592,19 @@ td select {
   overflow-x: auto;
 }
 
+/* Enough columns (especially once Admin Methods is showing) that the
+   Edit/Delete/Save/Cancel buttons scroll out of view on a narrower screen
+   — pin that last column to the visible right edge of the scrollable
+   table instead, so the actions are always reachable without hunting for
+   the horizontal scrollbar. */
+.catalog-actions-cell {
+  position: sticky;
+  right: 0;
+  background: white;
+  box-shadow: -4px 0 6px -4px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+}
+
 /* Generic horizontal-scroll wrapper for any table with enough columns to
    overflow a narrow screen (e.g. the shift tally payment log) — the page
    itself must never scroll sideways, so the table scrolls internally
