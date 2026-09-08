@@ -46,14 +46,30 @@ export default function PatientHistoryPanel({
       showHospitalizations
         ? fetch(`/api/hospitalizations?${hospQuery}`).then((res) => res.json())
         : Promise.resolve([]),
-      clientId ? fetch(`/api/invoices?client_id=${clientId}`).then((res) => res.json()) : Promise.resolve([]),
-    ]).then(([visitsData, hospData, invoicesData]) => {
-      const visits = (Array.isArray(visitsData) ? visitsData : [])
-        .filter((v) => v.id !== excludeVisitId)
-        .map((v) => ({ type: 'consult', date: v.started_at, data: v }));
-      const admissions = (Array.isArray(hospData) ? hospData : [])
-        .filter((h) => h.id !== excludeHospitalizationId)
-        .map((h) => ({ type: 'hospitalization', date: h.admitted_at, data: h }));
+    ]).then(async ([visitsData, hospData]) => {
+      const rawVisits = (Array.isArray(visitsData) ? visitsData : []).filter((v) => v.id !== excludeVisitId);
+      const rawAdmissions = (Array.isArray(hospData) ? hospData : []).filter(
+        (h) => h.id !== excludeHospitalizationId
+      );
+
+      // patients.client_id can be stale or unset on some older/migrated
+      // records, even when that patient's own visits/hospitalizations
+      // (looked up above by patient_id, so unaffected by that) carry the
+      // correct client_id — the one their invoices were actually created
+      // with (see POST /api/visits/:id/invoice and .../hospitalizations/
+      // :id/invoice). Scoped to one patient, prefer that authoritative
+      // value over the passed clientId prop so invoices aren't silently
+      // missed for a patient whose own client_id field is out of date.
+      const effectiveClientId = patientId
+        ? rawVisits[0]?.client_id || rawAdmissions[0]?.client_id || clientId
+        : clientId;
+
+      const invoicesData = effectiveClientId
+        ? await fetch(`/api/invoices?client_id=${effectiveClientId}`).then((res) => res.json())
+        : [];
+
+      const visits = rawVisits.map((v) => ({ type: 'consult', date: v.started_at, data: v }));
+      const admissions = rawAdmissions.map((h) => ({ type: 'hospitalization', date: h.admitted_at, data: h }));
       const invoices = (Array.isArray(invoicesData) ? invoicesData : [])
         .filter((inv) => !patientId || inv.visits?.patient_id === patientId || inv.hospitalizations?.patient_id === patientId)
         .map((inv) => ({ type: 'invoice', date: inv.created_at, data: inv }));
