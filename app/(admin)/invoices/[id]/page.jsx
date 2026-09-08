@@ -14,6 +14,7 @@ import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import VoiceNoteBox from '@/app/_components/VoiceNoteBox';
 import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
+import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { printPdfUrl } from '@/lib/printPdf';
 import InfoHint from '@/app/_components/InfoHint';
@@ -47,6 +48,10 @@ export default function InvoiceDetailPage() {
   const [labelsError, setLabelsError] = useState(null);
   const [paymentLinkError, setPaymentLinkError] = useState(null);
   const [microchipModalOpen, setMicrochipModalOpen] = useState(false);
+  const [editingLineItemId, setEditingLineItemId] = useState(null);
+  const [editLineItemForm, setEditLineItemForm] = useState({ quantity: '', administration_method: '', instructions: '' });
+  const [savingLineItemEdit, setSavingLineItemEdit] = useState(false);
+  const [lineItemEditError, setLineItemEditError] = useState(null);
 
   const loadInvoice = () =>
     fetch(`/api/invoices/${id}`)
@@ -180,6 +185,48 @@ export default function InvoiceDetailPage() {
     loadInvoice();
   }
 
+  // Correcting an already-added line item — the wrong quantity was logged,
+  // or an injection's SC/IM route was picked wrong — rather than removing
+  // and re-adding it (which would lose its description/instructions).
+  function startEditLineItem(li) {
+    setEditingLineItemId(li.id);
+    setEditLineItemForm({
+      quantity: li.quantity,
+      administration_method: li.administration_method || '',
+      instructions: li.instructions || '',
+    });
+    setLineItemEditError(null);
+  }
+
+  function cancelEditLineItem() {
+    setEditingLineItemId(null);
+    setLineItemEditError(null);
+  }
+
+  async function saveLineItemEdit(itemId) {
+    setSavingLineItemEdit(true);
+    setLineItemEditError(null);
+
+    const res = await fetch(`/api/invoices/${id}/line-items/${itemId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        quantity: Number(editLineItemForm.quantity),
+        administration_method: editLineItemForm.administration_method || null,
+        instructions: editLineItemForm.instructions,
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setLineItemEditError(data.error || 'Failed to save changes');
+    } else {
+      setEditingLineItemId(null);
+      loadInvoice();
+    }
+    setSavingLineItemEdit(false);
+  }
+
   // Dispensing labels: each medication line item prints independently —
   // nothing goes to the printer unless its own button is clicked. Saves
   // that item's (possibly edited) instructions back to it first (see
@@ -276,7 +323,7 @@ export default function InvoiceDetailPage() {
   const patientName = invoice.visits?.patients?.name || invoice.hospitalizations?.patients?.name;
   const lineItemGroups = groupLineItemsByCategory(invoice.line_items);
   const editable = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
-  const columnCount = editable ? 5 : 4;
+  const columnCount = editable ? 7 : 6;
   // Only the medications actually dispensed to go home get a printable
   // label — an SC/IM injection given in-clinic (or a non-medication
   // product) has nothing to print.
@@ -321,6 +368,8 @@ export default function InvoiceDetailPage() {
           <tr>
             <th>Item</th>
             <th>Qty</th>
+            <th>Method</th>
+            <th>Instructions</th>
             <th>Unit price</th>
             <th>Line total</th>
             {editable && <th></th>}
@@ -332,28 +381,84 @@ export default function InvoiceDetailPage() {
               <tr className="invoice-category-row">
                 <td colSpan={columnCount}>{group.label}</td>
               </tr>
-              {group.items.map((li) => (
-                <tr key={li.id}>
-                  <td>{li.description}</td>
-                  <td>
-                    {li.quantity} {li.goods_services?.unit || ''}
-                  </td>
-                  <td>{money(li.unit_price)}</td>
-                  <td>{money(li.line_total)}</td>
-                  {editable && (
+              {group.items.map((li) => {
+                const catalogItem = catalog.find((c) => c.id === li.goods_service_id);
+                const isInjectable = catalogItem?.administration_method === 'injectable';
+                return editingLineItemId === li.id ? (
+                  <tr key={li.id} className="invoice-line-item-editing">
+                    <td>{li.description}</td>
                     <td>
-                      <button type="button" onClick={() => removeLineItem(li.id)}>
-                        Remove
-                      </button>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="qty-input"
+                        value={editLineItemForm.quantity}
+                        onChange={(e) => setEditLineItemForm({ ...editLineItemForm, quantity: e.target.value })}
+                      />
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td>
+                      {isInjectable ? (
+                        <AdministrationRoutePicker
+                          value={editLineItemForm.administration_method}
+                          onChange={(value) => setEditLineItemForm({ ...editLineItemForm, administration_method: value })}
+                        />
+                      ) : li.administration_method === 'dispense' ? (
+                        'Dispensed'
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td>
+                      <input
+                        placeholder="Instructions"
+                        value={editLineItemForm.instructions}
+                        onChange={(e) => setEditLineItemForm({ ...editLineItemForm, instructions: e.target.value })}
+                      />
+                    </td>
+                    <td>{money(li.unit_price)}</td>
+                    <td>{money(li.line_total)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => saveLineItemEdit(li.id)}
+                        disabled={savingLineItemEdit || (isInjectable && !editLineItemForm.administration_method)}
+                      >
+                        {savingLineItemEdit ? 'Saving...' : 'Save'}
+                      </button>
+                      <button type="button" onClick={cancelEditLineItem} disabled={savingLineItemEdit}>
+                        Cancel
+                      </button>
+                      {lineItemEditError && <p className="error">{lineItemEditError}</p>}
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={li.id}>
+                    <td>{li.description}</td>
+                    <td>
+                      {li.quantity} {li.goods_services?.unit || ''}
+                    </td>
+                    <td>{li.administration_method ? ADMINISTRATION_METHOD_LABELS[li.administration_method] : '—'}</td>
+                    <td>{li.instructions || '—'}</td>
+                    <td>{money(li.unit_price)}</td>
+                    <td>{money(li.line_total)}</td>
+                    {editable && (
+                      <td>
+                        <button type="button" onClick={() => startEditLineItem(li)}>
+                          Edit
+                        </button>
+                        <button type="button" onClick={() => removeLineItem(li.id)}>
+                          Remove
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </Fragment>
           ))}
           {invoice.line_items.length === 0 && (
             <tr>
-              <td colSpan={5}>No line items yet.</td>
+              <td colSpan={columnCount}>No line items yet.</td>
             </tr>
           )}
         </tbody>
