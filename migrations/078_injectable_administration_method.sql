@@ -16,12 +16,15 @@
 -- Run this in your Supabase SQL editor. Safe to run more than once.
 
 alter table goods_services drop constraint if exists goods_services_administration_method_check;
-alter table goods_services add constraint goods_services_administration_method_check
-    check (administration_method in ('dispense', 'injectable'));
 
 -- Existing catalog items fixed at sc or im are now just "injectable" —
 -- the specific route moves to being chosen per administration instead.
+-- Must happen before the new (stricter) constraint below is added, or
+-- Postgres validates these still-sc/im rows against it too early.
 update goods_services set administration_method = 'injectable' where administration_method in ('sc', 'im');
+
+alter table goods_services add constraint goods_services_administration_method_check
+    check (administration_method in ('dispense', 'injectable'));
 
 -- The Day Treatment Plan's tap-to-log buttons (migration 076) are created
 -- once but tapped repeatedly — an injectable task stores its chosen route
