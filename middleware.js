@@ -61,6 +61,13 @@ const HOSPITALIZATION_READ_PATTERNS = [/^\/api\/hospitalizations\/[^/]+$/, /^\/a
 function isPublicPath(pathname, method) {
   if (pathname === '/api/staff' && method === 'GET') return true; // vet picker on the booking form
   if (pathname === '/api/vaccine-protocols' && method === 'GET') return true; // last-vaccination-type picker on the intake form
+  // AttachmentGallery on the hospitalization portal (case photos + each
+  // worksheet entry's own photos) reads this — GET-only, so a client link
+  // can't also POST/DELETE attachments with no login (see migration/PR
+  // history around 2026-09-09: this one was missing the same way the
+  // report-pdf routes above were, silently emptying the portal's photo
+  // gallery for every client while staff, already logged in, saw it fine).
+  if (pathname === '/api/attachments' && method === 'GET') return true;
   if (method === 'GET' && HOSPITALIZATION_READ_PATTERNS.some((re) => re.test(pathname))) return true;
   return PUBLIC_PATTERNS.some((re) => re.test(pathname));
 }
