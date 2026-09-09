@@ -836,6 +836,12 @@ create table hospitalization_plan_items (
 alter table hospitalization_notes add column plan_item_id uuid
     references hospitalization_plan_items(id) on delete set null;
 
+-- Several plan-item taps within a few minutes of each other get
+-- consolidated into one worksheet entry instead of a row per tap (see
+-- DayTreatmentPlan.jsx's logTask) — plan_item_id above stays for whatever
+-- still reads it, this is the multi-item form (see migration 081).
+alter table hospitalization_notes add column plan_item_ids uuid[] not null default '{}';
+
 -- Deferred from treatment_items' own definition above, since it needs
 -- this table to exist first — medications, goods/services, and tests
 -- logged as part of a specific worksheet entry, consolidated into an

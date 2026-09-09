@@ -69,6 +69,7 @@ export async function POST(request, { params }) {
     medication_given,
     force_feeding_done,
     plan_item_id,
+    plan_item_ids,
   } = body;
 
   const checkinFields = { stool, urine, vomit, drinking, mood, temperature_feel, medication_given, force_feeding_done, appetite, temperature_c };
@@ -107,7 +108,11 @@ export async function POST(request, { params }) {
         // Set when this entry was logged by tapping a Day Treatment Plan
         // button (see DayTreatmentPlan.jsx) rather than typed by hand —
         // lets the plan compute each task's "done today" count/time.
-        plan_item_id: plan_item_id || null,
+        // plan_item_ids is the multi-item form (several taps within a few
+        // minutes consolidated into this one entry); plan_item_id stays in
+        // sync with its first entry for whatever else still reads it.
+        plan_item_id: plan_item_id || (Array.isArray(plan_item_ids) ? plan_item_ids[0] : null) || null,
+        plan_item_ids: Array.isArray(plan_item_ids) ? plan_item_ids : plan_item_id ? [plan_item_id] : [],
         // Prose version of the fields above, shown to the owner on the
         // portal — generated once here, then staff-editable on the
         // worksheet (app/(admin)/hospitalization/[id]) independently of

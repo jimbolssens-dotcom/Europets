@@ -2,11 +2,17 @@
 // A per-admission set of recurring/one-off care tasks (meds, checks,
 // routine care) shown as tap-to-log buttons — used on both the admin and
 // mobile hospitalization detail pages. Tapping a task posts a normal
-// worksheet entry (POST .../notes, tagged with plan_item_id) so it shows
+// worksheet entry (POST .../notes, tagged with plan_item_ids) so it shows
 // up in the existing Day-to-day Worksheet below, same as anything typed
 // by hand; a catalog-linked task also gets a treatment_item so it still
 // reaches the invoice. The plan itself (the list of buttons) carries over
 // day to day until changed — only which taps count as "today" resets.
+//
+// Taps happen in bursts during rounds (several meds/checks logged one
+// after another) — rather than a separate worksheet entry per tap, a tap
+// within CONSOLIDATE_WINDOW_MS of the same author's last entry merges into
+// it (see logTask): the note's text and plan_item_ids grow, and a
+// catalog-linked task also gets its own treatment_item on that same note.
 
 'use client';
 
@@ -20,6 +26,7 @@ import { supabase } from '@/lib/supabaseClient';
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 const QUICK_TASKS = ['Cage Cleaned', 'Water Changed', 'Food Given', 'Patient Checked', 'Walked / Exercised'];
 const LONG_PRESS_MS = 550;
+const CONSOLIDATE_WINDOW_MS = 5 * 60 * 1000;
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -45,6 +52,7 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
   const [editSaving, setEditSaving] = useState(false);
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);
+  const lastNoteRef = useRef(null);
 
   function loadPlanItems() {
     fetch(`/api/hospitalizations/${hospitalizationId}/plan-items`)
@@ -57,13 +65,16 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
       .then((res) => res.json())
       .then((data) => {
         const today = todayISODate();
-        setTodayNotes(Array.isArray(data) ? data.filter((n) => n.plan_item_id && n.note_date === today) : []);
+        setTodayNotes(
+          Array.isArray(data) ? data.filter((n) => n.plan_item_ids?.length > 0 && n.note_date === today) : []
+        );
       });
   }
 
   useEffect(() => {
     loadPlanItems();
     loadTodayNotes();
+    lastNoteRef.current = null;
     const remembered = localStorage.getItem(MOBILE_STAFF_STORAGE_KEY);
     if (remembered) setAuthorId(remembered);
 
@@ -92,33 +103,99 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
 
   function doneToday(planItemId) {
     return todayNotes
-      .filter((n) => n.plan_item_id === planItemId)
+      .filter((n) => n.plan_item_ids?.includes(planItemId))
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  }
+
+  function taskLine(item) {
+    return item.instructions ? `${item.label} — ${item.instructions}` : item.label;
+  }
+
+  // A tap within CONSOLIDATE_WINDOW_MS of the same author's most recent
+  // plan-tap entry merges into it instead of creating a new worksheet row —
+  // several meds/checks logged one after another during rounds land as one
+  // entry with one timestamp, not a scattered row per tap. Tracked in a ref
+  // (updated synchronously right after each successful log) rather than
+  // read back from todayNotes, so a second tap fired before the first
+  // one's reload finishes still finds the note to merge into.
+  function findMergeableNote() {
+    const now = Date.now();
+    const isValid = (n) =>
+      n?.plan_item_ids?.length > 0 &&
+      (n.author_id || null) === (authorId || null) &&
+      now - new Date(n.created_at).getTime() < CONSOLIDATE_WINDOW_MS;
+
+    if (isValid(lastNoteRef.current)) return lastNoteRef.current;
+    return todayNotes.filter(isValid).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
   }
 
   async function logTask(item) {
     setError(null);
     setLoggingId(item.id);
+
+    try {
+      const mergeInto = findMergeableNote();
+      if (mergeInto) {
+        await mergeTaskIntoNote(mergeInto, item);
+      } else {
+        await createTaskNote(item);
+      }
+    } catch (err) {
+      setLoggingId(null);
+      setError(err.message || 'Failed to log task');
+      return;
+    }
+    setLoggingId(null);
+    loadTodayNotes();
+  }
+
+  async function createTaskNote(item) {
     const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         author_id: authorId || null,
         note_date: todayISODate(),
-        notes: item.instructions ? `${item.label} — ${item.instructions}` : item.label,
-        plan_item_id: item.id,
+        notes: taskLine(item),
+        plan_item_ids: [item.id],
         treatment_items: item.goods_service_id
           ? [{ goods_service_id: item.goods_service_id, quantity: 1, administration_method: item.administration_method }]
           : [],
       }),
     });
-    setLoggingId(null);
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || 'Failed to log task');
-      return;
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to log task');
+    lastNoteRef.current = data;
+  }
+
+  async function mergeTaskIntoNote(note, item) {
+    const patchRes = await fetch(`/api/hospitalizations/${hospitalizationId}/notes/${note.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        notes: [note.notes, taskLine(item)].filter(Boolean).join('\n'),
+        plan_item_ids: [...note.plan_item_ids, item.id],
+      }),
+    });
+    const patched = await patchRes.json();
+    if (!patchRes.ok) throw new Error(patched.error || 'Failed to log task');
+    lastNoteRef.current = patched;
+
+    if (!item.goods_service_id) return;
+    const itemRes = await fetch('/api/treatment-items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        hospitalization_note_id: note.id,
+        goods_service_id: item.goods_service_id,
+        quantity: 1,
+        administration_method: item.administration_method,
+      }),
+    });
+    if (!itemRes.ok) {
+      const data = await itemRes.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to log task');
     }
-    loadTodayNotes();
   }
 
   async function addPlanItem(payload) {
@@ -233,8 +310,11 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
   const remainingQuickTasks = QUICK_TASKS.filter((q) => !existingLabels.has(q));
 
   const logEntries = todayNotes
-    .map((n) => ({ ...n, planItem: planItems.find((p) => p.id === n.plan_item_id) }))
-    .filter((n) => n.planItem)
+    .map((n) => ({
+      ...n,
+      taskLabels: n.plan_item_ids.map((id) => planItems.find((p) => p.id === id)?.label).filter(Boolean),
+    }))
+    .filter((n) => n.taskLabels.length > 0)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   return (
@@ -410,7 +490,7 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
         <ul className="day-plan-log">
           {logEntries.map((n) => (
             <li key={n.id}>
-              <span className="day-plan-log-task">{n.planItem.label}</span>
+              <span className="day-plan-log-task">{n.taskLabels.join(', ')}</span>
               <span className="day-plan-log-meta">
                 {formatTime(n.created_at)} &middot; {authorName(n.author_id)}
               </span>

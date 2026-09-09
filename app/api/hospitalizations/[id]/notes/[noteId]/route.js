@@ -24,6 +24,10 @@ const EDITABLE_FIELDS = [
   'client_summary',
 ];
 const EDITABLE_NUMBER_FIELDS = ['temperature_c', 'weight_kg'];
+// Not run through the '' -> null coercion below — plan_item_ids is always
+// a full array (see DayTreatmentPlan.jsx's logTask consolidating several
+// taps within a few minutes into this one entry's array).
+const EDITABLE_ARRAY_FIELDS = ['plan_item_ids'];
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
@@ -34,6 +38,9 @@ export async function PATCH(request, { params }) {
   }
   for (const field of EDITABLE_NUMBER_FIELDS) {
     if (body[field] !== undefined) update[field] = body[field] === '' || body[field] === null ? null : Number(body[field]);
+  }
+  for (const field of EDITABLE_ARRAY_FIELDS) {
+    if (Array.isArray(body[field])) update[field] = body[field];
   }
 
   if (Object.keys(update).length === 0) {
