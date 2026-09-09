@@ -124,6 +124,10 @@ function InvoiceCard({ summary, catalog, subcategories, staff, onCatalogChange, 
             <a href={`/invoices/${summary.id}`}>{invoice.clients?.full_name}</a>
           </strong>
           {patientName ? ` — ${patientName}` : ''}
+          <div className="visit-meta">
+            Created: {new Date(invoice.created_at).toLocaleDateString()}
+            {invoice.paid_at && ` · Paid: ${new Date(invoice.paid_at).toLocaleDateString()}`}
+          </div>
         </div>
         <span>{STATUS_LABELS[invoice.status] || invoice.status}</span>
       </div>

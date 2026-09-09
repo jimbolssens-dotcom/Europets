@@ -357,6 +357,10 @@ export default function InvoiceDetailPage() {
           </>
         )}
       </p>
+      <p className="visit-meta">
+        Created: {new Date(invoice.created_at).toLocaleDateString()}
+        {invoice.paid_at && ` · Paid: ${new Date(invoice.paid_at).toLocaleDateString()}`}
+      </p>
       <p>
         <button type="button" onClick={downloadTaxInvoice}>
           📄 Download
