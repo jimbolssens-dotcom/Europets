@@ -5,7 +5,8 @@
 
 'use client';
 
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, Suspense, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
@@ -216,6 +217,21 @@ function InvoiceCard({ summary, catalog, subcategories, staff, onCatalogChange, 
 const emptyForm = { client_id: '', visit_id: '' };
 
 export default function InvoicesPage() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <InvoicesPageInner />
+    </Suspense>
+  );
+}
+
+// An "Invoice" link elsewhere (the patient/client detail pages, for
+// invoicing something without a consult) can land here with ?client_id=
+// already known — resolve the owner's name for display and pre-fill the
+// Open Invoice form, scrolled into view, same pattern as the Consults and
+// Appointments pages' own deep links.
+function InvoicesPageInner() {
+  const searchParams = useSearchParams();
+  const openInvoiceFormRef = useRef(null);
   const [invoices, setInvoices] = useState([]);
   const [selectedOwner, setSelectedOwner] = useState(null); // { id, full_name } for the client currently picked below
   const [visits, setVisits] = useState([]);
@@ -253,6 +269,20 @@ export default function InvoicesPage() {
       setSubcategories(Array.isArray(subcategoriesData) ? subcategoriesData : []);
       setStaff(Array.isArray(staffData) ? staffData : []);
     });
+  }, []);
+
+  useEffect(() => {
+    const clientId = searchParams.get('client_id');
+    if (!clientId) return;
+    fetch(`/api/clients/${clientId}`)
+      .then((res) => res.json())
+      .then((client) => {
+        if (!client || client.error) return;
+        setSelectedOwner({ id: client.id, full_name: client.full_name });
+        setForm((f) => ({ ...f, client_id: clientId }));
+        openInvoiceFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function addCatalogItem(item) {
@@ -327,7 +357,7 @@ export default function InvoicesPage() {
       </div>
 
       <div className="split-aside">
-      <form className="card" onSubmit={handleSubmit}>
+      <form className="card" onSubmit={handleSubmit} ref={openInvoiceFormRef}>
         <h2>Open Invoice</h2>
         {error && <p className="error">{error}</p>}
         {selectedOwner ? (

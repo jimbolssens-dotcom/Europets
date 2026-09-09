@@ -260,6 +260,17 @@ export default function ClientDetailPage() {
       <h1>
         {client.full_name} <span>(Client #{client.client_number})</span>
       </h1>
+      <p>
+        <a href={`/appointments?client_id=${client.id}`} className="button-link">
+          Book Appointment
+        </a>{' '}
+        <a href={`/consults?client_id=${client.id}`} className="button-link">
+          New Consult
+        </a>{' '}
+        <a href={`/invoices?client_id=${client.id}`} className="button-link">
+          Invoice
+        </a>
+      </p>
 
       {editing ? (
         <form className="card" onSubmit={saveEdit}>
