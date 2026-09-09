@@ -3531,6 +3531,16 @@ button.secondary:hover {
   margin-bottom: 1rem;
 }
 
+.day-plan-task:has(.day-plan-edit-task) {
+  grid-column: 1 / -1;
+}
+
+.day-plan-hint {
+  margin-top: -0.3rem;
+  margin-bottom: 0.7rem;
+  font-style: italic;
+}
+
 .day-plan-task {
   position: relative;
 }
@@ -3595,6 +3605,18 @@ button.secondary:hover {
 
 .day-plan-remove:hover {
   color: var(--pink-dark);
+}
+
+.day-plan-edit-task {
+  width: 100%;
+  padding-top: 0.6rem;
+  margin-top: 0.6rem;
+  border-top: 1px dashed #eee;
+}
+
+.day-plan-edit-actions {
+  display: flex;
+  gap: 0.4rem;
 }
 
 .day-plan-add-row {

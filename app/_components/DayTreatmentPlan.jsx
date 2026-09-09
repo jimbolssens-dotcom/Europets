@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 const QUICK_TASKS = ['Cage Cleaned', 'Water Changed', 'Food Given', 'Patient Checked', 'Walked / Exercised'];
+const LONG_PRESS_MS = 550;
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -37,6 +38,13 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
   const [showCustomAdd, setShowCustomAdd] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
   const [error, setError] = useState(null);
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [editGoodsServiceId, setEditGoodsServiceId] = useState('');
+  const [editInstructions, setEditInstructions] = useState('');
+  const [editAdministrationMethod, setEditAdministrationMethod] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const longPressTimer = useRef(null);
+  const longPressFired = useRef(false);
 
   function loadPlanItems() {
     fetch(`/api/hospitalizations/${hospitalizationId}/plan-items`)
@@ -164,6 +172,59 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
     loadPlanItems();
   }
 
+  function startLongPress(item) {
+    longPressFired.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      openEditItem(item);
+    }, LONG_PRESS_MS);
+  }
+
+  function cancelLongPress() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+  function openEditItem(item) {
+    setError(null);
+    setEditingItemId(item.id);
+    setEditGoodsServiceId(item.goods_service_id || '');
+    setEditInstructions(item.instructions || '');
+    setEditAdministrationMethod(item.administration_method || '');
+  }
+
+  function cancelEditItem() {
+    setEditingItemId(null);
+  }
+
+  async function saveEditItem(itemId) {
+    const catalogItem = catalog.find((c) => c.id === editGoodsServiceId);
+    const label = catalogItem ? catalogItem.name : planItems.find((p) => p.id === itemId)?.label;
+    if (!label) return;
+    setEditSaving(true);
+    setError(null);
+    const res = await fetch(`/api/hospitalization-plan-items/${itemId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        label,
+        goods_service_id: editGoodsServiceId || null,
+        instructions: editInstructions.trim() || null,
+        administration_method: editAdministrationMethod || null,
+      }),
+    });
+    setEditSaving(false);
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || 'Failed to update task');
+      return;
+    }
+    setEditingItemId(null);
+    loadPlanItems();
+  }
+
   function authorName(id) {
     return staff.find((s) => s.id === id)?.full_name || 'Unknown';
   }
@@ -193,6 +254,7 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
       </div>
 
       {planItems.length === 0 && <p className="visit-meta">No tasks on the plan yet — add one below.</p>}
+      {planItems.length > 0 && <p className="visit-meta day-plan-hint">Long-press a task to correct its catalog item.</p>}
 
       <div className="day-plan-grid">
         {planItems.map((item) => {
@@ -200,7 +262,21 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
           const last = done[done.length - 1];
           return (
             <div key={item.id} className={`day-plan-task${done.length ? ' done' : ''}`}>
-              <button type="button" onClick={() => logTask(item)} disabled={loggingId === item.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (longPressFired.current) {
+                    longPressFired.current = false;
+                    return;
+                  }
+                  logTask(item);
+                }}
+                onPointerDown={() => startLongPress(item)}
+                onPointerUp={cancelLongPress}
+                onPointerLeave={cancelLongPress}
+                onContextMenu={(e) => e.preventDefault()}
+                disabled={loggingId === item.id}
+              >
                 <span className="day-plan-task-label">
                   {item.label}
                   {item.administration_method && ` (${ADMINISTRATION_METHOD_LABELS[item.administration_method]})`}
@@ -223,6 +299,41 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
               >
                 &times;
               </button>
+              {editingItemId === item.id && (
+                <div className="day-plan-catalog-add day-plan-edit-task">
+                  <CatalogPicker
+                    catalog={catalog}
+                    subcategories={subcategories}
+                    value={editGoodsServiceId}
+                    onChange={setEditGoodsServiceId}
+                    onItemCreated={onCatalogItemCreated}
+                  />
+                  {catalog.find((c) => c.id === editGoodsServiceId)?.administration_method === 'injectable' && (
+                    <AdministrationRoutePicker value={editAdministrationMethod} onChange={setEditAdministrationMethod} />
+                  )}
+                  <input
+                    placeholder="Instructions (e.g. PO with food, twice daily)"
+                    value={editInstructions}
+                    onChange={(e) => setEditInstructions(e.target.value)}
+                  />
+                  <div className="day-plan-edit-actions">
+                    <button
+                      type="button"
+                      onClick={() => saveEditItem(item.id)}
+                      disabled={
+                        editSaving ||
+                        (catalog.find((c) => c.id === editGoodsServiceId)?.administration_method === 'injectable' &&
+                          !editAdministrationMethod)
+                      }
+                    >
+                      {editSaving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button type="button" onClick={cancelEditItem} disabled={editSaving}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
