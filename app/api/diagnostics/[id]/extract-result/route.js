@@ -1,16 +1,23 @@
 // app/api/diagnostics/[id]/extract-result/route.js
-// POST /api/diagnostics/:id/extract-result  -> read a photo of a test
-// result (FormData: `image`, optional `test_name` for context) and append
+// POST /api/diagnostics/:id/extract-result  -> read a photo of a non-imaging
+// test result (FormData: `image`, optional `test_name` for context) and append
 // the extracted text to both this diagnostic's own result field AND the
 // consult's Tests field (visits.test_results — see migration 080), so a
 // vet reviewing Vitals & Exam sees every test result in one place instead
-// of having to open each diagnostic's own card. The photo itself is saved
-// separately as a regular attachment (see AttachmentSection); the consult
-// page deletes it once this call succeeds, since its contents are now
-// captured as text — this route only reads it, never deletes it itself.
+// of having to open each diagnostic's own card.
+//
+// IMPORTANT: X-ray/radiograph and ultrasound images are never sent to AI for
+// interpretation. Those images are clinical source material: they must be
+// retained as attachments and the report interpretation must come only from
+// what the veterinarian dictates or types. Returning a non-success status for
+// imaging here is deliberate because the consult page only deletes a source
+// attachment after a successful extraction response; this guarantees an
+// imaging upload cannot be deleted by the OCR/vision workflow.
 
 import { supabase } from '@/lib/supabaseClient';
 import { extractDiagnosticResult } from '@/lib/anthropicClient';
+import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
+import { isXrayTest } from '@/lib/xrayProduct';
 import { NextResponse } from 'next/server';
 import convert from 'heic-convert';
 
@@ -37,6 +44,21 @@ export async function POST(request, { params }) {
 
   if (!image || typeof image === 'string') {
     return NextResponse.json({ error: 'image file is required' }, { status: 400 });
+  }
+
+  // Hard safety boundary for diagnostic imaging: the image has already been
+  // uploaded as an attachment before this endpoint is called. Do not read,
+  // convert, describe, OCR, or otherwise pass it to the AI vision pipeline.
+  // A non-2xx response also prevents the client from deleting the attachment.
+  if (isUltrasoundTest(testName) || isXrayTest(testName)) {
+    return NextResponse.json(
+      {
+        error:
+          'Imaging image saved. AI interpretation is disabled for X-rays and ultrasound; use dictation or typed findings for the report.',
+        imaging_saved: true,
+      },
+      { status: 409 }
+    );
   }
 
   const { data: diagnostic, error: fetchError } = await supabase
