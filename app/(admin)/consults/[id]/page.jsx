@@ -102,10 +102,19 @@ export default function ConsultDetailPage() {
   const [ultrasoundReports, setUltrasoundReports] = useState([]);
   const [dictatingUltrasoundFor, setDictatingUltrasoundFor] = useState(null); // diagnostic id currently starting a report
   const [autoRecordUltrasoundId, setAutoRecordUltrasoundId] = useState(null);
+  const [ultrasoundForm, setUltrasoundForm] = useState({}); // diagnostic id -> { performed_by, findings, notes }
 
   const [xrayReports, setXrayReports] = useState([]);
   const [dictatingXrayFor, setDictatingXrayFor] = useState(null); // diagnostic id currently starting a report
   const [autoRecordXrayId, setAutoRecordXrayId] = useState(null);
+  const [xrayForm, setXrayForm] = useState({}); // diagnostic id -> { performed_by, findings, notes }
+
+  // Shared across all four report types' "Generate AI Report" button — only
+  // one generation runs at a time, so one set of state is enough to track
+  // which report (by id) is in flight or last errored.
+  const [generatingReportId, setGeneratingReportId] = useState(null);
+  const [generateReportError, setGenerateReportError] = useState(null);
+  const [generateReportErrorId, setGenerateReportErrorId] = useState(null);
 
   const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
 
@@ -644,6 +653,54 @@ export default function ConsultDetailPage() {
     }
   }
 
+  // Alternative to "Dictate Report" for ultrasound/x-ray — types findings
+  // straight in instead, same shape as the dental/surgical "Or add
+  // manually" forms below.
+  async function addUltrasoundReport(e, diagnosticId) {
+    e.preventDefault();
+    const form = ultrasoundForm[diagnosticId] || { performed_by: '', findings: '', notes: '' };
+    await fetch('/api/ultrasound-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId, ...form }),
+    });
+    setUltrasoundForm((prev) => ({ ...prev, [diagnosticId]: { performed_by: '', findings: '', notes: '' } }));
+    loadUltrasoundReports();
+  }
+
+  async function addXrayReport(e, diagnosticId) {
+    e.preventDefault();
+    const form = xrayForm[diagnosticId] || { performed_by: '', findings: '', notes: '' };
+    await fetch('/api/xray-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId, ...form }),
+    });
+    setXrayForm((prev) => ({ ...prev, [diagnosticId]: { performed_by: '', findings: '', notes: '' } }));
+    loadXrayReports();
+  }
+
+  // Runs the same AI report generation a dictation triggers (see
+  // lib/manualReportGeneration.js), but from whatever's already typed into
+  // the report's own findings/notes fields — for a report added by hand.
+  // Confirms before overwriting an already-generated (or hand-edited)
+  // report, same as any other consequential overwrite in this app.
+  async function generateAiReport(apiBase, reportId, hasExisting, onDone) {
+    if (hasExisting && !confirm('Regenerate this report? This will replace the current saved report text.')) return;
+    setGenerateReportError(null);
+    setGenerateReportErrorId(null);
+    setGeneratingReportId(reportId);
+    const res = await fetch(`${apiBase}/${reportId}/generate-report`, { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    setGeneratingReportId(null);
+    if (!res.ok) {
+      setGenerateReportError(data.error || 'Failed to generate report');
+      setGenerateReportErrorId(reportId);
+      return;
+    }
+    onDone();
+  }
+
   async function createInvoice() {
     setCreatingInvoice(true);
     const res = await fetch(`/api/visits/${id}/invoice`, { method: 'POST' });
@@ -1000,13 +1057,58 @@ export default function ConsultDetailPage() {
                 <div className="postop-panel">
                   <h4>Ultrasound Report</h4>
                   {!ultrasoundReport ? (
-                    <button
-                      type="button"
-                      onClick={() => startDictateUltrasoundReport(d.id)}
-                      disabled={dictatingUltrasoundFor === d.id}
-                    >
-                      🎤 {dictatingUltrasoundFor === d.id ? 'Starting...' : 'Dictate Report'}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => startDictateUltrasoundReport(d.id)}
+                        disabled={dictatingUltrasoundFor === d.id}
+                      >
+                        🎤 {dictatingUltrasoundFor === d.id ? 'Starting...' : 'Dictate Report'}
+                      </button>
+                      <details>
+                        <summary>Or add manually</summary>
+                        <form className="form-grid" onSubmit={(e) => addUltrasoundReport(e, d.id)}>
+                          <select
+                            value={ultrasoundForm[d.id]?.performed_by || ''}
+                            onChange={(e) =>
+                              setUltrasoundForm({
+                                ...ultrasoundForm,
+                                [d.id]: { ...(ultrasoundForm[d.id] || {}), performed_by: e.target.value },
+                              })
+                            }
+                          >
+                            <option value="">Performed by...</option>
+                            {vets.map((v) => (
+                              <option key={v.id} value={v.id}>
+                                {v.full_name}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            placeholder="Findings"
+                            value={ultrasoundForm[d.id]?.findings || ''}
+                            onChange={(e) =>
+                              setUltrasoundForm({
+                                ...ultrasoundForm,
+                                [d.id]: { ...(ultrasoundForm[d.id] || {}), findings: e.target.value },
+                              })
+                            }
+                          />
+                          <textarea
+                            rows={2}
+                            placeholder="Notes"
+                            value={ultrasoundForm[d.id]?.notes || ''}
+                            onChange={(e) =>
+                              setUltrasoundForm({
+                                ...ultrasoundForm,
+                                [d.id]: { ...(ultrasoundForm[d.id] || {}), notes: e.target.value },
+                              })
+                            }
+                          />
+                          <button type="submit">Add</button>
+                        </form>
+                      </details>
+                    </>
                   ) : (
                     <>
                       <p className="visit-meta">
@@ -1021,6 +1123,28 @@ export default function ConsultDetailPage() {
                         autoStart={ultrasoundReport.id === autoRecordUltrasoundId}
                       />
                       <AttachmentSection entityType="ultrasound_report" entityId={ultrasoundReport.id} />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          generateAiReport(
+                            '/api/ultrasound-reports',
+                            ultrasoundReport.id,
+                            !!ultrasoundReport.ai_summary,
+                            loadUltrasoundReports
+                          )
+                        }
+                        disabled={
+                          generatingReportId === ultrasoundReport.id ||
+                          !(ultrasoundReport.findings || ultrasoundReport.notes)
+                        }
+                      >
+                        {generatingReportId === ultrasoundReport.id
+                          ? 'Generating...'
+                          : ultrasoundReport.ai_summary
+                            ? '🔄 Regenerate AI Report'
+                            : '✨ Generate AI Report'}
+                      </button>
+                      {generateReportErrorId === ultrasoundReport.id && <p className="error">{generateReportError}</p>}
                       <ClientReportEditor
                         reportId={ultrasoundReport.id}
                         apiBase="/api/ultrasound-reports"
@@ -1044,13 +1168,58 @@ export default function ConsultDetailPage() {
                 <div className="postop-panel">
                   <h4>X-ray Report</h4>
                   {!xrayReport ? (
-                    <button
-                      type="button"
-                      onClick={() => startDictateXrayReport(d.id)}
-                      disabled={dictatingXrayFor === d.id}
-                    >
-                      🎤 {dictatingXrayFor === d.id ? 'Starting...' : 'Dictate Report'}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => startDictateXrayReport(d.id)}
+                        disabled={dictatingXrayFor === d.id}
+                      >
+                        🎤 {dictatingXrayFor === d.id ? 'Starting...' : 'Dictate Report'}
+                      </button>
+                      <details>
+                        <summary>Or add manually</summary>
+                        <form className="form-grid" onSubmit={(e) => addXrayReport(e, d.id)}>
+                          <select
+                            value={xrayForm[d.id]?.performed_by || ''}
+                            onChange={(e) =>
+                              setXrayForm({
+                                ...xrayForm,
+                                [d.id]: { ...(xrayForm[d.id] || {}), performed_by: e.target.value },
+                              })
+                            }
+                          >
+                            <option value="">Performed by...</option>
+                            {vets.map((v) => (
+                              <option key={v.id} value={v.id}>
+                                {v.full_name}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            placeholder="Findings"
+                            value={xrayForm[d.id]?.findings || ''}
+                            onChange={(e) =>
+                              setXrayForm({
+                                ...xrayForm,
+                                [d.id]: { ...(xrayForm[d.id] || {}), findings: e.target.value },
+                              })
+                            }
+                          />
+                          <textarea
+                            rows={2}
+                            placeholder="Notes"
+                            value={xrayForm[d.id]?.notes || ''}
+                            onChange={(e) =>
+                              setXrayForm({
+                                ...xrayForm,
+                                [d.id]: { ...(xrayForm[d.id] || {}), notes: e.target.value },
+                              })
+                            }
+                          />
+                          <button type="submit">Add</button>
+                        </form>
+                      </details>
+                    </>
                   ) : (
                     <>
                       <p className="visit-meta">
@@ -1063,6 +1232,20 @@ export default function ConsultDetailPage() {
                         autoStart={xrayReport.id === autoRecordXrayId}
                       />
                       <AttachmentSection entityType="xray_report" entityId={xrayReport.id} />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          generateAiReport('/api/xray-reports', xrayReport.id, !!xrayReport.ai_summary, loadXrayReports)
+                        }
+                        disabled={generatingReportId === xrayReport.id || !(xrayReport.findings || xrayReport.notes)}
+                      >
+                        {generatingReportId === xrayReport.id
+                          ? 'Generating...'
+                          : xrayReport.ai_summary
+                            ? '🔄 Regenerate AI Report'
+                            : '✨ Generate AI Report'}
+                      </button>
+                      {generateReportErrorId === xrayReport.id && <p className="error">{generateReportError}</p>}
                       <ClientReportEditor
                         reportId={xrayReport.id}
                         apiBase="/api/xray-reports"
@@ -1271,6 +1454,14 @@ export default function ConsultDetailPage() {
               entityId={r.id}
               autoStart={r.id === autoRecordDentalId}
             />
+            <button
+              type="button"
+              onClick={() => generateAiReport('/api/dental-reports', r.id, !!r.ai_summary, loadDentalReports)}
+              disabled={generatingReportId === r.id || !(r.findings || r.procedures_performed || r.notes)}
+            >
+              {generatingReportId === r.id ? 'Generating...' : r.ai_summary ? '🔄 Regenerate AI Report' : '✨ Generate AI Report'}
+            </button>
+            {generateReportErrorId === r.id && <p className="error">{generateReportError}</p>}
             <ClientReportEditor
               reportId={r.id}
               apiBase="/api/dental-reports"
@@ -1344,6 +1535,14 @@ export default function ConsultDetailPage() {
               entityId={r.id}
               autoStart={r.id === autoRecordSurgicalId}
             />
+            <button
+              type="button"
+              onClick={() => generateAiReport('/api/surgical-reports', r.id, !!r.ai_summary, loadSurgicalReports)}
+              disabled={generatingReportId === r.id || !(r.procedure_name || r.notes)}
+            >
+              {generatingReportId === r.id ? 'Generating...' : r.ai_summary ? '🔄 Regenerate AI Report' : '✨ Generate AI Report'}
+            </button>
+            {generateReportErrorId === r.id && <p className="error">{generateReportError}</p>}
             <ClientReportEditor
               reportId={r.id}
               apiBase="/api/surgical-reports"
