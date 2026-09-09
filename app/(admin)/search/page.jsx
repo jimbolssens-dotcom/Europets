@@ -14,7 +14,7 @@
 
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 const emptyClientSearch = { client_number: '', name: '', phone: '' };
@@ -27,6 +27,7 @@ function hasAnyTerm(search) {
 function QuickSearchResults({ q }) {
   const [results, setResults] = useState({ clients: [], patients: [] });
   const [loading, setLoading] = useState(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (!q.trim()) {
@@ -34,9 +35,15 @@ function QuickSearchResults({ q }) {
       return;
     }
     setLoading(true);
+    const requestId = ++requestIdRef.current;
     fetch(`/api/search?q=${encodeURIComponent(q)}&limit=50`)
       .then((res) => res.json())
       .then((data) => {
+        // A slower, older request (e.g. a broader earlier query with more
+        // rows to match) can resolve after a newer, narrower one — only the
+        // most recently issued request is allowed to update the results, or
+        // the page can flash a stale, non-matching list right after typing.
+        if (requestId !== requestIdRef.current) return;
         setResults({ clients: data.clients || [], patients: data.patients || [] });
         setLoading(false);
       });
@@ -129,6 +136,8 @@ function FieldSearch() {
   const [patientResults, setPatientResults] = useState([]);
   const [clientLoading, setClientLoading] = useState(false);
   const [patientLoading, setPatientLoading] = useState(false);
+  const clientRequestIdRef = useRef(0);
+  const patientRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (!hasAnyTerm(clientSearch)) {
@@ -137,6 +146,7 @@ function FieldSearch() {
     }
     setClientLoading(true);
     const handle = setTimeout(() => {
+      const requestId = ++clientRequestIdRef.current;
       const params = new URLSearchParams();
       if (clientSearch.client_number.trim()) params.set('client_number', clientSearch.client_number.trim());
       if (clientSearch.name.trim()) params.set('name', clientSearch.name.trim());
@@ -144,6 +154,10 @@ function FieldSearch() {
       fetch(`/api/clients?${params.toString()}`)
         .then((res) => res.json())
         .then((data) => {
+          // Guard against an older, slower search (e.g. a single typed
+          // letter matching far more rows than what's typed now) resolving
+          // after a newer, more specific one and clobbering its results.
+          if (requestId !== clientRequestIdRef.current) return;
           setClientResults(Array.isArray(data) ? data.slice(0, 8) : []);
           setClientLoading(false);
         });
@@ -158,6 +172,7 @@ function FieldSearch() {
     }
     setPatientLoading(true);
     const handle = setTimeout(() => {
+      const requestId = ++patientRequestIdRef.current;
       const params = new URLSearchParams();
       if (patientSearch.patient_number.trim()) params.set('patient_number', patientSearch.patient_number.trim());
       if (patientSearch.name.trim()) params.set('name', patientSearch.name.trim());
@@ -166,6 +181,7 @@ function FieldSearch() {
       fetch(`/api/patients?${params.toString()}`)
         .then((res) => res.json())
         .then((data) => {
+          if (requestId !== patientRequestIdRef.current) return;
           setPatientResults(Array.isArray(data) ? data.slice(0, 8) : []);
           setPatientLoading(false);
         });

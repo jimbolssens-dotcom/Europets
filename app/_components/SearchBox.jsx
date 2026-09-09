@@ -14,6 +14,7 @@ export default function SearchBox() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const boxRef = useRef(null);
+  const requestIdRef = useRef(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -24,9 +25,14 @@ export default function SearchBox() {
     }
     setLoading(true);
     const handle = setTimeout(() => {
+      const requestId = ++requestIdRef.current;
       fetch(`/api/search?q=${encodeURIComponent(q)}`)
         .then((res) => res.json())
         .then((data) => {
+          // A slower, older search (e.g. a single typed letter matching far
+          // more rows) can resolve after a newer, more specific one — only
+          // apply the most recently issued request's results.
+          if (requestId !== requestIdRef.current) return;
           setResults({ clients: data.clients || [], patients: data.patients || [] });
           setOpen(true);
           setLoading(false);

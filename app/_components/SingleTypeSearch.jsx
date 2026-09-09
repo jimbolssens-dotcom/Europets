@@ -16,6 +16,7 @@ export default function SingleTypeSearch({ type, placeholder, onPick }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const boxRef = useRef(null);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (!q.trim()) {
@@ -25,9 +26,13 @@ export default function SingleTypeSearch({ type, placeholder, onPick }) {
     }
     setLoading(true);
     const handle = setTimeout(() => {
+      const requestId = ++requestIdRef.current;
       fetch(`/api/search?q=${encodeURIComponent(q)}&type=${type}`)
         .then((res) => res.json())
         .then((data) => {
+          // A slower, older search can resolve after a newer, more specific
+          // one — only apply the most recently issued request's results.
+          if (requestId !== requestIdRef.current) return;
           setResults((type === 'client' ? data.clients : data.patients) || []);
           setOpen(true);
           setLoading(false);
