@@ -16,7 +16,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { uploadAttachment } from '@/lib/attachments';
 import { phoneSearchDigits } from '@/lib/phoneMatch';
 import ScanIdButton from '@/app/_components/ScanIdButton';
@@ -52,6 +52,7 @@ const emptyPatientForm = {
 };
 
 function AddPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const prefilledClientId = searchParams.get('client_id') || '';
 
@@ -69,7 +70,6 @@ function AddPageContent() {
   const [patientForm, setPatientForm] = useState(emptyPatientForm);
   const [patientSubmitting, setPatientSubmitting] = useState(false);
   const [patientError, setPatientError] = useState(null);
-  const [patientCreated, setPatientCreated] = useState(null);
 
   useEffect(() => {
     if (!prefilledClientId) return;
@@ -199,10 +199,10 @@ function AddPageContent() {
       return;
     }
 
-    setPatientCreated(data);
-    // Keeps the owner selected — the same client often has more than one
-    // pet to add in a row.
-    setPatientForm(emptyPatientForm);
+    // Straight to the new patient's own file — that's where the next step
+    // (book an appointment, start a consult) actually happens, rather than
+    // staying here with just a link to click.
+    router.push(`/patients/${data.id}`);
   }
 
   return (
@@ -296,11 +296,6 @@ function AddPageContent() {
         <form className="card" onSubmit={handlePatientSubmit}>
           <h2>Add Patient</h2>
           {patientError && <p className="error">{patientError}</p>}
-          {patientCreated && (
-            <p className="nav-add-success">
-              Added <a href={`/patients/${patientCreated.id}`}>{patientCreated.name}</a>.
-            </p>
-          )}
           {owner ? (
             <p className="owner-picked-badge">
               Owner: <strong>{owner.full_name}</strong>{' '}
