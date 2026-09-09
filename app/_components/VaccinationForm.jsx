@@ -112,7 +112,7 @@ export default function VaccinationForm({
           onClick={(e) => addVaccination(e, true)}
           disabled={submitting || form.vaccine_protocol_ids.length === 0}
         >
-          {submitting ? 'Saving...' : 'Booster'}
+          {submitting ? 'Saving...' : 'Primary'}
         </button>
       </div>
     </form>
