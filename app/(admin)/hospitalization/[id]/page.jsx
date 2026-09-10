@@ -27,6 +27,7 @@ import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
+import HospitalizationTestReports from '@/app/_components/HospitalizationTestReports';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import { openWhatsApp } from '@/lib/whatsapp';
 
@@ -643,6 +644,7 @@ export default function HospitalizationDetailPage() {
         subcategories={subcategories}
         onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
       />
+      <HospitalizationTestReports hospitalizationId={id} />
 
       <div className="split">
       <div className="split-main">
