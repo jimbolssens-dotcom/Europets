@@ -108,6 +108,7 @@ button:disabled {
 .hospitalization-test-report textarea { width: 100%; box-sizing: border-box; min-height: 4rem; }
 .hospitalization-test-report { margin-top: .75rem; padding: .6rem; border: 1px solid #eadce3; border-radius: 8px; }
 .hospitalization-test-report label { display: grid; gap: .35rem; margin: .7rem 0; }
+.hospitalization-procedure-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 
 .hospitalization-actions > .button-link {
   flex: 0 0 auto;
@@ -2148,6 +2149,13 @@ button.secondary:hover {
 
 .appointments-page .schedule-left-col:empty {
   display: none;
+}
+
+@media (min-width: 1024px) {
+  .appointments-page .schedule-layout.day-view .schedule-main {
+    flex: 0 1 auto;
+    margin-inline: auto;
+  }
 }
 
 @media (min-width: 1024px) {
