@@ -1,0 +1,26 @@
+@media (min-width: 1100px) {
+  .appointmentsScope :global(.schedule-layout:has(.schedule-room-track[data-date])) {
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+
+  .appointmentsScope :global(.schedule-layout:has(.schedule-room-track[data-date]) .schedule-left-col) {
+    flex: 0 0 220px;
+    min-width: 220px;
+  }
+
+  .appointmentsScope :global(.schedule-layout:has(.schedule-room-track[data-date]) .schedule-main) {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .appointmentsScope :global(.schedule-layout:has(.schedule-room-track[data-date]) .booking-panel) {
+    flex: 0 0 320px;
+    min-width: 320px;
+  }
+
+  .appointmentsScope :global(.schedule-layout:has(.schedule-room-track[data-date]) .booking-panel .card) {
+    max-width: none;
+    margin-top: 0;
+  }
+}
