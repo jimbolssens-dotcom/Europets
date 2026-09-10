@@ -4,40 +4,17 @@ import { useEffect, useState } from 'react';
 import SearchBox from '../_components/SearchBox';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
 import CultureReminderBanner from '../_components/CultureReminderBanner';
+import { useHospitalizationUpdatePending } from '../_components/useHospitalizationUpdatePending';
 import { supabase } from '@/lib/supabaseClient';
 
 // Wraps every internal staff page (everything except the public client
 // portal under app/portal/) with the nav. Nested inside the bare root
 // layout in app/layout.js.
 export default function AdminLayout({ children }) {
-  const [hasPendingUpdateRequest, setHasPendingUpdateRequest] = useState(false);
+  const hasPendingHospitalizationUpdate = useHospitalizationUpdatePending();
   const [hasPendingAppointmentRequest, setHasPendingAppointmentRequest] = useState(false);
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
   const [hasPendingReviewRequest, setHasPendingReviewRequest] = useState(false);
-
-  // The Hospitalization nav link blinks the same way an individual cage
-  // does on the Cage Layout page (see .cage-update-requested there) —
-  // whenever ANY admitted case has a pending "Request an Update" from the
-  // client portal, so staff notice it from any page in the app, not just
-  // while already looking at the cage layout.
-  useEffect(() => {
-    const checkPending = () =>
-      fetch('/api/hospitalizations?status=admitted')
-        .then((res) => res.json())
-        .then((data) => {
-          const list = Array.isArray(data) ? data : [];
-          setHasPendingUpdateRequest(list.some((h) => h.update_requested_at));
-        });
-
-    checkPending();
-
-    const channel = supabase
-      .channel('nav-hospitalization-update-requests')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, checkPending)
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
-  }, []);
 
   // Same blinking treatment for a submitted intake/invite request awaiting
   // review — Appointments if it also asked for a slot (reviewed there, see
@@ -118,10 +95,10 @@ export default function AdminLayout({ children }) {
           <a href="/consults">Consults</a>
           <a
             href="/hospitalization"
-            className={hasPendingUpdateRequest ? 'nav-update-requested' : ''}
-            title={hasPendingUpdateRequest ? 'A client is waiting for an update' : undefined}
+            className={hasPendingHospitalizationUpdate ? 'nav-update-requested' : ''}
+            title={hasPendingHospitalizationUpdate ? 'A hospitalization update needs attention' : undefined}
           >
-            Hospitalization{hasPendingUpdateRequest && ' 🔔'}
+            Hospitalization{hasPendingHospitalizationUpdate && ' 🔔'}
           </a>
           <a href="/vaccinations">Vaccinations</a>
           <a href="/imaging-reports">Imaging Reports</a>

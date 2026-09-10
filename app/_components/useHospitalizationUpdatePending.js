@@ -1,20 +1,19 @@
 // app/_components/useHospitalizationUpdatePending.js
-// Shared "is any admitted case waiting on a client-requested update?"
-// check — same signal that blinks the cage on the Cage Layout page and
-// the Hospitalization link in the desktop top nav (see app/(admin)/
-// layout.js), reused here for the mobile app's home screen (both the
-// normal staff tile grid and the cleaner's Hospital tab).
+// Shared "does any admitted hospitalization need an update?" check.
+// This covers both a client's explicit Request an Update flag and the
+// twice-daily cage-update deadlines (morning by 12:00, afternoon by 18:00).
+// It drives the desktop Hospitalization nav link and the mobile app's
+// Hospitalization tile / cleaner Hospital tab.
+//
+// The one-minute timer matters for scheduled deadlines: unlike a client
+// request, noon and 18:00 can arrive without any database row changing.
+// Realtime listeners make the signal clear promptly when a worksheet entry
+// is saved or an admission changes.
 //
 // app/mobile/page.js calls this at its own top level AND renders
 // MobileCleanerTabs (which calls it again internally) at the same time
-// for a cleaner — two hook instances mounted simultaneously. Supabase's
-// client returns the SAME channel object for a topic name that's already
-// registered, so a hardcoded shared name meant the second instance's
-// `.on()` call landed on a channel the first instance had already
-// `.subscribe()`d — which throws ("cannot add postgres_changes callbacks
-// ... after subscribe()"), crashing the whole page for any cleaner
-// account. useId() gives every hook instance its own topic so
-// simultaneous mounts never collide.
+// for a cleaner. useId() gives every hook instance its own Supabase topic
+// so simultaneous mounts never collide.
 
 'use client';
 
@@ -26,22 +25,32 @@ export function useHospitalizationUpdatePending() {
   const id = useId();
 
   useEffect(() => {
+    let active = true;
+
     const checkPending = () =>
       fetch('/api/hospitalizations?status=admitted')
         .then((res) => res.json())
         .then((data) => {
+          if (!active) return;
           const list = Array.isArray(data) ? data : [];
-          setPending(list.some((h) => h.update_requested_at));
-        });
+          setPending(list.some((h) => h.update_requested_at || h.scheduled_update_overdue));
+        })
+        .catch(() => {});
 
     checkPending();
+    const timer = window.setInterval(checkPending, 60 * 1000);
 
     const channel = supabase
-      .channel(`mobile-hospitalization-update-requests-${id}`)
+      .channel(`hospitalization-update-attention-${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, checkPending)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, checkPending)
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      supabase.removeChannel(channel);
+    };
   }, [id]);
 
   return pending;

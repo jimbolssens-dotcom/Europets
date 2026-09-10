@@ -28,19 +28,33 @@ function updateRequestTooltip(hosp) {
   return `${when}${afterHours ? ' (after hours)' : ''}${hosp.update_request_message ? `: "${hosp.update_request_message}"` : ''}`;
 }
 
+function scheduledUpdateLabel(period) {
+  if (period === 'morning_and_afternoon') return 'Morning and afternoon updates overdue';
+  if (period === 'afternoon') return 'Afternoon update overdue';
+  return 'Morning update overdue';
+}
+
+function hospitalizationAttention(hosp) {
+  const reasons = [];
+  if (hosp.update_requested_at) reasons.push(`Owner requested an update ${updateRequestTooltip(hosp)}`);
+  if (hosp.scheduled_update_overdue) reasons.push(scheduledUpdateLabel(hosp.scheduled_update_overdue_period));
+  return reasons;
+}
+
 function MobileCageTile({ cage, hosp, checkinOnly }) {
   if (hosp) {
     const href = checkinOnly ? `/mobile/hospitalization/${hosp.id}/checkin` : `/mobile/hospitalization/${hosp.id}`;
+    const attention = hospitalizationAttention(hosp);
+    const needsAttention = attention.length > 0;
     return (
       <a
         href={href}
-        className={`cage-tile cage-tile-mobile-occupied${hosp.update_requested_at ? ' cage-update-requested' : ''}`}
+        className={`cage-tile cage-tile-mobile-occupied${needsAttention ? ' cage-update-requested' : ''}`}
+        title={needsAttention ? attention.join(' • ') : undefined}
       >
         <div className="cage-tile-header">
           <span className="cage-name">{cage.name}</span>
-          {hosp.update_requested_at && (
-            <span title={`Owner requested an update ${updateRequestTooltip(hosp)}`}>🔔</span>
-          )}
+          {needsAttention && <span title={attention.join(' • ')}>🔔</span>}
           {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
         </div>
         <div className="cage-patient">{hosp.patients?.name}</div>
@@ -152,11 +166,18 @@ export default function MobileHospitalizationListPage() {
       setLoading(false);
     });
 
+    // Poll as well as listening to realtime changes because crossing noon
+    // or 18:00 can create an overdue reminder without a database write.
+    const timer = window.setInterval(loadAdmitted, 60 * 1000);
     const channel = supabase
       .channel('mobile-cage-layout')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, loadAdmitted)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, loadAdmitted)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    return () => {
+      window.clearInterval(timer);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const occupancy = Object.fromEntries(admitted.filter((a) => a.cage_id).map((a) => [a.cage_id, a]));
