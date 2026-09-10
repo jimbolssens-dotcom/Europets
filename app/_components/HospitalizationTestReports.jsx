@@ -8,7 +8,7 @@ export default function HospitalizationTestReports({ hospitalizationId, notes = 
   const [text, setText] = useState('');
   const [error, setError] = useState(null);
   const hasTest = notes.some((note) => note.treatment_items?.some((item) =>
-    item.goods_services?.main_category === 'test' || /blood|ultrasound|x-ray|xray|radiograph|dental|surg/i.test(item.goods_services?.name || '')
+    String(item.goods_services?.main_category || '').toLowerCase() === 'test' || /blood|cbc|ultrasound|x-ray|xray|radiograph|dental|surg/i.test(item.goods_services?.name || '')
   ));
   async function load() { const r = await fetch(`/api/hospitalizations/${hospitalizationId}/test-reports`); const d = await r.json(); if (r.ok) setReports(d); }
   useEffect(() => { load(); }, [hospitalizationId]);
