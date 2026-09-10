@@ -765,9 +765,6 @@ export default function ConsultDetailPage() {
 
   return (
     <div>
-      <p>
-        <a href="/consults">&larr; All consults</a>
-      </p>
       <div className="consult-header-row">
         <h1>
           {consult.patients?.name}{' '}
