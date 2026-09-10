@@ -24,7 +24,7 @@ const MAX_PHOTOS = 12;
 export async function GET(request, { params }) {
   const { data: visit, error } = await supabase
     .from('visits')
-    .select('started_at, patients(name, species), clients(full_name)')
+    .select('started_at, test_results, patients(name, species), clients(full_name)')
     .eq('id', params.id)
     .single();
 
@@ -32,7 +32,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'consult not found' }, { status: 404 });
   }
 
-  const [{ data: clinic }, { data: diagnostics }] = await Promise.all([
+  const [{ data: clinic }, { data: diagnostics, error: diagnosticError }] = await Promise.all([
     supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
     supabase
       .from('diagnostics')
@@ -40,6 +40,7 @@ export async function GET(request, { params }) {
       .eq('visit_id', params.id)
       .order('created_at', { ascending: true }),
   ]);
+  if (diagnosticError) return NextResponse.json({ error: 'Could not load test results.' }, { status: 500 });
 
   const diagIds = (diagnostics || []).map((d) => d.id);
   const { data: attachments } = diagIds.length
@@ -52,6 +53,7 @@ export async function GET(request, { params }) {
     label: d.goods_services?.name || d.description || 'Test',
     text: d.result || 'No result recorded yet.',
   }));
+  if (visit.test_results?.trim()) sections.unshift({ label: 'Consult test notes', text: visit.test_results });
 
   const pdfBytes = await buildProcedureReportPdf({
     procedureTitle: 'Test Results Report',

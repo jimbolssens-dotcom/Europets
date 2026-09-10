@@ -12,7 +12,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { lockExtractedTeeth } from '@/lib/dentalChartLayout';
 import { compressAttachmentsForClosedRecord, isXrayDiagnostic } from '@/lib/attachmentCompression';
-import { generateConsultReport } from '@/lib/anthropicClient';
+import { generateReportForConsult } from '@/lib/consultReportGeneration';
 import { NextResponse } from 'next/server';
 
 export const maxDuration = 60;
@@ -110,22 +110,10 @@ export async function PATCH(request, { params }) {
   // which has already succeeded above.
   if (status === 'complete') {
     try {
-      const { data: patient } = await supabase
-        .from('patients')
-        .select('name, species')
-        .eq('id', data.patient_id)
-        .single();
-      const clientReport = await generateConsultReport({
-        patientName: patient?.name,
-        species: patient?.species,
-        anamnesis: data.anamnesis,
-        findings: data.findings,
-        diagnosis: data.diagnosis,
-        testResults: data.test_results,
-        treatmentNotes: data.treatment_notes,
-      });
+      const clientReport = await generateReportForConsult(data);
       if (clientReport) {
-        await supabase.from('visits').update({ ai_summary: clientReport }).eq('id', params.id);
+        const { error: reportError } = await supabase.from('visits').update({ ai_summary: clientReport }).eq('id', params.id);
+        if (reportError) throw reportError;
         data.ai_summary = clientReport;
       }
     } catch {
