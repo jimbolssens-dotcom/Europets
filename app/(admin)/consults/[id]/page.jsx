@@ -995,7 +995,7 @@ export default function ConsultDetailPage() {
             x-rays, or ultrasound scans on each entry above once it&apos;s added.
           </InfoHint>
         </h3>
-        <button type="button" onClick={() => setActiveTab('reports')}>View reports and test results</button>
+        <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View reports and test results</button>
         <form className="card" onSubmit={addDiagnostic}>
           {diagError && <p className="error">{diagError}</p>}
           <CatalogPicker
@@ -1152,7 +1152,7 @@ export default function ConsultDetailPage() {
                             : '✨ Generate AI Report'}
                       </button>
                       {generateReportErrorId === ultrasoundReport.id && <p className="error">{generateReportError}</p>}
-                      <button type="button" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
+                      <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
                     </>
                   )}
                 </div>
@@ -1240,7 +1240,7 @@ export default function ConsultDetailPage() {
                             : '✨ Generate AI Report'}
                       </button>
                       {generateReportErrorId === xrayReport.id && <p className="error">{generateReportError}</p>}
-                      <button type="button" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
+                      <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
                     </>
                   )}
                 </div>
@@ -1443,7 +1443,7 @@ export default function ConsultDetailPage() {
               {generatingReportId === r.id ? 'Generating...' : r.ai_summary ? '🔄 Regenerate AI Report' : '✨ Generate AI Report'}
             </button>
             {generateReportErrorId === r.id && <p className="error">{generateReportError}</p>}
-            <button type="button" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
+            <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
           </div>
         ))}
         </div>
@@ -1511,7 +1511,7 @@ export default function ConsultDetailPage() {
               {generatingReportId === r.id ? 'Generating...' : r.ai_summary ? '🔄 Regenerate AI Report' : '✨ Generate AI Report'}
             </button>
             {generateReportErrorId === r.id && <p className="error">{generateReportError}</p>}
-            <button type="button" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
+            <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
           </div>
         ))}
         </div>
