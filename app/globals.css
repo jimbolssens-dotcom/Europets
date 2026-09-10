@@ -998,6 +998,30 @@ button.secondary:hover {
   margin: 0.5rem 0;
 }
 
+.consult-reports summary {
+  cursor: pointer;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.report-result-field {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.report-result-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
 .diagnostic-result-row textarea {
   flex: 1;
   min-width: 180px;
@@ -1547,6 +1571,17 @@ button.secondary:hover {
    and clearing <summary>'s own default disclosure marker/cursor. */
 .consult-action-toggle {
   position: relative;
+}
+
+.button-link.consult-hospitalized {
+  background: #e2f1e9;
+  border: 1px solid #8db9a2;
+  color: #245b40;
+}
+
+.button-link.consult-hospitalized:hover {
+  background: #cfe7d9;
+  color: #19452f;
 }
 
 .consult-action-toggle summary {
@@ -4746,4 +4781,3 @@ form.card.admit-patient-form {
   padding: 0.6rem 1rem;
   font-size: 0.85rem;
 }
-

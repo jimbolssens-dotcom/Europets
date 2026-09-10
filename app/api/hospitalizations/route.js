@@ -120,6 +120,7 @@ export async function GET(request) {
   const status = searchParams.get('status');
   const patientId = searchParams.get('patient_id');
   const clientId = searchParams.get('client_id');
+  const originatingVisitId = searchParams.get('originating_visit_id');
 
   let query = supabase
     .from('hospitalizations')
@@ -135,6 +136,9 @@ export async function GET(request) {
   if (clientId) {
     query = query.eq('client_id', clientId);
   }
+  if (originatingVisitId) {
+    query = query.eq('originating_visit_id', originatingVisitId);
+  }
 
   const { data, error } = await query;
 
@@ -149,6 +153,17 @@ export async function GET(request) {
 export async function POST(request) {
   const body = await request.json();
   let { patient_id, client_id, originating_visit_id, room_id, cage_id, reason } = body;
+
+  // A stale consult page should open its existing admission, not book it again.
+  if (originating_visit_id) {
+    const { data: linked, error: linkedError } = await supabase
+      .from('hospitalizations').select('*')
+      .eq('originating_visit_id', originating_visit_id)
+      .order('admitted_at', { ascending: false });
+    if (linkedError) return NextResponse.json({ error: 'Could not check the linked hospitalization. Please try again.' }, { status: 500 });
+    const existing = linked?.find((row) => row.status === 'admitted') || linked?.[0];
+    if (existing) return NextResponse.json(existing);
+  }
 
   if (originating_visit_id && (!patient_id || !client_id)) {
     const { data: visit, error: visitError } = await supabase
