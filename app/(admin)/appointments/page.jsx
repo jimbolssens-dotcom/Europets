@@ -1,17 +1,4 @@
-// app/appointments/page.jsx
-// Month calendar overview + an Outlook-style day schedule: one column per
-// room, continuous time down the side, appointments as colored blocks
-// positioned by their actual start time/duration and color-coded by vet.
-// Click empty grid space to pick a room + time for a new booking, or
-// click-and-drag across the grid to select a multi-slot range for one.
-// An existing block can be dragged to a new time/room (mousedown on the
-// block body) or, for a surgery appointment, resized by its bottom-edge
-// handle. All three drag interactions are plain mousedown + window-level
-// mousemove/mouseup listeners set up per-gesture (see startDragSelect,
-// startMoveAppointment, startResizeAppointment) rather than a drag-and-drop
-// library — the grid is a fixed absolute-positioned layout, so raw pixel
-// math is simpler than adapting a generic DnD API to it.
-
+// app/(admin)/appointments/page.jsx
 'use client';
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
@@ -26,28 +13,17 @@ import { openWhatsApp } from '@/lib/whatsapp';
 
 const OPEN_HOUR = 8;
 const CLOSE_HOUR = 19;
-// The schedule's vertical density (px per minute) is computed at runtime
-// from the actual viewport (see recalcPixelsPerMinute) so the whole
-// 08:00-19:00 grid fits on screen without needing to scroll to reach the
-// last hour — DEFAULT is just the pre-measurement fallback for first
-// paint, clamped between MIN (still clickable on a short window) and MAX
-// (the original, most spacious density — never stretched bigger than that
-// even on a very tall monitor).
-const DEFAULT_PIXELS_PER_MINUTE = 1.4;
-const MIN_PIXELS_PER_MINUTE = 0.75;
-const MAX_PIXELS_PER_MINUTE = 1.4;
-const SCHEDULE_HEADER_HEIGHT = 36; // matches .schedule-header's 2.25rem
-// Hour labels are centered on their line (transform: translateY(-50%)), so
-// the very last one (19:00, sitting exactly at the track's bottom edge)
-// has its lower half hanging below the box — this margin needs enough
-// slack for that descender on top of normal breathing room, or it clips.
+const DEFAULT_PIXELS_PER_MINUTE = 1.15;
+const MIN_PIXELS_PER_MINUTE = 0.72;
+const MAX_PIXELS_PER_MINUTE = 1.25;
+const SCHEDULE_HEADER_HEIGHT = 48;
 const SCHEDULE_BOTTOM_MARGIN = 36;
 const SNAP_MINUTES = 15;
-// Surgery durations only make sense in 10-minute increments (matches the
-// server — see lib/appointmentScheduling.js), so resizing a surgery block
-// snaps to that instead of the coarser 15-minute grid used for start times.
 const SURGERY_INCREMENT_MINUTES = 10;
-const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const TIME_COL_WIDTH = 64;
+const ROOM_COL_WIDTH = 130;
+const WEEK_DAY_MIN_WIDTH = 132;
+const WEEKDAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -55,6 +31,10 @@ function pad(n) {
 
 function toISODate(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function dateFromISO(iso) {
+  return new Date(`${iso}T00:00:00`);
 }
 
 function toMonthKey(d) {
@@ -65,8 +45,42 @@ function todayISODate() {
   return toISODate(new Date());
 }
 
+function addDays(date, amount) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + amount);
+  return d;
+}
+
+function startOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function weekDates(date) {
+  const start = startOfWeek(date);
+  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+}
+
+function buildMonthGrid(year, monthIndex) {
+  const first = new Date(year, monthIndex, 1);
+  const mondayOffset = (first.getDay() + 6) % 7;
+  const start = addDays(first, -mondayOffset);
+  return Array.from({ length: 42 }, (_, i) => addDays(start, i));
+}
+
 function formatTime(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatSlotLabel(time24) {
+  const [h, m] = time24.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 function minutesSinceOpen(iso) {
@@ -74,70 +88,38 @@ function minutesSinceOpen(iso) {
   return (d.getHours() - OPEN_HOUR) * 60 + d.getMinutes();
 }
 
-// Inverse of minutesSinceOpen — used to render a live preview while an
-// appointment block is being dragged to a new time, before it's saved.
-function startTimeFromMinutes(dateISO, minutesFromOpen) {
-  const totalMinutes = OPEN_HOUR * 60 + minutesFromOpen;
-  const hh = Math.floor(totalMinutes / 60);
-  const mm = totalMinutes % 60;
-  return new Date(`${dateISO}T${pad(hh)}:${pad(mm)}:00`).toISOString();
+function timeFromMinutes(minutesFromOpen) {
+  const total = OPEN_HOUR * 60 + minutesFromOpen;
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
 }
 
-// A 6-row Sun-start grid of Date objects covering the given month, padded
-// with the trailing days of the previous/next month, for the always-visible
-// mini calendar (no popup — the whole point is not needing to click an icon).
-function buildMonthGrid(year, monthIndex) {
-  const firstOfMonth = new Date(year, monthIndex, 1);
-  const startOffset = firstOfMonth.getDay();
-  const gridStart = new Date(year, monthIndex, 1 - startOffset);
-
-  const days = [];
-  for (let i = 0; i < 42; i++) {
-    const d = new Date(gridStart);
-    d.setDate(gridStart.getDate() + i);
-    days.push(d);
-  }
-  return days;
+function startTimeFromMinutes(dateISO, minutesFromOpen) {
+  return new Date(`${dateISO}T${timeFromMinutes(minutesFromOpen)}:00`).toISOString();
 }
 
 function buildHourMarks() {
   const marks = [];
-  for (let h = OPEN_HOUR; h <= CLOSE_HOUR; h++) {
-    marks.push(h);
-  }
+  for (let h = OPEN_HOUR; h <= CLOSE_HOUR; h++) marks.push(h);
   return marks;
 }
 const HOUR_MARKS = buildHourMarks();
 
-// 15-minute gridlines within each hour (the hour marks above already cover
-// the :00 lines), so the schedule reads in clear quarter-hour brackets.
 function buildQuarterMarks() {
   const marks = [];
-  const totalMinutes = (CLOSE_HOUR - OPEN_HOUR) * 60;
-  for (let m = SNAP_MINUTES; m < totalMinutes; m += SNAP_MINUTES) {
+  const total = (CLOSE_HOUR - OPEN_HOUR) * 60;
+  for (let m = SNAP_MINUTES; m < total; m += SNAP_MINUTES) {
     if (m % 60 !== 0) marks.push(m);
   }
   return marks;
 }
 const QUARTER_MARKS = buildQuarterMarks();
 
-// wrapTop is the schedule-wrap box's own distance from the top of the
-// viewport (getBoundingClientRect().top) — everything above it (nav,
-// mini-cal, vet legend) is already accounted for just by measuring from
-// there, so this only has to subtract its own header row and a bit of
-// bottom breathing room.
 function recalcPixelsPerMinute(wrapTop) {
   const totalMinutes = (CLOSE_HOUR - OPEN_HOUR) * 60;
   const available = window.innerHeight - wrapTop - SCHEDULE_HEADER_HEIGHT - SCHEDULE_BOTTOM_MARGIN;
   return Math.min(MAX_PIXELS_PER_MINUTE, Math.max(MIN_PIXELS_PER_MINUTE, available / totalMinutes));
 }
 
-const TIME_COL_WIDTH = 64; // matches .schedule-time-col's flex-basis
-const ROOM_COL_WIDTH = 130; // matches .schedule-room-col's flex-basis
-
-// Short attention-getting beep for the not-on-roster alert — synthesized
-// rather than an audio file, so there's nothing to fetch/host. Never lets a
-// blocked AudioContext (autoplay policy, no speakers) break the booking flow.
 function playAlertBeep() {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -152,17 +134,7 @@ function playAlertBeep() {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.35);
-  } catch {
-    // sound is a nice-to-have; the visual alert still shows either way
-  }
-}
-
-// Time (as a 12-hour label, e.g. "2:15 PM") for a snapped "HH:MM" 24-hour string.
-function formatSlotLabel(time24) {
-  const [h, m] = time24.split(':').map(Number);
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  } catch {}
 }
 
 const emptyForm = {
@@ -184,14 +156,12 @@ export default function AppointmentsPage() {
   );
 }
 
-// A ?client_id=&patient_id= deep link (see the patient detail page's "Book
-// Appointment" button) is read via useSearchParams below, which requires a
-// Suspense boundary around it — split out into its own component so the
-// wrapper above stays a plain server-renderable shell.
 function AppointmentsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const today = new Date();
+  const [calendarView, setCalendarView] = useState('week');
+  const [monthOpen, setMonthOpen] = useState(false);
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonthIndex, setViewMonthIndex] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState(todayISODate());
@@ -219,21 +189,38 @@ function AppointmentsPageInner() {
   const scheduleWrapRef = useRef(null);
   const scheduleHeight = (CLOSE_HOUR - OPEN_HOUR) * 60 * pixelsPerMinute;
 
-  const monthKey = toMonthKey(new Date(viewYear, viewMonthIndex, 1));
+  const selectedDateObj = useMemo(() => dateFromISO(selectedDate), [selectedDate]);
+  const currentWeek = useMemo(() => weekDates(selectedDateObj), [selectedDateObj]);
+  const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonthIndex), [viewYear, viewMonthIndex]);
+  const monthLabel = new Date(viewYear, viewMonthIndex, 1).toLocaleDateString([], { month: 'long', year: 'numeric' });
+  const selectedDateLabel = selectedDateObj.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+  const weekLabel = `${currentWeek[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${currentWeek[6].toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
-  const loadMonth = () =>
-    fetch(`/api/appointments?month=${monthKey}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setAppointments(Array.isArray(data) ? data : []);
-        setLoading(false);
-      });
+  const visibleMonthKeys = useMemo(() => {
+    const dates = calendarView === 'week' ? currentWeek : [selectedDateObj];
+    const keys = new Set(dates.map(toMonthKey));
+    keys.add(`${viewYear}-${pad(viewMonthIndex + 1)}`);
+    return [...keys];
+  }, [calendarView, currentWeek, selectedDateObj, viewYear, viewMonthIndex]);
+
+  async function loadAppointments() {
+    setLoading(true);
+    try {
+      const chunks = await Promise.all(
+        visibleMonthKeys.map((month) => fetch(`/api/appointments?month=${month}`).then((res) => res.json()))
+      );
+      const byId = new Map();
+      chunks.flat().filter(Array.isArray).flat().forEach((a) => byId.set(a.id, a));
+      setAppointments([...byId.values()]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    setLoading(true);
-    loadMonth();
+    loadAppointments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthKey]);
+  }, [visibleMonthKeys.join('|')]);
 
   useEffect(() => {
     Promise.all([
@@ -245,10 +232,9 @@ function AppointmentsPageInner() {
     });
 
     const channel = supabase
-      .channel('appointments-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => loadMonth())
+      .channel('appointments-view-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, loadAppointments)
       .subscribe();
-
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -275,7 +261,7 @@ function AppointmentsPageInner() {
     recalc();
     window.addEventListener('resize', recalc);
     return () => window.removeEventListener('resize', recalc);
-  }, [loading, rooms.length, vets.length]);
+  }, [loading, rooms.length, vets.length, calendarView]);
 
   const countsByDate = useMemo(() => {
     const counts = {};
@@ -287,12 +273,21 @@ function AppointmentsPageInner() {
     return counts;
   }, [appointments]);
 
-  const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonthIndex), [viewYear, viewMonthIndex]);
-
   const dayAppointments = useMemo(
     () => appointments.filter((a) => a.status !== 'cancelled' && toISODate(new Date(a.start_time)) === selectedDate),
     [appointments, selectedDate]
   );
+
+  const weekAppointmentsByDate = useMemo(() => {
+    const result = {};
+    for (const d of currentWeek) result[toISODate(d)] = [];
+    for (const a of appointments) {
+      if (a.status === 'cancelled') continue;
+      const iso = toISODate(new Date(a.start_time));
+      if (result[iso]) result[iso].push(a);
+    }
+    return result;
+  }, [appointments, currentWeek]);
 
   const liveDayAppointments = useMemo(() => {
     if (!dragMove && !dragResize) return dayAppointments;
@@ -300,23 +295,20 @@ function AppointmentsPageInner() {
       if (dragMove && dragMove.appointmentId === a.id) {
         return { ...a, room_id: dragMove.roomId, start_time: startTimeFromMinutes(selectedDate, dragMove.startMinutes) };
       }
-      if (dragResize && dragResize.appointmentId === a.id) {
-        return { ...a, duration_minutes: dragResize.duration };
-      }
+      if (dragResize && dragResize.appointmentId === a.id) return { ...a, duration_minutes: dragResize.duration };
       return a;
     });
   }, [dayAppointments, dragMove, dragResize, selectedDate]);
 
   const selectedSlotPreview = useMemo(() => {
-    if (!form.time || !form.room_id) return null;
+    if (!form.time) return null;
     const [hour, minute] = form.time.split(':').map(Number);
     const startMinutes = (hour - OPEN_HOUR) * 60 + minute;
-    const duration =
-      form.type === 'surgery'
-        ? Math.max(SURGERY_INCREMENT_MINUTES, Number(form.duration_minutes) || SURGERY_INCREMENT_MINUTES)
-        : SNAP_MINUTES;
-    return { roomId: form.room_id, startMinutes, duration };
-  }, [form.time, form.room_id, form.type, form.duration_minutes]);
+    const duration = form.type === 'surgery'
+      ? Math.max(SURGERY_INCREMENT_MINUTES, Number(form.duration_minutes) || SURGERY_INCREMENT_MINUTES)
+      : SNAP_MINUTES;
+    return { roomId: form.room_id, startMinutes, duration, date: selectedDate };
+  }, [form.time, form.room_id, form.type, form.duration_minutes, selectedDate]);
 
   useEffect(() => {
     if (!form.client_id) {
@@ -343,12 +335,25 @@ function AppointmentsPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function selectDay(d) {
+  function syncMonthToDate(d) {
+    setViewYear(d.getFullYear());
+    setViewMonthIndex(d.getMonth());
+  }
+
+  function selectDay(d, switchToDay = false) {
     setSelectedDate(toISODate(d));
-    if (d.getMonth() !== viewMonthIndex || d.getFullYear() !== viewYear) {
-      setViewYear(d.getFullYear());
-      setViewMonthIndex(d.getMonth());
-    }
+    syncMonthToDate(d);
+    if (switchToDay) setCalendarView('day');
+  }
+
+  function navigate(direction) {
+    const step = calendarView === 'week' ? 7 : 1;
+    const next = addDays(selectedDateObj, direction * step);
+    selectDay(next);
+  }
+
+  function goToday() {
+    selectDay(new Date());
   }
 
   function goToMonth(delta) {
@@ -363,24 +368,20 @@ function AppointmentsPageInner() {
     const minutesFromOpen = offsetY / pixelsPerMinute;
     const snapped = Math.round(minutesFromOpen / SNAP_MINUTES) * SNAP_MINUTES;
     const clamped = Math.max(0, Math.min(snapped, (CLOSE_HOUR - OPEN_HOUR) * 60 - SNAP_MINUTES));
-    const totalMinutes = OPEN_HOUR * 60 + clamped;
-    const time = `${pad(Math.floor(totalMinutes / 60))}:${pad(totalMinutes % 60)}`;
-    return { minutesFromOpen: clamped, time };
+    return { minutesFromOpen: clamped, time: timeFromMinutes(clamped) };
   }
 
-  function applySlotSelection(roomId, startMinutes, durationMinutes) {
-    const totalMinutes = OPEN_HOUR * 60 + startMinutes;
-    const time = `${pad(Math.floor(totalMinutes / 60))}:${pad(totalMinutes % 60)}`;
+  function applySlotSelection(roomId, startMinutes, durationMinutes, dateISO = selectedDate) {
+    const time = timeFromMinutes(startMinutes);
     const room = rooms.find((r) => r.id === roomId);
+    setSelectedDate(dateISO);
+    syncMonthToDate(dateFromISO(dateISO));
     if (durationMinutes <= SNAP_MINUTES) {
       const type = room?.type === 'surgery' ? 'surgery' : 'consult';
-      setForm({ ...form, time, room_id: roomId, type, duration_minutes: '10' });
+      setForm((f) => ({ ...f, time, room_id: roomId || f.room_id, type, duration_minutes: '10' }));
     } else {
-      const rounded = Math.max(
-        SURGERY_INCREMENT_MINUTES,
-        Math.round(durationMinutes / SURGERY_INCREMENT_MINUTES) * SURGERY_INCREMENT_MINUTES
-      );
-      setForm({ ...form, time, room_id: roomId, type: 'surgery', duration_minutes: String(rounded) });
+      const rounded = Math.max(SURGERY_INCREMENT_MINUTES, Math.round(durationMinutes / SURGERY_INCREMENT_MINUTES) * SURGERY_INCREMENT_MINUTES);
+      setForm((f) => ({ ...f, time, room_id: roomId || f.room_id, type: 'surgery', duration_minutes: String(rounded) }));
     }
     setError(null);
     setRosterBlock(null);
@@ -388,17 +389,14 @@ function AppointmentsPageInner() {
   }
 
   function startDragSelect(e, roomId) {
-    if (e.button !== 0 || dragMove || dragResize) return;
+    if (calendarView !== 'day' || e.button !== 0 || dragMove || dragResize) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const { minutesFromOpen } = computeSlot(e);
     setDragSelect({ roomId, startMinutes: minutesFromOpen, endMinutes: minutesFromOpen });
     setHoverSlot(null);
-    setError(null);
-    setRosterBlock(null);
 
     function onMove(moveEvent) {
-      const offsetY = moveEvent.clientY - rect.top;
-      const raw = offsetY / pixelsPerMinute;
+      const raw = (moveEvent.clientY - rect.top) / pixelsPerMinute;
       const snapped = Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES;
       const clamped = Math.max(0, Math.min(snapped, (CLOSE_HOUR - OPEN_HOUR) * 60 - SNAP_MINUTES));
       setDragSelect((prev) => (prev ? { ...prev, endMinutes: clamped } : prev));
@@ -419,14 +417,14 @@ function AppointmentsPageInner() {
     window.addEventListener('mouseup', onUp);
   }
 
-  function hoverGrid(e, roomId) {
+  function hoverGrid(e, roomId, dateISO = selectedDate) {
     if (dragSelect || dragMove || dragResize) return;
     const { minutesFromOpen, time } = computeSlot(e);
-    setHoverSlot({ roomId, top: minutesFromOpen * pixelsPerMinute, label: formatSlotLabel(time) });
+    setHoverSlot({ roomId, dateISO, top: minutesFromOpen * pixelsPerMinute, label: formatSlotLabel(time) });
   }
 
   function startMoveAppointment(e, appointment) {
-    if (e.button !== 0 || appointment.status === 'cancelled' || appointment.status === 'complete') return;
+    if (calendarView !== 'day' || e.button !== 0 || appointment.status === 'cancelled' || appointment.status === 'complete') return;
     e.stopPropagation();
     const trackEl = e.currentTarget.closest('.schedule-room-track');
     if (!trackEl) return;
@@ -434,12 +432,10 @@ function AppointmentsPageInner() {
     const originalStartMinutes = minutesSinceOpen(appointment.start_time);
     const duration = appointment.duration_minutes;
     const totalMinutes = (CLOSE_HOUR - OPEN_HOUR) * 60;
-    const grabOffsetMinutes =
-      (e.clientY - trackEl.getBoundingClientRect().top) / pixelsPerMinute - originalStartMinutes;
+    const grabOffsetMinutes = (e.clientY - trackEl.getBoundingClientRect().top) / pixelsPerMinute - originalStartMinutes;
     const startX = e.clientX;
     const startY = e.clientY;
     let moved = false;
-
     setDragMove({ appointmentId: appointment.id, roomId: originalRoomId, startMinutes: originalStartMinutes });
     setHoverSlot(null);
 
@@ -449,14 +445,12 @@ function AppointmentsPageInner() {
       const rect = el ? el.getBoundingClientRect() : trackEl.getBoundingClientRect();
       const raw = (clientY - rect.top) / pixelsPerMinute - grabOffsetMinutes;
       const snapped = Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES;
-      const clamped = Math.max(0, Math.min(snapped, totalMinutes - duration));
-      return { roomId, startMinutes: clamped };
+      return { roomId, startMinutes: Math.max(0, Math.min(snapped, totalMinutes - duration)) };
     }
 
     function onMove(moveEvent) {
       if (Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3) moved = true;
-      const { roomId, startMinutes } = resolve(moveEvent.clientX, moveEvent.clientY);
-      setDragMove((prev) => (prev ? { ...prev, roomId, startMinutes } : prev));
+      setDragMove((prev) => (prev ? { ...prev, ...resolve(moveEvent.clientX, moveEvent.clientY) } : prev));
     }
     function onUp(upEvent) {
       window.removeEventListener('mousemove', onMove);
@@ -474,13 +468,13 @@ function AppointmentsPageInner() {
         }
         return;
       }
-      const { roomId, startMinutes } = resolve(upEvent.clientX, upEvent.clientY);
-      if (roomId === originalRoomId && startMinutes === originalStartMinutes) return;
+      const next = resolve(upEvent.clientX, upEvent.clientY);
+      if (next.roomId === originalRoomId && next.startMinutes === originalStartMinutes) return;
       patchAppointment(appointment.id, {
-        room_id: roomId,
-        start_time: startTimeFromMinutes(selectedDate, startMinutes),
+        room_id: next.roomId,
+        start_time: startTimeFromMinutes(selectedDate, next.startMinutes),
         date: selectedDate,
-        shift: OPEN_HOUR + Math.floor(startMinutes / 60) < 12 ? 'morning' : 'afternoon',
+        shift: OPEN_HOUR + Math.floor(next.startMinutes / 60) < 12 ? 'morning' : 'afternoon',
       });
     }
     window.addEventListener('mousemove', onMove);
@@ -488,7 +482,7 @@ function AppointmentsPageInner() {
   }
 
   function startResizeAppointment(e, appointment) {
-    if (e.button !== 0) return;
+    if (calendarView !== 'day' || e.button !== 0) return;
     e.stopPropagation();
     const trackEl = e.currentTarget.closest('.schedule-room-track');
     if (!trackEl) return;
@@ -496,7 +490,6 @@ function AppointmentsPageInner() {
     const startMinutes = minutesSinceOpen(appointment.start_time);
     const totalMinutes = (CLOSE_HOUR - OPEN_HOUR) * 60;
     const originalDuration = appointment.duration_minutes;
-
     setDragResize({ appointmentId: appointment.id, duration: originalDuration });
 
     function onMove(moveEvent) {
@@ -530,7 +523,6 @@ function AppointmentsPageInner() {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-
     if (!res.ok) {
       if (data.code === 'not_on_roster') {
         setRosterBlock({
@@ -541,13 +533,11 @@ function AppointmentsPageInner() {
           shift: data.shift,
           payload,
         });
-      } else {
-        setError(data.error || 'Failed to book appointment');
-      }
+      } else setError(data.error || 'Failed to book appointment');
     } else {
       setRosterBlock(null);
       setForm({ ...emptyForm, client_id: form.client_id });
-      loadMonth();
+      loadAppointments();
     }
     return res.ok;
   }
@@ -559,7 +549,6 @@ function AppointmentsPageInner() {
       body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => null);
-
     if (!res.ok) {
       if (data?.code === 'not_on_roster') {
         setRosterBlock({
@@ -578,7 +567,7 @@ function AppointmentsPageInner() {
     }
     setScheduleError(null);
     setRosterBlock(null);
-    loadMonth();
+    loadAppointments();
     return { ok: true };
   }
 
@@ -589,10 +578,6 @@ function AppointmentsPageInner() {
     }
     setScheduleError(null);
     setEditingAppointment(appointment);
-  }
-
-  function closeEditModal() {
-    setEditingAppointment(null);
   }
 
   async function handleEditSave(body) {
@@ -621,11 +606,8 @@ function AppointmentsPageInner() {
       }
       const payload = rosterBlock.payload;
       setRosterBlock(null);
-      if (payload?.__reschedule) {
-        await patchAppointment(payload.appointmentId, payload.body);
-      } else {
-        await submitAppointment(payload);
-      }
+      if (payload?.__reschedule) await patchAppointment(payload.appointmentId, payload.body);
+      else await submitAppointment(payload);
     } finally {
       setResolvingRosterBlock(false);
     }
@@ -639,7 +621,7 @@ function AppointmentsPageInner() {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!form.time || !form.room_id) {
-      setError('Click a spot on the schedule below first to pick a room and time');
+      setError('Pick a date/time on the schedule and select a room');
       return;
     }
     if (!form.client_id || !form.patient_id) {
@@ -649,10 +631,8 @@ function AppointmentsPageInner() {
     setSubmitting(true);
     setError(null);
     setRosterBlock(null);
-
     const startTime = new Date(`${selectedDate}T${form.time}:00`);
-
-    const payload = {
+    await submitAppointment({
       patient_id: form.patient_id,
       room_id: form.room_id,
       vet_id: form.vet_id || null,
@@ -662,9 +642,7 @@ function AppointmentsPageInner() {
       reason: form.reason,
       date: selectedDate,
       shift: startTime.getHours() < 12 ? 'morning' : 'afternoon',
-    };
-
-    await submitAppointment(payload);
+    });
     setSubmitting(false);
   }
 
@@ -674,19 +652,12 @@ function AppointmentsPageInner() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'cancelled' }),
     });
-    loadMonth();
+    loadAppointments();
   }
 
   function reminderMessage(a) {
-    const dateLabel = new Date(a.start_time).toLocaleDateString([], {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-    });
-    const timeLabel = formatTime(a.start_time);
-    return `Hi ${a.clients?.full_name || 'there'}, this is a reminder that ${
-      a.patients?.name || 'your pet'
-    } has an appointment at Europets Clinic on ${dateLabel} at ${timeLabel}. See you then! — Europets Clinic`;
+    const dateLabel = new Date(a.start_time).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+    return `Hi ${a.clients?.full_name || 'there'}, this is a reminder that ${a.patients?.name || 'your pet'} has an appointment at Europets Clinic on ${dateLabel} at ${formatTime(a.start_time)}. See you then! — Europets Clinic`;
   }
 
   function sendReminder(a) {
@@ -695,7 +666,7 @@ function AppointmentsPageInner() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mark_reminded: true }),
-    }).then(loadMonth);
+    }).then(loadAppointments);
   }
 
   async function checkIn(appointmentId) {
@@ -704,7 +675,7 @@ function AppointmentsPageInner() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ appointment_id: appointmentId }),
     });
-    loadMonth();
+    loadAppointments();
   }
 
   async function openConsult(appointment) {
@@ -718,88 +689,218 @@ function AppointmentsPageInner() {
           body: JSON.stringify({ appointment_id: appointment.id }),
         });
         const data = await res.json();
-        if (res.ok && data.id) {
-          router.push(`/consults/${data.id}`);
-          return;
-        }
+        if (res.ok && data.id) return router.push(`/consults/${data.id}`);
       } else if (appointment.status === 'checked_in' || appointment.status === 'complete') {
         const res = await fetch(`/api/visits?appointment_id=${appointment.id}`);
         const data = await res.json();
         const visit = Array.isArray(data) ? data[0] : null;
-        if (visit?.id) {
-          router.push(`/consults/${visit.id}`);
-          return;
-        }
+        if (visit?.id) return router.push(`/consults/${visit.id}`);
       }
     } finally {
       setOpeningConsultId(null);
     }
   }
 
-  const selectedDateLabel = new Date(`${selectedDate}T00:00:00`).toLocaleDateString([], {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
-  const monthLabel = new Date(viewYear, viewMonthIndex, 1).toLocaleDateString([], {
-    month: 'short',
-    year: 'numeric',
-  });
+  function appointmentBlock(a, extraStyle = {}, compact = false) {
+    const color = colorForVet(a.vet_id);
+    const canDrag = calendarView === 'day' && a.status !== 'cancelled' && a.status !== 'complete';
+    return (
+      <div
+        key={a.id}
+        className={['schedule-block', canDrag ? 'schedule-block-draggable' : '', openingConsultId === a.id ? 'schedule-block-opening' : ''].filter(Boolean).join(' ')}
+        style={{ background: color.bg, borderColor: color.fg, color: color.fg, overflow: 'hidden', ...extraStyle }}
+        title={`${formatTime(a.start_time)} · ${a.patients?.name || 'Unlinked'} · ${a.rooms?.name || 'No room'} · ${a.staff?.full_name || 'Unassigned vet'}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (calendarView === 'week') openEditModal(a);
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (pendingClickTimeoutRef.current) clearTimeout(pendingClickTimeoutRef.current);
+          openConsult(a);
+        }}
+        onMouseDown={(e) => startMoveAppointment(e, a)}
+        onMouseMove={(e) => e.stopPropagation()}
+        onMouseEnter={() => setHoverSlot(null)}
+      >
+        <strong>{a.patients?.name || 'Unlinked'}</strong>{compact ? <><br />{formatTime(a.start_time)}</> : <> {formatTime(a.start_time)} · {a.type} · {a.status}</>}
+        {a.type === 'surgery' && canDrag && <div className="schedule-resize-handle" onMouseDown={(e) => startResizeAppointment(e, a)} />}
+      </div>
+    );
+  }
+
+  function renderTimeColumn() {
+    return (
+      <div className="schedule-time-col" style={{ flex: `0 0 ${TIME_COL_WIDTH}px` }}>
+        <div className="schedule-header schedule-time-header" />
+        <div className="schedule-time-track" style={{ height: scheduleHeight }}>
+          {HOUR_MARKS.map((h) => (
+            <div key={h} className="schedule-hour-label" style={{ top: (h - OPEN_HOUR) * 60 * pixelsPerMinute }}>
+              {pad(h)}:00
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function gridLines() {
+    return <>
+      {HOUR_MARKS.map((h) => <div key={`h-${h}`} className="schedule-hour-line" style={{ top: (h - OPEN_HOUR) * 60 * pixelsPerMinute }} />)}
+      {QUARTER_MARKS.map((m) => <div key={`q-${m}`} className="schedule-quarter-line" style={{ top: m * pixelsPerMinute }} />)}
+    </>;
+  }
+
+  function renderDayView() {
+    return (
+      <div className="schedule-wrap" ref={scheduleWrapRef} style={{ maxWidth: TIME_COL_WIDTH + rooms.length * ROOM_COL_WIDTH + 2 }}>
+        {renderTimeColumn()}
+        {rooms.map((room) => (
+          <div key={room.id} className="schedule-room-col">
+            <div className="schedule-header">{room.name}</div>
+            <div
+              className="schedule-room-track"
+              data-room-id={room.id}
+              style={{ height: scheduleHeight }}
+              onMouseDown={(e) => startDragSelect(e, room.id)}
+              onMouseMove={(e) => hoverGrid(e, room.id)}
+              onMouseLeave={() => setHoverSlot(null)}
+            >
+              {gridLines()}
+              {hoverSlot?.roomId === room.id && hoverSlot.dateISO === selectedDate && (
+                <div className="schedule-hover-slot" style={{ top: hoverSlot.top, height: SNAP_MINUTES * pixelsPerMinute }}>
+                  <span className="schedule-hover-label">{hoverSlot.label}</span>
+                </div>
+              )}
+              {dragSelect?.roomId === room.id && (
+                <div className="schedule-drag-select" style={{
+                  top: Math.min(dragSelect.startMinutes, dragSelect.endMinutes) * pixelsPerMinute,
+                  height: (Math.abs(dragSelect.endMinutes - dragSelect.startMinutes) + SNAP_MINUTES) * pixelsPerMinute,
+                }} />
+              )}
+              {selectedSlotPreview?.roomId === room.id && !dragSelect && (
+                <div className="schedule-drag-select" style={{
+                  top: selectedSlotPreview.startMinutes * pixelsPerMinute,
+                  height: Math.max(selectedSlotPreview.duration * pixelsPerMinute, 22),
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, color: 'var(--pink-dark)',
+                }}>
+                  Selected {formatSlotLabel(form.time)}
+                </div>
+              )}
+              {liveDayAppointments.filter((a) => a.room_id === room.id).map((a) => appointmentBlock(a, {
+                top: minutesSinceOpen(a.start_time) * pixelsPerMinute,
+                height: Math.max(a.duration_minutes * pixelsPerMinute, 22),
+              }))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function renderWeekView() {
+    return (
+      <div ref={scheduleWrapRef} style={{ overflowX: 'auto', border: '1px solid #ddd', borderRadius: 8, background: 'white' }}>
+        <div style={{ display: 'flex', minWidth: TIME_COL_WIDTH + 7 * WEEK_DAY_MIN_WIDTH }}>
+          {renderTimeColumn()}
+          {currentWeek.map((day) => {
+            const iso = toISODate(day);
+            const dayApps = weekAppointmentsByDate[iso] || [];
+            const sameTimeGroups = {};
+            dayApps.forEach((a) => {
+              const key = `${new Date(a.start_time).getHours()}:${new Date(a.start_time).getMinutes()}`;
+              if (!sameTimeGroups[key]) sameTimeGroups[key] = [];
+              sameTimeGroups[key].push(a);
+            });
+            const isToday = iso === todayISODate();
+            const isSelected = iso === selectedDate;
+            return (
+              <div key={iso} style={{ flex: `1 1 ${WEEK_DAY_MIN_WIDTH}px`, minWidth: WEEK_DAY_MIN_WIDTH, borderLeft: '1px solid #eee' }}>
+                <button
+                  type="button"
+                  onClick={() => selectDay(day, true)}
+                  style={{
+                    width: '100%', height: SCHEDULE_HEADER_HEIGHT, borderRadius: 0,
+                    background: isSelected ? 'var(--pink)' : isToday ? 'var(--pink-tint)' : 'white',
+                    color: isSelected ? 'white' : 'var(--ink)', borderBottom: '1px solid #ddd', padding: '0.25rem',
+                  }}
+                >
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase' }}>{day.toLocaleDateString([], { weekday: 'short' })}</div>
+                  <strong>{day.getDate()}</strong>
+                </button>
+                <div
+                  className="schedule-room-track"
+                  data-date={iso}
+                  style={{ height: scheduleHeight, position: 'relative' }}
+                  onClick={(e) => {
+                    if (e.target.closest('.schedule-block')) return;
+                    const { minutesFromOpen } = computeSlot(e);
+                    applySlotSelection('', minutesFromOpen, SNAP_MINUTES, iso);
+                  }}
+                  onMouseMove={(e) => hoverGrid(e, '', iso)}
+                  onMouseLeave={() => setHoverSlot(null)}
+                >
+                  {gridLines()}
+                  {hoverSlot?.dateISO === iso && !selectedSlotPreview?.date && (
+                    <div className="schedule-hover-slot" style={{ top: hoverSlot.top, height: SNAP_MINUTES * pixelsPerMinute }}>
+                      <span className="schedule-hover-label">{hoverSlot.label}</span>
+                    </div>
+                  )}
+                  {selectedSlotPreview?.date === iso && (
+                    <div className="schedule-drag-select" style={{
+                      top: selectedSlotPreview.startMinutes * pixelsPerMinute,
+                      height: Math.max(selectedSlotPreview.duration * pixelsPerMinute, 22),
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 700, color: 'var(--pink-dark)', zIndex: 2,
+                    }}>
+                      Selected {formatSlotLabel(form.time)}
+                    </div>
+                  )}
+                  {dayApps.map((a) => {
+                    const d = new Date(a.start_time);
+                    const key = `${d.getHours()}:${d.getMinutes()}`;
+                    const group = sameTimeGroups[key];
+                    const index = group.findIndex((x) => x.id === a.id);
+                    const width = 100 / group.length;
+                    return appointmentBlock(a, {
+                      top: minutesSinceOpen(a.start_time) * pixelsPerMinute,
+                      height: Math.max(a.duration_minutes * pixelsPerMinute, 22),
+                      left: `calc(${index * width}% + 1px)`,
+                      width: `calc(${width}% - 2px)`,
+                      right: 'auto',
+                      fontSize: group.length > 1 ? '0.68rem' : '0.74rem',
+                      padding: group.length > 1 ? '2px 3px' : '3px 5px',
+                      zIndex: 3,
+                    }, true);
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <h1>Appointments</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+        <h1 style={{ margin: 0 }}>Appointments</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button type="button" className="secondary" onClick={() => navigate(-1)} aria-label={calendarView === 'week' ? 'Previous week' : 'Previous day'}>‹</button>
+          <button type="button" className="secondary" onClick={goToday}>Today</button>
+          <button type="button" className="secondary" onClick={() => navigate(1)} aria-label={calendarView === 'week' ? 'Next week' : 'Next day'}>›</button>
+          <strong style={{ minWidth: 180, textAlign: 'center' }}>{calendarView === 'week' ? weekLabel : selectedDateLabel}</strong>
+        </div>
+        <div style={{ display: 'flex', gap: 4, background: 'white', border: '1px solid #ddd', borderRadius: 999, padding: 3 }}>
+          <button type="button" onClick={() => setMonthOpen(true)} style={{ background: monthOpen ? 'var(--pink)' : 'transparent', color: monthOpen ? 'white' : 'var(--ink)', padding: '0.4rem 0.9rem' }}>Month</button>
+          <button type="button" onClick={() => setCalendarView('week')} style={{ background: calendarView === 'week' ? 'var(--pink)' : 'transparent', color: calendarView === 'week' ? 'white' : 'var(--ink)', padding: '0.4rem 0.9rem' }}>Week</button>
+          <button type="button" onClick={() => setCalendarView('day')} style={{ background: calendarView === 'day' ? 'var(--pink)' : 'transparent', color: calendarView === 'day' ? 'white' : 'var(--ink)', padding: '0.4rem 0.9rem' }}>Day</button>
+        </div>
+      </div>
 
       <div className="schedule-layout">
         <div className="schedule-left-col">
-          <div className="date-nav">
-            <div className="mini-cal-header">
-              <button type="button" onClick={() => goToMonth(-1)} aria-label="Previous month">
-                &lsaquo;
-              </button>
-              <span>{monthLabel}</span>
-              <button type="button" onClick={() => goToMonth(1)} aria-label="Next month">
-                &rsaquo;
-              </button>
-            </div>
-            <div className="mini-cal-grid">
-              {WEEKDAY_LETTERS.map((w, i) => (
-                <div key={i} className="mini-cal-weekday">
-                  {w}
-                </div>
-              ))}
-              {monthGrid.map((d) => {
-                const iso = toISODate(d);
-                const inMonth = d.getMonth() === viewMonthIndex;
-                const isSelected = iso === selectedDate;
-                const isToday = iso === todayISODate();
-                return (
-                  <button
-                    type="button"
-                    key={iso}
-                    className={[
-                      'mini-cal-day',
-                      inMonth ? '' : 'mini-cal-day-outside',
-                      isSelected ? 'mini-cal-day-selected' : '',
-                      isToday && !isSelected ? 'mini-cal-day-today' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    onClick={() => selectDay(d)}
-                  >
-                    {d.getDate()}
-                    {countsByDate[iso] > 0 && <span className="mini-cal-day-dot" />}
-                  </button>
-                );
-              })}
-            </div>
-            <button type="button" className="date-nav-today" onClick={() => selectDay(new Date())}>
-              Today
-            </button>
-            <p className="date-nav-label">{selectedDateLabel}</p>
-          </div>
-
-          <AppointmentRequestsPanel rooms={rooms} vets={vets} onApproved={loadMonth} />
+          <AppointmentRequestsPanel rooms={rooms} vets={vets} onApproved={loadAppointments} />
         </div>
 
         <div className="schedule-main">
@@ -808,276 +909,55 @@ function AppointmentsPageInner() {
             <div className="vet-legend">
               {vets.map((v) => (
                 <span key={v.id} className="vet-legend-item">
-                  <span
-                    className="vet-legend-swatch"
-                    style={{ background: colorForVet(v.id).bg, borderColor: colorForVet(v.id).fg }}
-                  />
+                  <span className="vet-legend-swatch" style={{ background: colorForVet(v.id).bg, borderColor: colorForVet(v.id).fg }} />
                   {v.full_name}
                 </span>
               ))}
               <span className="vet-legend-item">
-                <span
-                  className="vet-legend-swatch"
-                  style={{ background: UNASSIGNED_STAFF_COLOR.bg, borderColor: UNASSIGNED_STAFF_COLOR.fg }}
-                />
+                <span className="vet-legend-swatch" style={{ background: UNASSIGNED_STAFF_COLOR.bg, borderColor: UNASSIGNED_STAFF_COLOR.fg }} />
                 Unassigned
               </span>
             </div>
           )}
-
-          {loading ? (
-            <p>Loading...</p>
-          ) : rooms.length === 0 ? (
-            <p>
-              No rooms set up yet — add one on the <a href="/rooms">Rooms</a> page first.
-            </p>
-          ) : (
-            <div
-              className="schedule-wrap"
-              ref={scheduleWrapRef}
-              style={{ maxWidth: TIME_COL_WIDTH + rooms.length * ROOM_COL_WIDTH + 2 }}
-            >
-              <div className="schedule-time-col">
-                <div className="schedule-header schedule-time-header" />
-                <div className="schedule-time-track" style={{ height: scheduleHeight }}>
-                  {HOUR_MARKS.map((h) => (
-                    <div
-                      key={h}
-                      className="schedule-hour-label"
-                      style={{ top: (h - OPEN_HOUR) * 60 * pixelsPerMinute }}
-                    >
-                      {pad(h)}:00
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {rooms.map((room) => (
-                <div key={room.id} className="schedule-room-col">
-                  <div className="schedule-header">{room.name}</div>
-                  <div
-                    className="schedule-room-track"
-                    data-room-id={room.id}
-                    style={{ height: scheduleHeight }}
-                    onMouseDown={(e) => startDragSelect(e, room.id)}
-                    onMouseMove={(e) => hoverGrid(e, room.id)}
-                    onMouseLeave={() => setHoverSlot(null)}
-                  >
-                    {HOUR_MARKS.map((h) => (
-                      <div
-                        key={h}
-                        className="schedule-hour-line"
-                        style={{ top: (h - OPEN_HOUR) * 60 * pixelsPerMinute }}
-                      />
-                    ))}
-                    {QUARTER_MARKS.map((m) => (
-                      <div key={m} className="schedule-quarter-line" style={{ top: m * pixelsPerMinute }} />
-                    ))}
-                    {hoverSlot && hoverSlot.roomId === room.id && (
-                      <div
-                        className="schedule-hover-slot"
-                        style={{ top: hoverSlot.top, height: SNAP_MINUTES * pixelsPerMinute }}
-                      >
-                        <span className="schedule-hover-label">{hoverSlot.label}</span>
-                      </div>
-                    )}
-                    {dragSelect && dragSelect.roomId === room.id && (
-                      <div
-                        className="schedule-drag-select"
-                        style={{
-                          top: Math.min(dragSelect.startMinutes, dragSelect.endMinutes) * pixelsPerMinute,
-                          height:
-                            (Math.abs(dragSelect.endMinutes - dragSelect.startMinutes) + SNAP_MINUTES) * pixelsPerMinute,
-                        }}
-                      />
-                    )}
-                    {selectedSlotPreview &&
-                      selectedSlotPreview.roomId === room.id &&
-                      !dragSelect && (
-                        <div
-                          className="schedule-drag-select"
-                          style={{
-                            top: selectedSlotPreview.startMinutes * pixelsPerMinute,
-                            height: Math.max(selectedSlotPreview.duration * pixelsPerMinute, 22),
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            color: 'var(--pink-dark)',
-                          }}
-                          title={`Selected ${formatSlotLabel(form.time)} — not booked yet`}
-                        >
-                          Selected {formatSlotLabel(form.time)}
-                        </div>
-                      )}
-                    {liveDayAppointments
-                      .filter((a) => a.room_id === room.id)
-                      .map((a) => {
-                        const color = colorForVet(a.vet_id);
-                        const top = minutesSinceOpen(a.start_time) * pixelsPerMinute;
-                        const height = Math.max(a.duration_minutes * pixelsPerMinute, 22);
-                        const isBeingDragged =
-                          (dragMove && dragMove.appointmentId === a.id) ||
-                          (dragResize && dragResize.appointmentId === a.id);
-                        const canDrag = a.status !== 'cancelled' && a.status !== 'complete';
-                        return (
-                          <div
-                            key={a.id}
-                            className={[
-                              'schedule-block',
-                              openingConsultId === a.id ? 'schedule-block-opening' : '',
-                              isBeingDragged ? 'schedule-block-dragging' : '',
-                              canDrag ? 'schedule-block-draggable' : '',
-                            ]
-                              .filter(Boolean)
-                              .join(' ')}
-                            style={{
-                              top,
-                              height,
-                              background: color.bg,
-                              borderColor: color.fg,
-                              color: color.fg,
-                            }}
-                            title={
-                              canDrag
-                                ? 'Click to edit · Drag to reschedule · Double-click to open the consult'
-                                : 'Double-click to open the consult'
-                            }
-                            onClick={(e) => e.stopPropagation()}
-                            onDoubleClick={(e) => {
-                              e.stopPropagation();
-                              if (pendingClickTimeoutRef.current) {
-                                clearTimeout(pendingClickTimeoutRef.current);
-                                pendingClickTimeoutRef.current = null;
-                              }
-                              openConsult(a);
-                            }}
-                            onMouseDown={(e) => startMoveAppointment(e, a)}
-                            onMouseMove={(e) => e.stopPropagation()}
-                            onMouseEnter={() => setHoverSlot(null)}
-                          >
-                            <strong>{a.patients?.name}</strong> {formatTime(a.start_time)} · {a.type} · {a.status}
-                            {a.type === 'surgery' && canDrag && (
-                              <div
-                                className="schedule-resize-handle"
-                                onMouseDown={(e) => startResizeAppointment(e, a)}
-                              />
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {loading ? <p>Loading...</p> : rooms.length === 0 ? <p>No rooms set up yet — add one on the <a href="/rooms">Rooms</a> page first.</p> : calendarView === 'week' ? renderWeekView() : renderDayView()}
         </div>
 
         <div className="booking-panel">
           <form className="card" ref={bookingFormRef} onSubmit={handleSubmit}>
             <h2>Book Appointment</h2>
             {error && <p className="error">{error}</p>}
-            <p>
-              {form.time && form.room_id
-                ? `Booking ${selectedDateLabel} at ${form.time} in ${
-                    rooms.find((r) => r.id === form.room_id)?.name || ''
-                  }`
-                : 'Click a spot on the schedule to pick a room and time'}
-            </p>
+            <p>{form.time ? `Booking ${selectedDateLabel} at ${form.time}${form.room_id ? ` in ${rooms.find((r) => r.id === form.room_id)?.name || ''}` : ' — select a room below'}` : 'Click a time on the schedule to start a booking'}</p>
 
             {selectedOwner ? (
-              <p className="booking-owner-picked">
-                Owner: <strong>{selectedOwner.full_name}</strong>{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedOwner(null);
-                    setForm({ ...form, client_id: '', patient_id: '' });
-                  }}
-                >
-                  Change
-                </button>
+              <p className="booking-owner-picked">Owner: <strong>{selectedOwner.full_name}</strong>{' '}
+                <button type="button" onClick={() => { setSelectedOwner(null); setForm((f) => ({ ...f, client_id: '', patient_id: '' })); }}>Change</button>
               </p>
             ) : (
               <ClientOrPatientSearch
                 placeholder="Search clients or patients..."
-                onPickClient={(c) => {
-                  setSelectedOwner({ id: c.id, full_name: c.full_name });
-                  setForm({ ...form, client_id: c.id, patient_id: '' });
-                }}
-                onPickPatient={(p) => {
-                  setSelectedOwner({ id: p.client_id, full_name: p.clients?.full_name || '' });
-                  setForm({ ...form, client_id: p.client_id, patient_id: p.id });
-                }}
+                onPickClient={(c) => { setSelectedOwner({ id: c.id, full_name: c.full_name }); setForm((f) => ({ ...f, client_id: c.id, patient_id: '' })); }}
+                onPickPatient={(p) => { setSelectedOwner({ id: p.client_id, full_name: p.clients?.full_name || '' }); setForm((f) => ({ ...f, client_id: p.client_id, patient_id: p.id })); }}
               />
             )}
 
-            <SearchSelect
-              items={clientPatients}
-              value={form.patient_id}
-              onChange={(patient_id) => setForm({ ...form, patient_id })}
-              getLabel={(p) => p.name}
-              getSubLabel={(p) => p.species}
-              placeholder="Select patient..."
-              disabled={!form.client_id}
-            />
+            <SearchSelect items={clientPatients} value={form.patient_id} onChange={(patient_id) => setForm((f) => ({ ...f, patient_id }))} getLabel={(p) => p.name} getSubLabel={(p) => p.species} placeholder="Select patient..." disabled={!form.client_id} />
 
-            <select
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value, duration_minutes: '10' })}
-            >
+            <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value, duration_minutes: '10' }))}>
               <option value="consult">Consult (15 min)</option>
               <option value="surgery">Surgery (10-min increments)</option>
             </select>
+            {form.type === 'surgery' && <input type="number" min="10" step="10" value={form.duration_minutes} onChange={(e) => setForm((f) => ({ ...f, duration_minutes: e.target.value }))} placeholder="Duration (minutes)" />}
 
-            {form.type === 'surgery' && (
-              <input
-                type="number"
-                min="10"
-                step="10"
-                value={form.duration_minutes}
-                onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
-                placeholder="Duration (minutes, multiple of 10)"
-              />
-            )}
-
-            <select
-              required
-              value={form.room_id}
-              onChange={(e) => setForm({ ...form, room_id: e.target.value })}
-            >
+            <select required value={form.room_id} onChange={(e) => setForm((f) => ({ ...f, room_id: e.target.value }))}>
               <option value="">Select room...</option>
-              {rooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
+              {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
-
-            <select
-              value={form.vet_id}
-              onChange={(e) => {
-                setForm({ ...form, vet_id: e.target.value });
-                setRosterBlock(null);
-              }}
-            >
+            <select value={form.vet_id} onChange={(e) => { setForm((f) => ({ ...f, vet_id: e.target.value })); setRosterBlock(null); }}>
               <option value="">Select vet (optional)...</option>
-              {vets.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.full_name}
-                </option>
-              ))}
+              {vets.map((v) => <option key={v.id} value={v.id}>{v.full_name}</option>)}
             </select>
-
-            <input
-              placeholder="Reason for visit"
-              value={form.reason}
-              onChange={(e) => setForm({ ...form, reason: e.target.value })}
-            />
-
-            <button type="submit" disabled={submitting || !form.time || !form.room_id}>
-              {submitting ? 'Booking...' : 'Book'}
-            </button>
+            <input placeholder="Reason for visit" value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} />
+            <button type="submit" disabled={submitting || !form.time || !form.room_id}>{submitting ? 'Booking...' : 'Book'}</button>
           </form>
         </div>
       </div>
@@ -1085,61 +965,55 @@ function AppointmentsPageInner() {
       <h2>{selectedDateLabel} — list</h2>
       <div className="appointments-day-list-wrap">
         <table>
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Type</th>
-              <th>Patient</th>
-              <th>Reason</th>
-              <th>Room</th>
-              <th>Vet</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
+          <thead><tr><th>Time</th><th>Type</th><th>Patient</th><th>Reason</th><th>Room</th><th>Vet</th><th>Status</th><th></th></tr></thead>
           <tbody>
-            {dayAppointments.length === 0 && (
-              <tr>
-                <td colSpan={8}>No appointments booked for this day.</td>
-              </tr>
-            )}
+            {dayAppointments.length === 0 && <tr><td colSpan={8}>No appointments booked for this day.</td></tr>}
             {dayAppointments.map((a) => (
               <tr key={a.id}>
+                <td>{formatTime(a.start_time)} ({a.duration_minutes}m)</td><td>{a.type}</td><td>{a.patients?.name || (a.patient_id ? '' : '(unlinked)')}</td><td>{a.reason}</td><td>{a.rooms?.name}</td><td>{a.staff?.full_name || '—'}</td><td>{a.status}</td>
                 <td>
-                  {formatTime(a.start_time)} ({a.duration_minutes}m)
-                </td>
-                <td>{a.type}</td>
-                <td>{a.patients?.name || (a.patient_id ? '' : '(unlinked)')}</td>
-                <td>{a.reason}</td>
-                <td>{a.rooms?.name}</td>
-                <td>{a.staff?.full_name || '—'}</td>
-                <td>{a.status}</td>
-                <td>
-                  {a.status === 'booked' && a.patient_id && (
-                    <button type="button" onClick={() => checkIn(a.id)}>
-                      Checkin
-                    </button>
-                  )}
+                  {a.status === 'booked' && a.patient_id && <button type="button" onClick={() => checkIn(a.id)}>Checkin</button>}
                   {a.status === 'checked_in' && <a href="/consults">View Consult</a>}
-                  {a.status === 'booked' && a.clients?.phone && (
-                    <button type="button" onClick={() => sendReminder(a)}>
-                      💬 Remind
-                    </button>
-                  )}
-                  {a.status !== 'cancelled' && a.status !== 'complete' && (
-                    <button type="button" onClick={() => cancelAppointment(a.id)}>
-                      Cancel
-                    </button>
-                  )}
-                  {a.reminder_sent_at && (
-                    <span className="visit-meta"> Reminded {formatTime(a.reminder_sent_at)}</span>
-                  )}
+                  {a.status === 'booked' && a.clients?.phone && <button type="button" onClick={() => sendReminder(a)}>💬 Remind</button>}
+                  {a.status !== 'cancelled' && a.status !== 'complete' && <button type="button" onClick={() => cancelAppointment(a.id)}>Cancel</button>}
+                  {a.reminder_sent_at && <span className="visit-meta"> Reminded {formatTime(a.reminder_sent_at)}</span>}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {monthOpen && (
+        <div onMouseDown={() => setMonthOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.28)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '10vh' }}>
+          <div onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(560px, 92vw)', background: 'white', borderRadius: 14, boxShadow: '0 18px 60px rgba(0,0,0,.22)', padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <button type="button" className="secondary" onClick={() => goToMonth(-1)}>‹</button>
+              <strong style={{ fontSize: '1.15rem' }}>{monthLabel}</strong>
+              <button type="button" className="secondary" onClick={() => goToMonth(1)}>›</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+              {WEEKDAY_LETTERS.map((w, i) => <div key={`${w}-${i}`} style={{ textAlign: 'center', fontSize: '.72rem', fontWeight: 700, color: '#777', padding: 4 }}>{w}</div>)}
+              {monthGrid.map((d) => {
+                const iso = toISODate(d);
+                const inMonth = d.getMonth() === viewMonthIndex;
+                const isSelected = iso === selectedDate;
+                const count = countsByDate[iso] || 0;
+                return (
+                  <button key={iso} type="button" onClick={() => { selectDay(d, true); setMonthOpen(false); }} style={{ minHeight: 52, borderRadius: 9, background: isSelected ? 'var(--pink)' : inMonth ? 'var(--pink-tint)' : '#f6f6f6', color: isSelected ? 'white' : inMonth ? 'var(--ink)' : '#aaa', border: '1px solid transparent', position: 'relative' }}>
+                    <span>{d.getDate()}</span>
+                    {count > 0 && <span style={{ position: 'absolute', right: 5, bottom: 4, fontSize: '.65rem', background: isSelected ? 'white' : 'var(--pink)', color: isSelected ? 'var(--pink-dark)' : 'white', borderRadius: 999, minWidth: 17, padding: '1px 4px' }}>{count}</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14 }}>
+              <button type="button" className="secondary" onClick={() => { const d = new Date(); syncMonthToDate(d); }}>This month</button>
+              <button type="button" onClick={() => setMonthOpen(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {rosterBlock && (
         <div className="roster-block-backdrop">
@@ -1148,44 +1022,14 @@ function AppointmentsPageInner() {
             <p className="roster-block-message">{rosterBlock.message}</p>
             {error && <p className="error">{error}</p>}
             <div className="roster-block-actions">
-              <button type="button" onClick={addToRosterAndBook} disabled={resolvingRosterBlock}>
-                {resolvingRosterBlock
-                  ? 'Adding...'
-                  : `✅ Add ${rosterBlock.vetName} & ${rosterBlock.payload?.__reschedule ? 'Move' : 'Book'}`}
-              </button>
-              {rosterBlock.payload?.__reschedule ? (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => setRosterBlock(null)}
-                  disabled={resolvingRosterBlock}
-                >
-                  ✖️ Cancel
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={rebookWithOtherVet}
-                  disabled={resolvingRosterBlock}
-                >
-                  🔄 Rebook with Other Vet
-                </button>
-              )}
+              <button type="button" onClick={addToRosterAndBook} disabled={resolvingRosterBlock}>{resolvingRosterBlock ? 'Adding...' : `✅ Add ${rosterBlock.vetName} & ${rosterBlock.payload?.__reschedule ? 'Move' : 'Book'}`}</button>
+              {rosterBlock.payload?.__reschedule ? <button type="button" className="secondary" onClick={() => setRosterBlock(null)} disabled={resolvingRosterBlock}>✖️ Cancel</button> : <button type="button" className="secondary" onClick={rebookWithOtherVet} disabled={resolvingRosterBlock}>🔄 Rebook with Other Vet</button>}
             </div>
           </div>
         </div>
       )}
 
-      {editingAppointment && (
-        <EditAppointmentModal
-          appointment={editingAppointment}
-          rooms={rooms}
-          vets={vets}
-          onClose={closeEditModal}
-          onSave={handleEditSave}
-        />
-      )}
+      {editingAppointment && <EditAppointmentModal appointment={editingAppointment} rooms={rooms} vets={vets} onClose={() => setEditingAppointment(null)} onSave={handleEditSave} />}
     </div>
   );
 }
