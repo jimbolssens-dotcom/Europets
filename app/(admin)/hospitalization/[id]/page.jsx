@@ -496,16 +496,10 @@ export default function HospitalizationDetailPage() {
 
   return (
     <div>
-      <p>
-        <a href="/hospitalization">&larr; All admissions</a>
-      </p>
       <div className="page-header">
         <h1>
           {admission.patients?.name} <span>({admission.status})</span>
         </h1>
-        <a href="/hospitalization" className="button-link">
-          🗺️ Cage Layout
-        </a>
       </div>
       {admission.update_requested_at && (
         <div className="update-requested-banner">
@@ -571,6 +565,7 @@ export default function HospitalizationDetailPage() {
         {admission.originating_visit_id && (
           <a className="button-link" href={`/consults/${admission.originating_visit_id}`}>Originating consult</a>
         )}
+        <a className="button-link" href="/hospitalization">Cage Layout</a>
       </div>
       {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
 
