@@ -644,8 +644,6 @@ export default function HospitalizationDetailPage() {
         subcategories={subcategories}
         onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
       />
-      <HospitalizationTestReports hospitalizationId={id} />
-
       <div className="split">
       <div className="split-main">
       <h2>Day-to-day Worksheet</h2>
@@ -1108,6 +1106,7 @@ export default function HospitalizationDetailPage() {
           {submitting ? 'Saving...' : 'Add'}
         </button>
       </form>
+      <HospitalizationTestReports hospitalizationId={id} notes={notes} />
       </div>
       </div>
 
