@@ -2,11 +2,15 @@
 import { useEffect, useState } from 'react';
 
 const labels = { blood: 'Blood test', ultrasound: 'Ultrasound', xray: 'X-ray' };
-export default function HospitalizationTestReports({ hospitalizationId }) {
+export default function HospitalizationTestReports({ hospitalizationId, notes = [] }) {
   const [reports, setReports] = useState([]);
   const [type, setType] = useState('blood');
   const [text, setText] = useState('');
   const [error, setError] = useState(null);
+  const hasTest = notes.some((note) => note.treatment_items?.some((item) =>
+    item.goods_services?.main_category === 'test' || /blood|ultrasound|x-ray|xray|radiograph/i.test(item.goods_services?.name || '')
+  ));
+  if (!hasTest) return null;
   async function load() { const r = await fetch(`/api/hospitalizations/${hospitalizationId}/test-reports`); const d = await r.json(); if (r.ok) setReports(d); }
   useEffect(() => { load(); }, [hospitalizationId]);
   async function add(e) {
