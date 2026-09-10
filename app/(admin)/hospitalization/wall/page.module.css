@@ -1,67 +1,101 @@
 .wall {
-  width: calc(100vw - 16px);
-  margin-left: calc(50% - 50vw + 8px);
-  padding: 0 8px 8px;
+  --gap: 4px;
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  padding: 26px 6px 6px;
+  background: #fdf9fb;
+  color: #25212a;
+  font-variant-numeric: tabular-nums;
 }
-.header { display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-bottom:.35rem; }
-.headerLeft { display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap; }
-.header h1 { margin:0; font-size:clamp(1.15rem,1.05vw,1.8rem); line-height:1; }
-.meta { color:#666; font-size:clamp(.65rem,.52vw,.9rem); }
-.actions { display:flex; gap:.3rem; }
-.actions a,.actions button { font-size:.65rem; padding:.22rem .5rem; }
-.wall :global(.cage-floorplan) { gap:.32rem; }
-.wall :global(.floor-plan-row) { gap:.32rem; align-items:stretch; }
-.wall :global(.cage-cluster) { gap:.22rem; }
-.wall :global(.cage-cluster-flex) { gap:.22rem; }
-.wall :global(.cage-lower-block) { gap:.28rem; }
-.wall :global(.cage-lower-top-row) { gap:.28rem; }
-.wall :global(.cage-cluster-label) { margin:0 0 .1rem; font-size:clamp(.58rem,.45vw,.78rem); line-height:1; }
-.tile { min-height:clamp(102px,11.7vh,172px); padding:.24rem .28rem; border:1px solid #dedede; border-radius:5px; background:white; overflow:hidden; display:flex; flex-direction:column; gap:.12rem; }
-.empty { min-height:clamp(54px,6.3vh,92px); background:#f5f5f5; color:#999; justify-content:center; }
-.tileHeader { display:flex; align-items:center; justify-content:space-between; gap:.2rem; padding-bottom:.1rem; border-bottom:1px solid #eee; }
-.cageName { font-weight:800; font-size:clamp(.62rem,.48vw,.82rem); line-height:1; }
-.patient { font-weight:800; font-size:clamp(.72rem,.58vw,.98rem); line-height:1.02; }
-.species { color:#666; font-size:clamp(.52rem,.4vw,.7rem); line-height:1.05; }
-.plan { list-style:none; padding:0; margin:.02rem 0 0; display:grid; gap:.08rem; overflow:hidden; }
-.task { display:grid; grid-template-columns:.42rem minmax(0,1fr); gap:.16rem; align-items:start; font-size:clamp(.5rem,.39vw,.68rem); line-height:1.06; }
-.dot { width:.34rem; height:.34rem; border-radius:50%; margin-top:.1rem; background:#d9d9d9; }
-.done .dot { background:#2e9b52; }
-.taskMain { min-width:0; }
-.taskLabel { font-weight:700; }
-.taskMeta { color:#666; }
-.done .taskLabel { text-decoration:line-through; text-decoration-thickness:1px; opacity:.72; }
-.status { display:block; color:#6b6b6b; font-size:.82em; margin-top:0; line-height:1.02; }
-.attention { box-shadow:inset 0 0 0 2px #ffc107; background:#fffdf3; }
-.noPlan { color:#999; font-size:clamp(.5rem,.39vw,.66rem); font-style:italic; }
-.error { color:#b00020; margin-bottom:.3rem; }
-
-/* 4K wall-screen tuning: use the available pixel density to fit the full
-   physical cage map on one 3840x2160-style screen without hiding plan text. */
-@media (min-width:2560px) and (min-height:1400px) {
-  .wall { padding:0 6px 6px; width:calc(100vw - 12px); margin-left:calc(50% - 50vw + 6px); }
-  .header { margin-bottom:.22rem; }
-  .header h1 { font-size:1.35rem; }
-  .meta { font-size:.72rem; }
-  .actions a,.actions button { font-size:.62rem; padding:.18rem .42rem; }
-  .wall :global(.cage-floorplan),
-  .wall :global(.floor-plan-row) { gap:.22rem; }
-  .wall :global(.cage-cluster),
-  .wall :global(.cage-cluster-flex) { gap:.15rem; }
-  .wall :global(.cage-lower-block),
-  .wall :global(.cage-lower-top-row) { gap:.2rem; }
-  .wall :global(.cage-cluster-label) { font-size:.62rem; margin-bottom:.06rem; }
-  .tile { min-height:118px; padding:.2rem .22rem; gap:.08rem; }
-  .empty { min-height:62px; }
-  .cageName { font-size:.68rem; }
-  .patient { font-size:.84rem; }
-  .species { font-size:.58rem; }
-  .plan { gap:.045rem; }
-  .task { grid-template-columns:.36rem minmax(0,1fr); gap:.12rem; font-size:.54rem; line-height:1.03; }
-  .dot { width:.3rem; height:.3rem; margin-top:.08rem; }
-  .status { font-size:.78em; }
+.back {
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  padding: 1px 7px;
+  border: 1px solid #d9c5ce;
+  border-radius: 3px;
+  color: #743954;
+  background: white;
+  font-size: 11px;
+  line-height: 18px;
+  text-decoration: none;
 }
-
-@media (max-width:1400px) {
-  .wall { width:calc(100vw - 8px); margin-left:calc(50% - 50vw + 4px); padding-inline:4px; }
-  .tile { min-height:104px; padding:.22rem; }
+/* Locked map: eight equal square cage columns. The top occupies three
+   rows (LT5/LT4 | Hospital 2x6 | LT3/LT2/LT1); the lower block occupies
+   two rows (Recovery 2x2 | Dog 2x2 | interlocking Isolation/Post-op 2x4).
+   Fit the whole map uniformly; never resize or reflow individual groups. */
+.floorPlan {
+  --cage-size: max(90px, min(calc((100vw - 40px) / 8), calc((100dvh - 96px) / 5)));
+  width: max-content;
+  margin-inline: auto;
+  display: grid;
+  gap: 8px;
 }
+.upperRow { display: grid; grid-template-columns: var(--cage-size) calc(6 * var(--cage-size) + 5 * var(--gap)) var(--cage-size); gap: var(--gap); align-items: start; }
+.lowerRow { display: grid; grid-template-columns: repeat(2, calc(2 * var(--cage-size) + var(--gap))) calc(4 * var(--cage-size) + 3 * var(--gap)); gap: var(--gap); align-items: start; }
+.cluster, .interlocking { min-width: 0; }
+.clusterLabel, .interlockHeaders h2 {
+  height: 20px;
+  margin: 0;
+  padding: 2px 5px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  color: #71344f;
+  background: #f2dfe7;
+}
+.clusterGrid { display: grid; grid-template-columns: repeat(var(--columns), minmax(0, 1fr)); gap: var(--gap); }
+.interlockHeaders { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.interlockHeaders .postOpLabel { grid-column: 2 / 5; background: #e3dcec; color: #524365; }
+.interlockGrid { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
+.isoCell, .postCell { min-width: 0; position: relative; padding: 0; }
+/* Overlay strokes never affect cage dimensions or positions. */
+.sectionOutlines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 2; }
+.sectionOutlines path { fill: none; stroke-width: 5px; vector-effect: non-scaling-stroke; stroke-linejoin: miter; }
+.isolationOutline { stroke: #12a657; }
+.postOpOutline { stroke: #8b41df; }
+.cluster { position: relative; --section-color: #078aa6; }
+.cluster[data-section="Hospitalization Cages"] { --section-color: #2979ed; }
+.cluster[data-section="Recovery"] { --section-color: #e53285; }
+.cluster[data-section="Dog"] { --section-color: #ed7621; }
+.cluster::after { content: ''; position: absolute; inset: 0; border: 5px solid var(--section-color); pointer-events: none; z-index: 2; }
+.cluster .clusterLabel { background: var(--section-color); color: white; }
+.interlockHeaders .isolationLabel { background: #12a657; color: white; }
+.interlockHeaders .postOpLabel { background: #8b41df; color: white; }
+.tile {
+  box-sizing: border-box;
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 5px 6px;
+  border: 1px solid #d8cdd2;
+  border-radius: 2px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+}
+.empty { background: #f7f4f6; color: #81787c; }
+.tileHeader { display: flex; align-items: baseline; gap: 6px; padding-bottom: 3px; border-bottom: 1px solid #eee5e9; }
+.cageName { flex-shrink: 0; font-size: clamp(10px, .42vw, 16px); font-weight: 800; line-height: 1.15; }
+.patient { min-width: 0; overflow-wrap: anywhere; font-size: clamp(11px, .47vw, 18px); font-weight: 750; line-height: 1.15; }
+.plan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 8px; min-height: 0; overflow: auto; scrollbar-width: thin; }
+.planColumn { min-width: 0; }
+.planColumn + .planColumn { border-left: 1px solid #eee5e9; padding-left: 6px; }
+.columnLabel { margin: 0 0 4px; font-size: clamp(9px, .32vw, 12px); line-height: 1.15; color: #71344f; }
+.taskList { list-style: none; padding: 0; margin: 0; }
+.task { background: #fff0c2; color: #492e00; box-shadow: inset 3px 0 #d48a00; padding: 0 3px 0 5px; margin: 0 0 3px; font-size: clamp(9px, .34vw, 13px); line-height: 1.2; overflow-wrap: anywhere; }
+.taskLabel { font-weight: 650; }
+.taskMeta { color: inherit; }
+.status { display: block; color: inherit; font-weight: 700; font-size: .9em; line-height: 1.2; }
+.done { background: #08783e; color: #fff; box-shadow: inset 3px 0 #034a26; }
+.done .taskLabel { text-decoration: none; }
+.done .status { color: #fff; }
+.attention { box-shadow: inset 0 0 0 2px #ffc107; background: #fff3cd; }
+.attentionLabel { font-size: clamp(9px, .3vw, 12px); font-weight: 700; color: #815000; }
+.noPlan { color: #71676d; font-size: clamp(9px, .34vw, 13px); }
+.error { color: #a01232; font-size: 12px; }
+.loading { font-size: 12px; }
+.back:focus-visible, .plan:focus-visible { outline: 2px solid #9a3661; outline-offset: 1px; }

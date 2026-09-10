@@ -2,91 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import CageFloorPlan from '@/app/_components/CageFloorPlan';
+import WallFloorPlan from './WallFloorPlan';
+import WallCageTile from './WallCageTile';
 import { supabase } from '@/lib/supabaseClient';
-import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import styles from './page.module.css';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function formatTime(iso) {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
-
-function WallCageTile({ cage, hospitalization, details }) {
-  if (!hospitalization) {
-    return (
-      <div className={`${styles.tile} ${styles.empty}`}>
-        <div className={styles.tileHeader}>
-          <span className={styles.cageName}>{cage.name}</span>
-          {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
-        </div>
-        <span>Empty</span>
-      </div>
-    );
-  }
-
-  const planItems = details?.planItems || [];
-  const todayNotes = details?.todayNotes || [];
-  const needsAttention = hospitalization.update_requested_at || hospitalization.scheduled_update_overdue;
-
-  function completionFor(itemId) {
-    return todayNotes
-      .filter((note) => note.plan_item_ids?.includes(itemId))
-      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-  }
-
-  return (
-    <div className={`${styles.tile}${needsAttention ? ` ${styles.attention}` : ''}`}>
-      <div className={styles.tileHeader}>
-        <span className={styles.cageName}>{cage.name}</span>
-        <span>
-          {needsAttention && <span title="Hospitalization needs attention">🔔</span>}
-          {cage.is_oxygen_room && <span title="Oxygen room"> 🫧</span>}
-        </span>
-      </div>
-
-      <div>
-        <div className={styles.patient}>{hospitalization.patients?.name || 'Unnamed patient'}</div>
-        <div className={styles.species}>
-          {[hospitalization.patients?.species, hospitalization.reason].filter(Boolean).join(' · ')}
-        </div>
-      </div>
-
-      {planItems.length === 0 ? (
-        <div className={styles.noPlan}>No treatment plan entered.</div>
-      ) : (
-        <ul className={styles.plan}>
-          {planItems.map((item) => {
-            const done = completionFor(item.id);
-            const last = done[done.length - 1];
-            return (
-              <li key={item.id} className={`${styles.task}${done.length ? ` ${styles.done}` : ''}`}>
-                <span className={styles.dot} />
-                <div className={styles.taskMain}>
-                  <span className={styles.taskLabel}>
-                    {item.label}
-                    {item.administration_method &&
-                      ` (${ADMINISTRATION_METHOD_LABELS[item.administration_method] || item.administration_method})`}
-                  </span>
-                  {item.instructions && <span className={styles.taskMeta}> — {item.instructions}</span>}
-                  <span className={styles.status}>
-                    {done.length
-                      ? `✓ ${done.length > 1 ? `${done.length}× · ` : ''}last ${formatTime(last.created_at)}${
-                          last.staff?.full_name ? ` · ${last.staff.full_name}` : ''
-                        }`
-                      : 'Not done yet today'}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
 }
 
 export default function HospitalizationWallPage() {
@@ -95,7 +17,6 @@ export default function HospitalizationWallPage() {
   const [detailsByHospitalization, setDetailsByHospitalization] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [lastUpdated, setLastUpdated] = useState(null);
 
   async function loadWall() {
     try {
@@ -115,6 +36,9 @@ export default function HospitalizationWallPage() {
             fetch(`/api/hospitalizations/${hosp.id}/notes`),
           ]);
           const [planItems, notes] = await Promise.all([planRes.json(), notesRes.json()]);
+          if (!planRes.ok || !notesRes.ok || !Array.isArray(planItems) || !Array.isArray(notes)) {
+            return [hosp.id, { error: true }];
+          }
           const todayNotes = (Array.isArray(notes) ? notes : []).filter(
             (n) => n.note_date === today && n.plan_item_ids?.length > 0
           );
@@ -126,7 +50,6 @@ export default function HospitalizationWallPage() {
       setAdmissions(admitted);
       setDetailsByHospitalization(Object.fromEntries(detailEntries));
       setError(null);
-      setLastUpdated(new Date());
     } catch (err) {
       setError(err.message || 'Failed to refresh wall display');
     } finally {
@@ -156,40 +79,13 @@ export default function HospitalizationWallPage() {
     [admissions]
   );
 
-  async function toggleFullscreen() {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await document.documentElement.requestFullscreen();
-    } catch {
-      // Fullscreen is optional; browsers may block it outside a user gesture.
-    }
-  }
-
   return (
     <div className={styles.wall}>
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1>Hospitalization Wall</h1>
-          <span className={styles.meta}>
-            {loading && !lastUpdated
-              ? 'Loading…'
-              : `${admissions.filter((a) => a.cage_id).length} occupied · ${
-                  lastUpdated ? `updated ${lastUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''
-                }`}
-          </span>
-        </div>
-        <div className={styles.actions}>
-          <Link className="button-link" href="/hospitalization">
-            Back
-          </Link>
-          <button type="button" onClick={loadWall}>Refresh</button>
-          <button type="button" onClick={toggleFullscreen}>Fullscreen</button>
-        </div>
-      </div>
-
+      <Link className={styles.back} href="/hospitalization" aria-label="Back to hospitalization">Back</Link>
+      {loading && <div className={styles.loading} role="status">Loading…</div>}
       {error && <div className={styles.error}>{error}</div>}
 
-      <CageFloorPlan
+      <WallFloorPlan
         cages={cages}
         renderTile={(cage) => {
           const hospitalization = occupancy[cage.id];

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import SearchBox from '../_components/SearchBox';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
 import CultureReminderBanner from '../_components/CultureReminderBanner';
@@ -11,6 +12,7 @@ import { supabase } from '@/lib/supabaseClient';
 // portal under app/portal/) with the nav. Nested inside the bare root
 // layout in app/layout.js.
 export default function AdminLayout({ children }) {
+  const pathname = usePathname();
   const hasPendingHospitalizationUpdate = useHospitalizationUpdatePending();
   const [hasPendingAppointmentRequest, setHasPendingAppointmentRequest] = useState(false);
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
@@ -65,6 +67,10 @@ export default function AdminLayout({ children }) {
   async function logOut() {
     await fetch('/api/login', { method: 'DELETE' });
     window.location.href = '/login';
+  }
+
+  if (pathname === '/hospitalization/wall') {
+    return <><AppVersionWatcher /><main>{children}</main></>;
   }
 
   return (
