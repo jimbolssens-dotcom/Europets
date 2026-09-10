@@ -29,6 +29,7 @@ import InfoHint from '@/app/_components/InfoHint';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import HospitalizationTestReports from '@/app/_components/HospitalizationTestReports';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
+import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import { openWhatsApp } from '@/lib/whatsapp';
 
 function todayISODate() {
@@ -575,6 +576,7 @@ export default function HospitalizationDetailPage() {
         excludeHospitalizationId={id}
         excludeVisitId={admission.originating_visit_id}
       />
+      <PatientReportOverview patientId={admission.patient_id} />
 
       <details className="case-files" open={consentForms.length === 0}>
         <summary>📝 Consent Forms {consentForms.length > 0 && `(${consentForms.length} signed)`}</summary>
