@@ -184,7 +184,7 @@ export default function AppointmentsPage() {
   );
 }
 
-// A ?client_id=&patient_id= deep link (see the patient page's "Book
+// A ?client_id=&patient_id= deep link (see the patient detail page's "Book
 // Appointment" button) is read via useSearchParams below, which requires a
 // Suspense boundary around it — split out into its own component so the
 // wrapper above stays a plain server-renderable shell.
@@ -197,8 +197,8 @@ function AppointmentsPageInner() {
   const [selectedDate, setSelectedDate] = useState(todayISODate());
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedOwner, setSelectedOwner] = useState(null); // { id, full_name } for the client currently picked in the booking form
-  const [clientPatients, setClientPatients] = useState([]); // that owner's own pets, for the patient picker below the search box
+  const [selectedOwner, setSelectedOwner] = useState(null);
+  const [clientPatients, setClientPatients] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [vets, setVets] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -206,16 +206,16 @@ function AppointmentsPageInner() {
   const [error, setError] = useState(null);
   const [hoverSlot, setHoverSlot] = useState(null);
   const [openingConsultId, setOpeningConsultId] = useState(null);
-  const [rosterBlock, setRosterBlock] = useState(null); // { message, vetId, vetName, date, shift, payload } while showing the not-on-roster alert
+  const [rosterBlock, setRosterBlock] = useState(null);
   const [resolvingRosterBlock, setResolvingRosterBlock] = useState(false);
   const [pixelsPerMinute, setPixelsPerMinute] = useState(DEFAULT_PIXELS_PER_MINUTE);
-  const [scheduleError, setScheduleError] = useState(null); // conflict/other errors from dragging a block, shown above the grid
-  const [dragSelect, setDragSelect] = useState(null); // { roomId, startMinutes, endMinutes } — click-and-drag on empty grid to pick a multi-slot range
-  const [dragMove, setDragMove] = useState(null); // { appointmentId, roomId, startMinutes } — dragging an existing block to a new time/room
-  const [dragResize, setDragResize] = useState(null); // { appointmentId, duration } — dragging a surgery block's bottom edge
-  const [editingAppointment, setEditingAppointment] = useState(null); // the appointment shown in the Edit Appointment modal, or null
+  const [scheduleError, setScheduleError] = useState(null);
+  const [dragSelect, setDragSelect] = useState(null);
+  const [dragMove, setDragMove] = useState(null);
+  const [dragResize, setDragResize] = useState(null);
+  const [editingAppointment, setEditingAppointment] = useState(null);
   const bookingFormRef = useRef(null);
-  const pendingClickTimeoutRef = useRef(null); // delays opening the edit modal on a plain click, so a following double-click (open the consult) can cancel it first
+  const pendingClickTimeoutRef = useRef(null);
   const scheduleWrapRef = useRef(null);
   const scheduleHeight = (CLOSE_HOUR - OPEN_HOUR) * 60 * pixelsPerMinute;
 
@@ -246,21 +246,14 @@ function AppointmentsPageInner() {
 
     const channel = supabase
       .channel('appointments-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () =>
-        loadMonth()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => loadMonth())
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // See lib/staffColors.js — same per-staff color map the Staff Roster
-  // page uses, so a vet reads the same color in both places.
   const vetColor = useMemo(() => buildStaffColorMap(vets), [vets]);
-
   const colorForVet = (vetId) => (vetId && vetColor[vetId]) || UNASSIGNED_STAFF_COLOR;
 
   useEffect(() => {
@@ -273,9 +266,6 @@ function AppointmentsPageInner() {
     };
   }, []);
 
-  // Re-measure whenever something above the schedule could have changed its
-  // height (the vet legend wrapping to a second line, the "Loading..."
-  // placeholder being replaced by the real grid) or the window itself resizes.
   useEffect(() => {
     function recalc() {
       const el = scheduleWrapRef.current;
@@ -300,16 +290,10 @@ function AppointmentsPageInner() {
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonthIndex), [viewYear, viewMonthIndex]);
 
   const dayAppointments = useMemo(
-    () =>
-      appointments.filter(
-        (a) => a.status !== 'cancelled' && toISODate(new Date(a.start_time)) === selectedDate
-      ),
+    () => appointments.filter((a) => a.status !== 'cancelled' && toISODate(new Date(a.start_time)) === selectedDate),
     [appointments, selectedDate]
   );
 
-  // Overrides the position/room/duration of whichever single appointment is
-  // actively being dragged, so the block visually follows the cursor before
-  // the move/resize is actually saved. Everything else renders unchanged.
   const liveDayAppointments = useMemo(() => {
     if (!dragMove && !dragResize) return dayAppointments;
     return dayAppointments.map((a) => {
@@ -323,11 +307,17 @@ function AppointmentsPageInner() {
     });
   }, [dayAppointments, dragMove, dragResize, selectedDate]);
 
-  // Loads the owner's own pets once one is picked (either from the search
-  // box directly, or resolved from a client_id/patient_id deep link below)
-  // — fetched on demand per-owner rather than the whole patients table, now
-  // that the clinic's historical import makes that table tens of thousands
-  // of rows.
+  const selectedSlotPreview = useMemo(() => {
+    if (!form.time || !form.room_id) return null;
+    const [hour, minute] = form.time.split(':').map(Number);
+    const startMinutes = (hour - OPEN_HOUR) * 60 + minute;
+    const duration =
+      form.type === 'surgery'
+        ? Math.max(SURGERY_INCREMENT_MINUTES, Number(form.duration_minutes) || SURGERY_INCREMENT_MINUTES)
+        : SNAP_MINUTES;
+    return { roomId: form.room_id, startMinutes, duration };
+  }, [form.time, form.room_id, form.type, form.duration_minutes]);
+
   useEffect(() => {
     if (!form.client_id) {
       setClientPatients([]);
@@ -338,10 +328,6 @@ function AppointmentsPageInner() {
       .then((data) => setClientPatients(Array.isArray(data) ? data : []));
   }, [form.client_id]);
 
-  // A "Book Appointment" link elsewhere (the patient detail page) can land
-  // here with ?client_id=&patient_id= already known — resolve the owner's
-  // name for display and pre-fill the booking form, scrolled into view,
-  // instead of making staff search for who they just came from.
   useEffect(() => {
     const clientId = searchParams.get('client_id');
     const patientId = searchParams.get('patient_id');
@@ -371,8 +357,6 @@ function AppointmentsPageInner() {
     setViewMonthIndex(d.getMonth());
   }
 
-  // Shared by both the click handler (book here) and the hover handler
-  // (preview here) so the two always agree on which slot the cursor is over.
   function computeSlot(e) {
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
@@ -384,37 +368,25 @@ function AppointmentsPageInner() {
     return { minutesFromOpen: clamped, time };
   }
 
-  // Fills in the booking form for a chosen room + start time + duration —
-  // shared by a plain click (durationMinutes === SNAP_MINUTES) and a
-  // click-and-drag multi-slot selection (see startDragSelect).
   function applySlotSelection(roomId, startMinutes, durationMinutes) {
     const totalMinutes = OPEN_HOUR * 60 + startMinutes;
     const time = `${pad(Math.floor(totalMinutes / 60))}:${pad(totalMinutes % 60)}`;
     const room = rooms.find((r) => r.id === roomId);
     if (durationMinutes <= SNAP_MINUTES) {
-      // A single slot: same as before — a surgery room defaults to a
-      // surgery booking, everything else to a consult.
       const type = room?.type === 'surgery' ? 'surgery' : 'consult';
       setForm({ ...form, time, room_id: roomId, type, duration_minutes: '10' });
     } else {
-      // Multiple slots dragged: only surgery bookings have a variable
-      // duration, so switch to that type and prefill it from the drag,
-      // rounded to the nearest 10 minutes (surgery's real increment —
-      // the drag itself snaps to the coarser 15-minute time grid). The
-      // number is still editable in the form before it's actually booked.
-      const rounded = Math.max(SURGERY_INCREMENT_MINUTES, Math.round(durationMinutes / SURGERY_INCREMENT_MINUTES) * SURGERY_INCREMENT_MINUTES);
+      const rounded = Math.max(
+        SURGERY_INCREMENT_MINUTES,
+        Math.round(durationMinutes / SURGERY_INCREMENT_MINUTES) * SURGERY_INCREMENT_MINUTES
+      );
       setForm({ ...form, time, room_id: roomId, type: 'surgery', duration_minutes: String(rounded) });
     }
     setError(null);
     setRosterBlock(null);
-    // Jump straight to the booking form so a click on the schedule is enough
-    // to continue — no manual scrolling down to find where the pick landed.
     bookingFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // Click-and-drag on empty grid space to select a multi-slot range for a
-  // new booking. A plain click (no real movement) falls out of this as
-  // start === end, giving the same single-slot behavior as before.
   function startDragSelect(e, roomId) {
     if (e.button !== 0 || dragMove || dragResize) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -453,10 +425,6 @@ function AppointmentsPageInner() {
     setHoverSlot({ roomId, top: minutesFromOpen * pixelsPerMinute, label: formatSlotLabel(time) });
   }
 
-  // Dragging an existing block to a new time and/or room. Movement under a
-  // small pixel threshold is treated as a plain click (a no-op — double-
-  // click still opens the consult via its own handler) rather than a drop
-  // back onto the exact same spot.
   function startMoveAppointment(e, appointment) {
     if (e.button !== 0 || appointment.status === 'cancelled' || appointment.status === 'complete') return;
     e.stopPropagation();
@@ -466,7 +434,8 @@ function AppointmentsPageInner() {
     const originalStartMinutes = minutesSinceOpen(appointment.start_time);
     const duration = appointment.duration_minutes;
     const totalMinutes = (CLOSE_HOUR - OPEN_HOUR) * 60;
-    const grabOffsetMinutes = (e.clientY - trackEl.getBoundingClientRect().top) / pixelsPerMinute - originalStartMinutes;
+    const grabOffsetMinutes =
+      (e.clientY - trackEl.getBoundingClientRect().top) / pixelsPerMinute - originalStartMinutes;
     const startX = e.clientX;
     const startY = e.clientY;
     let moved = false;
@@ -485,9 +454,7 @@ function AppointmentsPageInner() {
     }
 
     function onMove(moveEvent) {
-      if (Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3) {
-        moved = true;
-      }
+      if (Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3) moved = true;
       const { roomId, startMinutes } = resolve(moveEvent.clientX, moveEvent.clientY);
       setDragMove((prev) => (prev ? { ...prev, roomId, startMinutes } : prev));
     }
@@ -496,15 +463,6 @@ function AppointmentsPageInner() {
       window.removeEventListener('mouseup', onUp);
       setDragMove(null);
       if (!moved) {
-        // A plain click (no drag) opens the Edit Appointment modal — delayed
-        // briefly so a following second click (a double-click, which opens
-        // the consult instead — see onDoubleClick below) can cancel it. A
-        // double-click fires its own separate mousedown/mouseup pair for
-        // the second click, landing back here — if a timeout from the
-        // first click is already pending, this second click cancels it
-        // immediately rather than scheduling (and leaking) another one;
-        // onDoubleClick's own clear is just a backstop for a slower
-        // double-click that lands after the first one already fired.
         if (pendingClickTimeoutRef.current) {
           clearTimeout(pendingClickTimeoutRef.current);
           pendingClickTimeoutRef.current = null;
@@ -529,9 +487,6 @@ function AppointmentsPageInner() {
     window.addEventListener('mouseup', onUp);
   }
 
-  // Dragging a surgery block's bottom-edge handle to lengthen/shorten it.
-  // Only surgery appointments get this handle at all (see the render below)
-  // — consult is a fixed 15 minutes, same rule the server enforces.
   function startResizeAppointment(e, appointment) {
     if (e.button !== 0) return;
     e.stopPropagation();
@@ -555,7 +510,11 @@ function AppointmentsPageInner() {
       window.removeEventListener('mouseup', onUp);
       setDragResize((prev) => {
         if (prev && prev.duration !== originalDuration) {
-          patchAppointment(appointment.id, { duration_minutes: prev.duration, date: selectedDate, shift: startMinutes < (12 - OPEN_HOUR) * 60 ? 'morning' : 'afternoon' });
+          patchAppointment(appointment.id, {
+            duration_minutes: prev.duration,
+            date: selectedDate,
+            shift: startMinutes < (12 - OPEN_HOUR) * 60 ? 'morning' : 'afternoon',
+          });
         }
         return null;
       });
@@ -593,14 +552,6 @@ function AppointmentsPageInner() {
     return res.ok;
   }
 
-  // Saves a dragged move/resize (see startMoveAppointment, startResizeAppointment)
-  // or an Edit Appointment modal submit. Mirrors submitAppointment's error
-  // handling — including the same not-on-roster alert, reused here by
-  // tagging its retry payload __reschedule so addToRosterAndBook knows to
-  // PATCH instead of POST. Returns { ok, rosterBlocked, error } rather than
-  // a plain boolean so a caller that needs to know *why* it failed (the
-  // edit modal, which stays open on a plain error but closes to let the
-  // full-screen roster alert take over) can tell the two apart.
   async function patchAppointment(appointmentId, body) {
     const res = await fetch(`/api/appointments/${appointmentId}`, {
       method: 'PATCH',
@@ -644,10 +595,6 @@ function AppointmentsPageInner() {
     setEditingAppointment(null);
   }
 
-  // Roster-blocked: close the modal and let the full-screen alert (already
-  // set by patchAppointment) take over, same as a blocked drag. Any other
-  // failure: keep the modal open and hand its error back for inline
-  // display. Success: close it — patchAppointment already reloaded the month.
   async function handleEditSave(body) {
     const result = await patchAppointment(editingAppointment.id, body);
     if (result.ok || result.rosterBlocked) {
@@ -657,10 +604,6 @@ function AppointmentsPageInner() {
     return { error: result.error };
   }
 
-  // "Add to Roster" on the not-on-roster alert: add the vet to the roster
-  // for that exact date+shift (idempotent — see /api/staff-roster), then
-  // immediately retry whatever triggered the alert — either the new
-  // booking that was being submitted, or a drag-to-reschedule/resize.
   async function addToRosterAndBook() {
     if (!rosterBlock) return;
     setResolvingRosterBlock(true);
@@ -688,13 +631,6 @@ function AppointmentsPageInner() {
     }
   }
 
-  // "Rebook with Other Vet": dismiss the alert and clear the vet field so
-  // the booking form nudges toward picking someone who's actually on for
-  // that shift, without losing the rest of what was already filled in.
-  // Only applies to the new-booking alert — a reschedule alert's dismiss
-  // is just "Cancel" (see the modal render), since there's no form to
-  // clear and the dragged block already snaps back once dragMove/
-  // dragResize is cleared.
   function rebookWithOtherVet() {
     setRosterBlock(null);
     setForm((f) => ({ ...f, vet_id: '' }));
@@ -724,9 +660,6 @@ function AppointmentsPageInner() {
       start_time: startTime.toISOString(),
       duration_minutes: form.type === 'surgery' ? Number(form.duration_minutes) : undefined,
       reason: form.reason,
-      // Computed from the local date/time (not re-derived from start_time
-      // server-side) so the vet's roster is checked against the day/shift
-      // clinic staff actually see on screen, regardless of server timezone.
       date: selectedDate,
       shift: startTime.getHours() < 12 ? 'morning' : 'afternoon',
     };
@@ -744,10 +677,6 @@ function AppointmentsPageInner() {
     loadMonth();
   }
 
-  // Same "draft a pre-filled message, staff sends it themselves" pattern
-  // as Vaccination Reminders — there's no connected WhatsApp Business API
-  // to send these on their own yet. Marks reminder_sent_at once the chat
-  // opens; clicking again any time after that just re-sends.
   function reminderMessage(a) {
     const dateLabel = new Date(a.start_time).toLocaleDateString([], {
       weekday: 'long',
@@ -778,9 +707,6 @@ function AppointmentsPageInner() {
     loadMonth();
   }
 
-  // Double-clicking a booked slot on the schedule jumps straight into its
-  // consult — checking the patient in first if that hasn't happened yet, or
-  // opening the consult record that's already in progress (or finished).
   async function openConsult(appointment) {
     if (openingConsultId) return;
     setOpeningConsultId(appointment.id);
@@ -909,9 +835,6 @@ function AppointmentsPageInner() {
             <div
               className="schedule-wrap"
               ref={scheduleWrapRef}
-              // Cap it to exactly what the fixed-width columns need — without
-              // this, the flex row's leftover space stretches the bordered
-              // box out with a big blank area past the last room column.
               style={{ maxWidth: TIME_COL_WIDTH + rooms.length * ROOM_COL_WIDTH + 2 }}
             >
               <div className="schedule-time-col">
@@ -967,6 +890,26 @@ function AppointmentsPageInner() {
                         }}
                       />
                     )}
+                    {selectedSlotPreview &&
+                      selectedSlotPreview.roomId === room.id &&
+                      !dragSelect && (
+                        <div
+                          className="schedule-drag-select"
+                          style={{
+                            top: selectedSlotPreview.startMinutes * pixelsPerMinute,
+                            height: Math.max(selectedSlotPreview.duration * pixelsPerMinute, 22),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            color: 'var(--pink-dark)',
+                          }}
+                          title={`Selected ${formatSlotLabel(form.time)} — not booked yet`}
+                        >
+                          Selected {formatSlotLabel(form.time)}
+                        </div>
+                      )}
                     {liveDayAppointments
                       .filter((a) => a.room_id === room.id)
                       .map((a) => {
@@ -1013,8 +956,7 @@ function AppointmentsPageInner() {
                             onMouseMove={(e) => e.stopPropagation()}
                             onMouseEnter={() => setHoverSlot(null)}
                           >
-                            <strong>{a.patients?.name}</strong> {formatTime(a.start_time)} ·{' '}
-                            {a.type} · {a.status}
+                            <strong>{a.patients?.name}</strong> {formatTime(a.start_time)} · {a.type} · {a.status}
                             {a.type === 'surgery' && canDrag && (
                               <div
                                 className="schedule-resize-handle"
@@ -1212,11 +1154,21 @@ function AppointmentsPageInner() {
                   : `✅ Add ${rosterBlock.vetName} & ${rosterBlock.payload?.__reschedule ? 'Move' : 'Book'}`}
               </button>
               {rosterBlock.payload?.__reschedule ? (
-                <button type="button" className="secondary" onClick={() => setRosterBlock(null)} disabled={resolvingRosterBlock}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setRosterBlock(null)}
+                  disabled={resolvingRosterBlock}
+                >
                   ✖️ Cancel
                 </button>
               ) : (
-                <button type="button" className="secondary" onClick={rebookWithOtherVet} disabled={resolvingRosterBlock}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={rebookWithOtherVet}
+                  disabled={resolvingRosterBlock}
+                >
                   🔄 Rebook with Other Vet
                 </button>
               )}
