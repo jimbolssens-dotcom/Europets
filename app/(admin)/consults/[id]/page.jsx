@@ -803,7 +803,8 @@ export default function ConsultDetailPage() {
       {vetChangeError && <p className="error">{vetChangeError}</p>}
       <p>
         Owner: <a href={`/clients/${consult.clients?.id}`}>{consult.clients?.full_name}</a> ·
-        Patient: <a href={`/patients/${consult.patients?.id}`}>record</a> · Room:{' '}
+        Patient: <a href={`/patients/${consult.patients?.id}`}>record</a>{' '}
+        <a className="button-link report-overview-pill" href="#patient-report-overview">📑 Reports</a> · Room:{' '}
         {consult.rooms?.name}
       </p>
 
