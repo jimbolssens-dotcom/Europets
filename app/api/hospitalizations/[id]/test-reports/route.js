@@ -11,7 +11,7 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   const body = await request.json();
   const reportType = body.report_type;
-  if (!['blood', 'ultrasound', 'xray', 'mri', 'pcr', 'dental', 'surgical'].includes(reportType)) return NextResponse.json({ error: 'Choose a supported report type.' }, { status: 400 });
+  if (!['blood', 'ultrasound', 'xray', 'pcr', 'dental', 'surgical'].includes(reportType)) return NextResponse.json({ error: 'Choose a supported report type.' }, { status: 400 });
   const { data, error } = await supabase.from('hospitalization_test_reports')
     .insert({ hospitalization_id: params.id, report_type: reportType, source_text: body.source_text || null, result_text: body.result_text || null })
     .select().single();
