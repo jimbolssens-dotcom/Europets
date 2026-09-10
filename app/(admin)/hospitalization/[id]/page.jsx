@@ -517,7 +517,8 @@ export default function HospitalizationDetailPage() {
       )}
       <p>
         Owner: <a href={`/clients/${admission.clients?.id}`}>{admission.clients?.full_name}</a> ·
-        Patient: <a href={`/patients/${admission.patients?.id}`}>record</a> ·
+        Patient: <a href={`/patients/${admission.patients?.id}`}>record</a>{' '}
+        <a className="button-link report-overview-pill" href="#patient-report-overview">📑 Reports</a> ·
         Cage: {admission.cages?.name || '—'} · Admitted:{' '}
         {new Date(admission.admitted_at).toLocaleString()}
         {admission.discharged_at &&
