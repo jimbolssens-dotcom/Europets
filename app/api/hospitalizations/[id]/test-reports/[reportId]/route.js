@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
-import { generateUltrasoundReport, generateXrayReport, summarizeLabAbnormalities } from '@/lib/anthropicClient';
+import { generateClientReport, generateUltrasoundReport, generateXrayReport, summarizeLabAbnormalities } from '@/lib/anthropicClient';
 import { NextResponse } from 'next/server';
 
 export async function PATCH(request, { params }) {
@@ -25,7 +25,9 @@ export async function POST(request, { params }) {
       ? await summarizeLabAbnormalities(text)
       : report.report_type === 'ultrasound'
         ? await generateUltrasoundReport({ transcript: text, patientName: patient?.name, species: patient?.species })
-        : await generateXrayReport({ transcript: text, patientName: patient?.name, species: patient?.species });
+        : report.report_type === 'xray'
+          ? await generateXrayReport({ transcript: text, patientName: patient?.name, species: patient?.species })
+          : await generateClientReport({ procedureType: report.report_type, transcript: text, patientName: patient?.name, species: patient?.species });
     const { data, error: saveError } = await supabase.from('hospitalization_test_reports').update({ ai_summary: summary })
       .eq('id', params.reportId).eq('hospitalization_id', params.id).select().single();
     if (saveError) throw saveError;
