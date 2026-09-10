@@ -38,17 +38,32 @@ function updateRequestTooltip(hosp) {
   return `${when}${afterHours ? ' (after hours)' : ''}${hosp.update_request_message ? `: "${hosp.update_request_message}"` : ''}`;
 }
 
+function scheduledUpdateLabel(period) {
+  if (period === 'morning_and_afternoon') return 'Morning and afternoon updates overdue';
+  if (period === 'afternoon') return 'Afternoon update overdue';
+  return 'Morning update overdue';
+}
+
+function hospitalizationAttention(hosp) {
+  const reasons = [];
+  if (hosp.update_requested_at) reasons.push(`Owner requested an update ${updateRequestTooltip(hosp)}`);
+  if (hosp.scheduled_update_overdue) reasons.push(scheduledUpdateLabel(hosp.scheduled_update_overdue_period));
+  return reasons;
+}
+
 function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDragStart, dragSourceId, dropTargetId }) {
   const isDragSource = dragSourceId === cage.id;
   const isDropTarget = dropTargetId === cage.id;
 
   if (hosp) {
+    const attention = hospitalizationAttention(hosp);
+    const needsAttention = attention.length > 0;
     return (
       <div
         className={[
           'cage-tile',
           'cage-occupied',
-          hosp.update_requested_at ? 'cage-update-requested' : '',
+          needsAttention ? 'cage-update-requested' : '',
           isDragSource ? 'cage-drag-source' : '',
           isDropTarget ? 'cage-drop-target' : '',
         ]
@@ -57,8 +72,8 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
         data-cage-id={cage.id}
         onPointerDown={(e) => onDragStart(e, cage, hosp)}
         title={
-          hosp.update_requested_at
-            ? `${hosp.patients?.name}'s owner is waiting for an update (requested ${updateRequestTooltip(hosp)}) — drag to move, or tap to open`
+          needsAttention
+            ? `${hosp.patients?.name} needs attention: ${attention.join(' • ')} — drag to move, or tap to open`
             : 'Drag to move to another cage, or tap to open'
         }
       >
@@ -76,9 +91,7 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
         </button>
         <div className="cage-tile-header">
           <span className="cage-name">{cage.name}</span>
-          {hosp.update_requested_at && (
-            <span title={`Owner requested an update ${updateRequestTooltip(hosp)}`}>🔔</span>
-          )}
+          {needsAttention && <span title={attention.join(' • ')}>🔔</span>}
           {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
         </div>
         <div className="cage-patient">{hosp.patients?.name}</div>
@@ -158,13 +171,19 @@ export default function HospitalizationPage() {
         }
       });
 
+    // The timer is needed because a deadline can pass without any database
+    // row changing. Realtime changes make alarms clear immediately after a
+    // worksheet entry is saved, or change when a patient moves/discharges.
+    const timer = window.setInterval(loadAdmissions, 60 * 1000);
     const channel = supabase
       .channel('hospitalizations-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, () =>
-        loadAdmissions()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, loadAdmissions)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, loadAdmissions)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    return () => {
+      window.clearInterval(timer);
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -330,7 +349,7 @@ export default function HospitalizationPage() {
   const occupancy = Object.fromEntries(admitted.filter((a) => a.cage_id).map((a) => [a.cage_id, a]));
   const unassignedAdmitted = admitted.filter((a) => !a.cage_id);
   const occupiedCageIds = new Set(Object.keys(occupancy));
-  const attentionCount = admitted.filter((a) => a.update_requested_at).length;
+  const attentionCount = admitted.filter((a) => a.update_requested_at || a.scheduled_update_overdue).length;
 
   const tileHandlers = {
     unassignedAdmitted,
