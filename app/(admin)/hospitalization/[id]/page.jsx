@@ -30,6 +30,7 @@ import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import HospitalizationTestReports from '@/app/_components/HospitalizationTestReports';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
+import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import { openWhatsApp } from '@/lib/whatsapp';
 
 function todayISODate() {
@@ -517,8 +518,7 @@ export default function HospitalizationDetailPage() {
       )}
       <p>
         Owner: <a href={`/clients/${admission.clients?.id}`}>{admission.clients?.full_name}</a> ·
-        Patient: <a href={`/patients/${admission.patients?.id}`}>record</a>{' '}
-        <a className="button-link report-overview-pill" href="#patient-report-overview">📑 Reports</a> ·
+        Patient: <a href={`/patients/${admission.patients?.id}`}>record</a> ·
         Cage: {admission.cages?.name || '—'} · Admitted:{' '}
         {new Date(admission.admitted_at).toLocaleString()}
         {admission.discharged_at &&
@@ -567,6 +567,7 @@ export default function HospitalizationDetailPage() {
         {admission.originating_visit_id && (
           <a className="button-link" href={`/consults/${admission.originating_visit_id}`}>Originating consult</a>
         )}
+        <a className="button-link" href="#patient-report-overview">Reports</a>
         <a className="button-link" href="/hospitalization">Cage Layout</a>
       </div>
       {invoiceError && <p className="error" role="alert">{invoiceError}</p>}

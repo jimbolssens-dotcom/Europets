@@ -31,7 +31,6 @@ import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
-import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import { openWhatsApp } from '@/lib/whatsapp';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
@@ -797,14 +796,12 @@ export default function ConsultDetailPage() {
             </details>
           )}
           <PatientHistoryPanel patientId={consult.patient_id} clientId={consult.client_id} excludeVisitId={id} />
-          <PatientReportOverview patientId={consult.patient_id} />
         </div>
       </div>
       {vetChangeError && <p className="error">{vetChangeError}</p>}
       <p>
         Owner: <a href={`/clients/${consult.clients?.id}`}>{consult.clients?.full_name}</a> ·
-        Patient: <a href={`/patients/${consult.patients?.id}`}>record</a>{' '}
-        <a className="button-link report-overview-pill" href="#patient-report-overview">📑 Reports</a> · Room:{' '}
+        Patient: <a href={`/patients/${consult.patients?.id}`}>record</a> · Room:{' '}
         {consult.rooms?.name}
       </p>
 
