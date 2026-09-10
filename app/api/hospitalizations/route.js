@@ -11,6 +11,92 @@ import { supabase } from '@/lib/supabaseClient';
 import { attachCages } from '@/lib/attachCages';
 import { NextResponse } from 'next/server';
 
+// Europets operates in Dubai (UTC+4, no daylight-saving time). These
+// boundaries let the app enforce one morning update by 12:00 and one
+// afternoon update by 18:00 without storing a separate alarm row. A late
+// worksheet entry satisfies the oldest outstanding slot first.
+const DUBAI_OFFSET_MS = 4 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+
+function dubaiDayBoundaries(now = new Date()) {
+  const shifted = new Date(now.getTime() + DUBAI_OFFSET_MS);
+  const startUtcMs =
+    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) - DUBAI_OFFSET_MS;
+
+  return {
+    nowMs: now.getTime(),
+    startUtcMs,
+    noonUtcMs: startUtcMs + 12 * HOUR_MS,
+    eveningUtcMs: startUtcMs + 18 * HOUR_MS,
+  };
+}
+
+async function attachScheduledUpdateStatus(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return rows;
+
+  const admittedWithCages = rows.filter((h) => h.status === 'admitted' && h.cage_id);
+  if (admittedWithCages.length === 0) {
+    return rows.map((h) => ({
+      ...h,
+      scheduled_update_overdue: false,
+      scheduled_update_overdue_period: null,
+      scheduled_updates_expected: 0,
+      scheduled_updates_done: 0,
+    }));
+  }
+
+  const { nowMs, startUtcMs, noonUtcMs, eveningUtcMs } = dubaiDayBoundaries();
+  const ids = admittedWithCages.map((h) => h.id);
+  const { data: todayNotes, error } = await supabase
+    .from('hospitalization_notes')
+    .select('hospitalization_id, created_at')
+    .in('hospitalization_id', ids)
+    .gte('created_at', new Date(startUtcMs).toISOString());
+
+  // Don't break the hospitalization screen if the reminder query itself
+  // ever fails; the normal admission data is more important than an alarm.
+  if (error) return rows;
+
+  const noteCountByHospitalization = (todayNotes || []).reduce((counts, note) => {
+    counts[note.hospitalization_id] = (counts[note.hospitalization_id] || 0) + 1;
+    return counts;
+  }, {});
+
+  return rows.map((h) => {
+    if (h.status !== 'admitted' || !h.cage_id) {
+      return {
+        ...h,
+        scheduled_update_overdue: false,
+        scheduled_update_overdue_period: null,
+        scheduled_updates_expected: 0,
+        scheduled_updates_done: 0,
+      };
+    }
+
+    const admittedMs = new Date(h.admitted_at).getTime();
+    const morningExpected = nowMs >= noonUtcMs && admittedMs < noonUtcMs;
+    const afternoonExpected = nowMs >= eveningUtcMs && admittedMs < eveningUtcMs;
+    const expected = Number(morningExpected) + Number(afternoonExpected);
+    const done = noteCountByHospitalization[h.id] || 0;
+    const overdue = done < expected;
+
+    let overduePeriod = null;
+    if (overdue) {
+      if (morningExpected && afternoonExpected && done === 0) overduePeriod = 'morning_and_afternoon';
+      else if (afternoonExpected) overduePeriod = 'afternoon';
+      else overduePeriod = 'morning';
+    }
+
+    return {
+      ...h,
+      scheduled_update_overdue: overdue,
+      scheduled_update_overdue_period: overduePeriod,
+      scheduled_updates_expected: expected,
+      scheduled_updates_done: Math.min(done, expected),
+    };
+  });
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
@@ -37,7 +123,9 @@ export async function GET(request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(await attachCages(data));
+
+  const withCages = await attachCages(data);
+  return NextResponse.json(await attachScheduledUpdateStatus(withCages));
 }
 
 export async function POST(request) {
