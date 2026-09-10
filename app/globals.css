@@ -2151,6 +2151,12 @@ button.secondary:hover {
   display: none;
 }
 
+.report-overview-pill {
+  display: inline-block;
+  cursor: pointer;
+  list-style: none;
+}
+
 @media (min-width: 1024px) {
   .appointments-page .schedule-layout.day-view .schedule-main {
     flex: 0 1 auto;
