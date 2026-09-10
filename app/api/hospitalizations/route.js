@@ -13,8 +13,7 @@ import { NextResponse } from 'next/server';
 
 // Europets operates in Dubai (UTC+4, no daylight-saving time). These
 // boundaries let the app enforce one morning update by 12:00 and one
-// afternoon update by 18:00 without storing a separate alarm row. A late
-// worksheet entry satisfies the oldest outstanding slot first.
+// afternoon update by 18:00 without storing a separate alarm row.
 const DUBAI_OFFSET_MS = 4 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -51,15 +50,16 @@ async function attachScheduledUpdateStatus(rows) {
     .from('hospitalization_notes')
     .select('hospitalization_id, created_at')
     .in('hospitalization_id', ids)
-    .gte('created_at', new Date(startUtcMs).toISOString());
+    .gte('created_at', new Date(startUtcMs).toISOString())
+    .order('created_at', { ascending: true });
 
   // Don't break the hospitalization screen if the reminder query itself
   // ever fails; the normal admission data is more important than an alarm.
   if (error) return rows;
 
-  const noteCountByHospitalization = (todayNotes || []).reduce((counts, note) => {
-    counts[note.hospitalization_id] = (counts[note.hospitalization_id] || 0) + 1;
-    return counts;
+  const notesByHospitalization = (todayNotes || []).reduce((groups, note) => {
+    (groups[note.hospitalization_id] ||= []).push(note);
+    return groups;
   }, {});
 
   return rows.map((h) => {
@@ -76,23 +76,41 @@ async function attachScheduledUpdateStatus(rows) {
     const admittedMs = new Date(h.admitted_at).getTime();
     const morningExpected = nowMs >= noonUtcMs && admittedMs < noonUtcMs;
     const afternoonExpected = nowMs >= eveningUtcMs && admittedMs < eveningUtcMs;
+    const notes = notesByHospitalization[h.id] || [];
+
+    // Assign notes to slots chronologically. A missed morning may be made up
+    // later in the day, but a note entered before noon can never satisfy the
+    // afternoon slot. This prevents two morning entries from accidentally
+    // counting as both required daily updates.
+    let morningDone = false;
+    let afternoonDone = false;
+    for (const note of notes) {
+      const noteMs = new Date(note.created_at).getTime();
+      if (morningExpected && !morningDone) {
+        morningDone = true;
+        continue;
+      }
+      if (afternoonExpected && !afternoonDone && noteMs >= noonUtcMs) {
+        afternoonDone = true;
+      }
+    }
+
+    const morningOverdue = morningExpected && !morningDone;
+    const afternoonOverdue = afternoonExpected && !afternoonDone;
     const expected = Number(morningExpected) + Number(afternoonExpected);
-    const done = noteCountByHospitalization[h.id] || 0;
-    const overdue = done < expected;
+    const done = Number(morningExpected && morningDone) + Number(afternoonExpected && afternoonDone);
 
     let overduePeriod = null;
-    if (overdue) {
-      if (morningExpected && afternoonExpected && done === 0) overduePeriod = 'morning_and_afternoon';
-      else if (afternoonExpected) overduePeriod = 'afternoon';
-      else overduePeriod = 'morning';
-    }
+    if (morningOverdue && afternoonOverdue) overduePeriod = 'morning_and_afternoon';
+    else if (afternoonOverdue) overduePeriod = 'afternoon';
+    else if (morningOverdue) overduePeriod = 'morning';
 
     return {
       ...h,
-      scheduled_update_overdue: overdue,
+      scheduled_update_overdue: morningOverdue || afternoonOverdue,
       scheduled_update_overdue_period: overduePeriod,
       scheduled_updates_expected: expected,
-      scheduled_updates_done: Math.min(done, expected),
+      scheduled_updates_done: done,
     };
   });
 }
