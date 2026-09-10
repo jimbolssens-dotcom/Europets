@@ -6,12 +6,12 @@ export const maxDuration = 60;
 export async function POST(request, { params }) {
   const form = await request.formData();
   const file = form.get('file');
-  if (!file || typeof file === 'string') return NextResponse.json({ error: 'A blood-test document is required.' }, { status: 400 });
+  if (!file || typeof file === 'string') return NextResponse.json({ error: 'A test document is required.' }, { status: 400 });
   const { data: report, error } = await supabase.from('hospitalization_test_reports').select('report_type, result_text').eq('id', params.reportId).eq('hospitalization_id', params.id).single();
   if (error || !report) return NextResponse.json({ error: 'Report not found.' }, { status: 404 });
-  if (report.report_type !== 'blood') return NextResponse.json({ error: 'X-ray and ultrasound images are never interpreted by AI. Save the veterinarian’s findings as text.' }, { status: 400 });
+  if (['xray', 'ultrasound'].includes(report.report_type)) return NextResponse.json({ error: 'X-ray and ultrasound images are never interpreted by AI. Save the veterinarian’s findings as text.' }, { status: 400 });
   try {
-    const extracted = await extractDiagnosticResult(Buffer.from(await file.arrayBuffer()), file.type || 'image/jpeg', 'blood test');
+    const extracted = await extractDiagnosticResult(Buffer.from(await file.arrayBuffer()), file.type || 'image/jpeg', `${report.report_type} test`);
     const result_text = report.result_text?.trim() ? report.result_text.trim() + '\n\n' + extracted : extracted;
     const { data, error: saveError } = await supabase.from('hospitalization_test_reports').update({ result_text }).eq('id', params.reportId).eq('hospitalization_id', params.id).select().single();
     if (saveError) throw saveError;
