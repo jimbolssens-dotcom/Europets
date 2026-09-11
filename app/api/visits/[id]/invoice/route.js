@@ -3,11 +3,21 @@
 // import every treatment plan item (catalog item + quantity, as entered
 // during the consult) as a line item — a medication that was dispensed/
 // SC/IM has its administration fee folded straight into that line (see
-// lib/invoicing.js), not shown separately. If a non-void invoice already
-// exists for this visit, that one is returned instead — no duplicates.
+// lib/invoicing.js), not shown separately. If this consult led to a
+// hospitalization (hospitalizations.originating_visit_id), every
+// medication logged on that stay's daily worksheet (treatment_items off
+// each hospitalization_notes entry — see app/api/hospitalizations/[id]/
+// invoice) is pulled in too, so a consult that turned into an admission
+// produces one invoice covering both instead of the hospital stay's
+// medications being missed unless someone separately invoices the
+// admission. Consolidated the same way as the hospitalization invoice:
+// the same medication (consult and/or several hospitalization days)
+// collapses into one line with quantities summed — see
+// buildMedicationLineItems. If a non-void invoice already exists for
+// this visit, that one is returned instead — no duplicates.
 
 import { supabase } from '@/lib/supabaseClient';
-import { recomputeInvoiceTotals, applyAdministrationFee } from '@/lib/invoicing';
+import { recomputeInvoiceTotals, buildMedicationLineItems } from '@/lib/invoicing';
 import { NextResponse } from 'next/server';
 
 export async function POST(request, { params }) {
@@ -35,9 +45,23 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'consult not found' }, { status: 404 });
   }
 
+  const { data: linkedHospitalizations } = await supabase
+    .from('hospitalizations')
+    .select('id')
+    .eq('originating_visit_id', visitId);
+  const hospitalizationIds = (linkedHospitalizations || []).map((h) => h.id);
+
+  // Tag the invoice with the hospitalization too, when there's exactly one
+  // (the normal case) — so the hospitalization's own "Create Invoice"
+  // button (app/api/hospitalizations/[id]/invoice) finds this same invoice
+  // via its hospitalization_id check and returns it instead of creating a
+  // second one that double-bills the same medications.
+  const invoiceInsert = { client_id: visit.client_id, visit_id: visitId };
+  if (hospitalizationIds.length === 1) invoiceInsert.hospitalization_id = hospitalizationIds[0];
+
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
-    .insert([{ client_id: visit.client_id, visit_id: visitId }])
+    .insert([invoiceInsert])
     .select()
     .single();
 
@@ -45,29 +69,29 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: invoiceError.message }, { status: 500 });
   }
 
-  const [{ data: treatmentItems }, { data: clinicSettings }] = await Promise.all([
-    supabase.from('treatment_items').select('*, goods_services(id, name, base_price)').eq('visit_id', visitId),
-    supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
-  ]);
+  let hospitalizationNoteIds = [];
+  if (hospitalizationIds.length > 0) {
+    const { data: noteRows } = await supabase
+      .from('hospitalization_notes')
+      .select('id')
+      .in('hospitalization_id', hospitalizationIds);
+    hospitalizationNoteIds = (noteRows || []).map((n) => n.id);
+  }
 
-  const lineItems = (treatmentItems || [])
-    .filter((item) => item.goods_services)
-    .map((item) => {
-      const catalogItem = item.goods_services;
-      const qty = Number(item.quantity) || 1;
-      const unit_price = Number(catalogItem.base_price);
-      const medicationLine = {
-        invoice_id: invoice.id,
-        goods_service_id: catalogItem.id,
-        description: item.instructions ? `${catalogItem.name} — ${item.instructions}` : catalogItem.name,
-        quantity: qty,
-        unit_price,
-        line_total: Math.round(unit_price * qty * 100) / 100,
-        instructions: item.instructions || null,
-        administration_method: item.administration_method || null,
-      };
-      return applyAdministrationFee(medicationLine, item.administration_method, clinicSettings);
-    });
+  const [{ data: consultTreatmentItems }, { data: hospitalizationTreatmentItems }, { data: clinicSettings }] =
+    await Promise.all([
+      supabase.from('treatment_items').select('*, goods_services(id, name, base_price)').eq('visit_id', visitId),
+      hospitalizationNoteIds.length > 0
+        ? supabase
+            .from('treatment_items')
+            .select('*, goods_services(id, name, base_price)')
+            .in('hospitalization_note_id', hospitalizationNoteIds)
+        : Promise.resolve({ data: [] }),
+      supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
+    ]);
+
+  const treatmentItems = [...(consultTreatmentItems || []), ...(hospitalizationTreatmentItems || [])];
+  const lineItems = buildMedicationLineItems(treatmentItems, invoice.id, clinicSettings);
 
   if (lineItems.length > 0) {
     const { error: lineItemsError } = await supabase.from('invoice_line_items').insert(lineItems);
