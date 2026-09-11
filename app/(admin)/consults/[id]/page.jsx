@@ -814,9 +814,6 @@ export default function ConsultDetailPage() {
           {consult.clients?.client_number ? ` (Client #${consult.clients.client_number})` : ''}
         </a>{' '}
         · Patient: <a href={`/patients/${consult.patients?.id}`}>record</a>{' '}
-        <button type="button" className="button-link report-overview-pill" onClick={() => setActiveTab('reports')}>
-          📑 Reports
-        </button>{' '}
         · Room: {consult.rooms?.name}
       </p>
 
