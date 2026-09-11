@@ -27,9 +27,13 @@ import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
+import ProcedureChecklist from '@/app/_components/ProcedureChecklist';
 import HospitalizationReportsSection from '@/app/_components/HospitalizationReportsSection';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
+import { useVaccinations } from '@/app/_components/useVaccinations';
+import VaccinationForm from '@/app/_components/VaccinationForm';
+import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { openWhatsApp } from '@/lib/whatsapp';
 
 function todayISODate() {
@@ -192,6 +196,12 @@ export default function HospitalizationDetailPage() {
       .then((res) => res.json())
       .then((data) => setConsentPlanItems(Array.isArray(data) ? data : []));
   }, [id]);
+
+  // Day procedures get their own Vaccination card in the Day Procedure
+  // Report section below, same hook/form the consult page uses — a
+  // vaccine given during a day procedure is still just a vaccination
+  // record against the patient, not something tied to the hospitalization.
+  const vac = useVaccinations(admission?.patients?.id, admission?.patients?.species);
 
   function appendNoteText(text) {
     setNoteForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }));
@@ -573,6 +583,78 @@ export default function HospitalizationDetailPage() {
     treatmentItems: [...originVisitPlan.treatmentItems, ...consentPlanItems],
   };
 
+  const consentFormsSection = (
+    <details className="case-files" open={consentForms.length === 0}>
+      <summary>📝 Consent Forms {consentForms.length > 0 && `(${consentForms.length} signed)`}</summary>
+      {consentForms.map((cf) => (
+        <div key={cf.id} className="visit-card">
+          <strong>{CONSENT_FORM_LABELS[cf.form_type] || cf.form_type}</strong>
+          <p>
+            Signed by {cf.signed_by_name}
+            {cf.signed_by_relationship && ` (${cf.signed_by_relationship})`} ·{' '}
+            {new Date(cf.signed_at).toLocaleString()}
+            {cf.staff?.full_name && ` · Witnessed by ${cf.staff.full_name}`}
+          </p>
+          <a href={`/api/consent-forms/${cf.id}/pdf`} target="_blank" rel="noreferrer">
+            📄 Download signed PDF
+          </a>
+        </div>
+      ))}
+      <form className="card" onSubmit={addConsentForm}>
+        <h3>Sign {CONSENT_FORM_LABELS[consentFormType]}</h3>
+        {consentError && <p className="error">{consentError}</p>}
+        <p className="visit-meta">
+          Patient: {admission.patients?.name}
+          {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''} · Owner:{' '}
+          {admission.clients?.full_name}
+          {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''}
+        </p>
+        <div className="consent-text-box">
+          {buildConsentFormText(consentFormType, { name: admission.patients?.name }, consentPreviewPlan)}
+        </div>
+        <input
+          placeholder="Signed by (full name)"
+          required
+          value={consentForm.signed_by_name}
+          onChange={(e) => setConsentForm({ ...consentForm, signed_by_name: e.target.value })}
+        />
+        <input
+          placeholder="Relationship to pet (e.g. Owner) — optional"
+          value={consentForm.signed_by_relationship}
+          onChange={(e) => setConsentForm({ ...consentForm, signed_by_relationship: e.target.value })}
+        />
+        <select
+          value={consentForm.staff_witness_id}
+          onChange={(e) => setConsentForm({ ...consentForm, staff_witness_id: e.target.value })}
+        >
+          <option value="">Witnessed by (staff)...</option>
+          {staff.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.full_name}
+            </option>
+          ))}
+        </select>
+        <div className="consent-form-actions">
+          <button type="submit" disabled={consentSubmitting}>
+            {consentSubmitting ? 'Saving...' : 'Sign'}
+          </button>
+          <button type="button" onClick={sendConsentLink} disabled={sendingConsentLink}>
+            {sendingConsentLink ? 'Sending...' : 'WhatsApp'}
+          </button>
+        </div>
+      </form>
+    </details>
+  );
+
+  const patientHistorySection = (
+    <PatientHistoryPanel
+      patientId={admission.patient_id}
+      clientId={admission.client_id}
+      excludeHospitalizationId={id}
+      excludeVisitId={admission.originating_visit_id}
+    />
+  );
+
   return (
     <div>
       <div className="page-header">
@@ -633,14 +715,79 @@ export default function HospitalizationDetailPage() {
           </button>
         </p>
       )}
+      {admission.kind === 'day_procedure' ? (
+        <>
+          <div className="hospitalization-actions" role="group" aria-label="Day procedure actions">
+            {admission.status === 'admitted' && (
+              <button type="button" className="button-link" onClick={discharge}>Complete</button>
+            )}
+            <button type="button" className="button-link" onClick={createInvoice} disabled={creatingInvoice}
+              title={invoiceInfo ? `Open the invoice (${invoiceInfo.status}), syncing in anything new from the checklist` : 'Create an invoice from the medications, goods and services on the checklist'}>
+              {creatingInvoice ? 'Saving…' : invoiceInfo ? `Invoiced (${invoiceInfo.status})` : 'Invoice'}
+            </button>
+            {admission.originating_visit_id ? (
+              <a className="button-link" href={`/consults/${admission.originating_visit_id}`}>Originating consult</a>
+            ) : (
+              <button type="button" className="button-link" onClick={addConsult} disabled={addingConsult}
+                title="Most day procedures don't need one — only add this if you also want to write up an exam/consult note">
+                {addingConsult ? 'Adding…' : 'Add Consult'}
+              </button>
+            )}
+            <button type="button" className="button-link" onClick={moveToHospital} title="This case needs to stay longer than planned">
+              Move to Hospital
+            </button>
+            <a className="button-link" href="/day-procedures">Day Procedures</a>
+          </div>
+          {addConsultError && <p className="error" role="alert">{addConsultError}</p>}
+          {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
+
+          <ProcedureChecklist
+            key={`${id}-${noteDeleteVersion}`}
+            hospitalizationId={id}
+            staff={staff}
+            catalog={catalog}
+            subcategories={subcategories}
+            onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+          />
+
+          <section className="case-files-open" aria-label="Day Procedure Report">
+            <h2>Day Procedure Report</h2>
+            <PatientReportOverview patientId={admission.patient_id} title="Earlier reports for this patient" />
+            <HospitalizationReportsSection
+              hospitalizationId={id}
+              admission={admission}
+              staff={staff}
+              catalog={catalog}
+              subcategories={subcategories}
+              onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+              onPatientUpdated={(dental_chart) => setAdmission((prev) => ({ ...prev, patients: { ...prev.patients, dental_chart } }))}
+              onAdmissionUpdated={loadAdmission}
+            />
+            <section id="vaccination" className="card" aria-label="Vaccination">
+              <h3>
+                Vaccinations
+                {vac.vaccinations.length === 0 && <span className="heading-hint"> — No vaccinations recorded yet.</span>}
+              </h3>
+              {vac.vaccinations.length > 0 && (
+                <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
+              )}
+              <VaccinationForm {...vac} species={admission.patients?.species} staff={staff} />
+            </section>
+          </section>
+
+          {patientHistorySection}
+          {consentFormsSection}
+
+          <details className="case-files">
+            <summary>📎 Case Photos &amp; Files</summary>
+            <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} />
+          </details>
+        </>
+      ) : (
+        <>
       <div className="hospitalization-actions" role="group" aria-label="Hospitalization actions">
         {admission.status === 'admitted' && (
           <button type="button" className="button-link" onClick={discharge}>Discharge</button>
-        )}
-        {admission.kind === 'day_procedure' && (
-          <button type="button" className="button-link" onClick={moveToHospital} title="This case needs to stay longer than planned">
-            Move to Hospital
-          </button>
         )}
         <button type="button" className="button-link" onClick={createInvoice} disabled={creatingInvoice}
           title={invoiceInfo ? `Open the invoice (${invoiceInfo.status}), syncing in anything new from the worksheet` : 'Create an invoice from the medications, goods and services in this worksheet'}>
@@ -683,73 +830,8 @@ export default function HospitalizationDetailPage() {
         </section>
       )}
 
-      <PatientHistoryPanel
-        patientId={admission.patient_id}
-        clientId={admission.client_id}
-        excludeHospitalizationId={id}
-        excludeVisitId={admission.originating_visit_id}
-      />
-
-      <details className="case-files" open={consentForms.length === 0}>
-        <summary>📝 Consent Forms {consentForms.length > 0 && `(${consentForms.length} signed)`}</summary>
-        {consentForms.map((cf) => (
-          <div key={cf.id} className="visit-card">
-            <strong>{CONSENT_FORM_LABELS[cf.form_type] || cf.form_type}</strong>
-            <p>
-              Signed by {cf.signed_by_name}
-              {cf.signed_by_relationship && ` (${cf.signed_by_relationship})`} ·{' '}
-              {new Date(cf.signed_at).toLocaleString()}
-              {cf.staff?.full_name && ` · Witnessed by ${cf.staff.full_name}`}
-            </p>
-            <a href={`/api/consent-forms/${cf.id}/pdf`} target="_blank" rel="noreferrer">
-              📄 Download signed PDF
-            </a>
-          </div>
-        ))}
-        <form className="card" onSubmit={addConsentForm}>
-          <h3>Sign {CONSENT_FORM_LABELS[consentFormType]}</h3>
-          {consentError && <p className="error">{consentError}</p>}
-          <p className="visit-meta">
-            Patient: {admission.patients?.name}
-            {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''} · Owner:{' '}
-            {admission.clients?.full_name}
-            {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''}
-          </p>
-          <div className="consent-text-box">
-            {buildConsentFormText(consentFormType, { name: admission.patients?.name }, consentPreviewPlan)}
-          </div>
-          <input
-            placeholder="Signed by (full name)"
-            required
-            value={consentForm.signed_by_name}
-            onChange={(e) => setConsentForm({ ...consentForm, signed_by_name: e.target.value })}
-          />
-          <input
-            placeholder="Relationship to pet (e.g. Owner) — optional"
-            value={consentForm.signed_by_relationship}
-            onChange={(e) => setConsentForm({ ...consentForm, signed_by_relationship: e.target.value })}
-          />
-          <select
-            value={consentForm.staff_witness_id}
-            onChange={(e) => setConsentForm({ ...consentForm, staff_witness_id: e.target.value })}
-          >
-            <option value="">Witnessed by (staff)...</option>
-            {staff.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.full_name}
-              </option>
-            ))}
-          </select>
-          <div className="consent-form-actions">
-            <button type="submit" disabled={consentSubmitting}>
-              {consentSubmitting ? 'Saving...' : 'Sign'}
-            </button>
-            <button type="button" onClick={sendConsentLink} disabled={sendingConsentLink}>
-              {sendingConsentLink ? 'Sending...' : 'WhatsApp'}
-            </button>
-          </div>
-        </form>
-      </details>
+      {patientHistorySection}
+      {consentFormsSection}
 
       <DayTreatmentPlan
         key={`${id}-${noteDeleteVersion}`}
@@ -1223,6 +1305,8 @@ export default function HospitalizationDetailPage() {
       </form>
       </div>
       </div>
+        </>
+      )}
 
       <PdfPreviewModal url={previewPdfUrl} onClose={() => setPreviewPdfUrl(null)} />
     </div>

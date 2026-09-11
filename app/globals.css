@@ -3845,6 +3845,99 @@ button.secondary:hover {
   }
 }
 
+/* Procedure Checklist (ProcedureChecklist.jsx) — the day-procedure page's
+   single-day rework of the Day Treatment Plan above: one row per item,
+   with a status pill and a contextual link to whichever report/input the
+   item belongs to. */
+.procedure-checklist {
+  margin-bottom: 1.25rem;
+}
+
+.procedure-checklist-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.procedure-checklist-header h3 {
+  margin: 0;
+}
+
+.procedure-checklist .day-plan-author {
+  margin: 0.6rem 0 0.9rem;
+}
+
+.procedure-checklist-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.procedure-checklist-row:last-of-type {
+  border-bottom: none;
+}
+
+.procedure-checklist-status {
+  flex: none;
+  width: 128px;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid #ddd;
+  background: #f2f2f2;
+  color: #777;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.procedure-checklist-status.done {
+  background: #e2f1e9;
+  color: #245b40;
+  border-color: #bfe2cd;
+}
+
+.procedure-checklist-status:hover {
+  border-color: var(--pink);
+}
+
+.procedure-checklist-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.procedure-checklist-label .sub {
+  color: #999;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.procedure-checklist-link {
+  flex: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--pink-dark);
+  background: var(--pink-tint);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.procedure-checklist-link:hover {
+  text-decoration: underline;
+}
+
 /* Hospitalization page: quick occupancy read above the Cage
    Layout/All Admissions tabs. */
 .hosp-stat-strip {

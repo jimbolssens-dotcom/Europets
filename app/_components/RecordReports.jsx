@@ -70,7 +70,7 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
         patient={record.patients} reportLabel={overallReportLabel} />
     </section>}
     {!count && !reportsError && <p>No procedure reports or test results added yet.</p>}
-    {groups.map((group) => group.reports.length > 0 && <section key={group.apiBase} aria-label={group.label}>
+    {groups.map((group) => group.reports.length > 0 && <section key={group.apiBase} id={group.anchorId} aria-label={group.label}>
       <h4>{group.label}</h4>
       {group.reports.map((report) => <details className="card" key={report.id}>
         <summary>{report.procedure_name || group.label} · {report.performed_at ? new Date(report.performed_at).toLocaleString() : 'Date not recorded'} · {report.ai_summary ? 'Report available' : 'Report pending'}</summary>
@@ -92,7 +92,7 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
         <AttachmentSection entityType={group.entityType} entityId={report.id} />
       </details>)}
     </section>)}
-    {(diagnostics.length > 0 || record.test_results) && <section aria-label="Test results">
+    {(diagnostics.length > 0 || record.test_results) && <section id="report-test-results" aria-label="Test results">
       <h4>Test results and blood reports</h4>
       <ReportShareActions reportId={record.id} apiBase={recordApiBase} pdfPath="test-report-pdf"
         client={record.clients} patient={record.patients} reportLabel="test results" />
