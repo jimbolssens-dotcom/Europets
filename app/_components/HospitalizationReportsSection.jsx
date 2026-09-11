@@ -283,120 +283,6 @@ export default function HospitalizationReportsSection({ hospitalizationId, admis
 
   return (
     <div className="hospitalization-reports-section">
-      <h3>Order a test</h3>
-      <form className="card" onSubmit={addDiagnostic}>
-        {diagError && <p className="error">{diagError}</p>}
-        <CatalogPicker
-          catalog={catalog}
-          subcategories={subcategories}
-          value={diagForm.goods_service_id}
-          onChange={(value) => setDiagForm({ ...diagForm, goods_service_id: value })}
-          onItemCreated={onCatalogItemCreated}
-          fixedMainCategory="test"
-        />
-        <input
-          placeholder="Description (what was ordered — e.g. left front leg)"
-          value={diagForm.description}
-          onChange={(e) => setDiagForm({ ...diagForm, description: e.target.value })}
-        />
-        <button type="submit">Order test</button>
-      </form>
-
-      {diagnostics.map((d) => {
-        const testName = catalog.find((c) => c.id === d.goods_service_id)?.name || LEGACY_DIAGNOSTIC_TYPE_LABELS[d.type] || d.type;
-        if (isUltrasoundTest(testName)) {
-          const report = ultrasoundByDiagnostic[d.id];
-          return (
-            <p key={d.id} className="visit-meta">
-              🔊 {testName}:{' '}
-              {report ? (
-                'Report started — see Reports below'
-              ) : (
-                <button type="button" onClick={() => startDictateUltrasoundReport(d.id)} disabled={dictatingUltrasoundFor === d.id}>
-                  🎤 {dictatingUltrasoundFor === d.id ? 'Starting...' : 'Dictate Ultrasound Report'}
-                </button>
-              )}
-            </p>
-          );
-        }
-        if (isXrayTest(testName)) {
-          const report = xrayByDiagnostic[d.id];
-          return (
-            <p key={d.id} className="visit-meta">
-              🩻 {testName}:{' '}
-              {report ? (
-                'Report started — see Reports below'
-              ) : (
-                <button type="button" onClick={() => startDictateXrayReport(d.id)} disabled={dictatingXrayFor === d.id}>
-                  🎤 {dictatingXrayFor === d.id ? 'Starting...' : 'Dictate X-ray Report'}
-                </button>
-              )}
-            </p>
-          );
-        }
-        return null;
-      })}
-
-      <h3>Dental Reports</h3>
-      <div className="card">
-        <button type="button" onClick={startDictateDentalReport} disabled={dictatingDental}>
-          🎤 {dictatingDental ? 'Starting...' : 'Dictate'}
-        </button>
-        {autoRecordDentalId && <AudioRecorder entityType="dental_report" entityId={autoRecordDentalId} autoStart />}
-        <details>
-          <summary>Or add manually</summary>
-          <form className="form-grid" onSubmit={addDentalReport}>
-            <select value={dentalForm.performed_by} onChange={(e) => setDentalForm({ ...dentalForm, performed_by: e.target.value })}>
-              <option value="">Performed by...</option>
-              {vets.map((v) => <option key={v.id} value={v.id}>{v.full_name}</option>)}
-            </select>
-            <input placeholder="Findings" value={dentalForm.findings} onChange={(e) => setDentalForm({ ...dentalForm, findings: e.target.value })} />
-            <input placeholder="Procedures performed" value={dentalForm.procedures_performed} onChange={(e) => setDentalForm({ ...dentalForm, procedures_performed: e.target.value })} />
-            <textarea rows={2} placeholder="Notes" value={dentalForm.notes} onChange={(e) => setDentalForm({ ...dentalForm, notes: e.target.value })} />
-            <button type="submit">Add</button>
-          </form>
-        </details>
-      </div>
-      <DentalChart
-        species={admission?.patients?.species}
-        value={admission?.patients?.dental_chart}
-        onChange={updateDentalChart}
-        saving={savingDentalChart}
-      />
-
-      <h3>Surgical Reports</h3>
-      <div className="card">
-        <button type="button" onClick={startDictateSurgicalReport} disabled={dictatingSurgical}>
-          🎤 {dictatingSurgical ? 'Starting...' : 'Dictate'}
-        </button>
-        {autoRecordSurgicalId && <AudioRecorder entityType="surgical_report" entityId={autoRecordSurgicalId} autoStart />}
-        <details>
-          <summary>Or add manually</summary>
-          <form className="form-grid" onSubmit={addSurgicalReport}>
-            <input placeholder="Procedure" value={surgForm.procedure_name} onChange={(e) => setSurgForm({ ...surgForm, procedure_name: e.target.value })} />
-            <select value={surgForm.surgeon_id} onChange={(e) => setSurgForm({ ...surgForm, surgeon_id: e.target.value })}>
-              <option value="">Surgeon...</option>
-              {vets.map((v) => <option key={v.id} value={v.id}>{v.full_name}</option>)}
-            </select>
-            <textarea rows={2} placeholder="Notes" value={surgForm.notes} onChange={(e) => setSurgForm({ ...surgForm, notes: e.target.value })} />
-            <button type="submit">Add</button>
-          </form>
-        </details>
-      </div>
-
-      {autoRecordUltrasoundId && (
-        <div className="card">
-          <p className="visit-meta">Ultrasound report — dictate now</p>
-          <AudioRecorder entityType="ultrasound_report" entityId={autoRecordUltrasoundId} autoStart />
-        </div>
-      )}
-      {autoRecordXrayId && (
-        <div className="card">
-          <p className="visit-meta">X-ray report — dictate now</p>
-          <AudioRecorder entityType="xray_report" entityId={autoRecordXrayId} autoStart />
-        </div>
-      )}
-
       <RecordReports
         record={admission || {}} recordApiBase="/api/hospitalizations" showOverallReport={false}
         diagnostics={diagnostics} catalog={catalog}
@@ -414,6 +300,124 @@ export default function HospitalizationReportsSection({ hospitalizationId, admis
         extractResultError={extractResultError} attachmentVersions={diagPhotoVersion}
         reportsError={Object.values(reportsError).filter(Boolean).join(' ')}
       />
+
+      <details className="card">
+        <summary>➕ Order a test or start a report</summary>
+
+        <h4>Order a test</h4>
+        <form className="card" onSubmit={addDiagnostic}>
+          {diagError && <p className="error">{diagError}</p>}
+          <CatalogPicker
+            catalog={catalog}
+            subcategories={subcategories}
+            value={diagForm.goods_service_id}
+            onChange={(value) => setDiagForm({ ...diagForm, goods_service_id: value })}
+            onItemCreated={onCatalogItemCreated}
+            fixedMainCategory="test"
+          />
+          <input
+            placeholder="Description (what was ordered — e.g. left front leg)"
+            value={diagForm.description}
+            onChange={(e) => setDiagForm({ ...diagForm, description: e.target.value })}
+          />
+          <button type="submit">Order test</button>
+        </form>
+
+        {diagnostics.map((d) => {
+          const testName = catalog.find((c) => c.id === d.goods_service_id)?.name || LEGACY_DIAGNOSTIC_TYPE_LABELS[d.type] || d.type;
+          if (isUltrasoundTest(testName)) {
+            const report = ultrasoundByDiagnostic[d.id];
+            return (
+              <p key={d.id} className="visit-meta">
+                🔊 {testName}:{' '}
+                {report ? (
+                  'Report started — see Reports above'
+                ) : (
+                  <button type="button" onClick={() => startDictateUltrasoundReport(d.id)} disabled={dictatingUltrasoundFor === d.id}>
+                    🎤 {dictatingUltrasoundFor === d.id ? 'Starting...' : 'Dictate Ultrasound Report'}
+                  </button>
+                )}
+              </p>
+            );
+          }
+          if (isXrayTest(testName)) {
+            const report = xrayByDiagnostic[d.id];
+            return (
+              <p key={d.id} className="visit-meta">
+                🩻 {testName}:{' '}
+                {report ? (
+                  'Report started — see Reports above'
+                ) : (
+                  <button type="button" onClick={() => startDictateXrayReport(d.id)} disabled={dictatingXrayFor === d.id}>
+                    🎤 {dictatingXrayFor === d.id ? 'Starting...' : 'Dictate X-ray Report'}
+                  </button>
+                )}
+              </p>
+            );
+          }
+          return null;
+        })}
+
+        <h4>Dental Reports</h4>
+        <div className="card">
+          <button type="button" onClick={startDictateDentalReport} disabled={dictatingDental}>
+            🎤 {dictatingDental ? 'Starting...' : 'Dictate'}
+          </button>
+          {autoRecordDentalId && <AudioRecorder entityType="dental_report" entityId={autoRecordDentalId} autoStart />}
+          <details>
+            <summary>Or add manually</summary>
+            <form className="form-grid" onSubmit={addDentalReport}>
+              <select value={dentalForm.performed_by} onChange={(e) => setDentalForm({ ...dentalForm, performed_by: e.target.value })}>
+                <option value="">Performed by...</option>
+                {vets.map((v) => <option key={v.id} value={v.id}>{v.full_name}</option>)}
+              </select>
+              <input placeholder="Findings" value={dentalForm.findings} onChange={(e) => setDentalForm({ ...dentalForm, findings: e.target.value })} />
+              <input placeholder="Procedures performed" value={dentalForm.procedures_performed} onChange={(e) => setDentalForm({ ...dentalForm, procedures_performed: e.target.value })} />
+              <textarea rows={2} placeholder="Notes" value={dentalForm.notes} onChange={(e) => setDentalForm({ ...dentalForm, notes: e.target.value })} />
+              <button type="submit">Add</button>
+            </form>
+          </details>
+        </div>
+        <DentalChart
+          species={admission?.patients?.species}
+          value={admission?.patients?.dental_chart}
+          onChange={updateDentalChart}
+          saving={savingDentalChart}
+        />
+
+        <h4>Surgical Reports</h4>
+        <div className="card">
+          <button type="button" onClick={startDictateSurgicalReport} disabled={dictatingSurgical}>
+            🎤 {dictatingSurgical ? 'Starting...' : 'Dictate'}
+          </button>
+          {autoRecordSurgicalId && <AudioRecorder entityType="surgical_report" entityId={autoRecordSurgicalId} autoStart />}
+          <details>
+            <summary>Or add manually</summary>
+            <form className="form-grid" onSubmit={addSurgicalReport}>
+              <input placeholder="Procedure" value={surgForm.procedure_name} onChange={(e) => setSurgForm({ ...surgForm, procedure_name: e.target.value })} />
+              <select value={surgForm.surgeon_id} onChange={(e) => setSurgForm({ ...surgForm, surgeon_id: e.target.value })}>
+                <option value="">Surgeon...</option>
+                {vets.map((v) => <option key={v.id} value={v.id}>{v.full_name}</option>)}
+              </select>
+              <textarea rows={2} placeholder="Notes" value={surgForm.notes} onChange={(e) => setSurgForm({ ...surgForm, notes: e.target.value })} />
+              <button type="submit">Add</button>
+            </form>
+          </details>
+        </div>
+
+        {autoRecordUltrasoundId && (
+          <div className="card">
+            <p className="visit-meta">Ultrasound report — dictate now</p>
+            <AudioRecorder entityType="ultrasound_report" entityId={autoRecordUltrasoundId} autoStart />
+          </div>
+        )}
+        {autoRecordXrayId && (
+          <div className="card">
+            <p className="visit-meta">X-ray report — dictate now</p>
+            <AudioRecorder entityType="xray_report" entityId={autoRecordXrayId} autoStart />
+          </div>
+        )}
+      </details>
     </div>
   );
 }
