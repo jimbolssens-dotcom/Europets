@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 export async function GET(request, { params }) {
-  const { data: visits } = await supabase.from('visits').select('id, started_at').eq('patient_id', params.id);
+  const { data: visits } = await supabase.from('visits').select('id, started_at, ai_summary').eq('patient_id', params.id);
   const { data: hospitalizations } = await supabase.from('hospitalizations').select('id, admitted_at').eq('patient_id', params.id);
   const visitIds = (visits || []).map((v) => v.id);
   const hospIds = (hospitalizations || []).map((h) => h.id);
@@ -17,6 +17,7 @@ export async function GET(request, { params }) {
   ]);
   const visitDate = Object.fromEntries((visits || []).map((v) => [v.id, v.started_at]));
   const rows = [
+    ...(visits || []).filter((v) => v.ai_summary).map((v) => ({ id: `consult-${v.id}`, source: 'consult', kind: 'Consult report', date: v.started_at, ai_summary: v.ai_summary, href: `/consults/${v.id}` })),
     ...(dental.data || []).map((r) => ({ ...r, source: 'consult', kind: 'Dental report', date: r.performed_at || visitDate[r.visit_id], href: `/consults/${r.visit_id}` })),
     ...(surgical.data || []).map((r) => ({ ...r, source: 'consult', kind: 'Surgical report', date: r.performed_at || visitDate[r.visit_id], href: `/consults/${r.visit_id}` })),
     ...(ultrasound.data || []).map((r) => ({ ...r, source: 'consult', kind: 'Ultrasound report', date: r.performed_at || visitDate[r.visit_id], href: `/consults/${r.visit_id}` })),
