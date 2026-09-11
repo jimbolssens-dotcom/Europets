@@ -43,6 +43,61 @@ function buildHourMarks() { const marks = []; for (let h = OPEN_HOUR; h <= CLOSE
 const HOUR_MARKS = buildHourMarks();
 function buildQuarterMarks() { const marks = []; const total = (CLOSE_HOUR - OPEN_HOUR) * 60; for (let m = SNAP_MINUTES; m < total; m += SNAP_MINUTES) if (m % 60 !== 0) marks.push(m); return marks; }
 const QUARTER_MARKS = buildQuarterMarks();
+
+// Packs a set of time-ranged items (appointments) into side-by-side
+// columns so ones whose times actually overlap split the available width
+// instead of stacking on top of each other — the same "meeting scheduler"
+// column-packing approach calendar apps use. Items are grouped into
+// clusters of mutually-overlapping ranges first, so an appointment with
+// no real time conflict still gets full width even if it's near a
+// crowded slot.
+//
+// Also returns, per item, how many minutes are actually free below it
+// before the next appointment in the list starts (maxMinutes) — a short
+// appointment's block still has a readable minimum height (see the 22px
+// floor at each call site), but that floor must never be taller than the
+// real gap to whatever's chronologically next, or two back-to-back
+// 15-minute slots visually bleed into each other even though nothing is
+// really double-booked. When the next appointment overlaps this one in
+// time, they're already rendered side by side in different columns
+// (see above) rather than stacked, so no cap is needed against it.
+//
+// Returns a Map from item.id -> { col, count, maxMinutes }.
+function layoutOverlaps(items) {
+  const layout = new Map();
+  const sorted = [...items].sort((a, b) => a.start - b.start || a.end - b.end);
+  let cluster = [];
+  let clusterEnd = -Infinity;
+
+  function flushCluster() {
+    if (cluster.length === 0) return;
+    const columnEnds = [];
+    for (const item of cluster) {
+      let col = columnEnds.findIndex((end) => end <= item.start);
+      if (col === -1) { col = columnEnds.length; columnEnds.push(item.end); }
+      else columnEnds[col] = item.end;
+      item._col = col;
+    }
+    const count = columnEnds.length;
+    for (const item of cluster) layout.set(item.id, { col: item._col, count, maxMinutes: Infinity });
+    cluster = [];
+  }
+
+  for (const item of sorted) {
+    if (cluster.length > 0 && item.start >= clusterEnd) { flushCluster(); clusterEnd = -Infinity; }
+    cluster.push(item);
+    clusterEnd = Math.max(clusterEnd, item.end);
+  }
+  flushCluster();
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const item = sorted[i];
+    const next = sorted[i + 1];
+    if (next.start >= item.end) layout.get(item.id).maxMinutes = next.start - item.start;
+  }
+
+  return layout;
+}
 function recalcPixelsPerMinute(wrapTop) { const total = (CLOSE_HOUR - OPEN_HOUR) * 60; const available = window.innerHeight - wrapTop - SCHEDULE_HEADER_HEIGHT - SCHEDULE_BOTTOM_MARGIN; return Math.min(MAX_PIXELS_PER_MINUTE, Math.max(MIN_PIXELS_PER_MINUTE, available / total)); }
 function playAlertBeep() { try { const Ctx = window.AudioContext || window.webkitAudioContext; const ctx = new Ctx(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.value = 880; gain.gain.setValueAtTime(0.15, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.35); } catch {} }
 
@@ -205,11 +260,15 @@ function AppointmentsPageInner() {
   function gridLines() { return <>{HOUR_MARKS.map((h) => <div key={`h-${h}`} className="schedule-hour-line" style={{ top: (h - OPEN_HOUR) * 60 * pixelsPerMinute }} />)}{QUARTER_MARKS.map((m) => <div key={`q-${m}`} className="schedule-quarter-line" style={{ top: m * pixelsPerMinute }} />)}</>; }
 
   function renderDayView() {
-    return <div className="schedule-wrap" ref={scheduleWrapRef} style={{ maxWidth: TIME_COL_WIDTH + rooms.length * ROOM_COL_WIDTH + 2 }}>{renderTimeColumn()}{rooms.map((room) => <div key={room.id} className="schedule-room-col"><div className="schedule-header">{room.name}</div><div className="schedule-room-track" data-room-id={room.id} style={{ height: scheduleHeight }} onMouseDown={(e) => startDragSelect(e, room.id)} onMouseMove={(e) => hoverGrid(e, room.id)} onMouseLeave={() => setHoverSlot(null)}>{gridLines()}{hoverSlot?.roomId === room.id && hoverSlot.dateISO === selectedDate && <div className="schedule-hover-slot" style={{ top: hoverSlot.top, height: SNAP_MINUTES * pixelsPerMinute }}><span className="schedule-hover-label">{hoverSlot.label}</span></div>}{dragSelect?.roomId === room.id && <div className="schedule-drag-select" style={{ top: Math.min(dragSelect.startMinutes, dragSelect.endMinutes) * pixelsPerMinute, height: (Math.abs(dragSelect.endMinutes - dragSelect.startMinutes) + SNAP_MINUTES) * pixelsPerMinute }} />}{selectedSlotPreview?.roomId === room.id && !dragSelect && <div className="schedule-drag-select" style={{ top: selectedSlotPreview.startMinutes * pixelsPerMinute, height: Math.max(selectedSlotPreview.duration * pixelsPerMinute, 22), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, color: 'var(--pink-dark)' }}>Selected {formatSlotLabel(form.time)}</div>}{liveDayAppointments.filter((a) => a.room_id === room.id).map((a) => appointmentBlock(a, { top: minutesSinceOpen(a.start_time) * pixelsPerMinute, height: Math.max(a.duration_minutes * pixelsPerMinute, 22) }))}</div></div>)}</div>;
+    return <div className="schedule-wrap" ref={scheduleWrapRef} style={{ maxWidth: TIME_COL_WIDTH + rooms.length * ROOM_COL_WIDTH + 2 }}>{renderTimeColumn()}{rooms.map((room) => {
+      const roomAppointments = liveDayAppointments.filter((a) => a.room_id === room.id);
+      const overlapLayout = layoutOverlaps(roomAppointments.map((a) => ({ id: a.id, start: minutesSinceOpen(a.start_time), end: minutesSinceOpen(a.start_time) + a.duration_minutes })));
+      return <div key={room.id} className="schedule-room-col"><div className="schedule-header">{room.name}</div><div className="schedule-room-track" data-room-id={room.id} style={{ height: scheduleHeight }} onMouseDown={(e) => startDragSelect(e, room.id)} onMouseMove={(e) => hoverGrid(e, room.id)} onMouseLeave={() => setHoverSlot(null)}>{gridLines()}{hoverSlot?.roomId === room.id && hoverSlot.dateISO === selectedDate && <div className="schedule-hover-slot" style={{ top: hoverSlot.top, height: SNAP_MINUTES * pixelsPerMinute }}><span className="schedule-hover-label">{hoverSlot.label}</span></div>}{dragSelect?.roomId === room.id && <div className="schedule-drag-select" style={{ top: Math.min(dragSelect.startMinutes, dragSelect.endMinutes) * pixelsPerMinute, height: (Math.abs(dragSelect.endMinutes - dragSelect.startMinutes) + SNAP_MINUTES) * pixelsPerMinute }} />}{selectedSlotPreview?.roomId === room.id && !dragSelect && <div className="schedule-drag-select" style={{ top: selectedSlotPreview.startMinutes * pixelsPerMinute, height: Math.max(selectedSlotPreview.duration * pixelsPerMinute, 22), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, color: 'var(--pink-dark)' }}>Selected {formatSlotLabel(form.time)}</div>}{roomAppointments.map((a) => { const { col, count, maxMinutes } = overlapLayout.get(a.id) || { col: 0, count: 1, maxMinutes: Infinity }; const colWidth = 100 / count; const naturalHeight = Math.max(a.duration_minutes * pixelsPerMinute, 22); const height = maxMinutes === Infinity ? naturalHeight : Math.min(naturalHeight, maxMinutes * pixelsPerMinute); return appointmentBlock(a, { top: minutesSinceOpen(a.start_time) * pixelsPerMinute, height, left: `calc(${col * colWidth}% + 1px)`, width: `calc(${colWidth}% - 2px)`, right: 'auto', fontSize: count > 1 ? '0.68rem' : undefined, padding: count > 1 ? '2px 3px' : undefined }, count > 1); })}</div></div>;
+    })}</div>;
   }
 
   function renderWeekView() {
-    return <div ref={scheduleWrapRef} style={{ overflowX: 'auto', border: '1px solid #ddd', borderRadius: 8, background: 'white' }}><div style={{ display: 'flex', minWidth: TIME_COL_WIDTH + 7 * WEEK_DAY_MIN_WIDTH }}>{renderTimeColumn()}{currentWeek.map((day) => { const iso = toISODate(day); const dayApps = weekAppointmentsByDate[iso] || []; const groups = {}; dayApps.forEach((a) => { const d = new Date(a.start_time); const key = `${d.getHours()}:${d.getMinutes()}`; (groups[key] ||= []).push(a); }); const isToday = iso === todayISODate(); const isSelected = iso === selectedDate; return <div key={iso} style={{ flex: `1 1 ${WEEK_DAY_MIN_WIDTH}px`, minWidth: WEEK_DAY_MIN_WIDTH, borderLeft: '1px solid #eee' }}><button type="button" onClick={() => selectDay(day, true)} style={{ width: '100%', height: SCHEDULE_HEADER_HEIGHT, borderRadius: 0, background: isSelected ? 'var(--pink)' : isToday ? 'var(--pink-tint)' : 'white', color: isSelected ? 'white' : 'var(--ink)', borderBottom: '1px solid #ddd', padding: '0.25rem' }}><div style={{ fontSize: '0.72rem', textTransform: 'uppercase' }}>{day.toLocaleDateString([], { weekday: 'short' })}</div><strong>{day.getDate()}</strong></button><div className="schedule-room-track" data-date={iso} style={{ height: scheduleHeight, position: 'relative' }} onClick={(e) => { if (e.target.closest('.schedule-block')) return; const { minutesFromOpen } = computeSlot(e); applySlotSelection('', minutesFromOpen, SNAP_MINUTES, iso); }} onMouseMove={(e) => hoverGrid(e, '', iso)} onMouseLeave={() => setHoverSlot(null)}>{gridLines()}{hoverSlot?.dateISO === iso && hoverSlot.roomId === '' && <div className="schedule-hover-slot" style={{ top: hoverSlot.top, height: SNAP_MINUTES * pixelsPerMinute }}><span className="schedule-hover-label">{hoverSlot.label}</span></div>}{selectedSlotPreview?.date === iso && <div className="schedule-drag-select" style={{ top: selectedSlotPreview.startMinutes * pixelsPerMinute, height: Math.max(selectedSlotPreview.duration * pixelsPerMinute, 22), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 700, color: 'var(--pink-dark)', zIndex: 2 }}>Selected {formatSlotLabel(form.time)}</div>}{dayApps.map((a) => { const d = new Date(a.start_time); const key = `${d.getHours()}:${d.getMinutes()}`; const group = groups[key]; const index = group.findIndex((x) => x.id === a.id); const width = 100 / group.length; return appointmentBlock(a, { top: minutesSinceOpen(a.start_time) * pixelsPerMinute, height: Math.max(a.duration_minutes * pixelsPerMinute, 22), left: `calc(${index * width}% + 1px)`, width: `calc(${width}% - 2px)`, right: 'auto', fontSize: group.length > 1 ? '0.68rem' : '0.74rem', padding: group.length > 1 ? '2px 3px' : '3px 5px', zIndex: 3 }, true); })}</div></div>; })}</div></div>;
+    return <div ref={scheduleWrapRef} style={{ overflowX: 'auto', border: '1px solid #ddd', borderRadius: 8, background: 'white' }}><div style={{ display: 'flex', minWidth: TIME_COL_WIDTH + 7 * WEEK_DAY_MIN_WIDTH }}>{renderTimeColumn()}{currentWeek.map((day) => { const iso = toISODate(day); const dayApps = weekAppointmentsByDate[iso] || []; const overlapLayout = layoutOverlaps(dayApps.map((a) => ({ id: a.id, start: minutesSinceOpen(a.start_time), end: minutesSinceOpen(a.start_time) + a.duration_minutes }))); const isToday = iso === todayISODate(); const isSelected = iso === selectedDate; return <div key={iso} style={{ flex: `1 1 ${WEEK_DAY_MIN_WIDTH}px`, minWidth: WEEK_DAY_MIN_WIDTH, borderLeft: '1px solid #eee' }}><button type="button" onClick={() => selectDay(day, true)} style={{ width: '100%', height: SCHEDULE_HEADER_HEIGHT, borderRadius: 0, background: isSelected ? 'var(--pink)' : isToday ? 'var(--pink-tint)' : 'white', color: isSelected ? 'white' : 'var(--ink)', borderBottom: '1px solid #ddd', padding: '0.25rem' }}><div style={{ fontSize: '0.72rem', textTransform: 'uppercase' }}>{day.toLocaleDateString([], { weekday: 'short' })}</div><strong>{day.getDate()}</strong></button><div className="schedule-room-track" data-date={iso} style={{ height: scheduleHeight, position: 'relative' }} onClick={(e) => { if (e.target.closest('.schedule-block')) return; const { minutesFromOpen } = computeSlot(e); applySlotSelection('', minutesFromOpen, SNAP_MINUTES, iso); }} onMouseMove={(e) => hoverGrid(e, '', iso)} onMouseLeave={() => setHoverSlot(null)}>{gridLines()}{hoverSlot?.dateISO === iso && hoverSlot.roomId === '' && <div className="schedule-hover-slot" style={{ top: hoverSlot.top, height: SNAP_MINUTES * pixelsPerMinute }}><span className="schedule-hover-label">{hoverSlot.label}</span></div>}{selectedSlotPreview?.date === iso && <div className="schedule-drag-select" style={{ top: selectedSlotPreview.startMinutes * pixelsPerMinute, height: Math.max(selectedSlotPreview.duration * pixelsPerMinute, 22), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 700, color: 'var(--pink-dark)', zIndex: 2 }}>Selected {formatSlotLabel(form.time)}</div>}{dayApps.map((a) => { const { col, count, maxMinutes } = overlapLayout.get(a.id) || { col: 0, count: 1, maxMinutes: Infinity }; const width = 100 / count; const naturalHeight = Math.max(a.duration_minutes * pixelsPerMinute, 22); const height = maxMinutes === Infinity ? naturalHeight : Math.min(naturalHeight, maxMinutes * pixelsPerMinute); return appointmentBlock(a, { top: minutesSinceOpen(a.start_time) * pixelsPerMinute, height, left: `calc(${col * width}% + 1px)`, width: `calc(${width}% - 2px)`, right: 'auto', fontSize: count > 1 ? '0.68rem' : '0.74rem', padding: count > 1 ? '2px 3px' : '3px 5px', zIndex: 3 }, true); })}</div></div>; })}</div></div>;
   }
 
   return <div className="appointments-page">
