@@ -11,23 +11,9 @@
 // Public (no staff PIN) — see the PUBLIC_PATTERNS entry in middleware.js.
 
 import { supabase } from '@/lib/supabaseClient';
-import { CONSENT_FORM_LABELS, CONSENT_FORM_ATTACHMENT, buildConsentFormText } from '@/lib/consentTemplates';
-import { createSignedConsentForm } from '@/lib/consentForms';
+import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
+import { createSignedConsentForm, resolveConsentFormContext } from '@/lib/consentForms';
 import { NextResponse } from 'next/server';
-
-async function loadPatient(request) {
-  const attachment = CONSENT_FORM_ATTACHMENT[request.form_type];
-  if (attachment === 'visit') {
-    const { data } = await supabase.from('visits').select('patients(name, sex)').eq('id', request.visit_id).single();
-    return data?.patients || null;
-  }
-  const { data } = await supabase
-    .from('hospitalizations')
-    .select('patients(name, sex)')
-    .eq('id', request.hospitalization_id)
-    .single();
-  return data?.patients || null;
-}
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
@@ -40,14 +26,24 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'not found' }, { status: 404 });
   }
 
-  const patient = await loadPatient(data);
+  const context = await resolveConsentFormContext({
+    visitId: data.visit_id,
+    hospitalizationId: data.hospitalization_id,
+    formType: data.form_type,
+  });
+  if (context.error) {
+    return NextResponse.json({ error: context.error }, { status: context.status });
+  }
 
   return NextResponse.json({
     status: data.status,
     form_type: data.form_type,
     form_label: CONSENT_FORM_LABELS[data.form_type] || data.form_type,
-    patient_name: patient?.name || null,
-    form_text: buildConsentFormText(data.form_type, patient || {}),
+    patient_name: context.patient?.name || null,
+    form_text: buildConsentFormText(data.form_type, context.patient || {}, {
+      treatmentNotes: context.treatmentNotes,
+      treatmentItems: context.treatmentItems,
+    }),
   });
 }
 

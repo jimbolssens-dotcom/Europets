@@ -1606,10 +1606,11 @@ export default function ConsultDetailPage() {
           </select>
           {consentForm.form_type && (
             <div className="consent-text-box">
-              {buildConsentFormText(consentForm.form_type, {
-                name: consult.patients?.name,
-                sex: consult.patients?.sex,
-              })}
+              {buildConsentFormText(
+                consentForm.form_type,
+                { name: consult.patients?.name, sex: consult.patients?.sex },
+                { treatmentNotes: record.treatment_notes, treatmentItems }
+              )}
             </div>
           )}
           <input

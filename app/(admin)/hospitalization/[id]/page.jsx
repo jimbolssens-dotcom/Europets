@@ -77,6 +77,11 @@ export default function HospitalizationDetailPage() {
   const [consentSubmitting, setConsentSubmitting] = useState(false);
   const [consentError, setConsentError] = useState(null);
   const [sendingConsentLink, setSendingConsentLink] = useState(false);
+  // The originating consult's own treatment plan (if this admission came
+  // from one) — folded into the consent form's preview text below, same
+  // as the server does when the form is actually signed (see
+  // lib/consentForms.js's resolveConsentFormContext).
+  const [originVisitPlan, setOriginVisitPlan] = useState({ treatmentNotes: null, treatmentItems: [] });
   const [expandedDay, setExpandedDay] = useState(null);
   const [dayAddForm, setDayAddForm] = useState(emptyDayAddForm);
   const [dayAddSubmitting, setDayAddSubmitting] = useState(false);
@@ -151,6 +156,23 @@ export default function HospitalizationDetailPage() {
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    const visitId = admission?.originating_visit_id;
+    if (!visitId) {
+      setOriginVisitPlan({ treatmentNotes: null, treatmentItems: [] });
+      return;
+    }
+    Promise.all([
+      fetch(`/api/visits/${visitId}`).then((res) => res.json()),
+      fetch(`/api/treatment-items?visit_id=${visitId}`).then((res) => res.json()),
+    ]).then(([visit, treatmentItems]) => {
+      setOriginVisitPlan({
+        treatmentNotes: visit?.treatment_notes || null,
+        treatmentItems: Array.isArray(treatmentItems) ? treatmentItems : [],
+      });
+    });
+  }, [admission?.originating_visit_id]);
 
   function appendNoteText(text) {
     setNoteForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }));
@@ -569,7 +591,7 @@ export default function HospitalizationDetailPage() {
           <h3>Sign Hospitalization Consent</h3>
           {consentError && <p className="error">{consentError}</p>}
           <div className="consent-text-box">
-            {buildConsentFormText('hospitalization', { name: admission.patients?.name })}
+            {buildConsentFormText('hospitalization', { name: admission.patients?.name }, originVisitPlan)}
           </div>
           <input
             placeholder="Signed by (full name)"
