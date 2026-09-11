@@ -2570,6 +2570,9 @@ button.secondary:hover {
   border-radius: 8px;
   background: white;
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 240px);
+  min-height: 360px;
   margin-top: 0.5rem;
 }
 
