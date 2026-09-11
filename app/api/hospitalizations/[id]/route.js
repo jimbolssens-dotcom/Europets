@@ -1,6 +1,11 @@
 // app/api/hospitalizations/[id]/route.js
 // GET   /api/hospitalizations/:id  -> a single admission
-// PATCH /api/hospitalizations/:id  -> update status/room/reason; discharging sets discharged_at
+// PATCH /api/hospitalizations/:id  -> update status/room/reason; discharging sets discharged_at.
+//       Also: kind ('day_procedure' -> 'admission' — a day procedure that
+//       needs to stay longer, promoted in place rather than re-created),
+//       and originating_visit_id (linking a consult added afterward to a
+//       day procedure that didn't start with one — see the "Add Consult"
+//       button on the hospitalization page).
 
 import { supabase } from '@/lib/supabaseClient';
 import { attachCages } from '@/lib/attachCages';
@@ -34,7 +39,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { status, room_id, cage_id, reason, update_requested_at, ai_summary } = body;
+  const { status, room_id, cage_id, reason, update_requested_at, ai_summary, kind, originating_visit_id } = body;
 
   const update = {};
   if (status !== undefined) {
@@ -51,6 +56,13 @@ export async function PATCH(request, { params }) {
   if (cage_id !== undefined) update.cage_id = cage_id;
   if (reason !== undefined) update.reason = reason;
   if (ai_summary !== undefined) update.ai_summary = ai_summary || null;
+  if (kind !== undefined) {
+    if (!['admission', 'day_procedure'].includes(kind)) {
+      return NextResponse.json({ error: "kind must be 'admission' or 'day_procedure'" }, { status: 400 });
+    }
+    update.kind = kind;
+  }
+  if (originating_visit_id !== undefined) update.originating_visit_id = originating_visit_id || null;
   // Only ever set to null here (dismissing the "owner is waiting" flag from
   // staff's side) — the client portal sets the timestamp itself, via
   // POST /api/hospitalizations/:id/request-update.

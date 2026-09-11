@@ -72,6 +72,8 @@ export default function HospitalizationDetailPage() {
   const [invoiceInfo, setInvoiceInfo] = useState(null);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
   const [invoiceError, setInvoiceError] = useState(null);
+  const [addingConsult, setAddingConsult] = useState(false);
+  const [addConsultError, setAddConsultError] = useState(null);
   const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
   const [consentForms, setConsentForms] = useState([]);
   const [consentForm, setConsentForm] = useState({
@@ -87,6 +89,10 @@ export default function HospitalizationDetailPage() {
   // as the server does when the form is actually signed (see
   // lib/consentForms.js's resolveConsentFormContext).
   const [originVisitPlan, setOriginVisitPlan] = useState({ treatmentNotes: null, treatmentItems: [] });
+  // The day procedure/hospitalization's own dictated checklist — folded
+  // into the consent preview the same way the server does (see
+  // lib/consentForms.js's resolveConsentFormContext).
+  const [consentPlanItems, setConsentPlanItems] = useState([]);
   const [expandedDay, setExpandedDay] = useState(null);
   const [dayAddForm, setDayAddForm] = useState(emptyDayAddForm);
   const [dayAddSubmitting, setDayAddSubmitting] = useState(false);
@@ -179,6 +185,13 @@ export default function HospitalizationDetailPage() {
       });
     });
   }, [admission?.originating_visit_id]);
+
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/hospitalizations/${id}/plan-items`)
+      .then((res) => res.json())
+      .then((data) => setConsentPlanItems(Array.isArray(data) ? data : []));
+  }, [id]);
 
   function appendNoteText(text) {
     setNoteForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }));
@@ -387,7 +400,7 @@ export default function HospitalizationDetailPage() {
     const res = await fetch('/api/consent-forms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hospitalization_id: id, form_type: 'hospitalization', ...consentForm }),
+      body: JSON.stringify({ hospitalization_id: id, form_type: consentFormType, ...consentForm }),
     });
     const data = await res.json();
 
@@ -414,7 +427,7 @@ export default function HospitalizationDetailPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         hospitalization_id: id,
-        form_type: 'hospitalization',
+        form_type: consentFormType,
         sent_to_phone: admission.clients?.phone || null,
       }),
     });
@@ -510,6 +523,31 @@ export default function HospitalizationDetailPage() {
     loadAdmission();
   }
 
+  async function moveToHospital() {
+    if (!confirm('Move this day procedure to a full hospital admission?')) return;
+    await fetch(`/api/hospitalizations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: 'admission' }),
+    });
+    loadAdmission();
+  }
+
+  async function addConsult() {
+    setAddingConsult(true);
+    setAddConsultError(null);
+    try {
+      const res = await fetch(`/api/hospitalizations/${id}/add-consult`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not add a consult.');
+      router.push(`/consults/${data.id}`);
+    } catch (error) {
+      setAddConsultError(error.message);
+    } finally {
+      setAddingConsult(false);
+    }
+  }
+
   // Dismisses the "owner is waiting" flag (and the blinking cage on the
   // Cage Layout page) without necessarily logging a worksheet entry —
   // that also clears it automatically (see the notes route), this is for
@@ -529,6 +567,11 @@ export default function HospitalizationDetailPage() {
   const selectedPendingItem = catalog.find((c) => c.id === pendingItemForm.goods_service_id);
   const selectedDayAddItem = catalog.find((c) => c.id === dayAddForm.goods_service_id);
   const selectedNoteAddItem = catalog.find((c) => c.id === noteAddItemForm.goods_service_id);
+  const consentFormType = admission.kind === 'day_procedure' ? 'day_procedure' : 'hospitalization';
+  const consentPreviewPlan = {
+    treatmentNotes: originVisitPlan.treatmentNotes,
+    treatmentItems: [...originVisitPlan.treatmentItems, ...consentPlanItems],
+  };
 
   return (
     <div>
@@ -536,7 +579,8 @@ export default function HospitalizationDetailPage() {
         <h1>
           {admission.patients?.name}
           {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''}{' '}
-          <span>({admission.status})</span>
+          <span>({admission.status})</span>{' '}
+          {admission.kind === 'day_procedure' && <span className="day-procedure-badge">📋 Day Procedure</span>}
         </h1>
       </div>
       {admission.update_requested_at && (
@@ -593,6 +637,11 @@ export default function HospitalizationDetailPage() {
         {admission.status === 'admitted' && (
           <button type="button" className="button-link" onClick={discharge}>Discharge</button>
         )}
+        {admission.kind === 'day_procedure' && (
+          <button type="button" className="button-link" onClick={moveToHospital} title="This case needs to stay longer than planned">
+            Move to Hospital
+          </button>
+        )}
         <button type="button" className="button-link" onClick={createInvoice} disabled={creatingInvoice}
           title={invoiceInfo ? `Open the invoice (${invoiceInfo.status}), syncing in anything new from the worksheet` : 'Create an invoice from the medications, goods and services in this worksheet'}>
           {creatingInvoice ? 'Saving…' : invoiceInfo ? `Invoiced (${invoiceInfo.status})` : 'Invoice'}
@@ -602,9 +651,15 @@ export default function HospitalizationDetailPage() {
         <button type="button" className="button-link" onClick={copyPortalLink} title="Copy the live care-update link">
           {linkCopied ? 'Copied!' : 'Copy'}
         </button>
-        {admission.originating_visit_id && (
+        {admission.originating_visit_id ? (
           <a className="button-link" href={`/consults/${admission.originating_visit_id}`}>Originating consult</a>
+        ) : (
+          <button type="button" className="button-link" onClick={addConsult} disabled={addingConsult}
+            title="Most day procedures don't need one — only add this if you also want to write up an exam/consult note">
+            {addingConsult ? 'Adding…' : 'Add Consult'}
+          </button>
         )}
+        {addConsultError && <span className="error" role="alert">{addConsultError}</span>}
         <button type="button" className="button-link report-overview-pill" onClick={() => setReportsOpen((v) => !v)}>
           📑 {reportsOpen ? 'Hide Reports' : 'Reports'}
         </button>
@@ -652,7 +707,7 @@ export default function HospitalizationDetailPage() {
           </div>
         ))}
         <form className="card" onSubmit={addConsentForm}>
-          <h3>Sign Hospitalization Consent</h3>
+          <h3>Sign {CONSENT_FORM_LABELS[consentFormType]}</h3>
           {consentError && <p className="error">{consentError}</p>}
           <p className="visit-meta">
             Patient: {admission.patients?.name}
@@ -661,7 +716,7 @@ export default function HospitalizationDetailPage() {
             {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''}
           </p>
           <div className="consent-text-box">
-            {buildConsentFormText('hospitalization', { name: admission.patients?.name }, originVisitPlan)}
+            {buildConsentFormText(consentFormType, { name: admission.patients?.name }, consentPreviewPlan)}
           </div>
           <input
             placeholder="Signed by (full name)"

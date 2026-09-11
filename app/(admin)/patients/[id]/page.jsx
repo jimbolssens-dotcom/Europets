@@ -8,7 +8,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useVaccinations } from '@/app/_components/useVaccinations';
 import VaccinationForm from '@/app/_components/VaccinationForm';
@@ -31,6 +31,7 @@ const SEX_LABELS = {
 
 export default function PatientDetailPage() {
   const { id } = useParams();
+  const router = useRouter();
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState([]);
@@ -39,6 +40,7 @@ export default function PatientDetailPage() {
   const [editForm, setEditForm] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState(null);
+  const [startingDayProcedure, setStartingDayProcedure] = useState(false);
 
   const load = () =>
     fetch(`/api/patients/${id}`)
@@ -71,6 +73,21 @@ export default function PatientDetailPage() {
 
   const vac = useVaccinations(id, patient?.species);
   const patientAlerts = usePatientAlerts(id);
+
+  async function startDayProcedure() {
+    setStartingDayProcedure(true);
+    try {
+      const res = await fetch('/api/hospitalizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patient_id: id, client_id: patient.client_id, kind: 'day_procedure' }),
+      });
+      const data = await res.json();
+      if (res.ok) router.push(`/hospitalization/${data.id}`);
+    } finally {
+      setStartingDayProcedure(false);
+    }
+  }
 
   async function toggleDeceased() {
     const nextDeceased = !patient.deceased;
@@ -163,6 +180,9 @@ export default function PatientDetailPage() {
           <a href={`/consults?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
             New Consult
           </a>{' '}
+          <button type="button" className="button-link" onClick={startDayProcedure} disabled={startingDayProcedure}>
+            {startingDayProcedure ? 'Starting...' : '📋 Day Procedure'}
+          </button>{' '}
           <a href={`/invoices?client_id=${patient.client_id}`} className="button-link">
             Invoice
           </a>{' '}

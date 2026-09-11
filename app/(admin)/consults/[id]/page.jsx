@@ -746,7 +746,7 @@ export default function ConsultDetailPage() {
     }
   }
 
-  async function admitToHospital(e) {
+  async function admitToHospital(e, kind = 'admission') {
     e.preventDefault();
     if (linkedHospitalization) {
       router.push(`/hospitalization/${linkedHospitalization.id}`);
@@ -757,7 +757,7 @@ export default function ConsultDetailPage() {
       const res = await fetch('/api/hospitalizations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ originating_visit_id: id, reason: hospReason }),
+        body: JSON.stringify({ originating_visit_id: id, reason: hospReason, kind }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not admit the patient.');
@@ -846,7 +846,7 @@ export default function ConsultDetailPage() {
         </button>
         {linkedHospitalization ? (
           <a className="button-link consult-hospitalized" href={`/hospitalization/${linkedHospitalization.id}`}>
-            🏥 Hospitalized
+            {linkedHospitalization.kind === 'day_procedure' ? '📋 Day Procedure' : '🏥 Hospitalized'}
           </a>
         ) : checkingHospitalization || hospitalizationError ? (
           <button type="button" className="button-link" disabled={checkingHospitalization} onClick={loadLinkedHospitalization}>
@@ -854,14 +854,17 @@ export default function ConsultDetailPage() {
           </button>
         ) : <details className="consult-action-toggle">
           <summary className="button-link">🏥 Hospitalization</summary>
-          <form className="consult-action-dropdown" onSubmit={admitToHospital}>
+          <form className="consult-action-dropdown" onSubmit={(e) => admitToHospital(e, 'admission')}>
             <input
               placeholder="Reason for admission"
               value={hospReason}
               onChange={(e) => setHospReason(e.target.value)}
             />
             <button type="submit" disabled={admitting}>
-              {admitting ? 'Admitting...' : 'Admit'}
+              {admitting ? 'Admitting...' : 'Admit to Hospital'}
+            </button>
+            <button type="button" disabled={admitting} onClick={(e) => admitToHospital(e, 'day_procedure')}>
+              {admitting ? 'Starting...' : 'Start Day Procedure'}
             </button>
           </form>
         </details>}

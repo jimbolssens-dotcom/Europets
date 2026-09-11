@@ -1613,6 +1613,24 @@ button.secondary:hover {
   color: #19452f;
 }
 
+/* A same-day case (dropped off in the morning, picked up the same day)
+   living in the hospitalizations table alongside real admissions — this
+   just softens the "hospitalized" framing on its own page/header so it
+   doesn't read as an overnight stay. */
+.day-procedure-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: #fdf1da;
+  border: 1px solid #e0b96b;
+  color: #8a5a10;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  vertical-align: middle;
+}
+
 .consult-action-toggle summary {
   cursor: pointer;
   list-style: none;

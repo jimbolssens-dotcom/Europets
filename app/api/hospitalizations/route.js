@@ -1,11 +1,15 @@
 // app/api/hospitalizations/route.js
-// GET  /api/hospitalizations?status=admitted    -> list admissions
-// GET  /api/hospitalizations?patient_id=X        -> a patient's admission history
-// GET  /api/hospitalizations?client_id=X         -> an owner's admission history, across all their pets
-// POST /api/hospitalizations                     -> admit a patient
+// GET  /api/hospitalizations?status=admitted       -> list admissions
+// GET  /api/hospitalizations?patient_id=X           -> a patient's admission history
+// GET  /api/hospitalizations?client_id=X            -> an owner's admission history, across all their pets
+// GET  /api/hospitalizations?appointment_id=X       -> the day procedure checked in from that appointment
+// POST /api/hospitalizations                        -> admit a patient, or start a day procedure (kind: 'day_procedure')
 //
 // Can be started from a consult (pass originating_visit_id — the patient,
-// client, and room default from that visit) or standalone.
+// client, and room default from that visit), from a booked appointment
+// (pass appointment_id — a surgery-type slot checks in straight to a day
+// procedure instead of a consult, see the appointments page), or standalone
+// from the patient file.
 
 import { supabase } from '@/lib/supabaseClient';
 import { attachCages } from '@/lib/attachCages';
@@ -121,6 +125,7 @@ export async function GET(request) {
   const patientId = searchParams.get('patient_id');
   const clientId = searchParams.get('client_id');
   const originatingVisitId = searchParams.get('originating_visit_id');
+  const appointmentId = searchParams.get('appointment_id');
 
   let query = supabase
     .from('hospitalizations')
@@ -139,6 +144,9 @@ export async function GET(request) {
   if (originatingVisitId) {
     query = query.eq('originating_visit_id', originatingVisitId);
   }
+  if (appointmentId) {
+    query = query.eq('appointment_id', appointmentId);
+  }
 
   const { data, error } = await query;
 
@@ -152,7 +160,11 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  let { patient_id, client_id, originating_visit_id, room_id, cage_id, reason } = body;
+  let { patient_id, client_id, originating_visit_id, appointment_id, room_id, cage_id, reason, kind } = body;
+
+  if (kind && !['admission', 'day_procedure'].includes(kind)) {
+    return NextResponse.json({ error: "kind must be 'admission' or 'day_procedure'" }, { status: 400 });
+  }
 
   // A stale consult page should open its existing admission, not book it again.
   if (originating_visit_id) {
@@ -161,6 +173,18 @@ export async function POST(request) {
       .eq('originating_visit_id', originating_visit_id)
       .order('admitted_at', { ascending: false });
     if (linkedError) return NextResponse.json({ error: 'Could not check the linked hospitalization. Please try again.' }, { status: 500 });
+    const existing = linked?.find((row) => row.status === 'admitted') || linked?.[0];
+    if (existing) return NextResponse.json(existing);
+  }
+
+  // Same idea for a booked appointment checked in twice — reopen the same
+  // day procedure instead of starting a second one.
+  if (appointment_id) {
+    const { data: linked, error: linkedError } = await supabase
+      .from('hospitalizations').select('*')
+      .eq('appointment_id', appointment_id)
+      .order('admitted_at', { ascending: false });
+    if (linkedError) return NextResponse.json({ error: 'Could not check the linked day procedure. Please try again.' }, { status: 500 });
     const existing = linked?.find((row) => row.status === 'admitted') || linked?.[0];
     if (existing) return NextResponse.json(existing);
   }
@@ -180,9 +204,24 @@ export async function POST(request) {
     room_id = room_id || visit.room_id;
   }
 
+  if (appointment_id && (!patient_id || !client_id)) {
+    const { data: appointment, error: apptError } = await supabase
+      .from('appointments')
+      .select('patient_id, client_id, room_id')
+      .eq('id', appointment_id)
+      .single();
+
+    if (apptError || !appointment) {
+      return NextResponse.json({ error: 'appointment not found' }, { status: 400 });
+    }
+    patient_id = patient_id || appointment.patient_id;
+    client_id = client_id || appointment.client_id;
+    room_id = room_id || appointment.room_id;
+  }
+
   if (!patient_id || !client_id) {
     return NextResponse.json(
-      { error: 'patient_id and client_id are required (directly, or via originating_visit_id)' },
+      { error: 'patient_id and client_id are required (directly, or via originating_visit_id/appointment_id)' },
       { status: 400 }
     );
   }
@@ -194,9 +233,11 @@ export async function POST(request) {
         patient_id,
         client_id,
         originating_visit_id: originating_visit_id || null,
+        appointment_id: appointment_id || null,
         room_id: room_id || null,
         cage_id: cage_id || null,
         reason: reason || null,
+        kind: kind || 'admission',
       },
     ])
     .select('*, patients(name, species, patient_number, current_weight_kg), clients(full_name, phone, client_number), rooms(name)')
@@ -210,5 +251,10 @@ export async function POST(request) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  if (appointment_id) {
+    await supabase.from('appointments').update({ status: 'checked_in' }).eq('id', appointment_id);
+  }
+
   return NextResponse.json(await attachCages(data), { status: 201 });
 }

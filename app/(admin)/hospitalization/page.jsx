@@ -352,6 +352,8 @@ export default function HospitalizationPage() {
   if (loading) return <p>Loading hospitalization...</p>;
 
   const admitted = admissions.filter((a) => a.status === 'admitted');
+  const admittedStays = admitted.filter((a) => a.kind !== 'day_procedure');
+  const admittedDayProcedures = admitted.filter((a) => a.kind === 'day_procedure');
   const discharged = admissions.filter((a) => a.status === 'discharged').slice(0, 20);
   const occupancy = Object.fromEntries(admitted.filter((a) => a.cage_id).map((a) => [a.cage_id, a]));
   const unassignedAdmitted = admitted.filter((a) => !a.cage_id);
@@ -439,7 +441,7 @@ export default function HospitalizationPage() {
 
       <div hidden={activeTab !== 'list'}>
         <h2>Currently Admitted</h2>
-        {admitted.length === 0 ? (
+        {admittedStays.length === 0 ? (
           <p>No patients currently admitted.</p>
         ) : (
           <table>
@@ -454,7 +456,7 @@ export default function HospitalizationPage() {
               </tr>
             </thead>
             <tbody>
-              {admitted.map((a) => (
+              {admittedStays.map((a) => (
                 <tr key={a.id}>
                   <td>
                     {a.patients?.name}
@@ -465,6 +467,42 @@ export default function HospitalizationPage() {
                     {a.clients?.client_number ? ` (Client #${a.clients.client_number})` : ''}
                   </td>
                   <td>{a.cages?.name || '—'}</td>
+                  <td>{a.reason || '—'}</td>
+                  <td>{new Date(a.admitted_at).toLocaleString()}</td>
+                  <td>
+                    <a href={`/hospitalization/${a.id}`}>Open</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        <h2>📋 Today&apos;s Day Procedures</h2>
+        {admittedDayProcedures.length === 0 ? (
+          <p>No day procedures in progress.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Owner</th>
+                <th>Reason</th>
+                <th>Started</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {admittedDayProcedures.map((a) => (
+                <tr key={a.id}>
+                  <td>
+                    {a.patients?.name}
+                    {a.patients?.patient_number ? ` (Patient #${a.patients.patient_number})` : ''}
+                  </td>
+                  <td>
+                    {a.clients?.full_name}
+                    {a.clients?.client_number ? ` (Client #${a.clients.client_number})` : ''}
+                  </td>
                   <td>{a.reason || '—'}</td>
                   <td>{new Date(a.admitted_at).toLocaleString()}</td>
                   <td>
@@ -495,6 +533,7 @@ export default function HospitalizationPage() {
                   <td>
                     {a.patients?.name}
                     {a.patients?.patient_number ? ` (Patient #${a.patients.patient_number})` : ''}
+                    {a.kind === 'day_procedure' && <span className="day-procedure-badge"> 📋 Day Procedure</span>}
                   </td>
                   <td>
                     {a.clients?.full_name}
