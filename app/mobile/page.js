@@ -84,7 +84,9 @@ export default function MobileHomePage() {
             <a href="/" className="mobile-home-logo-link">
               <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
             </a>
-            <h1 className="mobile-greeting">Hello, {firstName || 'there'}!</h1>
+            <a href="/mobile/schedule" className="mobile-greeting" title="Go to your schedule">
+              Hello, {firstName || 'there'}!
+            </a>
           </div>
           <button type="button" className="mobile-link-btn" onClick={switchStaff}>
             Switch
@@ -107,6 +109,10 @@ export default function MobileHomePage() {
                 <span className="mobile-square-tile-icon">🏥</span>
                 <span>Hospitalization{updatePending && ' 🔔'}</span>
               </a>
+              <a href="/mobile/day-procedures" className="mobile-square-tile">
+                <span className="mobile-square-tile-icon">📋</span>
+                <span>Day Procedures</span>
+              </a>
               <a href="/mobile/dental" className="mobile-square-tile">
                 <span className="mobile-square-tile-icon">🦷</span>
                 <span>Dental Report</span>
@@ -118,10 +124,6 @@ export default function MobileHomePage() {
               <a href="/mobile/scan-receipt" className="mobile-square-tile">
                 <span className="mobile-square-tile-icon">🧾</span>
                 <span>Scan Receipt</span>
-              </a>
-              <a href="/mobile/schedule" className="mobile-square-tile">
-                <span className="mobile-square-tile-icon">📅</span>
-                <span>My Schedule</span>
               </a>
             </div>
           )}

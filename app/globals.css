@@ -4272,6 +4272,7 @@ form.card.admit-patient-form {
   font-size: 2.2rem;
   color: var(--pink);
   margin: 0.5rem 0 0.25rem;
+  text-decoration: none;
 }
 
 .mobile-hint {

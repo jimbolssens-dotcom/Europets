@@ -17,30 +17,29 @@ import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
-import { isDentalProduct } from '@/lib/dentalProduct';
-import { isSpayNeuterProduct } from '@/lib/spayNeuterProduct';
-import { isVaccineProduct } from '@/lib/vaccineProduct';
-import { isXrayTest } from '@/lib/xrayProduct';
-import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
+import { checklistItemAction } from '@/lib/checklistItemAction';
+import { ensureSurgicalReport } from '@/lib/surgicalReportAuto';
 import { supabase } from '@/lib/supabaseClient';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 const CONSOLIDATE_WINDOW_MS = 5 * 60 * 1000;
 
+const ACTION_LINKS = {
+  dental: { href: '#report-dental', label: 'Open Dental Report' },
+  spay_neuter: { href: '#report-surgical', label: 'Open Surgical Report' },
+  surgery: { href: '#report-surgical', label: 'Open Surgical Report' },
+  xray: { href: '#report-xray', label: 'Open X-ray Report' },
+  ultrasound: { href: '#report-ultrasound', label: 'Open Ultrasound Report' },
+  vaccine: { href: '#vaccination', label: 'Open Vaccination' },
+  test: { href: '#report-test-results', label: 'Enter Test Result' },
+};
+
 // Which report/input a checklist item's link should jump to, based on the
 // matched catalog item's name (falling back to the dictated label when
-// there's no catalog match) — mirrors the same name-matching already used
-// to fold consent language in (lib/consentTemplates.js).
-function checklistLink(item, catalog) {
-  const catalogItem = catalog.find((c) => c.id === item.goods_service_id);
-  const name = catalogItem?.name || item.label || '';
-  if (isDentalProduct(name)) return { href: '#report-dental', label: 'Open Dental Report' };
-  if (isSpayNeuterProduct(name)) return { href: '#report-surgical', label: 'Open Surgical Report' };
-  if (isXrayTest(name)) return { href: '#report-xray', label: 'Open X-ray Report' };
-  if (isUltrasoundTest(name)) return { href: '#report-ultrasound', label: 'Open Ultrasound Report' };
-  if (isVaccineProduct(name)) return { href: '#vaccination', label: 'Open Vaccination' };
-  if (catalogItem?.main_category === 'test') return { href: '#report-test-results', label: 'Enter Test Result' };
-  return null;
+// there's no catalog match) — see lib/checklistItemAction.js, shared with
+// the mobile Day Procedure checklist.
+function checklistLink(item, catalog, subcategories) {
+  return ACTION_LINKS[checklistItemAction(item, catalog, subcategories)] || null;
 }
 
 function todayISODate() {
@@ -154,6 +153,19 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
     }
     setLoggingId(null);
     loadLoggedNotes();
+
+    // A spay/neuter or other surgery gets its own surgical report the
+    // moment it's confirmed done, instead of waiting for someone to
+    // separately start one from Reports — see lib/surgicalReportAuto.js.
+    const action = checklistItemAction(item, catalog, subcategories);
+    if (action === 'spay_neuter' || action === 'surgery') {
+      const catalogItem = catalog.find((c) => c.id === item.goods_service_id);
+      ensureSurgicalReport({
+        hospitalizationId,
+        procedureName: catalogItem?.name || item.label,
+        isSpayNeuter: action === 'spay_neuter',
+      }).catch(() => {});
+    }
   }
 
   async function createTaskNote(item) {
@@ -333,7 +345,7 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
         const done = doneEntries(item.id);
         const isDone = done.length > 0;
         const last = done[done.length - 1];
-        const link = checklistLink(item, catalog);
+        const link = checklistLink(item, catalog, subcategories);
         return (
           <div key={item.id} className="procedure-checklist-row">
             <button
