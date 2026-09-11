@@ -15,7 +15,7 @@ const REPORT_TYPES = [
 ];
 const labels = Object.fromEntries(REPORT_TYPES);
 
-export default function HospitalizationTestReports({ hospitalizationId, notes = [] }) {
+export default function HospitalizationTestReports({ hospitalizationId }) {
   const [reports, setReports] = useState([]);
   const [admission, setAdmission] = useState(null);
   const [type, setType] = useState('blood');
