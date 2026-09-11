@@ -829,10 +829,11 @@ export default function ConsultDetailPage() {
         <button
           type="button"
           className="button-link"
-          onClick={() => (invoiceInfo ? router.push(`/invoices/${invoiceInfo.id}`) : createInvoice())}
+          onClick={createInvoice}
           disabled={creatingInvoice}
+          title={invoiceInfo ? 'Open the invoice, syncing in anything new from the treatment plan' : 'Create an invoice from the treatment plan'}
         >
-          🧾 {invoiceInfo ? `Invoice (${invoiceInfo.status})` : creatingInvoice ? 'Creating...' : 'Invoice'}
+          🧾 {creatingInvoice ? 'Saving...' : invoiceInfo ? `Invoiced (${invoiceInfo.status})` : 'Invoice'}
         </button>
         {linkedHospitalization ? (
           <a className="button-link consult-hospitalized" href={`/hospitalization/${linkedHospitalization.id}`}>

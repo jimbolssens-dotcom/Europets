@@ -1,41 +1,26 @@
 // app/api/hospitalizations/[id]/invoice/route.js
-// POST /api/hospitalizations/:id/invoice -> create an invoice for this
-// admission and import every treatment item (medication/goods/service/test,
-// with the quantity logged) as a line item. The same medication logged
-// across multiple days (e.g. one Doxycycline tablet daily for a 5-day
-// stay, one worksheet entry/treatment_items row per day) consolidates
-// into a single line with the quantities summed (5 tablets), instead of
-// one line per day it was given — see the grouping below. A medication
-// with an administration method has that fee folded straight into the
-// consolidated line rather than shown separately: SC/IM once per day it
-// was actually given (an injection is a real per-day event), dispensing
-// only once total no matter how many days the course ran (dispensing the
-// tablets happens once, not once per dose taken from that supply) — see
-// lib/invoicing.js. If a non-void invoice already exists for this
-// admission, that one is returned instead — no duplicates.
+// POST /api/hospitalizations/:id/invoice -> find-or-create the invoice
+// for this admission, then sync it against every current treatment item
+// logged on the daily worksheet, plus the originating consult's own
+// treatment plan if there is one (see lib/invoicing.js#
+// gatherInvoiceTreatmentItems) — the same source of truth the consult
+// page's own Invoice button uses (app/api/visits/[id]/invoice), so
+// whichever page it's opened from shows the same up-to-date invoice.
+// Meant to be called every time the Invoice button is pressed, not just
+// once — see syncInvoiceTreatmentItems for how a re-sync only adds
+// what's new and leaves existing lines (manual edits, removed lines,
+// recorded payments) untouched.
 
 import { supabase } from '@/lib/supabaseClient';
-import { recomputeInvoiceTotals, buildMedicationLineItems } from '@/lib/invoicing';
+import { gatherInvoiceTreatmentItems, syncInvoiceTreatmentItems } from '@/lib/invoicing';
 import { NextResponse } from 'next/server';
 
 export async function POST(request, { params }) {
   const hospitalizationId = params.id;
 
-  const { data: existing } = await supabase
-    .from('invoices')
-    .select('id')
-    .eq('hospitalization_id', hospitalizationId)
-    .neq('status', 'void')
-    .limit(1)
-    .maybeSingle();
-
-  if (existing) {
-    return NextResponse.json({ id: existing.id, existing: true });
-  }
-
   const { data: admission, error: admissionError } = await supabase
     .from('hospitalizations')
-    .select('client_id')
+    .select('client_id, originating_visit_id')
     .eq('id', hospitalizationId)
     .single();
 
@@ -43,48 +28,58 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'admission not found' }, { status: 404 });
   }
 
-  const { data: invoice, error: invoiceError } = await supabase
+  let { data: existing } = await supabase
     .from('invoices')
-    .insert([{ client_id: admission.client_id, hospitalization_id: hospitalizationId }])
-    .select()
-    .single();
-
-  if (invoiceError) {
-    return NextResponse.json({ error: invoiceError.message }, { status: 500 });
-  }
-
-  // Items are logged against a worksheet entry, not the admission
-  // directly (see migration 019) — find every entry for this admission
-  // first, then every item logged under any of them.
-  const { data: noteRows } = await supabase
-    .from('hospitalization_notes')
     .select('id')
-    .eq('hospitalization_id', hospitalizationId);
-  const noteIds = (noteRows || []).map((n) => n.id);
+    .eq('hospitalization_id', hospitalizationId)
+    .neq('status', 'void')
+    .limit(1)
+    .maybeSingle();
 
-  const [{ data: treatmentItems }, { data: clinicSettings }] = await Promise.all([
-    noteIds.length > 0
-      ? supabase
-          .from('treatment_items')
-          .select('*, goods_services(id, name, base_price)')
-          .in('hospitalization_note_id', noteIds)
-      : Promise.resolve({ data: [] }),
-    supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
-  ]);
-
-  const lineItems = buildMedicationLineItems(treatmentItems, invoice.id, clinicSettings);
-
-  if (lineItems.length > 0) {
-    const { error: lineItemsError } = await supabase.from('invoice_line_items').insert(lineItems);
-    if (lineItemsError) {
-      return NextResponse.json({ error: lineItemsError.message }, { status: 500 });
+  // Not found by hospitalization_id — but if the originating consult was
+  // already invoiced before this admission existed (or before it was
+  // linked), that invoice is still the right one to use. Adopt it instead
+  // of creating a second invoice for the same medications.
+  if (!existing && admission.originating_visit_id) {
+    const { data: consultInvoice } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('visit_id', admission.originating_visit_id)
+      .neq('status', 'void')
+      .limit(1)
+      .maybeSingle();
+    if (consultInvoice) {
+      await supabase.from('invoices').update({ hospitalization_id: hospitalizationId }).eq('id', consultInvoice.id);
+      existing = consultInvoice;
     }
   }
 
-  const { error: totalsError } = await recomputeInvoiceTotals(supabase, invoice.id);
-  if (totalsError) {
-    return NextResponse.json({ error: totalsError.message }, { status: 500 });
+  let invoiceId = existing?.id;
+
+  if (!invoiceId) {
+    const invoiceInsert = { client_id: admission.client_id, hospitalization_id: hospitalizationId };
+    if (admission.originating_visit_id) invoiceInsert.visit_id = admission.originating_visit_id;
+
+    const { data: invoice, error: invoiceError } = await supabase
+      .from('invoices')
+      .insert([invoiceInsert])
+      .select()
+      .single();
+
+    if (invoiceError) {
+      return NextResponse.json({ error: invoiceError.message }, { status: 500 });
+    }
+    invoiceId = invoice.id;
   }
 
-  return NextResponse.json({ id: invoice.id, existing: false }, { status: 201 });
+  const treatmentItems = await gatherInvoiceTreatmentItems(supabase, {
+    visitId: admission.originating_visit_id,
+    hospitalizationIds: [hospitalizationId],
+  });
+  const { error: syncError } = await syncInvoiceTreatmentItems(supabase, invoiceId, treatmentItems);
+  if (syncError) {
+    return NextResponse.json({ error: syncError.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ id: invoiceId, existing: Boolean(existing) }, { status: existing ? 200 : 201 });
 }

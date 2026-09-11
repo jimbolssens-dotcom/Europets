@@ -593,14 +593,10 @@ export default function HospitalizationDetailPage() {
         {admission.status === 'admitted' && (
           <button type="button" className="button-link" onClick={discharge}>Discharge</button>
         )}
-        {invoiceInfo ? (
-          <a className="button-link" href={`/invoices/${invoiceInfo.id}`} title={`Invoice status: ${invoiceInfo.status}`}>Invoice</a>
-        ) : (
-          <button type="button" className="button-link" onClick={createInvoice} disabled={creatingInvoice}
-            title="Create an invoice from the medications, goods and services in this worksheet">
-            {creatingInvoice ? 'Creating…' : 'Invoice'}
-          </button>
-        )}
+        <button type="button" className="button-link" onClick={createInvoice} disabled={creatingInvoice}
+          title={invoiceInfo ? `Open the invoice (${invoiceInfo.status}), syncing in anything new from the worksheet` : 'Create an invoice from the medications, goods and services in this worksheet'}>
+          {creatingInvoice ? 'Saving…' : invoiceInfo ? `Invoiced (${invoiceInfo.status})` : 'Invoice'}
+        </button>
         <button type="button" className="button-link" onClick={downloadSummaryPdf} title="Download the summary PDF">Summary</button>
         <button type="button" className="button-link" onClick={shareViaWhatsApp} title="Open WhatsApp, then attach the downloaded summary PDF">Share</button>
         <button type="button" className="button-link" onClick={copyPortalLink} title="Copy the live care-update link">
