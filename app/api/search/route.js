@@ -45,7 +45,7 @@ export async function GET(request) {
     wantPatients
       ? supabase
           .from('patients')
-          .select('*, clients(id, full_name, phone)')
+          .select('*, clients(id, full_name, phone, client_number)')
           .or(`name.ilike.${term},breed.ilike.${term},microchip_number.ilike.${term}`)
           .order('name', { ascending: true })
           .limit(limit)

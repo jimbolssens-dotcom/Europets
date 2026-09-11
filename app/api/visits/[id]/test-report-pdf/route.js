@@ -24,7 +24,7 @@ const MAX_PHOTOS = 12;
 export async function GET(request, { params }) {
   const { data: visit, error } = await supabase
     .from('visits')
-    .select('started_at, test_results, patients(name, species), clients(full_name)')
+    .select('started_at, test_results, patients(name, species, patient_number), clients(full_name, client_number)')
     .eq('id', params.id)
     .single();
 

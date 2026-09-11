@@ -56,9 +56,13 @@ export default function MobileDentalReportPage() {
       <MobileHomeButton />
       {visit && (
         <>
-          <h1>{visit.patients?.name}</h1>
+          <h1>
+            {visit.patients?.name}
+            {visit.patients?.patient_number ? ` (Patient #${visit.patients.patient_number})` : ''}
+          </h1>
           <p className="mobile-subtitle">
-            {visit.clients?.full_name} · {visit.patients?.species}
+            {visit.clients?.full_name}
+            {visit.clients?.client_number ? ` (Client #${visit.clients.client_number})` : ''} · {visit.patients?.species}
           </p>
 
           <p className="mobile-hint">

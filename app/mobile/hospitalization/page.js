@@ -57,7 +57,10 @@ function MobileCageTile({ cage, hosp, checkinOnly }) {
           {needsAttention && <span title={attention.join(' • ')}>🔔</span>}
           {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
         </div>
-        <div className="cage-patient">{hosp.patients?.name}</div>
+        <div className="cage-patient">
+          {hosp.patients?.name}
+          {hosp.patients?.patient_number ? ` (#${hosp.patients.patient_number})` : ''}
+        </div>
       </a>
     );
   }

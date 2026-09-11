@@ -21,7 +21,7 @@ export async function GET(request) {
   let query = supabase
     .from('invoices')
     .select(
-      '*, clients(full_name, phone, email), visits(patient_id, patients(name)), hospitalizations(patient_id, patients(name))'
+      '*, clients(full_name, phone, email, client_number), visits(patient_id, patients(name, patient_number)), hospitalizations(patient_id, patients(name, patient_number))'
     )
     .order('created_at', { ascending: false });
 

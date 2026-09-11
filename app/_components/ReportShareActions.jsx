@@ -15,14 +15,22 @@ export default function ReportShareActions({ apiBase, reportId, client, patient,
     return `${window.location.origin}${apiBase}/${reportId}/${pdfPath}`;
   }
 
+  function clientLabel() {
+    return `${client?.full_name || 'there'}${client?.client_number ? ` (Client #${client.client_number})` : ''}`;
+  }
+
+  function patientLabel() {
+    return `${patient?.name || 'your pet'}${patient?.patient_number ? ` (Patient #${patient.patient_number})` : ''}`;
+  }
+
   function shareViaWhatsApp() {
-    const message = `Hi ${client?.full_name || 'there'}, here is the ${reportLabel} for ${patient?.name || 'your pet'}: ${reportPdfUrl()}`;
+    const message = `Hi ${clientLabel()}, here is the ${reportLabel} for ${patientLabel()}: ${reportPdfUrl()}`;
     openWhatsApp(client?.phone, message);
   }
 
   function shareViaEmail() {
-    const subject = `${patient?.name || 'Your pet'} — ${reportLabel}`;
-    const body = `Hi ${client?.full_name || 'there'},\n\nHere is the ${reportLabel} for ${patient?.name || 'your pet'}: ${reportPdfUrl()}\n\nPlease don't hesitate to reach out if you have any questions.`;
+    const subject = `${patientLabel()} — ${reportLabel}`;
+    const body = `Hi ${clientLabel()},\n\nHere is the ${reportLabel} for ${patientLabel()}: ${reportPdfUrl()}\n\nPlease don't hesitate to reach out if you have any questions.`;
     window.open(`mailto:${client?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
   }
 

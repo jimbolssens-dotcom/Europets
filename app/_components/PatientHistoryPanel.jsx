@@ -80,8 +80,12 @@ export default function PatientHistoryPanel({
   if (events.length === 0) return null;
 
   function patientNameFor(item) {
-    if (item.type === 'consult' || item.type === 'hospitalization') return item.data.patients?.name;
-    return item.data.visits?.patients?.name || item.data.hospitalizations?.patients?.name;
+    const patient =
+      item.type === 'consult' || item.type === 'hospitalization'
+        ? item.data.patients
+        : item.data.visits?.patients || item.data.hospitalizations?.patients;
+    if (!patient?.name) return null;
+    return `${patient.name}${patient.patient_number ? ` (Patient #${patient.patient_number})` : ''}`;
   }
 
   return (

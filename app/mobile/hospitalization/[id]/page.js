@@ -216,8 +216,14 @@ export default function MobileHospitalizationPage() {
       <MobileHomeButton />
       {admission && (
         <>
-          <h1>{admission.cages?.name || 'No cage'} — {admission.patients?.name}</h1>
-          <p className="mobile-subtitle">{admission.clients?.full_name}</p>
+          <h1>
+            {admission.cages?.name || 'No cage'} — {admission.patients?.name}
+            {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''}
+          </h1>
+          <p className="mobile-subtitle">
+            {admission.clients?.full_name}
+            {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''}
+          </p>
 
           <DayTreatmentPlan
             hospitalizationId={id}

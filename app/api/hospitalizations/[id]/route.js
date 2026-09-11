@@ -17,7 +17,7 @@ export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 const SELECT_WITH_RELATIONS =
-  '*, patients(id, name, species, current_weight_kg), clients(id, full_name, phone), rooms(name)';
+  '*, patients(id, name, species, patient_number, current_weight_kg), clients(id, full_name, phone, client_number), rooms(name)';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase

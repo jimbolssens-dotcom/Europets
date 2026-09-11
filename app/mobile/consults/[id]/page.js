@@ -28,9 +28,14 @@ export default function MobileConsultPage() {
       <MobileHomeButton />
       {consult && (
         <>
-          <h1>{consult.patients?.name}</h1>
+          <h1>
+            {consult.patients?.name}
+            {consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''}
+          </h1>
           <p className="mobile-subtitle">
-            {consult.clients?.full_name} · {consult.patients?.species}
+            {consult.clients?.full_name}
+            {consult.clients?.client_number ? ` (Client #${consult.clients.client_number})` : ''} ·{' '}
+            {consult.patients?.species}
           </p>
           <p className="mobile-hint">
             Recording fills in Anamnesis, Findings, Diagnosis, and Treatment plan directly, plus

@@ -75,8 +75,14 @@ export default function MobileConsultsPage() {
                 {walkIns.map((v) => (
                   <li key={v.id}>
                     <a href={`/mobile/consults/${v.id}`} className="mobile-list-item">
-                      <span className="mobile-list-title">{v.patients?.name}</span>
-                      <span className="mobile-list-meta">{v.clients?.full_name}</span>
+                      <span className="mobile-list-title">
+                        {v.patients?.name}
+                        {v.patients?.patient_number ? ` (Patient #${v.patients.patient_number})` : ''}
+                      </span>
+                      <span className="mobile-list-meta">
+                        {v.clients?.full_name}
+                        {v.clients?.client_number ? ` (Client #${v.clients.client_number})` : ''}
+                      </span>
                     </a>
                   </li>
                 ))}

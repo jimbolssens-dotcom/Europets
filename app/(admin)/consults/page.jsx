@@ -139,8 +139,10 @@ function ConsultsPageInner() {
   }
 
   async function deleteConsult(consult) {
-    if (!confirm(`Delete this consult for ${consult.patients?.name}? This cannot be undone.`))
-      return;
+    const patientLabel = `${consult.patients?.name}${
+      consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''
+    }`;
+    if (!confirm(`Delete this consult for ${patientLabel}? This cannot be undone.`)) return;
     setRowError(null);
 
     const res = await fetch(`/api/visits/${consult.id}`, { method: 'DELETE' });
@@ -195,8 +197,14 @@ function ConsultsPageInner() {
           <tbody>
             {active.map((c) => (
               <tr key={c.id}>
-                <td>{c.patients?.name}</td>
-                <td>{c.clients?.full_name}</td>
+                <td>
+                  {c.patients?.name}
+                  {c.patients?.patient_number ? ` (Patient #${c.patients.patient_number})` : ''}
+                </td>
+                <td>
+                  {c.clients?.full_name}
+                  {c.clients?.client_number ? ` (Client #${c.clients.client_number})` : ''}
+                </td>
                 <td>{c.rooms?.name}</td>
                 <td>{c.staff?.full_name || 'unassigned'}</td>
                 <td>{elapsedMinutes(c.started_at)} min</td>
@@ -231,8 +239,14 @@ function ConsultsPageInner() {
               const hosp = c.hospitalizations?.find((h) => h.status === 'admitted');
               return (
                 <tr key={c.id}>
-                  <td>{c.patients?.name}</td>
-                  <td>{c.clients?.full_name}</td>
+                  <td>
+                    {c.patients?.name}
+                    {c.patients?.patient_number ? ` (Patient #${c.patients.patient_number})` : ''}
+                  </td>
+                  <td>
+                    {c.clients?.full_name}
+                    {c.clients?.client_number ? ` (Client #${c.clients.client_number})` : ''}
+                  </td>
                   <td>{c.staff?.full_name || 'unassigned'}</td>
                   <td>{hosp?.admitted_at ? new Date(hosp.admitted_at).toLocaleString() : '—'}</td>
                   <td>
@@ -262,8 +276,14 @@ function ConsultsPageInner() {
           <tbody>
             {completed.map((c) => (
               <tr key={c.id}>
-                <td>{c.patients?.name}</td>
-                <td>{c.clients?.full_name}</td>
+                <td>
+                  {c.patients?.name}
+                  {c.patients?.patient_number ? ` (Patient #${c.patients.patient_number})` : ''}
+                </td>
+                <td>
+                  {c.clients?.full_name}
+                  {c.clients?.client_number ? ` (Client #${c.clients.client_number})` : ''}
+                </td>
                 <td>{c.ended_at ? new Date(c.ended_at).toLocaleString() : '—'}</td>
                 <td>
                   <a href={`/consults/${c.id}`}>Open</a>
@@ -284,7 +304,11 @@ function ConsultsPageInner() {
         {error && <p className="error">{error}</p>}
         {selectedOwner ? (
           <p className="booking-owner-picked">
-            Owner: <strong>{selectedOwner.full_name}</strong>{' '}
+            Owner:{' '}
+            <strong>
+              {selectedOwner.full_name}
+              {selectedOwner.client_number ? ` (Client #${selectedOwner.client_number})` : ''}
+            </strong>{' '}
             <button
               type="button"
               onClick={() => {
@@ -299,11 +323,15 @@ function ConsultsPageInner() {
           <ClientOrPatientSearch
             placeholder="Search clients or patients..."
             onPickClient={(c) => {
-              setSelectedOwner({ id: c.id, full_name: c.full_name });
+              setSelectedOwner({ id: c.id, full_name: c.full_name, client_number: c.client_number });
               setWalkIn({ ...walkIn, client_id: c.id, patient_id: '' });
             }}
             onPickPatient={(p) => {
-              setSelectedOwner({ id: p.client_id, full_name: p.clients?.full_name || '' });
+              setSelectedOwner({
+                id: p.client_id,
+                full_name: p.clients?.full_name || '',
+                client_number: p.clients?.client_number,
+              });
               setWalkIn({ ...walkIn, client_id: p.client_id, patient_id: p.id });
             }}
           />
@@ -312,7 +340,7 @@ function ConsultsPageInner() {
           items={clientPatients}
           value={walkIn.patient_id}
           onChange={(patient_id) => setWalkIn({ ...walkIn, patient_id })}
-          getLabel={(p) => p.name}
+          getLabel={(p) => (p.patient_number ? `${p.name} (Patient #${p.patient_number})` : p.name)}
           getSubLabel={(p) => p.species}
           placeholder="Select patient..."
           disabled={!walkIn.client_id}

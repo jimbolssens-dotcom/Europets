@@ -12,7 +12,7 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function MicrochipCaptureModal({ patientName, confirmLabel = 'Save', onCancel, onConfirm }) {
+export default function MicrochipCaptureModal({ patientName, patientNumber, confirmLabel = 'Save', onCancel, onConfirm }) {
   const [number, setNumber] = useState('');
   const [date, setDate] = useState(today());
   const [error, setError] = useState(null);
@@ -34,7 +34,10 @@ export default function MicrochipCaptureModal({ patientName, confirmLabel = 'Sav
   return (
     <div className="modal-backdrop" onClick={submitting ? undefined : onCancel}>
       <form className="modal-panel microchip-modal-panel" onClick={(e) => e.stopPropagation()} onSubmit={handleConfirm}>
-        <h3>Microchip Implanted{patientName ? ` — ${patientName}` : ''}</h3>
+        <h3>
+          Microchip Implanted
+          {patientName ? ` — ${patientName}${patientNumber ? ` (Patient #${patientNumber})` : ''}` : ''}
+        </h3>
         <p className="visit-meta">
           This will be saved to the patient file as the microchip number and implantation date.
         </p>

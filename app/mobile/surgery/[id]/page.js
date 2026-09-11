@@ -33,9 +33,13 @@ export default function MobileSurgicalReportPage() {
       <MobileHomeButton />
       {report && (
         <>
-          <h1>{patient?.name}</h1>
+          <h1>
+            {patient?.name}
+            {patient?.patient_number ? ` (Patient #${patient.patient_number})` : ''}
+          </h1>
           <p className="mobile-subtitle">
-            {client?.full_name} · {patient?.species}
+            {client?.full_name}
+            {client?.client_number ? ` (Client #${client.client_number})` : ''} · {patient?.species}
           </p>
 
           <p className="mobile-hint">

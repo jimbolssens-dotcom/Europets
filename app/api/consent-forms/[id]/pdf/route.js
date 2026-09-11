@@ -20,8 +20,8 @@ export async function GET(request, { params }) {
   }
 
   const [{ data: patient }, { data: client }, { data: clinic }] = await Promise.all([
-    supabase.from('patients').select('name, species').eq('id', consentForm.patient_id).single(),
-    supabase.from('clients').select('full_name').eq('id', consentForm.client_id).single(),
+    supabase.from('patients').select('name, species, patient_number').eq('id', consentForm.patient_id).single(),
+    supabase.from('clients').select('full_name, client_number').eq('id', consentForm.client_id).single(),
     supabase.from('clinic_settings').select('*').eq('id', true).single(),
   ]);
 

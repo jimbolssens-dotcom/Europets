@@ -425,7 +425,13 @@ export default function HospitalizationDetailPage() {
     }
     const url = `${window.location.origin}/portal/consent/${data.id}`;
     const digits = (admission.clients?.phone || '').replace(/\D/g, '');
-    const message = `Hi ${admission.clients?.full_name || 'there'}! Please review and sign this consent form for ${admission.patients?.name || 'your pet'}: ${url}`;
+    const clientLabel = `${admission.clients?.full_name || 'there'}${
+      admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''
+    }`;
+    const patientLabel = `${admission.patients?.name || 'your pet'}${
+      admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''
+    }`;
+    const message = `Hi ${clientLabel}! Please review and sign this consent form for ${patientLabel}: ${url}`;
     if (digits.length > 3) {
       openWhatsApp(admission.clients?.phone, message);
     } else {
@@ -459,7 +465,13 @@ export default function HospitalizationDetailPage() {
   }
 
   function shareViaWhatsApp() {
-    const message = `Hi ${admission.clients?.full_name || 'there'}, here's the daily care update for ${admission.patients?.name || 'your pet'} during their stay with us. Please attach the summary PDF you just downloaded to this chat.`;
+    const clientLabel = `${admission.clients?.full_name || 'there'}${
+      admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''
+    }`;
+    const patientLabel = `${admission.patients?.name || 'your pet'}${
+      admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''
+    }`;
+    const message = `Hi ${clientLabel}, here's the daily care update for ${patientLabel} during their stay with us. Please attach the summary PDF you just downloaded to this chat.`;
     openWhatsApp(admission.clients?.phone, message);
   }
 
@@ -521,13 +533,17 @@ export default function HospitalizationDetailPage() {
     <div>
       <div className="page-header">
         <h1>
-          {admission.patients?.name} <span>({admission.status})</span>
+          {admission.patients?.name}
+          {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''}{' '}
+          <span>({admission.status})</span>
         </h1>
       </div>
       {admission.update_requested_at && (
         <div className="update-requested-banner">
           <span>
-            🔔 {admission.clients?.full_name || 'The owner'} requested an update at{' '}
+            🔔 {admission.clients?.full_name || 'The owner'}
+            {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''} requested an
+            update at{' '}
             {formatDateTime(admission.update_requested_at)}
             {!isWithinOfficeHours(new Date(admission.update_requested_at)) && ' (after hours)'}
             {admission.update_request_message && <> — &quot;{admission.update_request_message}&quot;</>}
@@ -538,8 +554,12 @@ export default function HospitalizationDetailPage() {
         </div>
       )}
       <p>
-        Owner: <a href={`/clients/${admission.clients?.id}`}>{admission.clients?.full_name}</a> ·
-        Patient: <a href={`/patients/${admission.patients?.id}`}>record</a>{' '}
+        Owner:{' '}
+        <a href={`/clients/${admission.clients?.id}`}>
+          {admission.clients?.full_name}
+          {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''}
+        </a>{' '}
+        · Patient: <a href={`/patients/${admission.patients?.id}`}>record</a>{' '}
         <a className="button-link report-overview-pill" href="#patient-report-overview">📑 Reports</a> ·
         Cage: {admission.cages?.name || '—'} · Admitted:{' '}
         {new Date(admission.admitted_at).toLocaleString()}
@@ -620,6 +640,12 @@ export default function HospitalizationDetailPage() {
         <form className="card" onSubmit={addConsentForm}>
           <h3>Sign Hospitalization Consent</h3>
           {consentError && <p className="error">{consentError}</p>}
+          <p className="visit-meta">
+            Patient: {admission.patients?.name}
+            {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''} · Owner:{' '}
+            {admission.clients?.full_name}
+            {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''}
+          </p>
           <div className="consent-text-box">
             {buildConsentFormText('hospitalization', { name: admission.patients?.name }, originVisitPlan)}
           </div>

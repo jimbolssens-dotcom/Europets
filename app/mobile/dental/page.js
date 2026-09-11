@@ -84,8 +84,14 @@ export default function MobileDentalPickerPage() {
                 {walkIns.map((v) => (
                   <li key={v.id}>
                     <button type="button" className="mobile-list-item" onClick={() => startDentalReport(v)}>
-                      <span className="mobile-list-title">{v.patients?.name}</span>
-                      <span className="mobile-list-meta">{v.clients?.full_name}</span>
+                      <span className="mobile-list-title">
+                        {v.patients?.name}
+                        {v.patients?.patient_number ? ` (Patient #${v.patients.patient_number})` : ''}
+                      </span>
+                      <span className="mobile-list-meta">
+                        {v.clients?.full_name}
+                        {v.clients?.client_number ? ` (Client #${v.clients.client_number})` : ''}
+                      </span>
                     </button>
                   </li>
                 ))}

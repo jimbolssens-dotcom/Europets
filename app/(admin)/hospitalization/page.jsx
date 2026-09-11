@@ -73,7 +73,7 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
         onPointerDown={(e) => onDragStart(e, cage, hosp)}
         title={
           needsAttention
-            ? `${hosp.patients?.name} needs attention: ${attention.join(' • ')} — drag to move, or tap to open`
+            ? `${hosp.patients?.name}${hosp.patients?.patient_number ? ` (Patient #${hosp.patients.patient_number})` : ''} needs attention: ${attention.join(' • ')} — drag to move, or tap to open`
             : 'Drag to move to another cage, or tap to open'
         }
       >
@@ -94,7 +94,10 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
           {needsAttention && <span title={attention.join(' • ')}>🔔</span>}
           {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
         </div>
-        <div className="cage-patient">{hosp.patients?.name}</div>
+        <div className="cage-patient">
+          {hosp.patients?.name}
+          {hosp.patients?.patient_number ? ` (Patient #${hosp.patients.patient_number})` : ''}
+        </div>
         <div className="cage-patient-species">{hosp.patients?.species}</div>
       </div>
     );
@@ -120,7 +123,10 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
           <option value="">Assign...</option>
           {unassignedAdmitted.map((a) => (
             <option key={a.id} value={a.id}>
-              {a.patients?.name} ({a.clients?.full_name})
+              {a.patients?.name}
+              {a.patients?.patient_number ? ` (Patient #${a.patients.patient_number})` : ''} (
+              {a.clients?.full_name}
+              {a.clients?.client_number ? ` (Client #${a.clients.client_number})` : ''})
             </option>
           ))}
         </select>
@@ -253,6 +259,7 @@ export default function HospitalizationPage() {
       pointerId: e.pointerId,
       hospId: hosp.id,
       patientName: hosp.patients?.name,
+      patientNumber: hosp.patients?.patient_number,
       fromCageId: cage.id,
       startX: e.clientX,
       startY: e.clientY,
@@ -425,6 +432,7 @@ export default function HospitalizationPage() {
         {drag?.moved && (
           <div className="cage-drag-ghost" style={{ left: drag.x, top: drag.y }}>
             {drag.patientName}
+            {drag.patientNumber ? ` (Patient #${drag.patientNumber})` : ''}
           </div>
         )}
       </div>
@@ -448,8 +456,14 @@ export default function HospitalizationPage() {
             <tbody>
               {admitted.map((a) => (
                 <tr key={a.id}>
-                  <td>{a.patients?.name}</td>
-                  <td>{a.clients?.full_name}</td>
+                  <td>
+                    {a.patients?.name}
+                    {a.patients?.patient_number ? ` (Patient #${a.patients.patient_number})` : ''}
+                  </td>
+                  <td>
+                    {a.clients?.full_name}
+                    {a.clients?.client_number ? ` (Client #${a.clients.client_number})` : ''}
+                  </td>
                   <td>{a.cages?.name || '—'}</td>
                   <td>{a.reason || '—'}</td>
                   <td>{new Date(a.admitted_at).toLocaleString()}</td>
@@ -478,8 +492,14 @@ export default function HospitalizationPage() {
             <tbody>
               {discharged.map((a) => (
                 <tr key={a.id}>
-                  <td>{a.patients?.name}</td>
-                  <td>{a.clients?.full_name}</td>
+                  <td>
+                    {a.patients?.name}
+                    {a.patients?.patient_number ? ` (Patient #${a.patients.patient_number})` : ''}
+                  </td>
+                  <td>
+                    {a.clients?.full_name}
+                    {a.clients?.client_number ? ` (Client #${a.clients.client_number})` : ''}
+                  </td>
                   <td>{a.discharged_at ? new Date(a.discharged_at).toLocaleString() : '—'}</td>
                   <td>
                     <a href={`/hospitalization/${a.id}`}>Open</a>
@@ -511,7 +531,11 @@ export default function HospitalizationPage() {
                 <div className="admit-patient-fields">
                   {selectedOwner ? (
                     <p className="booking-owner-picked">
-                      Owner: <strong>{selectedOwner.full_name}</strong>{' '}
+                      Owner:{' '}
+                      <strong>
+                        {selectedOwner.full_name}
+                        {selectedOwner.client_number ? ` (Client #${selectedOwner.client_number})` : ''}
+                      </strong>{' '}
                       <button
                         type="button"
                         onClick={() => {
@@ -526,11 +550,15 @@ export default function HospitalizationPage() {
                     <ClientOrPatientSearch
                       placeholder="Search for the owner..."
                       onPickClient={(c) => {
-                        setSelectedOwner({ id: c.id, full_name: c.full_name });
+                        setSelectedOwner({ id: c.id, full_name: c.full_name, client_number: c.client_number });
                         setAdmitForm({ ...admitForm, client_id: c.id, patient_id: '' });
                       }}
                       onPickPatient={(p) => {
-                        setSelectedOwner({ id: p.client_id, full_name: p.clients?.full_name || '' });
+                        setSelectedOwner({
+                          id: p.client_id,
+                          full_name: p.clients?.full_name || '',
+                          client_number: p.clients?.client_number,
+                        });
                         setAdmitForm({ ...admitForm, client_id: p.client_id, patient_id: p.id });
                       }}
                     />
@@ -539,7 +567,7 @@ export default function HospitalizationPage() {
                     items={clientPatients}
                     value={admitForm.patient_id}
                     onChange={(patient_id) => setAdmitForm({ ...admitForm, patient_id })}
-                    getLabel={(p) => p.name}
+                    getLabel={(p) => (p.patient_number ? `${p.name} (Patient #${p.patient_number})` : p.name)}
                     getSubLabel={(p) => p.species}
                     placeholder="Select patient..."
                     disabled={!admitForm.client_id}

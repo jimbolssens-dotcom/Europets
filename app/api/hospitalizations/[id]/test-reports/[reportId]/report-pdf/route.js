@@ -19,7 +19,7 @@ const TYPE_LABELS = {
 export async function GET(request, { params }) {
   const { data: report, error } = await supabase
     .from('hospitalization_test_reports')
-    .select('id, report_type, ai_summary, source_text, result_text, created_at, hospitalizations(patients(name, species), clients(full_name))')
+    .select('id, report_type, ai_summary, source_text, result_text, created_at, hospitalizations(patients(name, species, patient_number), clients(full_name, client_number))')
     .eq('id', params.reportId)
     .eq('hospitalization_id', params.id)
     .single();

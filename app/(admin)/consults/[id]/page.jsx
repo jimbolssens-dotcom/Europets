@@ -550,7 +550,13 @@ export default function ConsultDetailPage() {
     }
     const url = `${window.location.origin}/portal/consent/${data.id}`;
     const digits = (consult.clients?.phone || '').replace(/\D/g, '');
-    const message = `Hi ${consult.clients?.full_name}! Please review and sign this consent form for ${consult.patients?.name}: ${url}`;
+    const clientLabel = `${consult.clients?.full_name}${
+      consult.clients?.client_number ? ` (Client #${consult.clients.client_number})` : ''
+    }`;
+    const patientLabel = `${consult.patients?.name}${
+      consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''
+    }`;
+    const message = `Hi ${clientLabel}! Please review and sign this consent form for ${patientLabel}: ${url}`;
     if (digits.length > 3) {
       openWhatsApp(consult.clients?.phone, message);
     } else {
@@ -768,7 +774,8 @@ export default function ConsultDetailPage() {
     <div>
       <div className="consult-header-row">
         <h1>
-          {consult.patients?.name}{' '}
+          {consult.patients?.name}
+          {consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''}{' '}
           <span>
             ({consult.patients?.species}) — {consult.status}
           </span>
@@ -802,8 +809,12 @@ export default function ConsultDetailPage() {
       </div>
       {vetChangeError && <p className="error">{vetChangeError}</p>}
       <p>
-        Owner: <a href={`/clients/${consult.clients?.id}`}>{consult.clients?.full_name}</a> ·
-        Patient: <a href={`/patients/${consult.patients?.id}`}>record</a>{' '}
+        Owner:{' '}
+        <a href={`/clients/${consult.clients?.id}`}>
+          {consult.clients?.full_name}
+          {consult.clients?.client_number ? ` (Client #${consult.clients.client_number})` : ''}
+        </a>{' '}
+        · Patient: <a href={`/patients/${consult.patients?.id}`}>record</a>{' '}
         <a className="button-link report-overview-pill" href="#patient-report-overview">📑 Reports</a> · Room:{' '}
         {consult.rooms?.name}
       </p>
@@ -1313,6 +1324,7 @@ export default function ConsultDetailPage() {
         {microchipModalOpen && (
           <MicrochipCaptureModal
             patientName={consult.patients?.name}
+            patientNumber={consult.patients?.patient_number}
             confirmLabel="Save"
             onCancel={() => setMicrochipModalOpen(false)}
             onConfirm={confirmMicrochip}
@@ -1582,13 +1594,21 @@ export default function ConsultDetailPage() {
             ))}
           </select>
           {consentForm.form_type && (
-            <div className="consent-text-box">
-              {buildConsentFormText(
-                consentForm.form_type,
-                { name: consult.patients?.name, sex: consult.patients?.sex },
-                { treatmentNotes: record.treatment_notes, treatmentItems }
-              )}
-            </div>
+            <>
+              <p className="visit-meta">
+                Patient: {consult.patients?.name}
+                {consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''} · Owner:{' '}
+                {consult.clients?.full_name}
+                {consult.clients?.client_number ? ` (Client #${consult.clients.client_number})` : ''}
+              </p>
+              <div className="consent-text-box">
+                {buildConsentFormText(
+                  consentForm.form_type,
+                  { name: consult.patients?.name, sex: consult.patients?.sex },
+                  { treatmentNotes: record.treatment_notes, treatmentItems }
+                )}
+              </div>
+            </>
           )}
           <input
             placeholder="Signed by (full name)"
