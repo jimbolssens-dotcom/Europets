@@ -1,3 +1,13 @@
+// app/_components/RecordReports.jsx
+// The "Reports" working panel — generate/edit/share AI client reports and
+// review test results — shared by the consult page (a visit) and the
+// hospitalization page (an admission). `record` is whichever one this is
+// for; `recordApiBase` ('/api/visits' or '/api/hospitalizations') is
+// where its own overall report and combined test-results PDF live.
+// `showOverallReport` is only true for a consult — hospitalizations have
+// no whole-stay AI narrative of their own, just the individual
+// procedure/test reports below.
+
 'use client';
 
 import ClientReportEditor from './ClientReportEditor';
@@ -6,11 +16,11 @@ import AttachmentSection from './AttachmentSection';
 import { useState } from 'react';
 import { isImagingDiagnostic } from '@/lib/diagnosticReportPolicy';
 
-export default function ConsultReports({ consult, diagnostics, catalog, groups, onConsultSaved,
+export default function RecordReports({ record, recordApiBase, showOverallReport, diagnostics, catalog, groups, onRecordSaved,
   onGenerate, generatingId, generationError, generationErrorId,
   resultDrafts, onResultChange, onSaveResult, savingResultId, resultError,
   onUploaded, extractingResultId, extractResultError, attachmentVersions, onOpenSource,
-  onGenerateConsult, reportsError }) {
+  onGenerateOverallReport, reportsError }) {
   const [summaries, setSummaries] = useState({});
   const [summarizing, setSummarizing] = useState({});
   const [summaryErrors, setSummaryErrors] = useState({});
@@ -29,23 +39,23 @@ export default function ConsultReports({ consult, diagnostics, catalog, groups, 
     }
   }
   const count = diagnostics.length + groups.reduce((n, group) => n + group.reports.length, 0);
-  return <section className="consult-reports" aria-label="Consult reports">
+  return <section className="consult-reports" aria-label="Reports">
     <h3>Reports</h3>
-    <p className="visit-meta">Reports and test results for this consult. Review and save changes before sharing.</p>
+    <p className="visit-meta">Reports and test results for this record. Review and save changes before sharing.</p>
     {reportsError && <p className="error" role="alert">{reportsError}</p>}
-    <section className="card" aria-label="Consult report">
+    {showOverallReport && <section className="card" aria-label="Consult report">
       <h4>Consult report</h4>
       <p className="visit-meta">Summary of the saved consult notes and reports. Regenerate after adding or changing results.</p>
-      {onGenerateConsult && <button type="button" disabled={generatingId === consult.id} onClick={onGenerateConsult}>
-        {generatingId === consult.id ? 'Generating…' : consult.ai_summary ? 'Regenerate consult report' : 'Generate consult report'}
+      {onGenerateOverallReport && <button type="button" disabled={generatingId === record.id} onClick={onGenerateOverallReport}>
+        {generatingId === record.id ? 'Generating…' : record.ai_summary ? 'Regenerate consult report' : 'Generate consult report'}
       </button>}
-      {generationErrorId === consult.id && <p className="error" role="alert">{generationError}</p>}
-      {consult.ai_summary ? <ClientReportEditor reportId={consult.id} apiBase="/api/visits"
-        savedReport={consult.ai_summary} onSaved={onConsultSaved} /> : <p>No consult report generated yet.</p>}
-      <ReportShareActions reportId={consult.id} apiBase="/api/visits" client={consult.clients}
-        patient={consult.patients} reportLabel="consult report" />
-    </section>
-    {!count && !reportsError && <p>No procedure reports or test results added to this consult yet.</p>}
+      {generationErrorId === record.id && <p className="error" role="alert">{generationError}</p>}
+      {record.ai_summary ? <ClientReportEditor reportId={record.id} apiBase={recordApiBase}
+        savedReport={record.ai_summary} onSaved={onRecordSaved} /> : <p>No consult report generated yet.</p>}
+      <ReportShareActions reportId={record.id} apiBase={recordApiBase} client={record.clients}
+        patient={record.patients} reportLabel="consult report" />
+    </section>}
+    {!count && !reportsError && <p>No procedure reports or test results added yet.</p>}
     {groups.map((group) => group.reports.length > 0 && <section key={group.apiBase} aria-label={group.label}>
       <h4>{group.label}</h4>
       {group.reports.map((report) => <details className="card" key={report.id}>
@@ -53,7 +63,7 @@ export default function ConsultReports({ consult, diagnostics, catalog, groups, 
         <p className="visit-meta">{report.staff?.full_name || 'Unassigned'}</p>
         {!report.ai_summary && <p style={{ whiteSpace: 'pre-wrap' }}>{[report.findings, report.procedures_performed, report.notes].filter(Boolean).join('\n') || 'Awaiting findings or dictation.'}</p>}
         <div className="home-links">
-          <button type="button" onClick={() => onOpenSource(group.sourceTab)}>Open source notes</button>
+          {onOpenSource && group.sourceTab && <button type="button" onClick={() => onOpenSource(group.sourceTab)}>Open source notes</button>}
           <button type="button" onClick={() => onGenerate(group.apiBase, report.id, !!report.ai_summary, group.reload)}
             disabled={generatingId === report.id || !(report.findings || report.procedures_performed || report.procedure_name || report.notes)}>
             {generatingId === report.id ? 'Generating…' : report.ai_summary ? 'Regenerate report' : 'Generate report'}
@@ -61,17 +71,17 @@ export default function ConsultReports({ consult, diagnostics, catalog, groups, 
         </div>
         {generationErrorId === report.id && <p className="error" role="alert">{generationError}</p>}
         {report.ai_summary && <ClientReportEditor reportId={report.id} apiBase={group.apiBase} savedReport={report.ai_summary} onSaved={group.reload} />}
-        <ReportShareActions reportId={report.id} apiBase={group.apiBase} client={consult.clients} patient={consult.patients} reportLabel={group.label.toLowerCase()} />
+        <ReportShareActions reportId={report.id} apiBase={group.apiBase} client={record.clients} patient={record.patients} reportLabel={group.label.toLowerCase()} />
         <AttachmentSection entityType={group.entityType} entityId={report.id} />
       </details>)}
     </section>)}
-    {(diagnostics.length > 0 || consult.test_results) && <section aria-label="Test results">
+    {(diagnostics.length > 0 || record.test_results) && <section aria-label="Test results">
       <h4>Test results and blood reports</h4>
-      <ReportShareActions reportId={consult.id} apiBase="/api/visits" pdfPath="test-report-pdf"
-        client={consult.clients} patient={consult.patients} reportLabel="test results" />
-      {consult.test_results && <details className="card"><summary>Consult test notes</summary>
-        <p style={{ whiteSpace: 'pre-wrap' }}>{consult.test_results}</p>
-        <button type="button" onClick={() => onOpenSource('exam')}>Edit in Exam &amp; Notes</button>
+      <ReportShareActions reportId={record.id} apiBase={recordApiBase} pdfPath="test-report-pdf"
+        client={record.clients} patient={record.patients} reportLabel="test results" />
+      {record.test_results && <details className="card"><summary>Consult test notes</summary>
+        <p style={{ whiteSpace: 'pre-wrap' }}>{record.test_results}</p>
+        {onOpenSource && <button type="button" onClick={() => onOpenSource('exam')}>Edit in Exam &amp; Notes</button>}
       </details>}
       {diagnostics.map((diagnostic) => {
         const name = catalog.find((item) => item.id === diagnostic.goods_service_id)?.name || diagnostic.type?.replaceAll('_', ' ') || 'Test';

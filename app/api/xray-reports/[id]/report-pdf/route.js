@@ -20,7 +20,7 @@ export async function GET(request, { params }) {
   const { data: report, error } = await supabase
     .from('xray_reports')
     .select(
-      'ai_summary, performed_at, staff(full_name), visits(patients(name, species, patient_number), clients(full_name, client_number))'
+      'ai_summary, performed_at, staff(full_name), visits(patients(name, species, patient_number), clients(full_name, client_number)), hospitalizations(patients(name, species, patient_number), clients(full_name, client_number))'
     )
     .eq('id', params.id)
     .single();
@@ -28,6 +28,8 @@ export async function GET(request, { params }) {
   if (error || !report) {
     return NextResponse.json({ error: 'x-ray report not found' }, { status: 404 });
   }
+  const patient = report.visits?.patients || report.hospitalizations?.patients;
+  const client = report.visits?.clients || report.hospitalizations?.clients;
 
   const [{ data: clinic }, { data: attachments }] = await Promise.all([
     supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
@@ -40,8 +42,8 @@ export async function GET(request, { params }) {
   const pdfBytes = await buildProcedureReportPdf({
     procedureType: 'xray',
     procedureTitle: 'X-ray Report',
-    patient: report.visits?.patients,
-    client: report.visits?.clients,
+    patient,
+    client,
     clinic,
     performedAt: report.performed_at,
     staffName: report.staff?.full_name,

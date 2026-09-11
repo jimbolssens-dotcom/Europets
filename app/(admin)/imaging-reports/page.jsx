@@ -75,17 +75,20 @@ export default function ImagingReportsPage() {
           <tbody>
             {reports.map((r) => {
               const apiBase = r.type === 'ultrasound' ? '/api/ultrasound-reports' : '/api/xray-reports';
+              const patient = r.visits?.patients || r.hospitalizations?.patients;
+              const client = r.visits?.clients || r.hospitalizations?.clients;
+              const recordHref = r.visit_id ? `/consults/${r.visit_id}` : `/hospitalization/${r.hospitalization_id}`;
               return (
                 <tr key={`${r.type}-${r.id}`}>
                   <td>{r.type === 'ultrasound' ? '🔊 Ultrasound' : '🩻 X-ray'}</td>
                   <td>
-                    <a href={`/patients/${r.visits?.patients?.id}`}>{r.visits?.patients?.name || '—'}</a>
+                    <a href={`/patients/${patient?.id}`}>{patient?.name || '—'}</a>
                   </td>
-                  <td>{r.visits?.clients?.full_name || '—'}</td>
+                  <td>{client?.full_name || '—'}</td>
                   <td>{formatDateTime(r.performed_at)}</td>
                   <td>{r.staff?.full_name || 'unassigned'}</td>
                   <td>
-                    <a href={`/consults/${r.visit_id}`}>View consult</a>{' '}
+                    <a href={recordHref}>{r.visit_id ? 'View consult' : 'View hospitalization'}</a>{' '}
                     <a href={`${apiBase}/${r.id}/report-pdf`} target="_blank" rel="noreferrer">
                       Download
                     </a>

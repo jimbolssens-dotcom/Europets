@@ -22,7 +22,7 @@ export async function GET(request, { params }) {
   const { data: report, error } = await supabase
     .from('surgical_reports')
     .select(
-      'procedure_name, ai_summary, performed_at, staff(full_name), visits(patients(name, species, patient_number), clients(full_name, client_number))'
+      'procedure_name, ai_summary, performed_at, staff(full_name), visits(patients(name, species, patient_number), clients(full_name, client_number)), hospitalizations(patients(name, species, patient_number), clients(full_name, client_number))'
     )
     .eq('id', params.id)
     .single();
@@ -30,6 +30,8 @@ export async function GET(request, { params }) {
   if (error || !report) {
     return NextResponse.json({ error: 'surgical report not found' }, { status: 404 });
   }
+  const patient = report.visits?.patients || report.hospitalizations?.patients;
+  const client = report.visits?.clients || report.hospitalizations?.clients;
 
   const [{ data: clinic }, { data: attachments }] = await Promise.all([
     supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
@@ -42,8 +44,8 @@ export async function GET(request, { params }) {
   const pdfBytes = await buildProcedureReportPdf({
     procedureType: 'surgical',
     procedureTitle: report.procedure_name ? `Surgical Report — ${report.procedure_name}` : undefined,
-    patient: report.visits?.patients,
-    client: report.visits?.clients,
+    patient,
+    client,
     clinic,
     performedAt: report.performed_at,
     staffName: report.staff?.full_name,

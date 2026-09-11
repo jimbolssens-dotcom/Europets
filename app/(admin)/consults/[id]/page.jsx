@@ -22,7 +22,7 @@ import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import { isXrayTest } from '@/lib/xrayProduct';
-import ConsultReports from '@/app/_components/ConsultReports';
+import RecordReports from '@/app/_components/RecordReports';
 import DentalChart from '@/app/_components/DentalChart';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { subcategoryName, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
@@ -804,7 +804,6 @@ export default function ConsultDetailPage() {
             </details>
           )}
           <PatientHistoryPanel patientId={consult.patient_id} clientId={consult.client_id} excludeVisitId={id} />
-          <PatientReportOverview patientId={consult.patient_id} />
         </div>
       </div>
       {vetChangeError && <p className="error">{vetChangeError}</p>}
@@ -815,8 +814,10 @@ export default function ConsultDetailPage() {
           {consult.clients?.client_number ? ` (Client #${consult.clients.client_number})` : ''}
         </a>{' '}
         · Patient: <a href={`/patients/${consult.patients?.id}`}>record</a>{' '}
-        <a className="button-link report-overview-pill" href="#patient-report-overview">📑 Reports</a> · Room:{' '}
-        {consult.rooms?.name}
+        <button type="button" className="button-link report-overview-pill" onClick={() => setActiveTab('reports')}>
+          📑 Reports
+        </button>{' '}
+        · Room: {consult.rooms?.name}
       </p>
 
       <div className="action-row">
@@ -1532,18 +1533,20 @@ export default function ConsultDetailPage() {
       </div>
 
       <div hidden={activeTab !== 'reports'}>
-        <ConsultReports
-          consult={consult} diagnostics={diagnostics} catalog={catalog}
+        <PatientReportOverview patientId={consult.patient_id} title="Earlier reports for this patient" />
+        <RecordReports
+          record={consult} recordApiBase="/api/visits" showOverallReport
+          diagnostics={diagnostics} catalog={catalog}
           groups={[
             { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', sourceTab: 'procedures', reload: loadDentalReports },
             { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', sourceTab: 'procedures', reload: loadSurgicalReports },
             { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', sourceTab: 'exam', reload: loadUltrasoundReports },
             { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', sourceTab: 'exam', reload: loadXrayReports },
           ]}
-          onConsultSaved={loadConsult} onOpenSource={setActiveTab}
+          onRecordSaved={loadConsult} onOpenSource={setActiveTab}
           onGenerate={generateAiReport} generatingId={generatingReportId}
           generationError={generateReportError} generationErrorId={generateReportErrorId}
-          onGenerateConsult={() => generateAiReport('/api/visits', id, !!consult.ai_summary, loadConsult)}
+          onGenerateOverallReport={() => generateAiReport('/api/visits', id, !!consult.ai_summary, loadConsult)}
           resultDrafts={resultDrafts} onResultChange={(diagId, text) => setResultDrafts((prev) => ({ ...prev, [diagId]: text }))}
           onSaveResult={saveDiagnosticResult} savingResultId={savingResultId} resultError={resultError}
           onUploaded={handleDiagnosticPhotoUploaded} extractingResultId={extractingResultId}

@@ -32,7 +32,7 @@ export async function GET(request, { params }) {
   const { data: report, error } = await supabase
     .from('dental_reports')
     .select(
-      'id, ai_summary, dental_chart_snapshot, performed_at, staff(full_name), visits(patients(id, name, species, patient_number, dental_chart), clients(full_name, client_number))'
+      'id, ai_summary, dental_chart_snapshot, performed_at, staff(full_name), visits(patients(id, name, species, patient_number, dental_chart), clients(full_name, client_number)), hospitalizations(patients(id, name, species, patient_number, dental_chart), clients(full_name, client_number))'
     )
     .eq('id', params.id)
     .single();
@@ -49,7 +49,8 @@ export async function GET(request, { params }) {
   const imageAttachments = (attachments || []).filter(isImageAttachment).slice(0, MAX_PHOTOS);
   const photos = (await Promise.all(imageAttachments.map(fetchAttachmentBytes))).filter(Boolean);
 
-  const patient = report.visits?.patients;
+  const patient = report.visits?.patients || report.hospitalizations?.patients;
+  const client = report.visits?.clients || report.hospitalizations?.clients;
 
   // Capture the chart exactly as it looked when this report was first
   // rendered. Later lifetime-chart cleanup (extracted -> missing) must not
@@ -58,7 +59,7 @@ export async function GET(request, { params }) {
   const pdfBytes = await buildProcedureReportPdf({
     procedureType: 'dental',
     patient,
-    client: report.visits?.clients,
+    client,
     clinic,
     performedAt: report.performed_at,
     staffName: report.staff?.full_name,

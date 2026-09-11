@@ -28,8 +28,13 @@ export default function MobileDentalReportPage() {
       .then((res) => res.json())
       .then((data) => {
         setReport(data);
-        if (data.visit_id) {
-          fetch(`/api/visits/${data.visit_id}`)
+        const recordUrl = data.visit_id
+          ? `/api/visits/${data.visit_id}`
+          : data.hospitalization_id
+            ? `/api/hospitalizations/${data.hospitalization_id}`
+            : null;
+        if (recordUrl) {
+          fetch(recordUrl)
             .then((res) => res.json())
             .then(setVisit);
         }

@@ -27,7 +27,7 @@ import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
-import HospitalizationTestReports from '@/app/_components/HospitalizationTestReports';
+import HospitalizationReportsSection from '@/app/_components/HospitalizationReportsSection';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import { openWhatsApp } from '@/lib/whatsapp';
@@ -560,7 +560,7 @@ export default function HospitalizationDetailPage() {
           {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''}
         </a>{' '}
         · Patient: <a href={`/patients/${admission.patients?.id}`}>record</a>{' '}
-        <a className="button-link report-overview-pill" href="#patient-report-overview">📑 Reports</a> ·
+        <a className="button-link report-overview-pill" href="#hospitalization-reports">📑 Reports</a> ·
         Cage: {admission.cages?.name || '—'} · Admitted:{' '}
         {new Date(admission.admitted_at).toLocaleString()}
         {admission.discharged_at &&
@@ -619,7 +619,6 @@ export default function HospitalizationDetailPage() {
         excludeHospitalizationId={id}
         excludeVisitId={admission.originating_visit_id}
       />
-      <PatientReportOverview patientId={admission.patient_id} />
 
       <details className="case-files" open={consentForms.length === 0}>
         <summary>📝 Consent Forms {consentForms.length > 0 && `(${consentForms.length} signed)`}</summary>
@@ -1152,9 +1151,22 @@ export default function HospitalizationDetailPage() {
           {submitting ? 'Saving...' : 'Add'}
         </button>
       </form>
-      <HospitalizationTestReports hospitalizationId={id} notes={notes} />
       </div>
       </div>
+
+      <details className="case-files" id="hospitalization-reports" open>
+        <summary>📑 Reports</summary>
+        <PatientReportOverview patientId={admission.patient_id} title="Earlier reports for this patient" />
+        <HospitalizationReportsSection
+          hospitalizationId={id}
+          admission={admission}
+          staff={staff}
+          catalog={catalog}
+          subcategories={subcategories}
+          onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+          onPatientUpdated={(dental_chart) => setAdmission((prev) => ({ ...prev, patients: { ...prev.patients, dental_chart } }))}
+        />
+      </details>
 
       <PdfPreviewModal url={previewPdfUrl} onClose={() => setPreviewPdfUrl(null)} />
     </div>

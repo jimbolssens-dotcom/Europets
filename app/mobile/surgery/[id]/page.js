@@ -25,8 +25,8 @@ export default function MobileSurgicalReportPage() {
       .then(setReport);
   }, [id]);
 
-  const patient = report?.visits?.patients;
-  const client = report?.visits?.clients;
+  const patient = report?.visits?.patients || report?.hospitalizations?.patients;
+  const client = report?.visits?.clients || report?.hospitalizations?.clients;
 
   return (
     <div className="mobile-page">
