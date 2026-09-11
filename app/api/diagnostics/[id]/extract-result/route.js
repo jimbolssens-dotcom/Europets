@@ -1,16 +1,12 @@
 // app/api/diagnostics/[id]/extract-result/route.js
-// POST /api/diagnostics/:id/extract-result  -> read a photo of a test
-// result (FormData: `image`, optional `test_name` for context) and append
-// the extracted text to both this diagnostic's own result field AND the
-// consult's Tests field (visits.test_results — see migration 080), so a
-// vet reviewing Vitals & Exam sees every test result in one place instead
-// of having to open each diagnostic's own card. The photo itself is saved
-// separately as a regular attachment (see AttachmentSection); the consult
-// page deletes it once this call succeeds, since its contents are now
-// captured as text — this route only reads it, never deletes it itself.
+// Transcribe a laboratory document into its diagnostic result, including
+// factual abnormalities. Original files remain attached. Reports reads this
+// diagnostic directly; do not duplicate the text into visits.test_results.
+// Block imaging using the stored diagnostic identity before reading bytes.
 
 import { supabase } from '@/lib/supabaseClient';
 import { extractDiagnosticResult } from '@/lib/anthropicClient';
+import { isImagingDiagnostic } from '@/lib/diagnosticReportPolicy';
 import { NextResponse } from 'next/server';
 import convert from 'heic-convert';
 
@@ -39,16 +35,30 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'image file is required' }, { status: 400 });
   }
 
+  // Hard safety boundary for diagnostic imaging: the image has already been
+  // uploaded as an attachment before this endpoint is called. Do not read,
+  // convert, describe, OCR, or otherwise pass it to the AI vision pipeline.
   const { data: diagnostic, error: fetchError } = await supabase
     .from('diagnostics')
-    .select('result, visit_id')
+    .select('result, visit_id, type, goods_services(name)')
     .eq('id', params.id)
     .single();
   if (fetchError || !diagnostic) {
     return NextResponse.json({ error: 'diagnostic not found' }, { status: 404 });
   }
+  if (isImagingDiagnostic(diagnostic, testName)) {
+    return NextResponse.json(
+      {
+        error:
+          'Imaging image saved. AI interpretation is disabled for X-rays and ultrasound; use dictation or typed findings for the report.',
+        imaging_saved: true,
+      },
+      { status: 409 }
+    );
+  }
 
   try {
+    if (image.size > 20 * 1024 * 1024) return NextResponse.json({ error: 'Upload a document smaller than 20 MB.' }, { status: 400 });
     let buffer = Buffer.from(await image.arrayBuffer());
     let mediaType = image.type || 'image/jpeg';
 
@@ -58,7 +68,10 @@ export async function POST(request, { params }) {
       mediaType = 'image/jpeg';
     }
 
-    const extracted = await extractDiagnosticResult(buffer, mediaType, testName);
+    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'].includes(mediaType)) {
+      return NextResponse.json({ error: 'Use a lab document in PDF, JPEG, PNG, GIF or WebP format.' }, { status: 400 });
+    }
+    const extracted = await extractDiagnosticResult(buffer, mediaType, diagnostic.goods_services?.name || testName);
     const mergedResult = diagnostic.result?.trim() ? `${diagnostic.result.trim()}\n\n${extracted}` : extracted;
 
     const { data, error } = await supabase
@@ -68,27 +81,6 @@ export async function POST(request, { params }) {
       .select()
       .single();
     if (error) throw error;
-
-    // Checked and thrown on failure, not best-effort — the consult page
-    // deletes the source photo as soon as this whole request succeeds (see
-    // the file header), so a silently-swallowed error here would mean the
-    // photo's gone with nothing to show for it in Vitals & Exam.
-    const { data: visit, error: visitFetchError } = await supabase
-      .from('visits')
-      .select('test_results')
-      .eq('id', diagnostic.visit_id)
-      .single();
-    if (visitFetchError) throw visitFetchError;
-
-    const testEntry = testName ? `${testName}: ${extracted}` : extracted;
-    const mergedTestResults = visit.test_results?.trim()
-      ? `${visit.test_results.trim()}\n\n${testEntry}`
-      : testEntry;
-    const { error: visitUpdateError } = await supabase
-      .from('visits')
-      .update({ test_results: mergedTestResults })
-      .eq('id', diagnostic.visit_id);
-    if (visitUpdateError) throw visitUpdateError;
 
     return NextResponse.json(data);
   } catch (err) {

@@ -27,7 +27,9 @@ import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
+import HospitalizationTestReports from '@/app/_components/HospitalizationTestReports';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
+import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import { openWhatsApp } from '@/lib/whatsapp';
 
 function todayISODate() {
@@ -59,6 +61,9 @@ export default function HospitalizationDetailPage() {
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [editNoteForm, setEditNoteForm] = useState(null);
   const [savingEditNote, setSavingEditNote] = useState(false);
+  const [deletingNote, setDeletingNote] = useState(false);
+  const [editNoteError, setEditNoteError] = useState(null);
+  const [noteDeleteVersion, setNoteDeleteVersion] = useState(0);
   const [linkCopied, setLinkCopied] = useState(false);
   const [editingReason, setEditingReason] = useState(false);
   const [reasonDraft, setReasonDraft] = useState('');
@@ -315,6 +320,7 @@ export default function HospitalizationDetailPage() {
 
   function startEditNote(n) {
     setEditingNoteId(n.id);
+    setEditNoteError(null);
     setNoteAddItemForm(emptyPendingItem);
     setEditNoteForm({
       note_date: n.note_date || todayISODate(),
@@ -333,6 +339,7 @@ export default function HospitalizationDetailPage() {
   }
 
   function cancelEditNote() {
+    setEditNoteError(null);
     setEditingNoteId(null);
     setEditNoteForm(null);
     setNoteAddItemForm(emptyPendingItem);
@@ -349,6 +356,25 @@ export default function HospitalizationDetailPage() {
     setEditingNoteId(null);
     setEditNoteForm(null);
     loadNotes();
+  }
+
+  async function deleteNote(noteId) {
+    if (!confirm('Delete this worksheet entry and its treatment items? Existing invoices will not change. Attached files will remain under Case Photos & Files.')) return;
+    setDeletingNote(true);
+    setEditNoteError(null);
+    try {
+      const response = await fetch(`/api/hospitalizations/${id}/notes/${noteId}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not delete the entry.');
+      setNotes((prev) => prev.filter((note) => note.id !== noteId));
+      cancelEditNote();
+      setNoteDeleteVersion((version) => version + 1);
+      loadNotes();
+    } catch (error) {
+      setEditNoteError(error.message);
+    } finally {
+      setDeletingNote(false);
+    }
   }
 
   async function addConsentForm(e) {
@@ -441,11 +467,6 @@ export default function HospitalizationDetailPage() {
     return `${window.location.origin}/portal/hospitalization/${id}`;
   }
 
-  function sharePortalLink() {
-    const message = `Hi ${admission.clients?.full_name || 'there'}, you can follow ${admission.patients?.name || 'your pet'}'s care updates and photos here, live, for the rest of their stay with us: ${portalUrl()}`;
-    openWhatsApp(admission.clients?.phone, message);
-  }
-
   async function copyPortalLink() {
     await navigator.clipboard.writeText(portalUrl());
     setLinkCopied(true);
@@ -498,16 +519,10 @@ export default function HospitalizationDetailPage() {
 
   return (
     <div>
-      <p>
-        <a href="/hospitalization">&larr; All admissions</a>
-      </p>
       <div className="page-header">
         <h1>
           {admission.patients?.name} <span>({admission.status})</span>
         </h1>
-        <a href="/hospitalization" className="button-link">
-          🗺️ Cage Layout
-        </a>
       </div>
       {admission.update_requested_at && (
         <div className="update-requested-banner">
@@ -524,7 +539,8 @@ export default function HospitalizationDetailPage() {
       )}
       <p>
         Owner: <a href={`/clients/${admission.clients?.id}`}>{admission.clients?.full_name}</a> ·
-        Patient: <a href={`/patients/${admission.patients?.id}`}>record</a> ·
+        Patient: <a href={`/patients/${admission.patients?.id}`}>record</a>{' '}
+        <a className="button-link report-overview-pill" href="#patient-report-overview">📑 Reports</a> ·
         Cage: {admission.cages?.name || '—'} · Admitted:{' '}
         {new Date(admission.admitted_at).toLocaleString()}
         {admission.discharged_at &&
@@ -553,16 +569,29 @@ export default function HospitalizationDetailPage() {
           </button>
         </p>
       )}
-      {admission.status === 'admitted' && (
-        <button type="button" onClick={discharge}>
-          Discharge
+      <div className="hospitalization-actions" role="group" aria-label="Hospitalization actions">
+        {admission.status === 'admitted' && (
+          <button type="button" className="button-link" onClick={discharge}>Discharge</button>
+        )}
+        {invoiceInfo ? (
+          <a className="button-link" href={`/invoices/${invoiceInfo.id}`} title={`Invoice status: ${invoiceInfo.status}`}>Invoice</a>
+        ) : (
+          <button type="button" className="button-link" onClick={createInvoice} disabled={creatingInvoice}
+            title="Create an invoice from the medications, goods and services in this worksheet">
+            {creatingInvoice ? 'Creating…' : 'Invoice'}
+          </button>
+        )}
+        <button type="button" className="button-link" onClick={downloadSummaryPdf} title="Download the summary PDF">Summary</button>
+        <button type="button" className="button-link" onClick={shareViaWhatsApp} title="Open WhatsApp, then attach the downloaded summary PDF">Share</button>
+        <button type="button" className="button-link" onClick={copyPortalLink} title="Copy the live care-update link">
+          {linkCopied ? 'Copied!' : 'Copy'}
         </button>
-      )}
-      {admission.originating_visit_id && (
-        <p>
-          <a href={`/consults/${admission.originating_visit_id}`}>View originating consult</a>
-        </p>
-      )}
+        {admission.originating_visit_id && (
+          <a className="button-link" href={`/consults/${admission.originating_visit_id}`}>Originating consult</a>
+        )}
+        <a className="button-link" href="/hospitalization">Cage Layout</a>
+      </div>
+      {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
 
       <PatientHistoryPanel
         patientId={admission.patient_id}
@@ -570,6 +599,7 @@ export default function HospitalizationDetailPage() {
         excludeHospitalizationId={id}
         excludeVisitId={admission.originating_visit_id}
       />
+      <PatientReportOverview patientId={admission.patient_id} />
 
       <details className="case-files" open={consentForms.length === 0}>
         <summary>📝 Consent Forms {consentForms.length > 0 && `(${consentForms.length} signed)`}</summary>
@@ -627,13 +657,13 @@ export default function HospitalizationDetailPage() {
       </details>
 
       <DayTreatmentPlan
+        key={`${id}-${noteDeleteVersion}`}
         hospitalizationId={id}
         staff={staff}
         catalog={catalog}
         subcategories={subcategories}
         onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
       />
-
       <div className="split">
       <div className="split-main">
       <h2>Day-to-day Worksheet</h2>
@@ -906,12 +936,16 @@ export default function HospitalizationDetailPage() {
                     </div>
                   </div>
 
+                  {editNoteError && <p className="error" role="alert">{editNoteError}</p>}
                   <div className="worksheet-entry-edit-actions">
-                    <button type="button" disabled={savingEditNote} onClick={() => saveEditNote(n.id)}>
+                    <button type="button" disabled={savingEditNote || deletingNote} onClick={() => saveEditNote(n.id)}>
                       {savingEditNote ? 'Saving...' : 'Save'}
                     </button>
-                    <button type="button" onClick={cancelEditNote}>
+                    <button type="button" disabled={savingEditNote || deletingNote} onClick={cancelEditNote}>
                       Cancel
+                    </button>
+                    <button type="button" disabled={savingEditNote || deletingNote} onClick={() => deleteNote(n.id)}>
+                      {deletingNote ? 'Deleting…' : 'Delete entry'}
                     </button>
                   </div>
                 </div>
@@ -978,7 +1012,7 @@ export default function HospitalizationDetailPage() {
         <p className="visit-meta">
           Not tied to a single worksheet entry — admission photo, wound progress, etc.
         </p>
-        <AttachmentSection entityType="hospitalization" entityId={id} />
+        <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} />
       </details>
 
       <form className="card" onSubmit={addNote}>
@@ -1092,46 +1126,9 @@ export default function HospitalizationDetailPage() {
           {submitting ? 'Saving...' : 'Add'}
         </button>
       </form>
+      <HospitalizationTestReports hospitalizationId={id} notes={notes} />
       </div>
       </div>
-
-      <h3>Invoice</h3>
-      {invoiceInfo ? (
-        <p>
-          <a href={`/invoices/${invoiceInfo.id}`}>View Invoice</a> ({invoiceInfo.status})
-        </p>
-      ) : (
-        <>
-          {invoiceError && <p className="error">{invoiceError}</p>}
-          <button type="button" onClick={createInvoice} disabled={creatingInvoice}>
-            {creatingInvoice ? 'Creating...' : '🧾 Create'}
-          </button>
-          <InfoHint>
-            Opens a new invoice and imports every medication/goods/service logged across the
-            whole worksheet as a line item — typically done at discharge. You can still add more
-            items to the invoice afterward.
-          </InfoHint>
-        </>
-      )}
-
-      <div className="share-actions">
-        <button type="button" className="share-btn" onClick={downloadSummaryPdf}>
-          📄 Summary
-        </button>
-        <button type="button" className="share-btn" onClick={shareViaWhatsApp}>
-          💬 Share
-        </button>
-        <button type="button" className="share-btn" onClick={sharePortalLink}>
-          🔗 Link
-        </button>
-        <button type="button" className="share-btn" onClick={copyPortalLink}>
-          {linkCopied ? 'Copied!' : 'Copy'}
-        </button>
-      </div>
-      <p className="share-hint">
-        PDF sharing needs a manual attach step in WhatsApp; the portal link doesn&apos;t — it's a
-        live, read-only page that updates automatically until discharge.
-      </p>
 
       <PdfPreviewModal url={previewPdfUrl} onClose={() => setPreviewPdfUrl(null)} />
     </div>

@@ -22,8 +22,7 @@ import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import { isXrayTest } from '@/lib/xrayProduct';
-import ReportShareActions from '@/app/_components/ReportShareActions';
-import ClientReportEditor from '@/app/_components/ClientReportEditor';
+import ConsultReports from '@/app/_components/ConsultReports';
 import DentalChart from '@/app/_components/DentalChart';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { subcategoryName, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
@@ -32,6 +31,7 @@ import { printPdfUrl } from '@/lib/printPdf';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
+import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import { openWhatsApp } from '@/lib/whatsapp';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
@@ -50,6 +50,7 @@ const CONSULT_TABS = [
   { id: 'exam', label: '🩺 Exam & Notes' },
   { id: 'treatment', label: '💊 Treatment' },
   { id: 'procedures', label: '🩹 Procedures' },
+  { id: 'reports', label: 'Reports' },
   { id: 'admin', label: '📋 Consent & Admission' },
 ];
 
@@ -74,6 +75,8 @@ export default function ConsultDetailPage() {
   const [diagError, setDiagError] = useState(null);
   const [resultDrafts, setResultDrafts] = useState({});
   const [savingResultId, setSavingResultId] = useState(null);
+  const [resultError, setResultError] = useState(null);
+  const [reportsError, setReportsError] = useState({});
   const [extractingResultId, setExtractingResultId] = useState(null);
   const [extractResultError, setExtractResultError] = useState({});
   const [diagPhotoVersion, setDiagPhotoVersion] = useState({}); // bumped per-diagnostic to force its AttachmentSection to reload after an external delete
@@ -131,6 +134,23 @@ export default function ConsultDetailPage() {
 
   const [hospReason, setHospReason] = useState('');
   const [admitting, setAdmitting] = useState(false);
+  const [linkedHospitalization, setLinkedHospitalization] = useState(null);
+  const [checkingHospitalization, setCheckingHospitalization] = useState(true);
+  const [hospitalizationError, setHospitalizationError] = useState(null);
+
+  async function loadLinkedHospitalization() {
+    try {
+      const response = await fetch(`/api/hospitalizations?originating_visit_id=${id}`);
+      const rows = await response.json();
+      if (!response.ok || !Array.isArray(rows)) throw new Error('Could not check hospitalization. Please retry.');
+      setLinkedHospitalization(rows.find((row) => row.status === 'admitted') || rows[0] || null);
+      setHospitalizationError(null);
+    } catch (error) {
+      setHospitalizationError(error.message);
+    } finally {
+      setCheckingHospitalization(false);
+    }
+  }
 
   const [invoiceInfo, setInvoiceInfo] = useState(null); // { id, status } of the active invoice, if any
   const [creatingInvoice, setCreatingInvoice] = useState(false);
@@ -160,35 +180,31 @@ export default function ConsultDetailPage() {
         setLoading(false);
       });
 
-  const loadDiagnostics = () =>
-    fetch(`/api/diagnostics?visit_id=${id}`)
-      .then((res) => res.json())
-      .then((data) => setDiagnostics(Array.isArray(data) ? data : []));
+  async function loadReportList(path, setter) {
+    try {
+      const res = await fetch(`/api/${path}?visit_id=${id}`);
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) throw new Error();
+      setter(data);
+      setReportsError((prev) => ({ ...prev, [path]: null }));
+    } catch {
+      setReportsError((prev) => ({ ...prev, [path]: `Could not refresh ${path.replaceAll('-', ' ')}. Reload to try again.` }));
+    }
+  }
+  const loadDiagnostics = () => loadReportList('diagnostics', setDiagnostics);
 
   const loadTreatmentItems = () =>
     fetch(`/api/treatment-items?visit_id=${id}`)
       .then((res) => res.json())
       .then((data) => setTreatmentItems(Array.isArray(data) ? data : []));
 
-  const loadSurgicalReports = () =>
-    fetch(`/api/surgical-reports?visit_id=${id}`)
-      .then((res) => res.json())
-      .then((data) => setSurgicalReports(Array.isArray(data) ? data : []));
+  const loadSurgicalReports = () => loadReportList('surgical-reports', setSurgicalReports);
 
-  const loadDentalReports = () =>
-    fetch(`/api/dental-reports?visit_id=${id}`)
-      .then((res) => res.json())
-      .then((data) => setDentalReports(Array.isArray(data) ? data : []));
+  const loadDentalReports = () => loadReportList('dental-reports', setDentalReports);
 
-  const loadUltrasoundReports = () =>
-    fetch(`/api/ultrasound-reports?visit_id=${id}`)
-      .then((res) => res.json())
-      .then((data) => setUltrasoundReports(Array.isArray(data) ? data : []));
+  const loadUltrasoundReports = () => loadReportList('ultrasound-reports', setUltrasoundReports);
 
-  const loadXrayReports = () =>
-    fetch(`/api/xray-reports?visit_id=${id}`)
-      .then((res) => res.json())
-      .then((data) => setXrayReports(Array.isArray(data) ? data : []));
+  const loadXrayReports = () => loadReportList('xray-reports', setXrayReports);
 
   const loadInvoiceInfo = () =>
     fetch(`/api/invoices?visit_id=${id}`)
@@ -213,6 +229,7 @@ export default function ConsultDetailPage() {
     loadXrayReports();
     loadInvoiceInfo();
     loadConsentForms();
+    loadLinkedHospitalization();
 
     Promise.all([
       fetch('/api/staff').then((res) => res.json()),
@@ -229,6 +246,7 @@ export default function ConsultDetailPage() {
     const channel = supabase
       .channel(`consult-${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'visits', filter: `id=eq.${id}` }, loadConsult)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations', filter: `originating_visit_id=eq.${id}` }, loadLinkedHospitalization)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'diagnostics', filter: `visit_id=eq.${id}` }, loadDiagnostics)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'treatment_items', filter: `visit_id=eq.${id}` }, loadTreatmentItems)
       .on(
@@ -364,25 +382,28 @@ export default function ConsultDetailPage() {
 
   async function saveDiagnosticResult(diagId) {
     setSavingResultId(diagId);
-    const res = await fetch(`/api/diagnostics/${diagId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ result: resultDrafts[diagId] ?? '' }),
-    });
-    setSavingResultId(null);
-    if (res.ok) {
-      loadDiagnostics();
+    setResultError(null);
+    try {
+      const result = resultDrafts[diagId] ?? diagnostics.find((d) => d.id === diagId)?.result ?? '';
+      const res = await fetch(`/api/diagnostics/${diagId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ result }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save result');
+      setResultDrafts((prev) => { const next = { ...prev }; delete next[diagId]; return next; });
+      await loadDiagnostics();
+    } catch (err) {
+      setResultError({ id: diagId, message: err.message });
+    } finally {
+      setSavingResultId(null);
     }
   }
 
-  // A photo attached to a diagnostic (a lab panel, an imaging reading,
-  // ...) gets read by AI and its result values dropped into both the
-  // diagnostic's own result field and the consult's Tests field (see
-  // migration 080) on top of whatever's already there. Once that's saved,
-  // the photo itself has done its job — same as a finished audio recording
-  // (see AudioRecorder) — so it's deleted rather than kept indefinitely.
+  // Read lab documents only. Keep originals attached for review in Reports.
   async function handleDiagnosticPhotoUploaded(diagId, testName, file, attachment) {
-    if (!file.type.startsWith('image/')) return;
+    setDiagPhotoVersion((prev) => ({ ...prev, [diagId]: (prev[diagId] || 0) + 1 }));
+    if (isUltrasoundTest(testName) || isXrayTest(testName)) return;
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') return;
     setExtractingResultId(diagId);
     setExtractResultError((prev) => ({ ...prev, [diagId]: null }));
     try {
@@ -400,11 +421,8 @@ export default function ConsultDetailPage() {
       }
       setResultDrafts((prev) => ({ ...prev, [diagId]: data.result }));
       loadDiagnostics();
-      loadConsult();
-      if (attachment?.id) {
-        await fetch(`/api/attachments/${attachment.id}`, { method: 'DELETE' });
-        setDiagPhotoVersion((prev) => ({ ...prev, [diagId]: (prev[diagId] || 0) + 1 }));
-      }
+    } catch (err) {
+      setExtractResultError((prev) => ({ ...prev, [diagId]: err.message || 'Could not read the test result.' }));
     } finally {
       setExtractingResultId(null);
     }
@@ -690,15 +708,17 @@ export default function ConsultDetailPage() {
     setGenerateReportError(null);
     setGenerateReportErrorId(null);
     setGeneratingReportId(reportId);
-    const res = await fetch(`${apiBase}/${reportId}/generate-report`, { method: 'POST' });
-    const data = await res.json().catch(() => ({}));
-    setGeneratingReportId(null);
-    if (!res.ok) {
-      setGenerateReportError(data.error || 'Failed to generate report');
+    try {
+      const res = await fetch(`${apiBase}/${reportId}/generate-report`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to generate report');
+      await onDone();
+    } catch (error) {
+      setGenerateReportError(error.message || 'Failed to generate report');
       setGenerateReportErrorId(reportId);
-      return;
+    } finally {
+      setGeneratingReportId(null);
     }
-    onDone();
   }
 
   async function createInvoice() {
@@ -713,16 +733,25 @@ export default function ConsultDetailPage() {
 
   async function admitToHospital(e) {
     e.preventDefault();
+    if (linkedHospitalization) {
+      router.push(`/hospitalization/${linkedHospitalization.id}`);
+      return;
+    }
     setAdmitting(true);
-    const res = await fetch('/api/hospitalizations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ originating_visit_id: id, reason: hospReason }),
-    });
-    const data = await res.json();
-    setAdmitting(false);
-    if (res.ok) {
+    try {
+      const res = await fetch('/api/hospitalizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ originating_visit_id: id, reason: hospReason }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not admit the patient.');
+      setLinkedHospitalization(data);
       router.push(`/hospitalization/${data.id}`);
+    } catch (error) {
+      setHospitalizationError(error.message);
+    } finally {
+      setAdmitting(false);
     }
   }
 
@@ -737,9 +766,6 @@ export default function ConsultDetailPage() {
 
   return (
     <div>
-      <p>
-        <a href="/consults">&larr; All consults</a>
-      </p>
       <div className="consult-header-row">
         <h1>
           {consult.patients?.name}{' '}
@@ -771,12 +797,14 @@ export default function ConsultDetailPage() {
             </details>
           )}
           <PatientHistoryPanel patientId={consult.patient_id} clientId={consult.client_id} excludeVisitId={id} />
+          <PatientReportOverview patientId={consult.patient_id} />
         </div>
       </div>
       {vetChangeError && <p className="error">{vetChangeError}</p>}
       <p>
         Owner: <a href={`/clients/${consult.clients?.id}`}>{consult.clients?.full_name}</a> ·
-        Patient: <a href={`/patients/${consult.patients?.id}`}>record</a> · Room:{' '}
+        Patient: <a href={`/patients/${consult.patients?.id}`}>record</a>{' '}
+        <a className="button-link report-overview-pill" href="#patient-report-overview">📑 Reports</a> · Room:{' '}
         {consult.rooms?.name}
       </p>
 
@@ -797,7 +825,15 @@ export default function ConsultDetailPage() {
         >
           🧾 {invoiceInfo ? `Invoice (${invoiceInfo.status})` : creatingInvoice ? 'Creating...' : 'Invoice'}
         </button>
-        <details className="consult-action-toggle">
+        {linkedHospitalization ? (
+          <a className="button-link consult-hospitalized" href={`/hospitalization/${linkedHospitalization.id}`}>
+            🏥 Hospitalized
+          </a>
+        ) : checkingHospitalization || hospitalizationError ? (
+          <button type="button" className="button-link" disabled={checkingHospitalization} onClick={loadLinkedHospitalization}>
+            {checkingHospitalization ? 'Checking hospitalization…' : 'Retry hospitalization check'}
+          </button>
+        ) : <details className="consult-action-toggle">
           <summary className="button-link">🏥 Hospitalization</summary>
           <form className="consult-action-dropdown" onSubmit={admitToHospital}>
             <input
@@ -809,7 +845,8 @@ export default function ConsultDetailPage() {
               {admitting ? 'Admitting...' : 'Admit'}
             </button>
           </form>
-        </details>
+        </details>}
+        {hospitalizationError && <span className="error" role="alert">{hospitalizationError}</span>}
         <details className="consult-action-toggle">
           <summary className="button-link">📷 Photos</summary>
           <div className="consult-action-dropdown">
@@ -820,26 +857,6 @@ export default function ConsultDetailPage() {
           <summary className="button-link">🎙️ Record</summary>
           <div className="consult-action-dropdown">
             <AudioRecorder entityType="visit" entityId={id} />
-          </div>
-        </details>
-        <details className="consult-action-toggle">
-          <summary className="button-link">📄 Report</summary>
-          <div className="consult-action-dropdown">
-            {consult.status === 'complete' && (
-              <ClientReportEditor
-                reportId={id}
-                apiBase="/api/visits"
-                savedReport={consult.ai_summary}
-                onSaved={loadConsult}
-              />
-            )}
-            <ReportShareActions
-              reportId={id}
-              apiBase="/api/visits"
-              client={consult.clients}
-              patient={consult.patients}
-              reportLabel="consult report"
-            />
           </div>
         </details>
       </div>
@@ -941,8 +958,7 @@ export default function ConsultDetailPage() {
             <span className="field-label-row">
               Tests
               <InfoHint>
-                Fills in automatically as test-result photos are read on the right — see
-                Diagnostics.
+                Additional test notes. Individual reports and transcribed lab results are available in Reports.
               </InfoHint>
             </span>
             <textarea
@@ -980,16 +996,7 @@ export default function ConsultDetailPage() {
             x-rays, or ultrasound scans on each entry above once it&apos;s added.
           </InfoHint>
         </h3>
-        {diagnostics.length > 0 && (
-          <ReportShareActions
-            reportId={id}
-            apiBase="/api/visits"
-            pdfPath="test-report-pdf"
-            client={consult.clients}
-            patient={consult.patients}
-            reportLabel="test results"
-          />
-        )}
+        <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View reports and test results</button>
         <form className="card" onSubmit={addDiagnostic}>
           {diagError && <p className="error">{diagError}</p>}
           <CatalogPicker
@@ -1044,6 +1051,7 @@ export default function ConsultDetailPage() {
                   {savingResultId === d.id ? 'Saving...' : 'Save Result'}
                 </button>
               </div>
+              {resultError?.id === d.id && <p className="error">{resultError.message}</p>}
               {extractingResultId === d.id && <p className="visit-meta">🔎 Reading result from photo...</p>}
               {extractResultError[d.id] && <p className="error">{extractResultError[d.id]}</p>}
               <AttachmentSection
@@ -1145,20 +1153,7 @@ export default function ConsultDetailPage() {
                             : '✨ Generate AI Report'}
                       </button>
                       {generateReportErrorId === ultrasoundReport.id && <p className="error">{generateReportError}</p>}
-                      <ClientReportEditor
-                        reportId={ultrasoundReport.id}
-                        apiBase="/api/ultrasound-reports"
-                        savedReport={ultrasoundReport.ai_summary}
-                        onSaved={loadUltrasoundReports}
-                      />
-                      <h4>Share Ultrasound Report</h4>
-                      <ReportShareActions
-                        reportId={ultrasoundReport.id}
-                        apiBase="/api/ultrasound-reports"
-                        client={consult.clients}
-                        patient={consult.patients}
-                        reportLabel="ultrasound report"
-                      />
+                      <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
                     </>
                   )}
                 </div>
@@ -1246,20 +1241,7 @@ export default function ConsultDetailPage() {
                             : '✨ Generate AI Report'}
                       </button>
                       {generateReportErrorId === xrayReport.id && <p className="error">{generateReportError}</p>}
-                      <ClientReportEditor
-                        reportId={xrayReport.id}
-                        apiBase="/api/xray-reports"
-                        savedReport={xrayReport.ai_summary}
-                        onSaved={loadXrayReports}
-                      />
-                      <h4>Share X-ray Report</h4>
-                      <ReportShareActions
-                        reportId={xrayReport.id}
-                        apiBase="/api/xray-reports"
-                        client={consult.clients}
-                        patient={consult.patients}
-                        reportLabel="x-ray report"
-                      />
+                      <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
                     </>
                   )}
                 </div>
@@ -1462,20 +1444,7 @@ export default function ConsultDetailPage() {
               {generatingReportId === r.id ? 'Generating...' : r.ai_summary ? '🔄 Regenerate AI Report' : '✨ Generate AI Report'}
             </button>
             {generateReportErrorId === r.id && <p className="error">{generateReportError}</p>}
-            <ClientReportEditor
-              reportId={r.id}
-              apiBase="/api/dental-reports"
-              savedReport={r.ai_summary}
-              onSaved={loadDentalReports}
-            />
-            <h4>Share Dental Report</h4>
-            <ReportShareActions
-              reportId={r.id}
-              apiBase="/api/dental-reports"
-              client={consult.clients}
-              patient={consult.patients}
-              reportLabel="dental report"
-            />
+            <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
           </div>
         ))}
         </div>
@@ -1543,24 +1512,32 @@ export default function ConsultDetailPage() {
               {generatingReportId === r.id ? 'Generating...' : r.ai_summary ? '🔄 Regenerate AI Report' : '✨ Generate AI Report'}
             </button>
             {generateReportErrorId === r.id && <p className="error">{generateReportError}</p>}
-            <ClientReportEditor
-              reportId={r.id}
-              apiBase="/api/surgical-reports"
-              savedReport={r.ai_summary}
-              onSaved={loadSurgicalReports}
-            />
-            <h4>Share Surgical Report</h4>
-            <ReportShareActions
-              reportId={r.id}
-              apiBase="/api/surgical-reports"
-              client={consult.clients}
-              patient={consult.patients}
-              reportLabel="surgical report"
-            />
+            <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
           </div>
         ))}
         </div>
         </div>
+      </div>
+
+      <div hidden={activeTab !== 'reports'}>
+        <ConsultReports
+          consult={consult} diagnostics={diagnostics} catalog={catalog}
+          groups={[
+            { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', sourceTab: 'procedures', reload: loadDentalReports },
+            { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', sourceTab: 'procedures', reload: loadSurgicalReports },
+            { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', sourceTab: 'exam', reload: loadUltrasoundReports },
+            { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', sourceTab: 'exam', reload: loadXrayReports },
+          ]}
+          onConsultSaved={loadConsult} onOpenSource={setActiveTab}
+          onGenerate={generateAiReport} generatingId={generatingReportId}
+          generationError={generateReportError} generationErrorId={generateReportErrorId}
+          onGenerateConsult={() => generateAiReport('/api/visits', id, !!consult.ai_summary, loadConsult)}
+          resultDrafts={resultDrafts} onResultChange={(diagId, text) => setResultDrafts((prev) => ({ ...prev, [diagId]: text }))}
+          onSaveResult={saveDiagnosticResult} savingResultId={savingResultId} resultError={resultError}
+          onUploaded={handleDiagnosticPhotoUploaded} extractingResultId={extractingResultId}
+          extractResultError={extractResultError} attachmentVersions={diagPhotoVersion}
+          reportsError={Object.values(reportsError).filter(Boolean).join(' ')}
+        />
       </div>
 
       {/* Consent & Admission — the paperwork/disposition side: signed

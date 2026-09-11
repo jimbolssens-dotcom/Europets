@@ -32,7 +32,7 @@ export async function GET(request, { params }) {
   const { data: report, error } = await supabase
     .from('dental_reports')
     .select(
-      'ai_summary, performed_at, staff(full_name), visits(patients(id, name, species, dental_chart), clients(full_name))'
+      'id, ai_summary, dental_chart_snapshot, performed_at, staff(full_name), visits(patients(id, name, species, dental_chart), clients(full_name))'
     )
     .eq('id', params.id)
     .single();
@@ -51,6 +51,10 @@ export async function GET(request, { params }) {
 
   const patient = report.visits?.patients;
 
+  // Capture the chart exactly as it looked when this report was first
+  // rendered. Later lifetime-chart cleanup (extracted -> missing) must not
+  // rewrite a historical report.
+  const reportChart = report.dental_chart_snapshot || patient?.dental_chart || {};
   const pdfBytes = await buildProcedureReportPdf({
     procedureType: 'dental',
     patient,
@@ -58,12 +62,15 @@ export async function GET(request, { params }) {
     clinic,
     performedAt: report.performed_at,
     staffName: report.staff?.full_name,
-    dentalChart: patient?.dental_chart,
+    dentalChart: reportChart,
     sections: [{ text: report.ai_summary }],
     photos,
   });
 
   if (patient) {
+    if (!report.dental_chart_snapshot) {
+      await supabase.from('dental_reports').update({ dental_chart_snapshot: reportChart }).eq('id', params.id);
+    }
     const locked = lockExtractedTeeth(patient.dental_chart);
     if (locked && JSON.stringify(locked) !== JSON.stringify(patient.dental_chart)) {
       await supabase.from('patients').update({ dental_chart: locked }).eq('id', patient.id);

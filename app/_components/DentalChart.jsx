@@ -9,7 +9,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getToothLayout, BOX_WIDTH, BOX_HEIGHT, TOOTH_COLORS } from '@/lib/dentalChartLayout';
+import { getToothLayout, BOX_WIDTH, BOX_HEIGHT, TOOTH_COLORS, TOOTH_TYPE_COLORS } from '@/lib/dentalChartLayout';
 
 export default function DentalChart({ species, value, onChange, saving }) {
   const [mode, setMode] = useState('extracted');
@@ -55,6 +55,14 @@ export default function DentalChart({ species, value, onChange, saving }) {
         {saving && <span className="visit-meta">Saving...</span>}
       </div>
       <svg viewBox={`0 0 ${BOX_WIDTH} ${BOX_HEIGHT}`} className="dental-chart-svg" role="img" aria-label="Dental chart">
+        <text x="18" y="72" fontSize="14" fill="#555">Right</text>
+        <text x="18" y="89" fontSize="14" fill="#555">Upper</text>
+        <text x="420" y="72" fontSize="14" fill="#555">Left</text>
+        <text x="420" y="89" fontSize="14" fill="#555">Upper</text>
+        <text x="18" y="535" fontSize="14" fill="#555">Right</text>
+        <text x="18" y="552" fontSize="14" fill="#555">Lower</text>
+        <text x="420" y="535" fontSize="14" fill="#555">Left</text>
+        <text x="420" y="552" fontSize="14" fill="#555">Lower</text>
         {layout.map((tooth) => {
           const state = value?.[tooth.id];
           const colors = TOOTH_COLORS[state] || TOOTH_COLORS.normal;
@@ -65,9 +73,10 @@ export default function DentalChart({ species, value, onChange, saving }) {
                 cy={tooth.cy}
                 rx={tooth.rx}
                 ry={tooth.ry}
-                fill={colors.fill}
-                stroke={colors.stroke}
-                strokeWidth={1.5}
+                fill={state ? colors.fill : TOOTH_TYPE_COLORS[tooth.type] || colors.fill}
+                stroke={state ? colors.stroke : '#999'}
+                strokeWidth={state ? 2.5 : 1.5}
+                opacity={state ? 1 : 0.82}
               />
               <text x={tooth.cx} y={tooth.cy + 3} textAnchor="middle" fontSize={9} fill="#333">
                 {tooth.label}

@@ -1,0 +1,101 @@
+.wall {
+  --gap: 4px;
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  padding: 26px 6px 6px;
+  background: #fdf9fb;
+  color: #25212a;
+  font-variant-numeric: tabular-nums;
+}
+.back {
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  padding: 1px 7px;
+  border: 1px solid #d9c5ce;
+  border-radius: 3px;
+  color: #743954;
+  background: white;
+  font-size: 11px;
+  line-height: 18px;
+  text-decoration: none;
+}
+/* Locked map: eight equal square cage columns. The top occupies three
+   rows (LT5/LT4 | Hospital 2x6 | LT3/LT2/LT1); the lower block occupies
+   two rows (Recovery 2x2 | Dog 2x2 | interlocking Isolation/Post-op 2x4).
+   Fit the whole map uniformly; never resize or reflow individual groups. */
+.floorPlan {
+  --cage-size: max(90px, min(calc((100vw - 40px) / 8), calc((100dvh - 96px) / 5)));
+  width: max-content;
+  margin-inline: auto;
+  display: grid;
+  gap: 8px;
+}
+.upperRow { display: grid; grid-template-columns: var(--cage-size) calc(6 * var(--cage-size) + 5 * var(--gap)) var(--cage-size); gap: var(--gap); align-items: start; }
+.lowerRow { display: grid; grid-template-columns: repeat(2, calc(2 * var(--cage-size) + var(--gap))) calc(4 * var(--cage-size) + 3 * var(--gap)); gap: var(--gap); align-items: start; }
+.cluster, .interlocking { min-width: 0; }
+.clusterLabel, .interlockHeaders h2 {
+  height: 20px;
+  margin: 0;
+  padding: 2px 5px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  color: #71344f;
+  background: #f2dfe7;
+}
+.clusterGrid { display: grid; grid-template-columns: repeat(var(--columns), minmax(0, 1fr)); gap: var(--gap); }
+.interlockHeaders { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.interlockHeaders .postOpLabel { grid-column: 2 / 5; background: #e3dcec; color: #524365; }
+.interlockGrid { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
+.isoCell, .postCell { min-width: 0; position: relative; padding: 0; }
+/* Overlay strokes never affect cage dimensions or positions. */
+.sectionOutlines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 2; }
+.sectionOutlines path { fill: none; stroke-width: 5px; vector-effect: non-scaling-stroke; stroke-linejoin: miter; }
+.isolationOutline { stroke: #12a657; }
+.postOpOutline { stroke: #8b41df; }
+.cluster { position: relative; --section-color: #078aa6; }
+.cluster[data-section="Hospitalization Cages"] { --section-color: #2979ed; }
+.cluster[data-section="Recovery"] { --section-color: #e53285; }
+.cluster[data-section="Dog"] { --section-color: #ed7621; }
+.cluster::after { content: ''; position: absolute; inset: 0; border: 5px solid var(--section-color); pointer-events: none; z-index: 2; }
+.cluster .clusterLabel { background: var(--section-color); color: white; }
+.interlockHeaders .isolationLabel { background: #12a657; color: white; }
+.interlockHeaders .postOpLabel { background: #8b41df; color: white; }
+.tile {
+  box-sizing: border-box;
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 5px 6px;
+  border: 1px solid #d8cdd2;
+  border-radius: 2px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+}
+.empty { background: #f7f4f6; color: #81787c; }
+.tileHeader { display: flex; align-items: baseline; gap: 6px; padding-bottom: 3px; border-bottom: 1px solid #eee5e9; }
+.cageName { flex-shrink: 0; font-size: clamp(10px, .42vw, 16px); font-weight: 800; line-height: 1.15; }
+.patient { min-width: 0; overflow-wrap: anywhere; font-size: clamp(11px, .47vw, 18px); font-weight: 750; line-height: 1.15; }
+.plan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 8px; min-height: 0; overflow: auto; scrollbar-width: thin; }
+.planColumn { min-width: 0; }
+.planColumn + .planColumn { border-left: 1px solid #eee5e9; padding-left: 6px; }
+.columnLabel { margin: 0 0 4px; font-size: clamp(9px, .32vw, 12px); line-height: 1.15; color: #71344f; }
+.taskList { list-style: none; padding: 0; margin: 0; }
+.task { background: #fff0c2; color: #492e00; box-shadow: inset 3px 0 #d48a00; padding: 0 3px 0 5px; margin: 0 0 3px; font-size: clamp(9px, .34vw, 13px); line-height: 1.2; overflow-wrap: anywhere; }
+.taskLabel { font-weight: 650; }
+.taskMeta { color: inherit; }
+.status { display: block; color: inherit; font-weight: 700; font-size: .9em; line-height: 1.2; }
+.done { background: #08783e; color: #fff; box-shadow: inset 3px 0 #034a26; }
+.done .taskLabel { text-decoration: none; }
+.done .status { color: #fff; }
+.attention { box-shadow: inset 0 0 0 2px #ffc107; background: #fff3cd; }
+.attentionLabel { font-size: clamp(9px, .3vw, 12px); font-weight: 700; color: #815000; }
+.noPlan { color: #71676d; font-size: clamp(9px, .34vw, 13px); }
+.error { color: #a01232; font-size: 12px; }
+.loading { font-size: 12px; }
+.back:focus-visible, .plan:focus-visible { outline: 2px solid #9a3661; outline-offset: 1px; }

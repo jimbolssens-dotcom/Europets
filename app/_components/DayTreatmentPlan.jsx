@@ -309,14 +309,6 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
   const existingLabels = new Set(planItems.map((t) => t.label));
   const remainingQuickTasks = QUICK_TASKS.filter((q) => !existingLabels.has(q));
 
-  const logEntries = todayNotes
-    .map((n) => ({
-      ...n,
-      taskLabels: n.plan_item_ids.map((id) => planItems.find((p) => p.id === id)?.label).filter(Boolean),
-    }))
-    .filter((n) => n.taskLabels.length > 0)
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
   return (
     <div className="day-plan">
       {error && <p className="error">{error}</p>}
@@ -483,21 +475,6 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
         </div>
       )}
 
-      <h4 className="day-plan-log-header">Today&apos;s Log</h4>
-      {logEntries.length === 0 ? (
-        <p className="visit-meta">Nothing logged yet today.</p>
-      ) : (
-        <ul className="day-plan-log">
-          {logEntries.map((n) => (
-            <li key={n.id}>
-              <span className="day-plan-log-task">{n.taskLabels.join(', ')}</span>
-              <span className="day-plan-log-meta">
-                {formatTime(n.created_at)} &middot; {authorName(n.author_id)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }

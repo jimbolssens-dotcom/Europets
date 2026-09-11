@@ -92,6 +92,28 @@ button:disabled {
   background: var(--pink-dark);
 }
 
+.hospitalization-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-block: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.hospitalization-test-reports { margin-top: 1rem; }
+.hospitalization-test-report-add { display: grid; gap: .6rem; }
+.hospitalization-test-report-add textarea,
+.hospitalization-test-report textarea { width: 100%; box-sizing: border-box; min-height: 4rem; }
+.hospitalization-test-report { margin-top: .75rem; padding: .6rem; border: 1px solid #eadce3; border-radius: 8px; }
+.hospitalization-test-report label { display: grid; gap: .35rem; margin: .7rem 0; }
+.hospitalization-procedure-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+.hospitalization-actions > .button-link {
+  flex: 0 0 auto;
+}
+
 /* Big standalone CTA on the Accounting password screen — reception just
    wants the Shift Tally and shouldn't need the password to get to it, so
    this is deliberately louder than the ordinary .button-link next to it. */
@@ -998,6 +1020,30 @@ button.secondary:hover {
   margin: 0.5rem 0;
 }
 
+.consult-reports summary {
+  cursor: pointer;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.report-result-field {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.report-result-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
 .diagnostic-result-row textarea {
   flex: 1;
   min-width: 180px;
@@ -1549,6 +1595,17 @@ button.secondary:hover {
   position: relative;
 }
 
+.button-link.consult-hospitalized {
+  background: #e2f1e9;
+  border: 1px solid #8db9a2;
+  color: #245b40;
+}
+
+.button-link.consult-hospitalized:hover {
+  background: #cfe7d9;
+  color: #19452f;
+}
+
 .consult-action-toggle summary {
   cursor: pointer;
   list-style: none;
@@ -2082,6 +2139,39 @@ button.secondary:hover {
   align-items: flex-start;
   gap: 1rem;
   margin-top: 1rem;
+}
+
+/* Use the available screen for all seven days; reserve the booking column. */
+.content:has(.appointments-page) {
+  max-width: none;
+  padding-inline: 1rem;
+}
+
+.appointments-page .schedule-left-col:empty {
+  display: none;
+}
+
+.report-overview-pill {
+  display: inline-block;
+  cursor: pointer;
+  list-style: none;
+}
+
+@media (min-width: 1024px) {
+  .appointments-page .schedule-layout.day-view .schedule-main {
+    flex: 0 1 auto;
+    margin-inline: auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .appointments-page .schedule-layout {
+    flex-wrap: nowrap;
+  }
+
+  .appointments-page .schedule-main {
+    flex: 1 1 0;
+  }
 }
 
 /* Book Appointment panel, sitting beside the schedule instead of below it —
@@ -4746,4 +4836,3 @@ form.card.admit-patient-form {
   padding: 0.6rem 1rem;
   font-size: 0.85rem;
 }
-
