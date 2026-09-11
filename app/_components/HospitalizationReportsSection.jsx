@@ -29,7 +29,7 @@ const LEGACY_DIAGNOSTIC_TYPE_LABELS = {
   other: 'Other',
 };
 
-export default function HospitalizationReportsSection({ hospitalizationId, admission, staff, catalog, subcategories, onCatalogItemCreated, onPatientUpdated }) {
+export default function HospitalizationReportsSection({ hospitalizationId, admission, staff, catalog, subcategories, onCatalogItemCreated, onPatientUpdated, onAdmissionUpdated }) {
   const [diagnostics, setDiagnostics] = useState([]);
   const [diagForm, setDiagForm] = useState({ goods_service_id: '', description: '' });
   const [diagError, setDiagError] = useState(null);
@@ -284,7 +284,10 @@ export default function HospitalizationReportsSection({ hospitalizationId, admis
   return (
     <div className="hospitalization-reports-section">
       <RecordReports
-        record={admission || {}} recordApiBase="/api/hospitalizations" showOverallReport={false}
+        record={admission || {}} recordApiBase="/api/hospitalizations" showOverallReport
+        overallReportLabel="hospital report" overallReportPdfPath="summary-pdf"
+        onRecordSaved={onAdmissionUpdated}
+        onGenerateOverallReport={() => generateAiReport('/api/hospitalizations', hospitalizationId, !!admission?.ai_summary, onAdmissionUpdated)}
         diagnostics={diagnostics} catalog={catalog}
         groups={[
           { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', reload: loadDentalReports },

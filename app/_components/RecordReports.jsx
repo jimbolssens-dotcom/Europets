@@ -20,7 +20,7 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
   onGenerate, generatingId, generationError, generationErrorId,
   resultDrafts, onResultChange, onSaveResult, savingResultId, resultError,
   onUploaded, extractingResultId, extractResultError, attachmentVersions, onOpenSource,
-  onGenerateOverallReport, reportsError }) {
+  onGenerateOverallReport, overallReportLabel = 'consult report', overallReportPdfPath = 'report-pdf', reportsError }) {
   const [summaries, setSummaries] = useState({});
   const [summarizing, setSummarizing] = useState({});
   const [summaryErrors, setSummaryErrors] = useState({});
@@ -43,17 +43,17 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
     <h3>Reports</h3>
     <p className="visit-meta">Reports and test results for this record. Review and save changes before sharing.</p>
     {reportsError && <p className="error" role="alert">{reportsError}</p>}
-    {showOverallReport && <section className="card" aria-label="Consult report">
-      <h4>Consult report</h4>
-      <p className="visit-meta">Summary of the saved consult notes and reports. Regenerate after adding or changing results.</p>
+    {showOverallReport && <section className="card" aria-label={overallReportLabel}>
+      <h4>{overallReportLabel[0].toUpperCase()}{overallReportLabel.slice(1)}</h4>
+      <p className="visit-meta">Summary of the saved notes and reports. Regenerate after adding or changing results.</p>
       {onGenerateOverallReport && <button type="button" disabled={generatingId === record.id} onClick={onGenerateOverallReport}>
-        {generatingId === record.id ? 'Generating…' : record.ai_summary ? 'Regenerate consult report' : 'Generate consult report'}
+        {generatingId === record.id ? 'Generating…' : record.ai_summary ? `Regenerate ${overallReportLabel}` : `Generate ${overallReportLabel}`}
       </button>}
       {generationErrorId === record.id && <p className="error" role="alert">{generationError}</p>}
       {record.ai_summary ? <ClientReportEditor reportId={record.id} apiBase={recordApiBase}
-        savedReport={record.ai_summary} onSaved={onRecordSaved} /> : <p>No consult report generated yet.</p>}
-      <ReportShareActions reportId={record.id} apiBase={recordApiBase} client={record.clients}
-        patient={record.patients} reportLabel="consult report" />
+        savedReport={record.ai_summary} onSaved={onRecordSaved} /> : <p>No {overallReportLabel} generated yet.</p>}
+      <ReportShareActions reportId={record.id} apiBase={recordApiBase} pdfPath={overallReportPdfPath} client={record.clients}
+        patient={record.patients} reportLabel={overallReportLabel} />
     </section>}
     {!count && !reportsError && <p>No procedure reports or test results added yet.</p>}
     {groups.map((group) => group.reports.length > 0 && <section key={group.apiBase} aria-label={group.label}>

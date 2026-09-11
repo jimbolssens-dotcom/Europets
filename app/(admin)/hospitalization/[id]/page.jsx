@@ -98,6 +98,7 @@ export default function HospitalizationDetailPage() {
   const [dayAddCategory, setDayAddCategory] = useState('product');
   const [noteAddCategory, setNoteAddCategory] = useState('product');
   const [pendingItemCategory, setPendingItemCategory] = useState('product');
+  const [reportsOpen, setReportsOpen] = useState(false);
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`)
@@ -608,10 +609,28 @@ export default function HospitalizationDetailPage() {
         {admission.originating_visit_id && (
           <a className="button-link" href={`/consults/${admission.originating_visit_id}`}>Originating consult</a>
         )}
-        <a className="button-link report-overview-pill" href="#hospitalization-reports">📑 Reports</a>
+        <button type="button" className="button-link report-overview-pill" onClick={() => setReportsOpen((v) => !v)}>
+          📑 {reportsOpen ? 'Hide Reports' : 'Reports'}
+        </button>
         <a className="button-link" href="/hospitalization">Cage Layout</a>
       </div>
       {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
+
+      {reportsOpen && (
+        <section className="case-files-open" aria-label="Reports">
+          <PatientReportOverview patientId={admission.patient_id} title="Earlier reports for this patient" />
+          <HospitalizationReportsSection
+            hospitalizationId={id}
+            admission={admission}
+            staff={staff}
+            catalog={catalog}
+            subcategories={subcategories}
+            onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+            onPatientUpdated={(dental_chart) => setAdmission((prev) => ({ ...prev, patients: { ...prev.patients, dental_chart } }))}
+            onAdmissionUpdated={loadAdmission}
+          />
+        </section>
+      )}
 
       <PatientHistoryPanel
         patientId={admission.patient_id}
@@ -1153,20 +1172,6 @@ export default function HospitalizationDetailPage() {
       </form>
       </div>
       </div>
-
-      <details className="case-files" id="hospitalization-reports" open>
-        <summary>📑 Reports</summary>
-        <PatientReportOverview patientId={admission.patient_id} title="Earlier reports for this patient" />
-        <HospitalizationReportsSection
-          hospitalizationId={id}
-          admission={admission}
-          staff={staff}
-          catalog={catalog}
-          subcategories={subcategories}
-          onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
-          onPatientUpdated={(dental_chart) => setAdmission((prev) => ({ ...prev, patients: { ...prev.patients, dental_chart } }))}
-        />
-      </details>
 
       <PdfPreviewModal url={previewPdfUrl} onClose={() => setPreviewPdfUrl(null)} />
     </div>

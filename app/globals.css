@@ -878,6 +878,19 @@ button.secondary:hover {
   margin-bottom: 0.5rem;
 }
 
+/* The hospitalization Reports panel, toggled open/closed by the header
+   "Reports" button rather than a <details> — same card look as
+   .case-files, rendered right below the action buttons so opening it
+   pushes the rest of the page down instead of scrolling to it. */
+.case-files-open {
+  display: block;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
 /* Long-term, patient-level notes ("aggressive with handling", "allergic
    to penicillin") — warm/amber to read as a standing alert, distinct from
    the neutral .case-files styling and the yellow .possible-duplicate-warning
