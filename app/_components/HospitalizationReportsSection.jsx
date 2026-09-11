@@ -299,7 +299,7 @@ export default function HospitalizationReportsSection({ hospitalizationId, admis
     <div className="hospitalization-reports-section">
       <RecordReports
         record={admission || {}} recordApiBase="/api/hospitalizations" showOverallReport
-        overallReportLabel="hospital report" overallReportPdfPath="summary-pdf"
+        overallReportLabel={admission?.kind === 'day_procedure' ? 'day procedure report' : 'hospital report'} overallReportPdfPath="summary-pdf"
         onRecordSaved={onAdmissionUpdated}
         onGenerateOverallReport={() => generateAiReport('/api/hospitalizations', hospitalizationId, !!admission?.ai_summary, onAdmissionUpdated)}
         onDeleteOverallReport={deleteHospitalReport} onDeleteDiagnostic={deleteDiagnostic}

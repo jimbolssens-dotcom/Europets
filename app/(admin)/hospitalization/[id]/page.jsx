@@ -741,6 +741,11 @@ export default function HospitalizationDetailPage() {
           {addConsultError && <p className="error" role="alert">{addConsultError}</p>}
           {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
 
+          <details className="case-files">
+            <summary>📎 Case Photos &amp; Files</summary>
+            <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} />
+          </details>
+
           <ProcedureChecklist
             key={`${id}-${noteDeleteVersion}`}
             hospitalizationId={id}
@@ -777,11 +782,6 @@ export default function HospitalizationDetailPage() {
 
           {patientHistorySection}
           {consentFormsSection}
-
-          <details className="case-files">
-            <summary>📎 Case Photos &amp; Files</summary>
-            <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} />
-          </details>
         </>
       ) : (
         <>
