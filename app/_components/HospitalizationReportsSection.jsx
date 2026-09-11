@@ -259,6 +259,20 @@ export default function HospitalizationReportsSection({ hospitalizationId, admis
     }
   }
 
+  async function deleteDiagnostic(diagId) {
+    await fetch(`/api/diagnostics/${diagId}`, { method: 'DELETE' });
+    loadDiagnostics();
+  }
+
+  async function deleteHospitalReport() {
+    await fetch(`/api/hospitalizations/${hospitalizationId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ai_summary: null }),
+    });
+    onAdmissionUpdated?.();
+  }
+
   async function generateAiReport(apiBase, reportId, hasExisting, onDone) {
     if (hasExisting && !confirm('Regenerate this report? This will replace the current saved report text.')) return;
     setGenerateReportError(null);
@@ -288,6 +302,7 @@ export default function HospitalizationReportsSection({ hospitalizationId, admis
         overallReportLabel="hospital report" overallReportPdfPath="summary-pdf"
         onRecordSaved={onAdmissionUpdated}
         onGenerateOverallReport={() => generateAiReport('/api/hospitalizations', hospitalizationId, !!admission?.ai_summary, onAdmissionUpdated)}
+        onDeleteOverallReport={deleteHospitalReport} onDeleteDiagnostic={deleteDiagnostic}
         diagnostics={diagnostics} catalog={catalog}
         groups={[
           { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', reload: loadDentalReports },

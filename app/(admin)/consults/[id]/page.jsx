@@ -727,6 +727,15 @@ export default function ConsultDetailPage() {
     }
   }
 
+  async function deleteConsultReport() {
+    await fetch(`/api/visits/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ai_summary: null }),
+    });
+    await loadConsult();
+  }
+
   async function createInvoice() {
     setCreatingInvoice(true);
     const res = await fetch(`/api/visits/${id}/invoice`, { method: 'POST' });
@@ -1545,6 +1554,7 @@ export default function ConsultDetailPage() {
           onGenerate={generateAiReport} generatingId={generatingReportId}
           generationError={generateReportError} generationErrorId={generateReportErrorId}
           onGenerateOverallReport={() => generateAiReport('/api/visits', id, !!consult.ai_summary, loadConsult)}
+          onDeleteOverallReport={deleteConsultReport} onDeleteDiagnostic={deleteDiagnostic}
           resultDrafts={resultDrafts} onResultChange={(diagId, text) => setResultDrafts((prev) => ({ ...prev, [diagId]: text }))}
           onSaveResult={saveDiagnosticResult} savingResultId={savingResultId} resultError={resultError}
           onUploaded={handleDiagnosticPhotoUploaded} extractingResultId={extractingResultId}

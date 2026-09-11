@@ -20,10 +20,20 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
   onGenerate, generatingId, generationError, generationErrorId,
   resultDrafts, onResultChange, onSaveResult, savingResultId, resultError,
   onUploaded, extractingResultId, extractResultError, attachmentVersions, onOpenSource,
-  onGenerateOverallReport, overallReportLabel = 'consult report', overallReportPdfPath = 'report-pdf', reportsError }) {
+  onGenerateOverallReport, onDeleteOverallReport, onDeleteDiagnostic,
+  overallReportLabel = 'consult report', overallReportPdfPath = 'report-pdf', reportsError }) {
   const [summaries, setSummaries] = useState({});
   const [summarizing, setSummarizing] = useState({});
   const [summaryErrors, setSummaryErrors] = useState({});
+  const [deletingId, setDeletingId] = useState(null);
+
+  async function deleteGroupReport(group, report) {
+    if (!confirm('Delete this report? This cannot be undone.')) return;
+    setDeletingId(report.id);
+    await fetch(`${group.apiBase}/${report.id}`, { method: 'DELETE' });
+    setDeletingId(null);
+    group.reload();
+  }
   async function summarize(diagnostic) {
     setSummarizing((prev) => ({ ...prev, [diagnostic.id]: true }));
     setSummaryErrors((prev) => ({ ...prev, [diagnostic.id]: null }));
@@ -49,6 +59,10 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
       {onGenerateOverallReport && <button type="button" disabled={generatingId === record.id} onClick={onGenerateOverallReport}>
         {generatingId === record.id ? 'Generating…' : record.ai_summary ? `Regenerate ${overallReportLabel}` : `Generate ${overallReportLabel}`}
       </button>}
+      {onDeleteOverallReport && record.ai_summary && <button type="button" disabled={deletingId === record.id}
+        onClick={async () => { if (!confirm(`Delete this ${overallReportLabel}? This cannot be undone.`)) return; setDeletingId(record.id); await onDeleteOverallReport(); setDeletingId(null); }}>
+        {deletingId === record.id ? 'Deleting…' : `Delete ${overallReportLabel}`}
+      </button>}
       {generationErrorId === record.id && <p className="error" role="alert">{generationError}</p>}
       {record.ai_summary ? <ClientReportEditor reportId={record.id} apiBase={recordApiBase}
         savedReport={record.ai_summary} onSaved={onRecordSaved} /> : <p>No {overallReportLabel} generated yet.</p>}
@@ -67,6 +81,9 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
           <button type="button" onClick={() => onGenerate(group.apiBase, report.id, !!report.ai_summary, group.reload)}
             disabled={generatingId === report.id || !(report.findings || report.procedures_performed || report.procedure_name || report.notes)}>
             {generatingId === report.id ? 'Generating…' : report.ai_summary ? 'Regenerate report' : 'Generate report'}
+          </button>
+          <button type="button" onClick={() => deleteGroupReport(group, report)} disabled={deletingId === report.id}>
+            {deletingId === report.id ? 'Deleting…' : 'Delete report'}
           </button>
         </div>
         {generationErrorId === report.id && <p className="error" role="alert">{generationError}</p>}
@@ -95,6 +112,10 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
           <button type="button" onClick={() => onSaveResult(diagnostic.id)} disabled={savingResultId === diagnostic.id}>
             {savingResultId === diagnostic.id ? 'Saving…' : 'Save results'}
           </button>
+          {onDeleteDiagnostic && <button type="button" disabled={deletingId === diagnostic.id}
+            onClick={async () => { if (!confirm('Delete this test and its result? This cannot be undone.')) return; setDeletingId(diagnostic.id); await onDeleteDiagnostic(diagnostic.id); setDeletingId(null); }}>
+            {deletingId === diagnostic.id ? 'Deleting…' : 'Delete'}
+          </button>}
           {resultError?.id === diagnostic.id && <p className="error" role="alert">{resultError.message}</p>}
           {!isImagingDiagnostic(diagnostic, name) && <>
             <p className="visit-meta">Save pasted laboratory results first, then create a factual list of abnormalities. No clinical interpretation is added.</p>

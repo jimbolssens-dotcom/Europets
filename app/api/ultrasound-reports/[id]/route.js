@@ -1,12 +1,16 @@
 // app/api/ultrasound-reports/[id]/route.js
-// GET   /api/ultrasound-reports/:id  -> one ultrasound report, with the visit's
-//                                       patient/client joined (needed for the
-//                                       report PDF/share links).
-// PATCH /api/ultrasound-reports/:id  -> edit any of its fields — including
-//                                       ai_summary, the AI-elaborated client
-//                                       report (see ClientReportEditor),
-//                                       which a vet can correct before it's
-//                                       shared with the owner.
+// GET    /api/ultrasound-reports/:id  -> one ultrasound report, with the visit's
+//                                        patient/client joined (needed for the
+//                                        report PDF/share links).
+// PATCH  /api/ultrasound-reports/:id  -> edit any of its fields — including
+//                                        ai_summary, the AI-elaborated client
+//                                        report (see ClientReportEditor),
+//                                        which a vet can correct before it's
+//                                        shared with the owner.
+// DELETE /api/ultrasound-reports/:id  -> remove the report entirely — the
+//                                        underlying diagnostic/test order
+//                                        it's attached to (diagnostic_id)
+//                                        is untouched, only the write-up.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -50,4 +54,12 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json(data);
+}
+
+export async function DELETE(request, { params }) {
+  const { error } = await supabase.from('ultrasound_reports').delete().eq('id', params.id);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
 }
