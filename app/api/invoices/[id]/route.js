@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
   const { data: invoice, error } = await supabase
     .from('invoices')
     .select(
-      '*, clients(full_name, phone, email), visits(patients(id, name)), hospitalizations(patients(id, name))'
+      '*, clients(full_name, phone, email), visits(patients(id, name)), hospitalizations(patients(id, name), kind)'
     )
     .eq('id', params.id)
     .single();

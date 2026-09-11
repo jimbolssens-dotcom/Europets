@@ -350,12 +350,6 @@ export default function InvoiceDetailPage() {
       </h1>
       <p className="visit-meta">
         {invoice.clients?.phone} · {invoice.clients?.email}
-        {invoice.visit_id && (
-          <>
-            {' · '}
-            <a href={`/consults/${invoice.visit_id}`}>View originating consult</a>
-          </>
-        )}
       </p>
       <p className="visit-meta">
         Created: {new Date(invoice.created_at).toLocaleDateString()}
@@ -372,6 +366,16 @@ export default function InvoiceDetailPage() {
           <button type="button" onClick={sendPaymentLink}>
             💳 Send
           </button>
+        )}{' '}
+        {invoice.visit_id && (
+          <a className="button-link" href={`/consults/${invoice.visit_id}`}>
+            ← Return to Consult
+          </a>
+        )}
+        {invoice.hospitalization_id && (
+          <a className="button-link" href={`/hospitalization/${invoice.hospitalization_id}`}>
+            ← Return to {invoice.hospitalizations?.kind === 'day_procedure' ? 'Day Procedure' : 'Hospitalization'}
+          </a>
         )}
       </p>
       {paymentLinkError && <p className="error">{paymentLinkError}</p>}
