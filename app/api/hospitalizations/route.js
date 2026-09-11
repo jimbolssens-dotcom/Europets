@@ -3,6 +3,7 @@
 // GET  /api/hospitalizations?patient_id=X           -> a patient's admission history
 // GET  /api/hospitalizations?client_id=X            -> an owner's admission history, across all their pets
 // GET  /api/hospitalizations?appointment_id=X       -> the day procedure checked in from that appointment
+// GET  /api/hospitalizations?kind=day_procedure     -> only day procedures, or ?kind=admission for real admissions
 // POST /api/hospitalizations                        -> admit a patient, or start a day procedure (kind: 'day_procedure')
 //
 // Can be started from a consult (pass originating_visit_id — the patient,
@@ -126,6 +127,7 @@ export async function GET(request) {
   const clientId = searchParams.get('client_id');
   const originatingVisitId = searchParams.get('originating_visit_id');
   const appointmentId = searchParams.get('appointment_id');
+  const kind = searchParams.get('kind');
 
   let query = supabase
     .from('hospitalizations')
@@ -146,6 +148,9 @@ export async function GET(request) {
   }
   if (appointmentId) {
     query = query.eq('appointment_id', appointmentId);
+  }
+  if (kind) {
+    query = query.eq('kind', kind);
   }
 
   const { data, error } = await query;

@@ -99,6 +99,7 @@ export default function AdminLayout({ children }) {
             Appointments{hasPendingAppointmentRequest && ' 🔔'}
           </a>
           <a href="/consults">Consults</a>
+          <a href="/day-procedures">Day Procedures</a>
           <a
             href="/hospitalization"
             className={hasPendingHospitalizationUpdate ? 'nav-update-requested' : ''}
