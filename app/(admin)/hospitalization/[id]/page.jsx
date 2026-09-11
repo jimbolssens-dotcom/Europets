@@ -559,8 +559,7 @@ export default function HospitalizationDetailPage() {
           {admission.clients?.full_name}
           {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''}
         </a>{' '}
-        · Patient: <a href={`/patients/${admission.patients?.id}`}>record</a>{' '}
-        <a className="button-link report-overview-pill" href="#hospitalization-reports">📑 Reports</a> ·
+        · Patient: <a href={`/patients/${admission.patients?.id}`}>record</a> ·
         Cage: {admission.cages?.name || '—'} · Admitted:{' '}
         {new Date(admission.admitted_at).toLocaleString()}
         {admission.discharged_at &&
@@ -609,6 +608,7 @@ export default function HospitalizationDetailPage() {
         {admission.originating_visit_id && (
           <a className="button-link" href={`/consults/${admission.originating_visit_id}`}>Originating consult</a>
         )}
+        <a className="button-link report-overview-pill" href="#hospitalization-reports">📑 Reports</a>
         <a className="button-link" href="/hospitalization">Cage Layout</a>
       </div>
       {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
