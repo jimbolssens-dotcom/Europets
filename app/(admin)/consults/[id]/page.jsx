@@ -877,7 +877,7 @@ export default function ConsultDetailPage() {
               key={tab.id}
               type="button"
               className={`consult-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => setActiveTab((prev) => (tab.id === 'reports' && prev === 'reports' ? null : tab.id))}
             >
               {tab.label}
             </button>
