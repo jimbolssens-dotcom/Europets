@@ -21,6 +21,19 @@
   line-height: 18px;
   text-decoration: none;
 }
+.fullscreenToggle {
+  position: absolute;
+  top: 3px;
+  right: 6px;
+  padding: 1px 7px;
+  border: 1px solid #d9c5ce;
+  border-radius: 3px;
+  color: #743954;
+  background: white;
+  font-size: 11px;
+  line-height: 18px;
+  cursor: pointer;
+}
 /* Locked map: eight equal square cage columns. The top occupies three
    rows (LT5/LT4 | Hospital 2x6 | LT3/LT2/LT1); the lower block occupies
    two rows (Recovery 2x2 | Dog 2x2 | interlocking Isolation/Post-op 2x4).
@@ -79,14 +92,14 @@
 }
 .empty { background: #f7f4f6; color: #81787c; }
 .tileHeader { display: flex; align-items: baseline; gap: 6px; padding-bottom: 3px; border-bottom: 1px solid #eee5e9; }
-.cageName { flex-shrink: 0; font-size: clamp(10px, .42vw, 16px); font-weight: 800; line-height: 1.15; }
-.patient { min-width: 0; overflow-wrap: anywhere; font-size: clamp(11px, .47vw, 18px); font-weight: 750; line-height: 1.15; }
+.cageName { flex-shrink: 0; font-size: clamp(10px, .7vw, 30px); font-weight: 800; line-height: 1.15; }
+.patient { min-width: 0; overflow-wrap: anywhere; font-size: clamp(11px, .8vw, 34px); font-weight: 750; line-height: 1.15; }
 .plan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 8px; min-height: 0; overflow: auto; scrollbar-width: thin; }
 .planColumn { min-width: 0; }
 .planColumn + .planColumn { border-left: 1px solid #eee5e9; padding-left: 6px; }
-.columnLabel { margin: 0 0 4px; font-size: clamp(9px, .32vw, 12px); line-height: 1.15; color: #71344f; }
+.columnLabel { margin: 0 0 4px; font-size: clamp(9px, .5vw, 22px); line-height: 1.15; color: #71344f; }
 .taskList { list-style: none; padding: 0; margin: 0; }
-.task { background: #fff0c2; color: #492e00; box-shadow: inset 3px 0 #d48a00; padding: 0 3px 0 5px; margin: 0 0 3px; font-size: clamp(9px, .34vw, 13px); line-height: 1.2; overflow-wrap: anywhere; }
+.task { background: #fff0c2; color: #492e00; box-shadow: inset 3px 0 #d48a00; padding: 0 3px 0 5px; margin: 0 0 3px; font-size: clamp(9px, .55vw, 24px); line-height: 1.2; overflow-wrap: anywhere; }
 .taskLabel { font-weight: 650; }
 .taskMeta { color: inherit; }
 .status { display: block; color: inherit; font-weight: 700; font-size: .9em; line-height: 1.2; }
@@ -94,8 +107,8 @@
 .done .taskLabel { text-decoration: none; }
 .done .status { color: #fff; }
 .attention { box-shadow: inset 0 0 0 2px #ffc107; background: #fff3cd; }
-.attentionLabel { font-size: clamp(9px, .3vw, 12px); font-weight: 700; color: #815000; }
-.noPlan { color: #71676d; font-size: clamp(9px, .34vw, 13px); }
+.attentionLabel { font-size: clamp(9px, .48vw, 20px); font-weight: 700; color: #815000; }
+.noPlan { color: #71676d; font-size: clamp(9px, .55vw, 24px); }
 .error { color: #a01232; font-size: 12px; }
 .loading { font-size: 12px; }
 .back:focus-visible, .plan:focus-visible { outline: 2px solid #9a3661; outline-offset: 1px; }

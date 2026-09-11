@@ -11,12 +11,52 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// The Fullscreen API requires calling requestFullscreen() from inside a
+// real user gesture (a click) — it can't be triggered automatically on
+// page load — so this is wired to a button tap, not an effect. Vendor
+// prefixes cover older Safari/iPadOS wall-mounted displays.
+function requestFullscreen() {
+  const el = document.documentElement;
+  const request = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+  request?.call(el);
+}
+
+function exitFullscreen() {
+  const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+  exit?.call(document);
+}
+
+function isFullscreenActive() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+}
+
 export default function HospitalizationWallPage() {
   const [cages, setCages] = useState([]);
   const [admissions, setAdmissions] = useState([]);
   const [detailsByHospitalization, setDetailsByHospitalization] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    function onFullscreenChange() {
+      setFullscreen(isFullscreenActive());
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+    };
+  }, []);
+
+  function toggleFullscreen() {
+    if (isFullscreenActive()) {
+      exitFullscreen();
+    } else {
+      requestFullscreen();
+    }
+  }
 
   async function loadWall() {
     try {
@@ -82,6 +122,14 @@ export default function HospitalizationWallPage() {
   return (
     <div className={styles.wall}>
       <Link className={styles.back} href="/hospitalization" aria-label="Back to hospitalization">Back</Link>
+      <button
+        type="button"
+        className={styles.fullscreenToggle}
+        onClick={toggleFullscreen}
+        aria-label={fullscreen ? 'Exit full screen' : 'Enter full screen'}
+      >
+        {fullscreen ? '⤦ Exit Full Screen' : '⛶ Full Screen'}
+      </button>
       {loading && <div className={styles.loading} role="status">Loading…</div>}
       {error && <div className={styles.error}>{error}</div>}
 
