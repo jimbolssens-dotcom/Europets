@@ -3771,6 +3771,25 @@ button.secondary:hover {
   background: #eaf6ee;
 }
 
+.day-procedure-notes-list {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.day-procedure-notes-list li {
+  border-top: 1px solid #eee;
+  padding-top: 0.5rem;
+}
+
+.day-procedure-notes-list p {
+  margin: 0.15rem 0 0;
+  white-space: pre-wrap;
+}
+
 .day-plan-task-label {
   font-weight: 700;
   font-size: 0.85rem;

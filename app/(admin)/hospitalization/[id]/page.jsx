@@ -28,6 +28,7 @@ import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import ProcedureChecklist from '@/app/_components/ProcedureChecklist';
+import DayProcedureNotes from '@/app/_components/DayProcedureNotes';
 import HospitalizationReportsSection from '@/app/_components/HospitalizationReportsSection';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
@@ -757,6 +758,7 @@ export default function HospitalizationDetailPage() {
 
           <section className="case-files-open" aria-label="Day Procedure Report">
             <h2>Day Procedure Report</h2>
+            <DayProcedureNotes hospitalizationId={id} staff={staff} />
             <PatientReportOverview patientId={admission.patient_id} title="Earlier reports for this patient" />
             <HospitalizationReportsSection
               hospitalizationId={id}
