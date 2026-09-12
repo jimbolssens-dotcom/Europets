@@ -39,13 +39,18 @@ export async function GET(request, { params }) {
   const hospDate = Object.fromEntries((hospitalizations || []).map((h) => [h.id, h.admitted_at]));
   const recordDate = (r) => (r.visit_id ? visitDate[r.visit_id] : hospDate[r.hospitalization_id]);
   const rows = [
-    ...(visits || []).filter((v) => v.ai_summary).map((v) => ({ id: `consult-${v.id}`, source: 'consult', kind: 'Consult report', date: v.started_at, ai_summary: v.ai_summary, href: `/consults/${v.id}` })),
-    ...(hospitalizations || []).filter((h) => h.ai_summary).map((h) => ({ id: `hospitalization-${h.id}`, source: 'hospitalization', kind: 'Hospitalization report', date: h.admitted_at, ai_summary: h.ai_summary, href: `/hospitalization/${h.id}` })),
-    ...dental.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: 'Dental report', date: r.performed_at || recordDate(r), href: recordHref(r) })),
-    ...surgical.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: 'Surgical report', date: r.performed_at || recordDate(r), href: recordHref(r) })),
-    ...ultrasound.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: 'Ultrasound report', date: r.performed_at || recordDate(r), href: recordHref(r) })),
-    ...xray.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: 'X-ray report', date: r.performed_at || recordDate(r), href: recordHref(r) })),
-    ...diagnostics.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: r.goods_services?.name || r.type || 'Diagnostic test', date: r.created_at, href: recordHref(r) })),
+    // For a consult/hospitalization row, "delete" clears the ai_summary
+    // field rather than removing the visit/admission itself (mirrors
+    // deleteConsultReport/deleteHospitalReport on those records' own
+    // pages) — so recordId + editableField are enough for the UI to
+    // both edit and "delete" (PATCH ai_summary: null) via PATCH alone.
+    ...(visits || []).filter((v) => v.ai_summary).map((v) => ({ id: `consult-${v.id}`, source: 'consult', kind: 'Consult report', date: v.started_at, ai_summary: v.ai_summary, href: `/consults/${v.id}`, reportType: 'consult', apiBase: '/api/visits', recordId: v.id, editableField: 'ai_summary', deleteMode: 'clear' })),
+    ...(hospitalizations || []).filter((h) => h.ai_summary).map((h) => ({ id: `hospitalization-${h.id}`, source: 'hospitalization', kind: 'Hospitalization report', date: h.admitted_at, ai_summary: h.ai_summary, href: `/hospitalization/${h.id}`, reportType: 'hospitalization', apiBase: '/api/hospitalizations', recordId: h.id, editableField: 'ai_summary', deleteMode: 'clear' })),
+    ...dental.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: 'Dental report', date: r.performed_at || recordDate(r), href: recordHref(r), reportType: 'dental', apiBase: '/api/dental-reports', recordId: r.id, editableField: 'ai_summary', deleteMode: 'remove' })),
+    ...surgical.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: 'Surgical report', date: r.performed_at || recordDate(r), href: recordHref(r), reportType: 'surgical', apiBase: '/api/surgical-reports', recordId: r.id, editableField: 'ai_summary', deleteMode: 'remove' })),
+    ...ultrasound.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: 'Ultrasound report', date: r.performed_at || recordDate(r), href: recordHref(r), reportType: 'ultrasound', apiBase: '/api/ultrasound-reports', recordId: r.id, editableField: 'ai_summary', deleteMode: 'remove' })),
+    ...xray.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: 'X-ray report', date: r.performed_at || recordDate(r), href: recordHref(r), reportType: 'xray', apiBase: '/api/xray-reports', recordId: r.id, editableField: 'ai_summary', deleteMode: 'remove' })),
+    ...diagnostics.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: r.goods_services?.name || r.type || 'Diagnostic test', date: r.created_at, href: recordHref(r), reportType: 'diagnostic', apiBase: '/api/diagnostics', recordId: r.id, editableField: 'result', deleteMode: 'remove' })),
   ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
   return NextResponse.json(rows);
 }
