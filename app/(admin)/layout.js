@@ -69,7 +69,7 @@ export default function AdminLayout({ children }) {
     window.location.href = '/login';
   }
 
-  if (pathname === '/hospitalization/wall') {
+  if (pathname === '/hospitalization/wall' || pathname === '/day-procedures/wall') {
     return <><AppVersionWatcher /><main>{children}</main></>;
   }
 
@@ -111,6 +111,9 @@ export default function AdminLayout({ children }) {
           <a href="/invoices">Invoices</a>
           <a href="/hospitalization/wall" title="Hospitalization wall display" aria-label="Hospitalization wall display" className="settings-link">
             🗺️
+          </a>
+          <a href="/day-procedures/wall" title="Day procedure wall display" aria-label="Day procedure wall display" className="settings-link">
+            🩺
           </a>
           <a href="/mobile" title="Mobile recording app" aria-label="Mobile recording app" className="settings-link">
             📱
