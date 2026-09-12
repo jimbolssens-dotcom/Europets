@@ -1677,7 +1677,13 @@ button.secondary:hover {
    styling; this is just the shared frame around them. */
 .cross-record-links {
   display: flex;
-  flex-wrap: wrap;
+  /* Never stack internally — the buttons inside stay one clean row.
+     flex-shrink: 0 keeps the whole group from being squeezed narrower
+     than that row needs (which is what forced it to wrap before); if the
+     page's action row runs out of width, this group moves to a new line
+     (or the row scrolls) as ONE atomic unit instead of breaking apart. */
+  flex-wrap: nowrap;
+  flex-shrink: 0;
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 0.8rem;
@@ -1686,20 +1692,8 @@ button.secondary:hover {
   background: var(--pink-tint);
   /* Sits inline at the end of the same action row on every page (a flex
      container itself) instead of dropping to its own line — pushed to
-     the right of that row so it lands in the same spot everywhere. Wraps
-     to its own (still right-pushed) line only if the row runs out of
-     width for both. */
+     the right of that row so it lands in the same spot everywhere. */
   margin-left: auto;
-}
-
-.cross-record-links-label {
-  flex: 0 0 auto;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--pink-dark);
-  margin-right: 0.15rem;
 }
 
 /* A same-day case (dropped off in the morning, picked up the same day)

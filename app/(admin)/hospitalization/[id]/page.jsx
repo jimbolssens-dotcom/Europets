@@ -903,23 +903,24 @@ export default function HospitalizationDetailPage() {
             </button>
           )}
           {addConsultError && <span className="error" role="alert">{addConsultError}</span>}
-          <button type="button" className="button-link" onClick={bookDayProcedure} disabled={bookingDayProcedure}
-            title="Book a same-day procedure (surgery, dental, etc.) for this patient without discharging the admission">
-            {bookingDayProcedure ? 'Booking…' : 'Book Day Procedure'}
-          </button>
+          {/* One slot, same as Consult/Invoice above — colored link to
+              today's day procedure if one's been booked off this stay
+              today, otherwise the plain "book one" action. A day procedure
+              from an earlier day in this stay is done, not "active" right
+              now, so it isn't shown here (find it via the Day Procedures
+              list instead). */}
+          {linkedDayProcedures.find((dp) => dp.admitted_at?.slice(0, 10) === todayISODate()) ? (
+            <a className="button-link button-link-day-procedure"
+              href={`/hospitalization/${linkedDayProcedures.find((dp) => dp.admitted_at?.slice(0, 10) === todayISODate()).id}`}>
+              Day Procedure
+            </a>
+          ) : (
+            <button type="button" className="button-link" onClick={bookDayProcedure} disabled={bookingDayProcedure}
+              title="Book a same-day procedure (surgery, dental, etc.) for this patient without discharging the admission">
+              {bookingDayProcedure ? 'Booking…' : 'Book Day Procedure'}
+            </button>
+          )}
           {bookDayProcedureError && <span className="error" role="alert">{bookDayProcedureError}</span>}
-          {linkedDayProcedures.map((dp) => {
-            // Colored (the day-procedure yellow) only for one booked TODAY
-            // — a day procedure from an earlier day in this stay is done
-            // and no longer "active", so it stays a plain link instead of
-            // implying there's something happening right now.
-            const isToday = dp.admitted_at?.slice(0, 10) === todayISODate();
-            return (
-              <a key={dp.id} className={`button-link${isToday ? ' button-link-day-procedure' : ''}`} href={`/hospitalization/${dp.id}`}>
-                {dp.reason || 'Day Procedure'} · {dp.status === 'discharged' ? 'Completed' : 'In progress'}
-              </a>
-            );
-          })}
         </CrossRecordLinks>
       </div>
       {invoiceError && <p className="error" role="alert">{invoiceError}</p>}

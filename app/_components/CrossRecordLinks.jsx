@@ -11,7 +11,6 @@
 export default function CrossRecordLinks({ children }) {
   return (
     <div className="cross-record-links" role="group" aria-label="Linked records">
-      <span className="cross-record-links-label">Linked Records</span>
       {children}
     </div>
   );
