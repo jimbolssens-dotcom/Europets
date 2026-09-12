@@ -76,6 +76,17 @@ export default function EditAppointmentModal({ appointment, rooms, vets, onClose
     if (result?.error) setError(result.error);
   }
 
+  // A no-show and a cancellation are both just a status change — kept
+  // here alongside the rest of the edit so staff have one place to log
+  // either, instead of hunting for a separate action elsewhere.
+  async function handleStatusChange(status) {
+    setSubmitting(true);
+    setError(null);
+    const result = await onSave({ status });
+    setSubmitting(false);
+    if (result?.error) setError(result.error);
+  }
+
   return (
     <div className="modal-backdrop" onClick={submitting ? undefined : onClose}>
       <form className="modal-panel edit-appointment-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
@@ -181,9 +192,18 @@ export default function EditAppointmentModal({ appointment, rooms, vets, onClose
           />
         </label>
 
+        <div className="modal-actions modal-actions-status">
+          <button type="button" className="secondary" onClick={() => handleStatusChange('no_show')} disabled={submitting}>
+            🚫 Mark No-Show
+          </button>
+          <button type="button" className="secondary" onClick={() => handleStatusChange('cancelled')} disabled={submitting}>
+            ✖️ Cancel Appointment
+          </button>
+        </div>
+
         <div className="modal-actions">
           <button type="button" className="secondary" onClick={onClose} disabled={submitting}>
-            Cancel
+            Close
           </button>
           <button type="submit" disabled={submitting}>
             {submitting ? 'Saving...' : 'Save'}

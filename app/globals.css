@@ -1300,6 +1300,13 @@ button.secondary:hover {
   margin-top: 0.25rem;
 }
 
+.modal-actions-status {
+  justify-content: flex-start;
+  padding-top: 0.6rem;
+  margin-top: 0.6rem;
+  border-top: 1px solid #eee;
+}
+
 .edit-appointment-modal {
   max-width: 480px;
   max-height: 90vh;

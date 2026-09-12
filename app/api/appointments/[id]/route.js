@@ -26,7 +26,7 @@ import {
   checkStaffRoster,
 } from '@/lib/appointmentScheduling';
 
-const VALID_STATUSES = ['booked', 'checked_in', 'in_progress', 'complete', 'cancelled'];
+const VALID_STATUSES = ['booked', 'checked_in', 'in_progress', 'complete', 'cancelled', 'no_show'];
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
@@ -146,6 +146,31 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: conflictError.message }, { status: 500 });
   }
   if (conflict) {
+    // A room clash can be resolved on the spot by picking a different,
+    // free room — surface enough to retry the same move/edit with just
+    // room_id swapped (see the room-conflict popup on the Appointments
+    // page). A vet clash has no such one-click fix, so it just falls back
+    // to a plain error.
+    if (conflict.room_id === nextRoomId) {
+      return NextResponse.json(
+        {
+          error: 'That room is already booked for an overlapping time.',
+          code: 'room_conflict',
+          retry: {
+            room_id: nextRoomId,
+            vet_id: nextVetId,
+            type: nextType,
+            patient_id: nextPatientId,
+            reason: nextReason,
+            start_time: nextStartTime.toISOString(),
+            duration_minutes: nextDuration,
+            date,
+            shift,
+          },
+        },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { error: 'that room or vet is already booked for an overlapping time' },
       { status: 409 }
