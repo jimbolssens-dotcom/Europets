@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import SearchBox from '../_components/SearchBox';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
 import CultureReminderBanner from '../_components/CultureReminderBanner';
 import { useHospitalizationUpdatePending } from '../_components/useHospitalizationUpdatePending';
@@ -80,7 +79,6 @@ export default function AdminLayout({ children }) {
         <a href="/" className="brand">
           <img src="/logo.png" alt="Europets Clinic" />
         </a>
-        <SearchBox />
         <div className="topnav-links">
           <a href="/search">Search</a>
           <a href="/add">Add</a>
