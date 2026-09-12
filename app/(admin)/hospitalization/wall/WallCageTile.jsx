@@ -1,5 +1,4 @@
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
-import { treatmentColumns } from './treatmentColumns';
 import styles from './page.module.css';
 
 function formatTime(iso) {
@@ -12,18 +11,24 @@ export default function WallCageTile({ cage, hospitalization, details }) {
   const needsAttention = hospitalization?.update_requested_at || hospitalization?.scheduled_update_overdue;
   const patientName = hospitalization?.patients?.name || 'Unnamed patient';
 
+  // Every treatment-plan item gets its own cell in a grid sized to the
+  // item count, so the whole day's plan is visible on the tile at once —
+  // seeing what's still pending at a glance matters more here than
+  // legible per-item text, which is why detail moves to the tooltip.
+  const columns = Math.max(1, Math.ceil(Math.sqrt(planItems.length)));
+  const rows = Math.max(1, Math.ceil(planItems.length / columns));
+
   function renderTask(item) {
     const done = todayNotes.filter((note) => note.plan_item_ids?.includes(item.id))
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     const last = done[done.length - 1];
-    return <li key={item.id} className={`${styles.task}${done.length ? ` ${styles.done}` : ''}`}>
-      <span className={styles.taskLabel}>{item.label}
-        {item.administration_method && ` (${ADMINISTRATION_METHOD_LABELS[item.administration_method] || item.administration_method})`}
-      </span>
-      {item.instructions && <span className={styles.taskMeta}> — {item.instructions}</span>}
-      <span className={styles.status}>{done.length
-        ? `Done · ${done.length > 1 ? `${done.length}× · ` : ''}last ${formatTime(last.created_at)}${last.staff?.full_name ? ` · ${last.staff.full_name}` : ''}`
-        : 'Pending'}</span>
+    const methodLabel = item.administration_method && (ADMINISTRATION_METHOD_LABELS[item.administration_method] || item.administration_method);
+    const statusText = done.length
+      ? `Done${done.length > 1 ? ` ${done.length}×` : ''} · last ${formatTime(last.created_at)}${last.staff?.full_name ? ` · ${last.staff.full_name}` : ''}`
+      : 'Pending';
+    const title = [item.label, methodLabel, item.instructions, statusText].filter(Boolean).join(' — ');
+    return <li key={item.id} className={`${styles.task}${done.length ? ` ${styles.done}` : ''}`} title={title}>
+      <span className={styles.taskLabel}>{item.label}</span>
     </li>;
   }
 
@@ -37,13 +42,9 @@ export default function WallCageTile({ cage, hospitalization, details }) {
       {needsAttention && <span className={styles.attentionLabel}>Needs attention</span>}
       {details?.error ? <span role="status" className={styles.error}>Treatment details unavailable</span> : planItems.length === 0 ?
         <div className={styles.noPlan}>No treatment plan entered.</div> :
-        <div className={styles.plan} tabIndex={0} role="region" aria-label={`${cage.name} treatments`}>
-          {treatmentColumns(planItems).map((column, index) => <div key={index} className={styles.planColumn}>
-            {column.label && <h3 className={styles.columnLabel}>{column.label}</h3>}
-            <ul className={styles.taskList}>{column.items.map(renderTask)}</ul>
-          </div>)}
-        </div>}
+        <ul className={styles.plan} style={{ '--cols': columns, '--rows': rows }} role="region" aria-label={`${cage.name} treatments`}>
+          {planItems.map(renderTask)}
+        </ul>}
     </>}
   </article>;
 }
-
