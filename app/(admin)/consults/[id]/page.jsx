@@ -770,6 +770,31 @@ export default function ConsultDetailPage() {
     }
   }
 
+  // The Hospitalization button, clicked while the linked case is still a
+  // day procedure — promotes it to a full admission in place (same
+  // transition as "Move to Hospital" on the hospitalization page itself)
+  // instead of creating a second hospitalization row for this consult.
+  async function moveLinkedToHospital() {
+    if (!linkedHospitalization) return;
+    setAdmitting(true);
+    setHospitalizationError(null);
+    try {
+      const res = await fetch(`/api/hospitalizations/${linkedHospitalization.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'admission' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not move to hospital.');
+      setLinkedHospitalization(data);
+      router.push(`/hospitalization/${data.id}`);
+    } catch (error) {
+      setHospitalizationError(error.message);
+    } finally {
+      setAdmitting(false);
+    }
+  }
+
   const vac = useVaccinations(consult?.patients?.id, consult?.patients?.species);
   const patientAlerts = usePatientAlerts(consult?.patients?.id);
 
@@ -837,37 +862,72 @@ export default function ConsultDetailPage() {
         </button>
         <button
           type="button"
-          className="button-link"
+          className={`button-link${invoiceInfo ? ' button-link-invoice' : ''}`}
           onClick={createInvoice}
           disabled={creatingInvoice}
           title={invoiceInfo ? 'Open the invoice, syncing in anything new from the treatment plan' : 'Create an invoice from the treatment plan'}
         >
           🧾 {creatingInvoice ? 'Saving...' : invoiceInfo ? `Invoiced (${invoiceInfo.status})` : 'Invoice'}
         </button>
-        {linkedHospitalization ? (
-          <a className="button-link consult-hospitalized" href={`/hospitalization/${linkedHospitalization.id}`}>
-            {linkedHospitalization.kind === 'day_procedure' ? '📋 Day Procedure' : '🏥 Hospitalized'}
-          </a>
-        ) : checkingHospitalization || hospitalizationError ? (
+        {checkingHospitalization || hospitalizationError ? (
           <button type="button" className="button-link" disabled={checkingHospitalization} onClick={loadLinkedHospitalization}>
             {checkingHospitalization ? 'Checking hospitalization…' : 'Retry hospitalization check'}
           </button>
-        ) : <details className="consult-action-toggle">
-          <summary className="button-link">🏥 Hospitalization</summary>
-          <form className="consult-action-dropdown" onSubmit={(e) => admitToHospital(e, 'admission')}>
-            <input
-              placeholder="Reason for admission"
-              value={hospReason}
-              onChange={(e) => setHospReason(e.target.value)}
-            />
-            <button type="submit" disabled={admitting}>
-              {admitting ? 'Admitting...' : 'Admit to Hospital'}
-            </button>
-            <button type="button" disabled={admitting} onClick={(e) => admitToHospital(e, 'day_procedure')}>
-              {admitting ? 'Starting...' : 'Start Day Procedure'}
-            </button>
-          </form>
-        </details>}
+        ) : (
+          <>
+            {linkedHospitalization?.kind === 'admission' ? (
+              <a className="button-link button-link-hospitalization" href={`/hospitalization/${linkedHospitalization.id}`}>
+                🏥 Hospitalized
+              </a>
+            ) : linkedHospitalization?.kind === 'day_procedure' ? (
+              <button type="button" className="button-link" disabled={admitting} onClick={moveLinkedToHospital}>
+                {admitting ? 'Moving...' : '🏥 Hospitalization'}
+              </button>
+            ) : (
+              <details className="consult-action-toggle">
+                <summary className="button-link">🏥 Hospitalization</summary>
+                <form className="consult-action-dropdown" onSubmit={(e) => admitToHospital(e, 'admission')}>
+                  <input
+                    placeholder="Reason for admission"
+                    value={hospReason}
+                    onChange={(e) => setHospReason(e.target.value)}
+                  />
+                  <button type="submit" disabled={admitting}>
+                    {admitting ? 'Admitting...' : 'Admit to Hospital'}
+                  </button>
+                </form>
+              </details>
+            )}
+
+            {linkedHospitalization?.kind === 'day_procedure' ? (
+              <a className="button-link button-link-day-procedure" href={`/hospitalization/${linkedHospitalization.id}`}>
+                📋 Day Procedure
+              </a>
+            ) : linkedHospitalization?.kind === 'admission' ? (
+              <a
+                className="button-link"
+                href={`/hospitalization/${linkedHospitalization.id}`}
+                title="Already hospitalized — view it"
+              >
+                📋 Day Procedure
+              </a>
+            ) : (
+              <details className="consult-action-toggle">
+                <summary className="button-link">📋 Day Procedure</summary>
+                <form className="consult-action-dropdown" onSubmit={(e) => admitToHospital(e, 'day_procedure')}>
+                  <input
+                    placeholder="Reason"
+                    value={hospReason}
+                    onChange={(e) => setHospReason(e.target.value)}
+                  />
+                  <button type="submit" disabled={admitting}>
+                    {admitting ? 'Starting...' : 'Start Day Procedure'}
+                  </button>
+                </form>
+              </details>
+            )}
+          </>
+        )}
         {hospitalizationError && <span className="error" role="alert">{hospitalizationError}</span>}
         <details className="consult-action-toggle">
           <summary className="button-link">📷 Photos</summary>

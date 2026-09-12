@@ -721,12 +721,12 @@ export default function HospitalizationDetailPage() {
             {admission.status === 'admitted' && (
               <button type="button" className="button-link" onClick={discharge}>Complete</button>
             )}
-            <button type="button" className="button-link" onClick={createInvoice} disabled={creatingInvoice}
+            <button type="button" className={`button-link${invoiceInfo ? ' button-link-invoice' : ''}`} onClick={createInvoice} disabled={creatingInvoice}
               title={invoiceInfo ? `Open the invoice (${invoiceInfo.status}), syncing in anything new from the checklist` : 'Create an invoice from the medications, goods and services on the checklist'}>
               {creatingInvoice ? 'Saving…' : invoiceInfo ? `Invoiced (${invoiceInfo.status})` : 'Invoice'}
             </button>
             {admission.originating_visit_id ? (
-              <a className="button-link" href={`/consults/${admission.originating_visit_id}`}>Originating consult</a>
+              <a className="button-link button-link-consult" href={`/consults/${admission.originating_visit_id}`}>Consult</a>
             ) : (
               <button type="button" className="button-link" onClick={addConsult} disabled={addingConsult}
                 title="Most day procedures don't need one — only add this if you also want to write up an exam/consult note">
@@ -789,7 +789,7 @@ export default function HospitalizationDetailPage() {
         {admission.status === 'admitted' && (
           <button type="button" className="button-link" onClick={discharge}>Discharge</button>
         )}
-        <button type="button" className="button-link" onClick={createInvoice} disabled={creatingInvoice}
+        <button type="button" className={`button-link${invoiceInfo ? ' button-link-invoice' : ''}`} onClick={createInvoice} disabled={creatingInvoice}
           title={invoiceInfo ? `Open the invoice (${invoiceInfo.status}), syncing in anything new from the worksheet` : 'Create an invoice from the medications, goods and services in this worksheet'}>
           {creatingInvoice ? 'Saving…' : invoiceInfo ? `Invoiced (${invoiceInfo.status})` : 'Invoice'}
         </button>
@@ -799,7 +799,7 @@ export default function HospitalizationDetailPage() {
           {linkCopied ? 'Copied!' : 'Copy'}
         </button>
         {admission.originating_visit_id ? (
-          <a className="button-link" href={`/consults/${admission.originating_visit_id}`}>Originating consult</a>
+          <a className="button-link button-link-consult" href={`/consults/${admission.originating_visit_id}`}>Consult</a>
         ) : (
           <button type="button" className="button-link" onClick={addConsult} disabled={addingConsult}
             title="Most day procedures don't need one — only add this if you also want to write up an exam/consult note">

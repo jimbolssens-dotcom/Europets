@@ -1602,15 +1602,56 @@ button.secondary:hover {
   position: relative;
 }
 
-.button-link.consult-hospitalized {
+/* Cross-record link buttons (Consult/Hospitalization/Day Procedure/
+   Invoice) — same pink .button-link everywhere until that link actually
+   exists, then it takes on the color of whichever kind of record it
+   points to, consistently across all four pages (consult, hospitalization/
+   day procedure, invoice) — so at a glance you can see which of a case's
+   related records exist and jump straight to any of them. Clicking a
+   plain pink one creates that link on the spot instead of just being
+   informational — there's no disabled/greyed state. */
+.button-link-consult {
+  background: #e0ecfb;
+  border: 1px solid #8ab3e0;
+  color: #1f4a8a;
+}
+
+.button-link-consult:hover {
+  background: #cfe0f7;
+  color: #163766;
+}
+
+.button-link-hospitalization {
   background: #e2f1e9;
   border: 1px solid #8db9a2;
   color: #245b40;
 }
 
-.button-link.consult-hospitalized:hover {
+.button-link-hospitalization:hover {
   background: #cfe7d9;
   color: #19452f;
+}
+
+.button-link-day-procedure {
+  background: #fdf1da;
+  border: 1px solid #e0b96b;
+  color: #8a5a10;
+}
+
+.button-link-day-procedure:hover {
+  background: #fbe6c0;
+  color: #66420c;
+}
+
+.button-link-invoice {
+  background: #fbe2e2;
+  border: 1px solid #e08a8a;
+  color: #8a1f1f;
+}
+
+.button-link-invoice:hover {
+  background: #f7cfcf;
+  color: #661616;
 }
 
 /* A same-day case (dropped off in the morning, picked up the same day)

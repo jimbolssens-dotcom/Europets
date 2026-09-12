@@ -6,7 +6,7 @@
 'use client';
 
 import { Fragment, useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
@@ -33,7 +33,10 @@ const STATUS_LABELS = {
 
 export default function InvoiceDetailPage() {
   const { id } = useParams();
+  const router = useRouter();
   const [invoice, setInvoice] = useState(null);
+  const [linking, setLinking] = useState(null); // 'consult' | 'hosp' | 'dayproc' | null
+  const [linkError, setLinkError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [catalog, setCatalog] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
@@ -325,6 +328,66 @@ export default function InvoiceDetailPage() {
     }
   }
 
+  // Cross-record links (Consult/Hospitalization/Day Procedure) — same
+  // click-to-create pattern as the consult and hospitalization pages: a
+  // plain pink button creates the link on the spot instead of just being
+  // informational. An invoice always comes from a visit or a
+  // hospitalization already, so at least one of these is always the
+  // colored, already-linked one; the others (if not yet linked) start the
+  // corresponding record for the same patient and jump straight there.
+  async function createConsultFromHospitalization() {
+    setLinking('consult');
+    setLinkError(null);
+    try {
+      const res = await fetch(`/api/hospitalizations/${invoice.hospitalization_id}/add-consult`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not add a consult.');
+      router.push(`/consults/${data.id}`);
+    } catch (err) {
+      setLinkError(err.message);
+    } finally {
+      setLinking(null);
+    }
+  }
+
+  async function moveInvoiceHospitalizationToAdmission() {
+    setLinking('hosp');
+    setLinkError(null);
+    try {
+      const res = await fetch(`/api/hospitalizations/${invoice.hospitalization_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'admission' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not move to hospital.');
+      router.push(`/hospitalization/${invoice.hospitalization_id}`);
+    } catch (err) {
+      setLinkError(err.message);
+    } finally {
+      setLinking(null);
+    }
+  }
+
+  async function createHospitalizationFromInvoiceVisit(kind) {
+    setLinking(kind === 'admission' ? 'hosp' : 'dayproc');
+    setLinkError(null);
+    try {
+      const res = await fetch('/api/hospitalizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ originating_visit_id: invoice.visit_id, kind }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not start this.');
+      router.push(`/hospitalization/${data.id}`);
+    } catch (err) {
+      setLinkError(err.message);
+    } finally {
+      setLinking(null);
+    }
+  }
+
   if (loading || !invoice) return <p>Loading invoice...</p>;
   if (invoice.error) return <p>Invoice not found.</p>;
 
@@ -367,16 +430,42 @@ export default function InvoiceDetailPage() {
             💳 Send
           </button>
         )}{' '}
-        {invoice.visit_id && (
-          <a className="button-link" href={`/consults/${invoice.visit_id}`}>
-            ← Return to Consult
+        {invoice.visit_id ? (
+          <a className="button-link button-link-consult" href={`/consults/${invoice.visit_id}`}>
+            Consult
           </a>
-        )}
-        {invoice.hospitalization_id && (
-          <a className="button-link" href={`/hospitalization/${invoice.hospitalization_id}`}>
-            ← Return to {invoice.hospitalizations?.kind === 'day_procedure' ? 'Day Procedure' : 'Hospitalization'}
+        ) : invoice.hospitalization_id ? (
+          <button type="button" className="button-link" onClick={createConsultFromHospitalization} disabled={!!linking}>
+            {linking === 'consult' ? 'Adding…' : 'Consult'}
+          </button>
+        ) : null}
+        {invoice.hospitalization_id && invoice.hospitalizations?.kind === 'admission' ? (
+          <a className="button-link button-link-hospitalization" href={`/hospitalization/${invoice.hospitalization_id}`}>
+            Hospitalization
           </a>
-        )}
+        ) : invoice.hospitalization_id ? (
+          <button type="button" className="button-link" onClick={moveInvoiceHospitalizationToAdmission} disabled={!!linking}>
+            {linking === 'hosp' ? 'Moving…' : 'Hospitalization'}
+          </button>
+        ) : invoice.visit_id ? (
+          <button type="button" className="button-link" onClick={() => createHospitalizationFromInvoiceVisit('admission')} disabled={!!linking}>
+            {linking === 'hosp' ? 'Admitting…' : 'Hospitalization'}
+          </button>
+        ) : null}
+        {invoice.hospitalization_id && invoice.hospitalizations?.kind === 'day_procedure' ? (
+          <a className="button-link button-link-day-procedure" href={`/hospitalization/${invoice.hospitalization_id}`}>
+            Day Procedure
+          </a>
+        ) : invoice.hospitalization_id ? (
+          <a className="button-link" href={`/hospitalization/${invoice.hospitalization_id}`} title="Already hospitalized — view it">
+            Day Procedure
+          </a>
+        ) : invoice.visit_id ? (
+          <button type="button" className="button-link" onClick={() => createHospitalizationFromInvoiceVisit('day_procedure')} disabled={!!linking}>
+            {linking === 'dayproc' ? 'Starting…' : 'Day Procedure'}
+          </button>
+        ) : null}
+        {linkError && <span className="error" role="alert">{linkError}</span>}
       </p>
       {paymentLinkError && <p className="error">{paymentLinkError}</p>}
       {lineItemEditError && <p className="error">{lineItemEditError}</p>}
