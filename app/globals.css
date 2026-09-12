@@ -146,7 +146,6 @@ button:disabled {
   display: flex;
   gap: 1.25rem;
   flex-wrap: wrap;
-  margin-left: auto;
 }
 
 .topnav-links a {

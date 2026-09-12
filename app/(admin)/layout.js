@@ -16,6 +16,24 @@ export default function AdminLayout({ children }) {
   const [hasPendingAppointmentRequest, setHasPendingAppointmentRequest] = useState(false);
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
   const [hasPendingReviewRequest, setHasPendingReviewRequest] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Tracks the browser's own full-screen state (not just what the toggle
+  // button last did) — also flips back on Esc, which exits full screen
+  // without going through toggleFullscreen below.
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  }
 
   // Same blinking treatment for a submitted intake/invite request awaiting
   // review — Appointments if it also asked for a slot (reviewed there, see
@@ -116,6 +134,15 @@ export default function AdminLayout({ children }) {
           <a href="/mobile" title="Mobile recording app" aria-label="Mobile recording app" className="settings-link">
             📱
           </a>
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Exit full screen' : 'Full screen'}
+            aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
+            className="settings-link"
+          >
+            {isFullscreen ? '🗗' : '⛶'}
+          </button>
           <a
             href="/settings"
             title={hasPendingReviewRequest ? 'Settings — a review is waiting for moderation' : 'Settings'}
