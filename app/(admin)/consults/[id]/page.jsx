@@ -23,17 +23,12 @@ import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import { isXrayTest } from '@/lib/xrayProduct';
 import RecordReports from '@/app/_components/RecordReports';
-import DentalChart from '@/app/_components/DentalChart';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { subcategoryName, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
-import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
-import { printPdfUrl } from '@/lib/printPdf';
-import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
-import { openWhatsApp } from '@/lib/whatsapp';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
 // catalog link — kept only to label those old rows.
@@ -51,8 +46,6 @@ const CONSULT_TABS = [
   { id: 'exam', label: '🩺 Exam, Diagnostics & Treatment' },
   { id: 'vaccinations', label: '💉 Vaccinations' },
   { id: 'reports', label: 'Reports' },
-  { id: 'procedures', label: '🩹 Procedures' },
-  { id: 'admin', label: '📋 Consent & Admission' },
 ];
 
 export default function ConsultDetailPage() {
@@ -87,21 +80,13 @@ export default function ConsultDetailPage() {
   const [treatCategory, setTreatCategory] = useState('product');
   const [microchipModalOpen, setMicrochipModalOpen] = useState(false);
 
+  // Historical surgical/dental reports still show under Reports even though
+  // the Procedures tab that used to create new ones (visit_id-scoped) is
+  // gone — all surgical/dental work now goes through a Day Procedure
+  // booking instead, so it lands on that record's own checklist and shows
+  // up here read-only.
   const [surgicalReports, setSurgicalReports] = useState([]);
-  const [surgForm, setSurgForm] = useState({ surgeon_id: '', procedure_name: '', notes: '' });
-  const [dictatingSurgical, setDictatingSurgical] = useState(false);
-  const [autoRecordSurgicalId, setAutoRecordSurgicalId] = useState(null);
-
   const [dentalReports, setDentalReports] = useState([]);
-  const [dentalForm, setDentalForm] = useState({
-    performed_by: '',
-    findings: '',
-    procedures_performed: '',
-    notes: '',
-  });
-  const [dictatingDental, setDictatingDental] = useState(false);
-  const [autoRecordDentalId, setAutoRecordDentalId] = useState(null);
-  const [savingDentalChart, setSavingDentalChart] = useState(false);
 
   const [ultrasoundReports, setUltrasoundReports] = useState([]);
   const [dictatingUltrasoundFor, setDictatingUltrasoundFor] = useState(null); // diagnostic id currently starting a report
@@ -119,19 +104,6 @@ export default function ConsultDetailPage() {
   const [generatingReportId, setGeneratingReportId] = useState(null);
   const [generateReportError, setGenerateReportError] = useState(null);
   const [generateReportErrorId, setGenerateReportErrorId] = useState(null);
-
-  const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
-
-  const [consentForms, setConsentForms] = useState([]);
-  const [consentForm, setConsentForm] = useState({
-    form_type: '',
-    signed_by_name: '',
-    signed_by_relationship: '',
-    staff_witness_id: '',
-  });
-  const [consentSubmitting, setConsentSubmitting] = useState(false);
-  const [consentError, setConsentError] = useState(null);
-  const [sendingConsentLink, setSendingConsentLink] = useState(false);
 
   const [hospReason, setHospReason] = useState('');
   const [admitting, setAdmitting] = useState(false);
@@ -215,11 +187,6 @@ export default function ConsultDetailPage() {
         setInvoiceInfo(list.find((inv) => inv.status !== 'void') || null);
       });
 
-  const loadConsentForms = () =>
-    fetch(`/api/consent-forms?visit_id=${id}`)
-      .then((res) => res.json())
-      .then((data) => setConsentForms(Array.isArray(data) ? data : []));
-
   useEffect(() => {
     loadConsult();
     loadDiagnostics();
@@ -229,7 +196,6 @@ export default function ConsultDetailPage() {
     loadUltrasoundReports();
     loadXrayReports();
     loadInvoiceInfo();
-    loadConsentForms();
     loadLinkedHospitalization();
 
     Promise.all([
@@ -268,7 +234,6 @@ export default function ConsultDetailPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ultrasound_reports', filter: `visit_id=eq.${id}` }, loadUltrasoundReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'xray_reports', filter: `visit_id=eq.${id}` }, loadXrayReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices', filter: `visit_id=eq.${id}` }, loadInvoiceInfo)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'consent_forms', filter: `visit_id=eq.${id}` }, loadConsentForms)
       .subscribe();
 
     return () => supabase.removeChannel(channel);
@@ -277,14 +242,6 @@ export default function ConsultDetailPage() {
 
   function appendRecordField(field, text) {
     setRecord((prev) => ({ ...prev, [field]: prev[field] ? `${prev[field]}\n${text}` : text }));
-  }
-
-  function appendSurgNotes(text) {
-    setSurgForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }));
-  }
-
-  function appendDentalNotes(text) {
-    setDentalForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }));
   }
 
   // Dictated straight into the treatment item's own Instructions field —
@@ -493,155 +450,9 @@ export default function ConsultDetailPage() {
     return null;
   }
 
-  async function addConsentForm(e) {
-    e.preventDefault();
-    if (!consentForm.form_type || !consentForm.signed_by_name.trim()) return;
-    setConsentSubmitting(true);
-    setConsentError(null);
-
-    const res = await fetch('/api/consent-forms', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: id, ...consentForm }),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      setConsentError(data.error || 'Failed to save consent form');
-    } else {
-      setConsentForm({ form_type: '', signed_by_name: '', signed_by_relationship: '', staff_witness_id: '' });
-      loadConsentForms();
-      printPdfUrl(`/api/consent-forms/${data.id}/pdf`, {
-        onFallback: () => setPreviewPdfUrl(`/api/consent-forms/${data.id}/pdf`),
-      });
-    }
-    setConsentSubmitting(false);
-  }
-
-  async function deleteConsentForm(formId) {
-    if (!confirm('Delete this signed consent form? This cannot be undone.')) return;
-    await fetch(`/api/consent-forms/${formId}`, { method: 'DELETE' });
-    loadConsentForms();
-  }
-
-  // Alternative to signing in person: sends the owner a link to review and
-  // digitally sign (by typing their name) on their own phone, then WhatsApps
-  // it — same pattern as sendBookingLink/sendReviewLink on the client page.
-  async function sendConsentLink() {
-    if (!consentForm.form_type) {
-      setConsentError('Select a consent form first');
-      return;
-    }
-    setConsentError(null);
-    setSendingConsentLink(true);
-    const res = await fetch('/api/consent-form-requests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        visit_id: id,
-        form_type: consentForm.form_type,
-        sent_to_phone: consult.clients?.phone || null,
-      }),
-    });
-    const data = await res.json().catch(() => null);
-    setSendingConsentLink(false);
-    if (!res.ok) {
-      setConsentError(data?.error || 'Failed to generate a consent link');
-      return;
-    }
-    const url = `${window.location.origin}/portal/consent/${data.id}`;
-    const digits = (consult.clients?.phone || '').replace(/\D/g, '');
-    const clientLabel = `${consult.clients?.full_name}${
-      consult.clients?.client_number ? ` (Client #${consult.clients.client_number})` : ''
-    }`;
-    const patientLabel = `${consult.patients?.name}${
-      consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''
-    }`;
-    const message = `Hi ${clientLabel}! Please review and sign this consent form for ${patientLabel}: ${url}`;
-    if (digits.length > 3) {
-      openWhatsApp(consult.clients?.phone, message);
-    } else {
-      await navigator.clipboard.writeText(url);
-      setConsentError('No phone number on file — link copied to clipboard instead.');
-    }
-  }
-
   async function deleteTreatmentItem(itemId) {
     await fetch(`/api/treatment-items/${itemId}`, { method: 'DELETE' });
     loadTreatmentItems();
-  }
-
-  async function addSurgicalReport(e) {
-    e.preventDefault();
-    await fetch('/api/surgical-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: id, ...surgForm }),
-    });
-    setSurgForm({ surgeon_id: '', procedure_name: '', notes: '' });
-    loadSurgicalReports();
-  }
-
-  async function updateDentalChart(newChart) {
-    if (!consult.patients?.id) return;
-    setSavingDentalChart(true);
-    const res = await fetch(`/api/patients/${consult.patients.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dental_chart: newChart }),
-    });
-    const data = await res.json();
-    setSavingDentalChart(false);
-    if (res.ok) {
-      setConsult((prev) => ({ ...prev, patients: { ...prev.patients, dental_chart: data.dental_chart } }));
-    }
-  }
-
-  async function addDentalReport(e) {
-    e.preventDefault();
-    await fetch('/api/dental-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: id, ...dentalForm }),
-    });
-    setDentalForm({ performed_by: '', findings: '', procedures_performed: '', notes: '' });
-    loadDentalReports();
-  }
-
-  // The standard path onto a Surgical/Dental Report: skip the manual form
-  // entirely — create a blank report right away and mark it so its card's
-  // AudioRecorder auto-starts capturing the moment it renders, so a vet
-  // goes straight from clicking this button to talking. The manual form
-  // below stays available (tucked under "Or add manually") for filling in
-  // structured fields directly instead.
-  async function startDictateSurgicalReport() {
-    setDictatingSurgical(true);
-    const res = await fetch('/api/surgical-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: id }),
-    });
-    const data = await res.json();
-    setDictatingSurgical(false);
-    if (res.ok) {
-      setAutoRecordSurgicalId(data.id);
-      loadSurgicalReports();
-    }
-  }
-
-  async function startDictateDentalReport() {
-    setDictatingDental(true);
-    const res = await fetch('/api/dental-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: id }),
-    });
-    const data = await res.json();
-    setDictatingDental(false);
-    if (res.ok) {
-      setAutoRecordDentalId(data.id);
-      loadDentalReports();
-    }
   }
 
   // Same pattern as the dental/surgical "Dictate" button, but scoped to
@@ -1444,174 +1255,14 @@ export default function ConsultDetailPage() {
         <VaccinationForm {...vac} species={consult.patients?.species} staff={staff} />
       </div>
 
-      {/* Procedures — surgical and dental work, including the dental chart,
-          each full-width now instead of squeezed into a half-width column. */}
-      <div hidden={activeTab !== 'procedures'}>
-        <div className="two-col">
-        <div>
-        <h3>Dental Reports</h3>
-        <div className="card">
-          <button type="button" onClick={startDictateDentalReport} disabled={dictatingDental}>
-            🎤 {dictatingDental ? 'Starting...' : 'Dictate'}
-          </button>
-          <details>
-            <summary>Or add manually</summary>
-            <form className="form-grid" onSubmit={addDentalReport}>
-              <select
-                value={dentalForm.performed_by}
-                onChange={(e) => setDentalForm({ ...dentalForm, performed_by: e.target.value })}
-              >
-                <option value="">Performed by...</option>
-                {vets.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.full_name}
-                  </option>
-                ))}
-              </select>
-              <input
-                placeholder="Findings"
-                value={dentalForm.findings}
-                onChange={(e) => setDentalForm({ ...dentalForm, findings: e.target.value })}
-              />
-              <input
-                placeholder="Procedures performed"
-                value={dentalForm.procedures_performed}
-                onChange={(e) => setDentalForm({ ...dentalForm, procedures_performed: e.target.value })}
-              />
-              <label>
-                <span className="field-label-row">
-                  Notes
-                  <VoiceToTextButton kind="dental_notes" onResult={appendDentalNotes} />
-                </span>
-                <textarea
-                  rows={2}
-                  value={dentalForm.notes}
-                  onChange={(e) => setDentalForm({ ...dentalForm, notes: e.target.value })}
-                />
-              </label>
-              <button type="submit">Add</button>
-            </form>
-          </details>
-        </div>
-
-        <DentalChart
-          species={consult.patients?.species}
-          value={consult.patients?.dental_chart}
-          onChange={updateDentalChart}
-          saving={savingDentalChart}
-        />
-        {dentalReports.map((r) => (
-          <div key={r.id} className="visit-card">
-            <strong>{r.staff?.full_name || 'unassigned'}</strong>
-            <p>{r.performed_at ? new Date(r.performed_at).toLocaleString() : ''}</p>
-            {r.findings && (
-              <p>
-                <strong>Findings:</strong> {r.findings}
-              </p>
-            )}
-            {r.procedures_performed && (
-              <p>
-                <strong>Procedures:</strong> {r.procedures_performed}
-              </p>
-            )}
-            {r.notes && <p>{r.notes}</p>}
-            <AttachmentSection entityType="dental_report" entityId={r.id} />
-            <AudioRecorder
-              entityType="dental_report"
-              entityId={r.id}
-              autoStart={r.id === autoRecordDentalId}
-            />
-            <button
-              type="button"
-              onClick={() => generateAiReport('/api/dental-reports', r.id, !!r.ai_summary, loadDentalReports)}
-              disabled={generatingReportId === r.id || !(r.findings || r.procedures_performed || r.notes)}
-            >
-              {generatingReportId === r.id ? 'Generating...' : r.ai_summary ? '🔄 Regenerate AI Report' : '✨ Generate AI Report'}
-            </button>
-            {generateReportErrorId === r.id && <p className="error">{generateReportError}</p>}
-            <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
-          </div>
-        ))}
-        </div>
-
-        <div>
-        <h3>Surgical Reports</h3>
-        <div className="card">
-          <button type="button" onClick={startDictateSurgicalReport} disabled={dictatingSurgical}>
-            🎤 {dictatingSurgical ? 'Starting...' : 'Dictate'}
-          </button>
-          <details>
-            <summary>Or add manually</summary>
-            <form className="form-grid" onSubmit={addSurgicalReport}>
-              <input
-                placeholder="Procedure"
-                value={surgForm.procedure_name}
-                onChange={(e) => setSurgForm({ ...surgForm, procedure_name: e.target.value })}
-              />
-              <select
-                value={surgForm.surgeon_id}
-                onChange={(e) => setSurgForm({ ...surgForm, surgeon_id: e.target.value })}
-              >
-                <option value="">Surgeon...</option>
-                {vets.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.full_name}
-                  </option>
-                ))}
-              </select>
-              <label>
-                <span className="field-label-row">
-                  Notes
-                  <VoiceToTextButton kind="surgical_notes" onResult={appendSurgNotes} />
-                </span>
-                <textarea
-                  rows={2}
-                  value={surgForm.notes}
-                  onChange={(e) => setSurgForm({ ...surgForm, notes: e.target.value })}
-                />
-              </label>
-              <button type="submit">Add</button>
-            </form>
-          </details>
-        </div>
-
-        {surgicalReports.map((r) => (
-          <div key={r.id} className="visit-card">
-            <strong>{r.procedure_name || 'Procedure'}</strong>
-            <p>
-              {r.staff?.full_name || 'unassigned'} ·{' '}
-              {r.performed_at ? new Date(r.performed_at).toLocaleString() : ''}
-            </p>
-            {r.notes && <p>{r.notes}</p>}
-            <AttachmentSection entityType="surgical_report" entityId={r.id} />
-            <AudioRecorder
-              entityType="surgical_report"
-              entityId={r.id}
-              autoStart={r.id === autoRecordSurgicalId}
-            />
-            <button
-              type="button"
-              onClick={() => generateAiReport('/api/surgical-reports', r.id, !!r.ai_summary, loadSurgicalReports)}
-              disabled={generatingReportId === r.id || !(r.procedure_name || r.notes)}
-            >
-              {generatingReportId === r.id ? 'Generating...' : r.ai_summary ? '🔄 Regenerate AI Report' : '✨ Generate AI Report'}
-            </button>
-            {generateReportErrorId === r.id && <p className="error">{generateReportError}</p>}
-            <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
-          </div>
-        ))}
-        </div>
-        </div>
-      </div>
-
       <div hidden={activeTab !== 'reports'}>
         <PatientReportOverview patientId={consult.patient_id} title="Earlier reports for this patient" />
         <RecordReports
           record={consult} recordApiBase="/api/visits" showOverallReport
           diagnostics={diagnostics} catalog={catalog}
           groups={[
-            { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', sourceTab: 'procedures', reload: loadDentalReports },
-            { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', sourceTab: 'procedures', reload: loadSurgicalReports },
+            { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', reload: loadDentalReports },
+            { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', reload: loadSurgicalReports },
             { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', sourceTab: 'exam', reload: loadUltrasoundReports },
             { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', sourceTab: 'exam', reload: loadXrayReports },
           ]}
@@ -1627,100 +1278,6 @@ export default function ConsultDetailPage() {
           reportsError={Object.values(reportsError).filter(Boolean).join(' ')}
         />
       </div>
-
-      {/* Consent & Admission — the paperwork/disposition side: signed
-          consent forms, and admitting the patient to hospitalization. */}
-      <div hidden={activeTab !== 'admin'}>
-        <h3>
-          Consent Forms
-          {consentForms.length === 0 && (
-            <span className="heading-hint"> — No consent forms signed yet.</span>
-          )}
-        </h3>
-        {consentForms.map((cf) => (
-          <div key={cf.id} className="visit-card">
-            <strong>{CONSENT_FORM_LABELS[cf.form_type] || cf.form_type}</strong>
-            <p>
-              Signed by {cf.signed_by_name}
-              {cf.signed_by_relationship && ` (${cf.signed_by_relationship})`} ·{' '}
-              {new Date(cf.signed_at).toLocaleString()}
-              {cf.staff?.full_name && ` · Witnessed by ${cf.staff.full_name}`}
-            </p>
-            <a href={`/api/consent-forms/${cf.id}/pdf`} target="_blank" rel="noreferrer">
-              📄 Download signed PDF
-            </a>{' '}
-            <button type="button" onClick={() => deleteConsentForm(cf.id)}>
-              Delete
-            </button>
-          </div>
-        ))}
-        <form className="card" onSubmit={addConsentForm}>
-          <h3>Sign a Consent Form</h3>
-          {consentError && <p className="error">{consentError}</p>}
-          <select
-            required
-            value={consentForm.form_type}
-            onChange={(e) => setConsentForm({ ...consentForm, form_type: e.target.value })}
-          >
-            <option value="">Select consent form...</option>
-            {CONSENT_FORM_TYPES.filter((t) => t !== 'hospitalization').map((t) => (
-              <option key={t} value={t}>
-                {CONSENT_FORM_LABELS[t]}
-              </option>
-            ))}
-          </select>
-          {consentForm.form_type && (
-            <>
-              <p className="visit-meta">
-                Patient: {consult.patients?.name}
-                {consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''} · Owner:{' '}
-                {consult.clients?.full_name}
-                {consult.clients?.client_number ? ` (Client #${consult.clients.client_number})` : ''}
-              </p>
-              <div className="consent-text-box">
-                {buildConsentFormText(
-                  consentForm.form_type,
-                  { name: consult.patients?.name, sex: consult.patients?.sex },
-                  { treatmentNotes: record.treatment_notes, treatmentItems }
-                )}
-              </div>
-            </>
-          )}
-          <input
-            placeholder="Signed by (full name)"
-            required
-            value={consentForm.signed_by_name}
-            onChange={(e) => setConsentForm({ ...consentForm, signed_by_name: e.target.value })}
-          />
-          <input
-            placeholder="Relationship to pet (e.g. Owner) — optional"
-            value={consentForm.signed_by_relationship}
-            onChange={(e) => setConsentForm({ ...consentForm, signed_by_relationship: e.target.value })}
-          />
-          <select
-            value={consentForm.staff_witness_id}
-            onChange={(e) => setConsentForm({ ...consentForm, staff_witness_id: e.target.value })}
-          >
-            <option value="">Witnessed by (staff)...</option>
-            {staff.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.full_name}
-              </option>
-            ))}
-          </select>
-          <div className="consent-form-actions">
-            <button type="submit" disabled={consentSubmitting}>
-              {consentSubmitting ? 'Saving...' : 'Sign'}
-            </button>
-            <button type="button" onClick={sendConsentLink} disabled={sendingConsentLink}>
-              {sendingConsentLink ? 'Sending...' : '📤 WhatsApp'}
-            </button>
-          </div>
-        </form>
-
-      </div>
-
-      <PdfPreviewModal url={previewPdfUrl} onClose={() => setPreviewPdfUrl(null)} />
     </div>
   );
 }
