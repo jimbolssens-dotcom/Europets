@@ -7,7 +7,7 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import SearchSelect from '@/app/_components/SearchSelect';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
@@ -31,6 +31,7 @@ export default function ConsultsPage() {
 // Suspense boundary around it — split out into its own component so the
 // wrapper above stays a plain server-renderable shell.
 function ConsultsPageInner() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [consults, setConsults] = useState([]);
   const [selectedOwner, setSelectedOwner] = useState(null); // { id, full_name } for the client currently picked below
@@ -133,7 +134,7 @@ function ConsultsPageInner() {
     } else {
       setWalkIn(emptyWalkIn);
       setSelectedOwner(null);
-      loadConsults();
+      router.push(`/consults/${data.id}`);
     }
     setSubmitting(false);
   }
