@@ -488,6 +488,10 @@ export default function HospitalizationDetailPage() {
     window.open(`/api/hospitalizations/${id}/summary-pdf?t=${Date.now()}`, '_blank');
   }
 
+  function portalUrl() {
+    return `${window.location.origin}/portal/hospitalization/${id}`;
+  }
+
   function shareViaWhatsApp() {
     const clientLabel = `${admission.clients?.full_name || 'there'}${
       admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''
@@ -495,12 +499,8 @@ export default function HospitalizationDetailPage() {
     const patientLabel = `${admission.patients?.name || 'your pet'}${
       admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''
     }`;
-    const message = `Hi ${clientLabel}, here's the daily care update for ${patientLabel} during their stay with us. Please attach the summary PDF you just downloaded to this chat.`;
+    const message = `Hi ${clientLabel}, here's the live care update page for ${patientLabel} during their stay with us: ${portalUrl()}`;
     openWhatsApp(admission.clients?.phone, message);
-  }
-
-  function portalUrl() {
-    return `${window.location.origin}/portal/hospitalization/${id}`;
   }
 
   async function copyPortalLink() {
