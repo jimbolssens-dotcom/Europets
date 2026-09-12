@@ -1568,6 +1568,15 @@ button.secondary:hover {
   align-items: center;
 }
 
+.visit-card-from-day-procedure {
+  border-left-color: #e0b96b;
+}
+
+.visit-card-source-link {
+  padding: 0.15rem 0.6rem;
+  font-size: 0.72rem;
+}
+
 /* .visit-card entries (diagnostics, surgical/dental reports, consent
    forms) otherwise sit flush against whatever precedes them — a heading,
    or (on the Exam tab) the Add Diagnostic form right above the list. */

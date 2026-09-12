@@ -132,10 +132,37 @@ export default function HospitalizationDetailPage() {
         setLoading(false);
       });
 
-  const loadNotes = () =>
-    fetch(`/api/hospitalizations/${id}/notes`)
-      .then((res) => res.json())
-      .then((data) => setNotes(Array.isArray(data) ? data : []));
+  // A day procedure booked off this admission (see loadLinkedDayProcedures)
+  // has its own checklist and its own hospitalization_notes rows — merged
+  // in here, tagged with _dayProcedureId/_dayProcedureLabel, so what was
+  // done there shows up in this stay's own Day-to-day Worksheet by date,
+  // same as anything logged directly here. Read-only merge, not a
+  // duplicate write: the day procedure's own notes/treatment_items stay
+  // the single source of truth for ITS invoice, so nothing here can
+  // double-bill or edit them from the wrong record.
+  const loadNotes = async () => {
+    const [ownNotes, linked] = await Promise.all([
+      fetch(`/api/hospitalizations/${id}/notes`).then((res) => res.json()),
+      fetch(`/api/hospitalizations?originating_hospitalization_id=${id}`).then((res) => res.json()),
+    ]);
+    const linkedList = Array.isArray(linked) ? linked : [];
+    const dayProcedureNoteLists = await Promise.all(
+      linkedList.map((dp) =>
+        fetch(`/api/hospitalizations/${dp.id}/notes`)
+          .then((res) => res.json())
+          .then((list) =>
+            Array.isArray(list)
+              ? list.map((n) => ({ ...n, _dayProcedureId: dp.id, _dayProcedureLabel: dp.reason || 'Day Procedure' }))
+              : []
+          )
+      )
+    );
+    const merged = [...(Array.isArray(ownNotes) ? ownNotes : []), ...dayProcedureNoteLists.flat()].sort((a, b) => {
+      if (a.note_date !== b.note_date) return a.note_date < b.note_date ? 1 : -1;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+    setNotes(merged);
+  };
 
   const loadInvoiceInfo = () =>
     fetch(`/api/invoices?hospitalization_id=${id}`)
@@ -194,7 +221,10 @@ export default function HospitalizationDetailPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hospitalizations', filter: `originating_hospitalization_id=eq.${id}` },
-        loadLinkedDayProcedures
+        () => {
+          loadLinkedDayProcedures();
+          loadNotes();
+        }
       )
       .subscribe();
     return () => supabase.removeChannel(channel);
@@ -880,11 +910,18 @@ export default function HospitalizationDetailPage() {
       {linkedDayProcedures.length > 0 && (
         <p className="linked-day-procedures">
           Day procedures from this stay:{' '}
-          {linkedDayProcedures.map((dp) => (
-            <a key={dp.id} className="button-link button-link-day-procedure" href={`/hospitalization/${dp.id}`}>
-              {dp.reason || 'Day Procedure'} · {dp.status === 'discharged' ? 'Completed' : 'In progress'}
-            </a>
-          ))}
+          {linkedDayProcedures.map((dp) => {
+            // Colored (the day-procedure yellow) only for one booked TODAY
+            // — a day procedure from an earlier day in this stay is done
+            // and no longer "active", so it stays a plain link instead of
+            // implying there's something happening right now.
+            const isToday = dp.admitted_at?.slice(0, 10) === todayISODate();
+            return (
+              <a key={dp.id} className={`button-link${isToday ? ' button-link-day-procedure' : ''}`} href={`/hospitalization/${dp.id}`}>
+                {dp.reason || 'Day Procedure'} · {dp.status === 'discharged' ? 'Completed' : 'In progress'}
+              </a>
+            );
+          })}
         </p>
       )}
 
@@ -920,7 +957,14 @@ export default function HospitalizationDetailPage() {
       <h2>Day-to-day Worksheet</h2>
       {notes.length === 0 && <p>No entries yet.</p>}
       {groupNotesByDate(notes).map((group) => {
+        // Medications logged via a linked day procedure are excluded here —
+        // that panel's Edit/Remove/+Add actions write against a note by id
+        // with no hospitalization scoping, and a day procedure's own
+        // treatment_items are what ITS OWN invoice is built from; letting
+        // this admission's worksheet touch them risks editing the wrong
+        // record's billing. They still show, read-only, in the entry itself.
         const dayItems = group.entries
+          .filter((n) => !n._dayProcedureId)
           .flatMap((n) => n.treatment_items || [])
           .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
         const dayExpanded = expandedDay === group.date;
@@ -1028,7 +1072,33 @@ export default function HospitalizationDetailPage() {
             </div>
           )}
 
-          {group.entries.map((n) => (
+          {group.entries.map((n) => n._dayProcedureId ? (
+            // Merged in from a day procedure booked off this stay (see
+            // loadNotes) — read-only here on purpose: editing/deleting it
+            // or its treatment_items belongs on that record, where its own
+            // invoice is built from them.
+            <div key={n.id} className="visit-card visit-card-from-day-procedure">
+              <div className="visit-header">
+                <strong>{formatTime(n.created_at)}</strong>
+                <span>{n.staff?.full_name || 'unassigned'}</span>
+                <a className="button-link button-link-day-procedure visit-card-source-link" href={`/hospitalization/${n._dayProcedureId}`}>
+                  🩺 {n._dayProcedureLabel}
+                </a>
+              </div>
+              {n.notes && <p>{n.notes}</p>}
+              {n.treatment_items?.length > 0 && (
+                <ul className="worksheet-entry-items">
+                  {n.treatment_items.map((t) => (
+                    <li key={t.id}>
+                      {t.goods_services?.name}
+                      {t.quantity > 1 ? ` ×${t.quantity}` : ''}
+                      {t.instructions && ` — ${t.instructions}`}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : (
             <div key={n.id} className="visit-card">
               <div className="visit-header">
                 <strong>{formatTime(n.created_at)}</strong>
