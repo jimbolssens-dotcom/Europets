@@ -3902,6 +3902,15 @@ button.secondary:hover {
   margin-top: 0.7rem;
 }
 
+.checklist-surgical-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #555;
+  white-space: nowrap;
+}
+
 .day-plan-catalog-add input,
 .day-plan-custom-add input {
   flex: 1;

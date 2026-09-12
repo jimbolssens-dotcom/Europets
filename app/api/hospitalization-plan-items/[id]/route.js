@@ -15,7 +15,7 @@ import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { label, goods_service_id, instructions, administration_method } = body;
+  const { label, goods_service_id, instructions, administration_method, is_surgical } = body;
 
   if (!label) {
     return NextResponse.json({ error: 'label is required' }, { status: 400 });
@@ -35,14 +35,21 @@ export async function PATCH(request, { params }) {
     resolvedMethod = resolved.administration_method;
   }
 
+  const update = {
+    label,
+    goods_service_id: goods_service_id || null,
+    instructions: instructions || null,
+    administration_method: resolvedMethod,
+  };
+  // Only touched when the caller actually sends it — DayTreatmentPlan's
+  // edit dialog doesn't have this field yet, and PATCHing it unconditionally
+  // would silently reset an AI- or staff-set flag back to false on every
+  // unrelated edit.
+  if (is_surgical !== undefined) update.is_surgical = !!is_surgical;
+
   const { data, error } = await supabase
     .from('hospitalization_plan_items')
-    .update({
-      label,
-      goods_service_id: goods_service_id || null,
-      instructions: instructions || null,
-      administration_method: resolvedMethod,
-    })
+    .update(update)
     .eq('id', params.id)
     .select('*, goods_services(name)')
     .single();

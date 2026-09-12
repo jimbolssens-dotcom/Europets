@@ -50,11 +50,13 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
   const [catalogAdministrationMethod, setCatalogAdministrationMethod] = useState('');
   const [showCustomAdd, setShowCustomAdd] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
+  const [customIsSurgical, setCustomIsSurgical] = useState(false);
   const [error, setError] = useState(null);
   const [editingItemId, setEditingItemId] = useState(null);
   const [editGoodsServiceId, setEditGoodsServiceId] = useState('');
   const [editInstructions, setEditInstructions] = useState('');
   const [editAdministrationMethod, setEditAdministrationMethod] = useState('');
+  const [editIsSurgical, setEditIsSurgical] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);
@@ -226,8 +228,9 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
 
   async function addCustomTask() {
     if (!customLabel.trim()) return;
-    await addPlanItem({ label: customLabel.trim() });
+    await addPlanItem({ label: customLabel.trim(), is_surgical: customIsSurgical });
     setCustomLabel('');
+    setCustomIsSurgical(false);
     setShowCustomAdd(false);
   }
 
@@ -277,6 +280,7 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
     setEditGoodsServiceId(item.goods_service_id || '');
     setEditInstructions(item.instructions || '');
     setEditAdministrationMethod(item.administration_method || '');
+    setEditIsSurgical(!!item.is_surgical);
   }
 
   function cancelEditItem() {
@@ -297,6 +301,7 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
         goods_service_id: editGoodsServiceId || null,
         instructions: editInstructions.trim() || null,
         administration_method: editAdministrationMethod || null,
+        is_surgical: editIsSurgical,
       }),
     });
     setEditSaving(false);
@@ -425,6 +430,14 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
                   value={editInstructions}
                   onChange={(e) => setEditInstructions(e.target.value)}
                 />
+                <label className="checklist-surgical-toggle">
+                  <input
+                    type="checkbox"
+                    checked={editIsSurgical}
+                    onChange={(e) => setEditIsSurgical(e.target.checked)}
+                  />
+                  This is a surgery — offer a surgical report
+                </label>
                 <div className="day-plan-edit-actions">
                   <button
                     type="button"
@@ -494,6 +507,14 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
             value={customLabel}
             onChange={(e) => setCustomLabel(e.target.value)}
           />
+          <label className="checklist-surgical-toggle">
+            <input
+              type="checkbox"
+              checked={customIsSurgical}
+              onChange={(e) => setCustomIsSurgical(e.target.checked)}
+            />
+            This is a surgery — offer a surgical report
+          </label>
           <button type="button" onClick={addCustomTask} disabled={!customLabel.trim()}>
             Add
           </button>

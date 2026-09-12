@@ -24,7 +24,7 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   const body = await request.json();
-  const { label, goods_service_id, instructions, administration_method } = body;
+  const { label, goods_service_id, instructions, administration_method, is_surgical } = body;
 
   if (!label) {
     return NextResponse.json({ error: 'label is required' }, { status: 400 });
@@ -53,6 +53,7 @@ export async function POST(request, { params }) {
         goods_service_id: goods_service_id || null,
         instructions: instructions || null,
         administration_method: resolvedMethod,
+        is_surgical: !!is_surgical,
       },
     ])
     .select('*, goods_services(name)')
