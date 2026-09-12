@@ -10,6 +10,7 @@
 // via entity_type/entity_id), so those are cleaned up explicitly here.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { lockExtractedTeeth } from '@/lib/dentalChartLayout';
 import { compressAttachmentsForClosedRecord, isXrayDiagnostic } from '@/lib/attachmentCompression';
 import { generateReportForConsult } from '@/lib/consultReportGeneration';
@@ -90,7 +91,7 @@ export async function PATCH(request, { params }) {
   }
 
   if (update.weight_kg !== undefined && update.weight_kg !== null) {
-    await supabase
+    await supabaseAdmin
       .from('patients')
       .update({ current_weight_kg: update.weight_kg })
       .eq('id', data.patient_id);
@@ -140,7 +141,7 @@ export async function PATCH(request, { params }) {
         .single();
       const locked = lockExtractedTeeth(patient?.dental_chart);
       if (locked && JSON.stringify(locked) !== JSON.stringify(patient.dental_chart)) {
-        await supabase.from('patients').update({ dental_chart: locked }).eq('id', data.patient_id);
+        await supabaseAdmin.from('patients').update({ dental_chart: locked }).eq('id', data.patient_id);
       }
     }
 

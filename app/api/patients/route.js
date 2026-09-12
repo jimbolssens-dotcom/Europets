@@ -8,6 +8,7 @@
 // POST /api/patients             -> create a new patient (linked to a client)
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { seedCoreVaccinationsFromLastGiven } from '@/lib/vaccinationSeeding';
 
@@ -72,7 +73,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'sex is required' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('patients')
     .insert([
       {

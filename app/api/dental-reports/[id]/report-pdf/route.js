@@ -17,6 +17,7 @@
 // extractions marked without ever generating this PDF.)
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { buildProcedureReportPdf } from '@/lib/procedureReportPdf';
 import { isImageAttachment, fetchAttachmentBytes } from '@/lib/pdfAttachments';
 import { lockExtractedTeeth } from '@/lib/dentalChartLayout';
@@ -74,7 +75,7 @@ export async function GET(request, { params }) {
     }
     const locked = lockExtractedTeeth(patient.dental_chart);
     if (locked && JSON.stringify(locked) !== JSON.stringify(patient.dental_chart)) {
-      await supabase.from('patients').update({ dental_chart: locked }).eq('id', patient.id);
+      await supabaseAdmin.from('patients').update({ dental_chart: locked }).eq('id', patient.id);
     }
   }
 

@@ -6,6 +6,7 @@
 // DELETE /api/clients/:id  -> remove a client (blocked if they/their patients have history)
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { normalizeClientPhones, syncClientWhatsappPhone, attachClientPhones } from '@/lib/clientPhones';
 
@@ -52,12 +53,12 @@ export async function PATCH(request, { params }) {
     // always small, and this keeps the "exactly one WhatsApp number"
     // logic in one place (see normalizeClientPhones) instead of having to
     // reconcile partial updates against what's already there.
-    const { error: deleteError } = await supabase.from('client_phones').delete().eq('client_id', params.id);
+    const { error: deleteError } = await supabaseAdmin.from('client_phones').delete().eq('client_id', params.id);
     if (deleteError) {
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
     if (normalizedPhones.length > 0) {
-      const { error: insertError } = await supabase
+      const { error: insertError } = await supabaseAdmin
         .from('client_phones')
         .insert(normalizedPhones.map((p) => ({ ...p, client_id: params.id })));
       if (insertError) {
@@ -65,14 +66,14 @@ export async function PATCH(request, { params }) {
       }
     }
     try {
-      await syncClientWhatsappPhone(supabase, params.id, normalizedPhones);
+      await syncClientWhatsappPhone(supabaseAdmin, params.id, normalizedPhones);
     } catch (err) {
       return NextResponse.json({ error: err.message }, { status: 500 });
     }
   }
 
   if (Object.keys(update).length > 0) {
-    const { error: updateError } = await supabase.from('clients').update(update).eq('id', params.id);
+    const { error: updateError } = await supabaseAdmin.from('clients').update(update).eq('id', params.id);
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
@@ -102,7 +103,7 @@ export async function DELETE(request, { params }) {
     await supabase.from('attachments').delete().in('id', attachments.map((a) => a.id));
   }
 
-  const { error } = await supabase.from('clients').delete().eq('id', params.id);
+  const { error } = await supabaseAdmin.from('clients').delete().eq('id', params.id);
 
   if (error) {
     if (error.code === '23503') {

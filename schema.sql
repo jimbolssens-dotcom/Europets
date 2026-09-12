@@ -1189,18 +1189,19 @@ alter publication supabase_realtime add table
     nomod_payment_links, policy_categories, policies;
 
 -- ============ ROW LEVEL SECURITY ============
--- RLS is intentionally left disabled: the app has no staff auth yet and
--- talks to Supabase directly with the publishable key. Enable RLS and add
--- policies (e.g. scoped to authenticated staff) before this goes anywhere
--- near production data.
+-- RLS is intentionally left disabled on every table below except
+-- clients/client_phones/patients (migration 093): the app has no staff
+-- auth yet and talks to Supabase directly with the publishable key, so
+-- broader per-table policies aren't meaningful until that changes. Those
+-- three tables hold the real PII (names, phone numbers, emails, Emirates
+-- ID numbers) worth protecting even without staff auth — see migration
+-- 093's comment and lib/supabaseAdmin.js for how writes to them now go
+-- through a server-only service-role key instead.
 --
 -- Newer Supabase projects auto-enable RLS by default on new tables, so
 -- this is explicit rather than relying on Postgres's off-by-default.
 alter table staff disable row level security;
 alter table staff_roster_entries disable row level security;
-alter table clients disable row level security;
-alter table client_phones disable row level security;
-alter table patients disable row level security;
 alter table rooms disable row level security;
 alter table appointments disable row level security;
 alter table visits disable row level security;
@@ -1234,3 +1235,14 @@ alter table patient_alerts disable row level security;
 alter table invoice_payments disable row level security;
 alter table policy_categories disable row level security;
 alter table policies disable row level security;
+
+-- clients/client_phones/patients (migration 093): RLS on, reads stay open
+-- (the app's publishable key has no per-user login to scope them to), only
+-- writes are locked to the service-role key — see lib/supabaseAdmin.js.
+alter table clients enable row level security;
+alter table client_phones enable row level security;
+alter table patients enable row level security;
+
+create policy "clients_public_read" on clients for select using (true);
+create policy "client_phones_public_read" on client_phones for select using (true);
+create policy "patients_public_read" on patients for select using (true);

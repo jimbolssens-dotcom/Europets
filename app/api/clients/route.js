@@ -7,6 +7,7 @@
 //                              client_phones — replaces the old phone/phone2 pair)
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { normalizeClientPhones, attachClientPhones } from '@/lib/clientPhones';
@@ -64,7 +65,7 @@ export async function POST(request) {
     return NextResponse.json({ error: err.message }, { status: 400 });
   }
 
-  const { data: client, error } = await supabase
+  const { data: client, error } = await supabaseAdmin
     .from('clients')
     .insert([
       {
@@ -85,7 +86,7 @@ export async function POST(request) {
   }
 
   if (normalizedPhones.length > 0) {
-    const { error: phonesError } = await supabase
+    const { error: phonesError } = await supabaseAdmin
       .from('client_phones')
       .insert(normalizedPhones.map((p) => ({ ...p, client_id: client.id })));
     if (phonesError) {

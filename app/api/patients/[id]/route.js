@@ -4,6 +4,7 @@
 // DELETE /api/patients/:id  -> remove a patient (blocked if it has appointments/visits)
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const EDITABLE_FIELDS = [
@@ -45,7 +46,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('patients')
     .update(update)
     .eq('id', params.id)
@@ -65,7 +66,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { error } = await supabase.from('patients').delete().eq('id', params.id);
+  const { error } = await supabaseAdmin.from('patients').delete().eq('id', params.id);
 
   if (error) {
     if (error.code === '23503') {

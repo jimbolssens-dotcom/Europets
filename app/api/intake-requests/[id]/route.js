@@ -16,6 +16,7 @@
 // DELETE /api/intake-requests/:id  -> cancel an unused link
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { CLIENT_APPOINTMENT_TYPES, CLIENT_APPOINTMENT_TYPE_LABELS, appointmentTypeAllowedForSex } from '@/lib/appointmentBooking';
 import { seedCoreVaccinationsFromLastGiven, seedVaccinationFromIntake } from '@/lib/vaccinationSeeding';
@@ -315,7 +316,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
     }
     client = found;
   } else {
-    const { data: created, error: clientError } = await supabase
+    const { data: created, error: clientError } = await supabaseAdmin
       .from('clients')
       .insert([{
         full_name: intake.full_name,
@@ -335,7 +336,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
       // Backs clients.phone with a real client_phones row, same as any
       // client added directly on the Clients page — otherwise this
       // number would show up there but not in their editable phones list.
-      await supabase
+      await supabaseAdmin
         .from('client_phones')
         .insert([{ client_id: client.id, phone: intake.phone, label: 'Mobile', is_whatsapp: true }]);
     }
@@ -352,7 +353,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
     microchip_number: p.microchip_number || null,
     microchip_implanted_at: p.microchip_implanted_at || null,
   }));
-  const { data: insertedPatients, error: patientsError } = await supabase
+  const { data: insertedPatients, error: patientsError } = await supabaseAdmin
     .from('patients')
     .insert(patientRows)
     .select('id');
@@ -363,7 +364,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
     // Only if we created it ourselves — never delete a pre-existing client
     // this submission was just being attached to.
     if (!existingClientId) {
-      await supabase.from('clients').delete().eq('id', client.id);
+      await supabaseAdmin.from('clients').delete().eq('id', client.id);
     }
     const message =
       patientsError.code === '23505'
