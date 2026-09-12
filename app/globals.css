@@ -2647,6 +2647,27 @@ button.secondary:hover {
   margin-top: 0.5rem;
 }
 
+/* Desktop only: the room/day columns shrink together to whatever width
+   the schedule box actually has, so it never needs a horizontal
+   scrollbar, and centers within the space between the left sidebar and
+   the booking panel instead of stretching edge to edge. Tablet/mobile
+   keep each column at its fixed natural width and scroll horizontally
+   instead — the columns are already at a sensible size there and
+   shrinking a whole week's columns further on a small screen would make
+   them unusable, so horizontal scroll stays the right tradeoff. */
+@media (min-width: 1024px) {
+  .schedule-wrap {
+    width: 100%;
+    margin-inline: auto;
+    overflow-x: hidden;
+  }
+  .schedule-room-col,
+  .schedule-day-col {
+    flex: 1 1 130px;
+    min-width: 0;
+  }
+}
+
 /* The day's appointment list below the schedule — same fix as
    .schedule-wrap above: scroll the table internally on narrow screens
    instead of letting it stretch the whole page. */
@@ -2695,8 +2716,17 @@ button.secondary:hover {
   color: #999;
 }
 
+/* Natural/fixed width — see the desktop-only override above, which lets
+   these shrink together to fit instead of forcing a horizontal scrollbar. */
 .schedule-room-col {
   flex: 0 0 130px;
+}
+
+/* Week view's per-day column — same natural-width-that-can-shrink-on-
+   desktop treatment as .schedule-room-col above, just for a day instead
+   of a room (see renderWeekView). */
+.schedule-day-col {
+  flex: 0 0 132px;
 }
 
 .schedule-room-track {
