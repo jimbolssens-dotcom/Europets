@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
@@ -82,6 +82,16 @@ export default function HospitalizationDetailPage() {
   const [linkedDayProcedures, setLinkedDayProcedures] = useState([]);
   const [bookingDayProcedure, setBookingDayProcedure] = useState(false);
   const [bookDayProcedureError, setBookDayProcedureError] = useState(null);
+  const reportsSectionRef = useRef(null);
+
+  // The Procedure Checklist's "Open Dental/Surgical Report" button
+  // (ProcedureChecklist) triggers HospitalizationReportsSection's own
+  // create-or-resume + auto-dictate flow via this ref — the two are
+  // siblings, so this is the hookup between them.
+  function openReportFromChecklist(action, opts) {
+    if (action === 'dental') reportsSectionRef.current?.openOrStartDentalReport();
+    else if (action === 'surgery') reportsSectionRef.current?.openOrStartSurgicalReport(opts?.procedureName, opts?.isSpayNeuter);
+  }
   const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
   const [consentForms, setConsentForms] = useState([]);
   const [consentForm, setConsentForm] = useState({
@@ -798,6 +808,7 @@ export default function HospitalizationDetailPage() {
             catalog={catalog}
             subcategories={subcategories}
             onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+            onOpenReport={openReportFromChecklist}
           />
 
           <section className="case-files-open" aria-label="Day Procedure Report">
@@ -805,6 +816,7 @@ export default function HospitalizationDetailPage() {
             <DayProcedureNotes hospitalizationId={id} staff={staff} />
             <PatientReportOverview patientId={admission.patient_id} title="Earlier reports for this patient" />
             <HospitalizationReportsSection
+              ref={reportsSectionRef}
               hospitalizationId={id}
               admission={admission}
               staff={staff}

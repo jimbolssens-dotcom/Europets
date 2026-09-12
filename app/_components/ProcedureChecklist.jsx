@@ -34,19 +34,11 @@ const ACTION_LINKS = {
   test: { href: '#report-test-results', label: 'Enter Test Result' },
 };
 
-// Which report/input a checklist item's link should jump to, based on the
-// matched catalog item's name (falling back to the dictated label when
-// there's no catalog match) — see lib/checklistItemAction.js, shared with
-// the mobile Day Procedure checklist.
-function checklistLink(item, catalog, subcategories) {
-  return ACTION_LINKS[checklistItemAction(item, catalog, subcategories)] || null;
-}
-
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function ProcedureChecklist({ hospitalizationId, staff = [], catalog, subcategories, onCatalogItemCreated }) {
+export default function ProcedureChecklist({ hospitalizationId, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport }) {
   const [planItems, setPlanItems] = useState([]);
   const [loggedNotes, setLoggedNotes] = useState([]);
   const [authorId, setAuthorId] = useState('');
@@ -321,6 +313,24 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
     return staff.find((s) => s.id === id)?.full_name || 'Unknown';
   }
 
+  // Dental/surgical reports need more than a scroll — unlike xray/
+  // ultrasound/vaccine/test (still a plain anchor below), nothing
+  // auto-creates them ahead of time, so the link would otherwise land on
+  // an empty section with no dictation control in sight (see
+  // HospitalizationReportsSection, which owns the actual create+dictate
+  // flow — this just triggers it, mirroring what the mobile checklist
+  // does by navigating straight to a dictation screen).
+  function openReport(action, item) {
+    const catalogItem = catalog.find((c) => c.id === item.goods_service_id);
+    if (action === 'dental') {
+      onOpenReport?.('dental');
+    } else if (action === 'surgery' || action === 'spay_neuter') {
+      onOpenReport?.('surgery', { procedureName: catalogItem?.name || item.label, isSpayNeuter: action === 'spay_neuter' });
+    }
+    const href = ACTION_LINKS[action]?.href;
+    if (href) document.querySelector(href)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   return (
     <div className="card procedure-checklist">
       <div className="procedure-checklist-header">
@@ -345,7 +355,9 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
         const done = doneEntries(item.id);
         const isDone = done.length > 0;
         const last = done[done.length - 1];
-        const link = checklistLink(item, catalog, subcategories);
+        const action = checklistItemAction(item, catalog, subcategories);
+        const link = ACTION_LINKS[action] || null;
+        const linkTriggersReport = action === 'dental' || action === 'surgery' || action === 'spay_neuter';
         return (
           <div key={item.id} className="procedure-checklist-row">
             <button
@@ -378,11 +390,15 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
                 </span>
               )}
             </span>
-            {link && (
+            {link && (linkTriggersReport ? (
+              <button type="button" className="procedure-checklist-link" onClick={() => openReport(action, item)}>
+                {link.label} →
+              </button>
+            ) : (
               <a className="procedure-checklist-link" href={link.href}>
                 {link.label} →
               </a>
-            )}
+            ))}
             <button
               type="button"
               className="day-plan-remove"

@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from './AttachmentSection';
 import AudioRecorder from './AudioRecorder';
@@ -19,6 +19,7 @@ import DentalChart from './DentalChart';
 import RecordReports from './RecordReports';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import { isXrayTest } from '@/lib/xrayProduct';
+import { ensureSurgicalReport } from '@/lib/surgicalReportAuto';
 
 const LEGACY_DIAGNOSTIC_TYPE_LABELS = {
   blood: 'Blood test',
@@ -29,7 +30,10 @@ const LEGACY_DIAGNOSTIC_TYPE_LABELS = {
   other: 'Other',
 };
 
-export default function HospitalizationReportsSection({ hospitalizationId, admission, staff, catalog, subcategories, onCatalogItemCreated, onPatientUpdated, onAdmissionUpdated }) {
+const HospitalizationReportsSection = forwardRef(function HospitalizationReportsSection(
+  { hospitalizationId, admission, staff, catalog, subcategories, onCatalogItemCreated, onPatientUpdated, onAdmissionUpdated },
+  ref
+) {
   const [diagnostics, setDiagnostics] = useState([]);
   const [diagForm, setDiagForm] = useState({ goods_service_id: '', description: '' });
   const [diagError, setDiagError] = useState(null);
@@ -214,6 +218,30 @@ export default function HospitalizationReportsSection({ hospitalizationId, admis
       loadDentalReports();
     }
   }
+
+  // Triggered externally (the Procedure Checklist's "Open Dental/Surgical
+  // Report" button, a sibling component — see the ref passed down from the
+  // hospitalization page) so tapping a checklist item lands staff straight
+  // in a ready-to-dictate report, the same way the mobile checklist
+  // navigates to one, instead of a scroll to an empty section. Dedupes
+  // against whatever's already loaded rather than always inserting a new
+  // row, unlike the plain "Dictate" buttons below (a deliberate "start
+  // another one" action) which always create fresh.
+  useImperativeHandle(ref, () => ({
+    openOrStartDentalReport() {
+      const existing = dentalReports[dentalReports.length - 1];
+      if (existing) {
+        setAutoRecordDentalId(existing.id);
+        return;
+      }
+      startDictateDentalReport();
+    },
+    async openOrStartSurgicalReport(procedureName, isSpayNeuter) {
+      const report = await ensureSurgicalReport({ hospitalizationId, procedureName: procedureName || null, isSpayNeuter: !!isSpayNeuter });
+      setAutoRecordSurgicalId(report.id);
+      loadSurgicalReports();
+    },
+  }));
 
   async function updateDentalChart(newChart) {
     const patientId = admission?.patients?.id;
@@ -438,4 +466,6 @@ export default function HospitalizationReportsSection({ hospitalizationId, admis
       </details>
     </div>
   );
-}
+});
+
+export default HospitalizationReportsSection;
