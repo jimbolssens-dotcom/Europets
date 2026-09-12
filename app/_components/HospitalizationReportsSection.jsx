@@ -10,7 +10,7 @@
 
 'use client';
 
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from './AttachmentSection';
 import AudioRecorder from './AudioRecorder';
@@ -67,6 +67,22 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   const [generatingReportId, setGeneratingReportId] = useState(null);
   const [generateReportError, setGenerateReportError] = useState(null);
   const [generateReportErrorId, setGenerateReportErrorId] = useState(null);
+
+  // The "Order a test or start a report" section is a collapsed <details>
+  // by default — fine when staff open it themselves, but the checklist's
+  // "Open Dental/Surgical Report" button (openOrStartDentalReport/
+  // openOrStartSurgicalReport below) needs its AudioRecorder actually
+  // visible, not mounted invisibly inside a closed disclosure (which
+  // looked, on desktop, like the dictate/type controls simply weren't
+  // there at all).
+  const startReportDetailsRef = useRef(null);
+  useEffect(() => {
+    if (!autoRecordDentalId && !autoRecordSurgicalId && !autoRecordUltrasoundId && !autoRecordXrayId) return;
+    const el = startReportDetailsRef.current;
+    if (!el) return;
+    el.open = true;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [autoRecordDentalId, autoRecordSurgicalId, autoRecordUltrasoundId, autoRecordXrayId]);
 
   async function loadReportList(path, setter) {
     try {
@@ -347,7 +363,7 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
         reportsError={Object.values(reportsError).filter(Boolean).join(' ')}
       />
 
-      <details className="card">
+      <details className="card" ref={startReportDetailsRef}>
         <summary>➕ Order a test or start a report</summary>
 
         <h4>Order a test</h4>
