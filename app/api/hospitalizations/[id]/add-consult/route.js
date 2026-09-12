@@ -7,7 +7,10 @@
 // each other exactly the way they already do for a consult-first case.
 //
 // Most day procedures never need this — it's an opt-in "also write up an
-// exam note for this" escape hatch, not part of the default flow.
+// exam note for this" escape hatch, not part of the default flow. Uses
+// this admission's own room_id if it has one (or an explicitly passed
+// room_id), but doesn't require either — visits.room_id is nullable, and
+// plenty of day procedures never get a room assigned at all.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -35,10 +38,7 @@ export async function POST(request, { params }) {
     if (existingVisit) return NextResponse.json(existingVisit);
   }
 
-  const resolvedRoomId = room_id || admission.room_id;
-  if (!resolvedRoomId) {
-    return NextResponse.json({ error: 'room_id is required — this case has no room assigned yet' }, { status: 400 });
-  }
+  const resolvedRoomId = room_id || admission.room_id || null;
 
   const { data: visit, error: visitError } = await supabase
     .from('visits')
