@@ -12,14 +12,16 @@
 -- these three tables now. Postgres/Supabase's service_role already
 -- bypasses RLS entirely by default, so it needs no policy of its own here
 -- — see lib/supabaseAdmin.js for the server-only client using it, and set
--- SUPABASE_SERVICE_ROLE_KEY (from the Supabase project's Settings -> API
--- page) as its env var.
+-- SUPABASE_APP_SERVICE_ROLE_KEY (from the Supabase project's own
+-- Settings -> API page — not the same-looking variable Vercel's Supabase
+-- integration auto-injects for a different, unrelated project) as its
+-- env var.
 --
 -- IMPORTANT deploy order: deploy the code that uses supabaseAdmin for
--- these tables' writes (and the SUPABASE_SERVICE_ROLE_KEY env var) FIRST,
--- THEN run this migration. Running this first would make every client/
--- patient write in production fail (add/edit a client, add/edit a
--- patient, the intake-approval flow, ...) until the new code is live.
+-- these tables' writes (and the SUPABASE_APP_SERVICE_ROLE_KEY env var)
+-- FIRST, THEN run this migration. Running this first would make every
+-- client/patient write in production fail (add/edit a client, add/edit
+-- a patient, the intake-approval flow, ...) until the new code is live.
 
 alter table clients enable row level security;
 alter table client_phones enable row level security;
