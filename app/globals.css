@@ -2622,6 +2622,11 @@ button.secondary:hover {
   display: inline-block;
 }
 
+.vet-legend-hint {
+  color: #888;
+  font-style: italic;
+}
+
 .schedule-wrap {
   display: flex;
   max-width: 100%;
