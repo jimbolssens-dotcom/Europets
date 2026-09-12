@@ -894,7 +894,6 @@ export default function ConsultDetailPage() {
             x-rays, or ultrasound scans on each entry above once it&apos;s added.
           </InfoHint>
         </h3>
-        <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View reports and test results</button>
         <form className="card" onSubmit={addDiagnostic}>
           {diagError && <p className="error">{diagError}</p>}
           <CatalogPicker
