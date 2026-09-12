@@ -354,6 +354,28 @@ button:disabled {
   }
 }
 
+/* The consult page's merged Exam, Diagnostics & Treatment tab — three
+   columns side by side instead of splitting them across separate tabs, so
+   the whole visit is visible at once. Same reset as .two-col above. */
+.workbench {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.workbench form.card,
+.workbench .card {
+  max-width: none;
+  margin-top: 0;
+}
+
+@media (max-width: 1200px) {
+  .workbench {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Client phone numbers list (see app/_components/ClientPhonesEditor) —
    used both in the "Add Client" form and the inline edit row on
    app/(admin)/clients, so it needs to work both as a form.card descendant
@@ -1593,7 +1615,7 @@ button.secondary:hover {
 .consult-tabs-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 1rem;
   margin: 1rem 0 1.25rem;
   border-bottom: 2px solid var(--pink-tint);

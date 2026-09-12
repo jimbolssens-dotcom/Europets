@@ -48,10 +48,10 @@ const LEGACY_DIAGNOSTIC_TYPE_LABELS = {
 // through, instead of the old side-by-side column layout — see the
 // activeTab state below for why the inactive tabs stay mounted.
 const CONSULT_TABS = [
-  { id: 'exam', label: '🩺 Exam & Notes' },
-  { id: 'treatment', label: '💊 Treatment' },
-  { id: 'procedures', label: '🩹 Procedures' },
+  { id: 'exam', label: '🩺 Exam, Diagnostics & Treatment' },
+  { id: 'vaccinations', label: '💉 Vaccinations' },
   { id: 'reports', label: 'Reports' },
+  { id: 'procedures', label: '🩹 Procedures' },
   { id: 'admin', label: '📋 Consent & Admission' },
 ];
 
@@ -873,6 +873,21 @@ export default function ConsultDetailPage() {
             <AudioRecorder entityType="visit" entityId={id} />
           </div>
         </details>
+      </div>
+
+      <div className="consult-tabs-row">
+        <div className="consult-tabs">
+          {CONSULT_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`consult-tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab((prev) => (tab.id === 'reports' && prev === 'reports' ? null : tab.id))}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
         <CrossRecordLinks>
         <button
           type="button"
@@ -946,25 +961,12 @@ export default function ConsultDetailPage() {
         </CrossRecordLinks>
       </div>
 
-      <div className="consult-tabs-row">
-        <div className="consult-tabs">
-          {CONSULT_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={`consult-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab((prev) => (tab.id === 'reports' && prev === 'reports' ? null : tab.id))}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Exam & Notes — the vet's own record: vitals, exam findings, the
-          consult dictation, and any diagnostics ordered off the back of it. */}
+      {/* Exam, Diagnostics & Treatment — the vet's own record (vitals, exam
+          findings, consult dictation), any diagnostics ordered off the back
+          of it, and the treatment plan drawn from the catalog, side by side
+          instead of split across separate tabs. */}
       <div hidden={activeTab !== 'exam'}>
-        <div className="two-col">
+        <div className="workbench">
         <div>
         <h3>Vitals & Exam</h3>
         <form className="card" onSubmit={saveRecord}>
@@ -1335,25 +1337,6 @@ export default function ConsultDetailPage() {
           );
         })}
         </div>
-        </div>
-      </div>
-
-      {/* Treatment — what the patient is actually getting: vaccines, the
-          treatment plan drawn from the catalog, and the invoice it feeds. */}
-      <div hidden={activeTab !== 'treatment'}>
-        <div className="two-col">
-        <div>
-        <h3>
-          Vaccinations
-          {vac.vaccinations.length === 0 && (
-            <span className="heading-hint"> — No vaccinations recorded yet.</span>
-          )}
-        </h3>
-        {vac.vaccinations.length > 0 && (
-          <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
-        )}
-        <VaccinationForm {...vac} species={consult.patients?.species} staff={staff} />
-        </div>
 
         <div>
         <h3>Treatment Plan</h3>
@@ -1443,6 +1426,22 @@ export default function ConsultDetailPage() {
         </div>
         </div>
 
+      </div>
+
+      {/* Vaccinations — split out of the old Treatment tab into its own,
+          quick-to-open tab: log one and you're done, without the itemized
+          treatment plan taking up the rest of the screen. */}
+      <div hidden={activeTab !== 'vaccinations'}>
+        <h3>
+          Vaccinations
+          {vac.vaccinations.length === 0 && (
+            <span className="heading-hint"> — No vaccinations recorded yet.</span>
+          )}
+        </h3>
+        {vac.vaccinations.length > 0 && (
+          <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
+        )}
+        <VaccinationForm {...vac} species={consult.patients?.species} staff={staff} />
       </div>
 
       {/* Procedures — surgical and dental work, including the dental chart,
