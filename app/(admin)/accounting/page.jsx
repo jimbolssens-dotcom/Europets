@@ -11,6 +11,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import StaffPincodeSettings from '@/app/_components/StaffPincodeSettings';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -147,6 +148,8 @@ export default function AccountingOverviewPage() {
             </a>{' '}
             (not limited to this month)
           </p>
+
+          <StaffPincodeSettings />
         </>
       )}
     </div>

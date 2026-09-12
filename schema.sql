@@ -1017,6 +1017,11 @@ create table clinic_settings (
     booking_morning_end time not null default '13:00',
     booking_afternoon_start time not null default '16:30',
     booking_afternoon_end time not null default '19:00',
+    -- Overrides the STAFF_PINCODE environment variable when set — lets
+    -- staff rotate the shared login PIN from the Accounting page instead
+    -- of an env var + redeploy (migration 092). Null means "no override
+    -- yet, use the environment variable".
+    staff_pincode text,
     updated_at timestamptz default now()
 );
 insert into clinic_settings (id) values (true) on conflict do nothing;

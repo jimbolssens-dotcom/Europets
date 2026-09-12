@@ -8,7 +8,7 @@
 // otherwise easy to brute-force.
 
 import { NextResponse } from 'next/server';
-import { STAFF_COOKIE } from '@/lib/staffAuth';
+import { STAFF_COOKIE, getEffectiveStaffPincode } from '@/lib/staffAuth';
 import { sha256Hex } from '@/lib/accountingAuth';
 import { checkRateLimit, recordFailedAttempt, clearAttempts, getClientKey } from '@/lib/loginRateLimit';
 
@@ -23,7 +23,7 @@ export async function POST(request) {
   }
 
   const { pincode } = await request.json();
-  const expected = process.env.STAFF_PINCODE;
+  const expected = await getEffectiveStaffPincode();
 
   if (!expected) {
     return NextResponse.json({ error: 'Staff access is not configured' }, { status: 503 });

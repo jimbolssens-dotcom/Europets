@@ -19,7 +19,7 @@
 // everything else under app/mobile now does.
 
 import { NextResponse } from 'next/server';
-import { STAFF_COOKIE } from '@/lib/staffAuth';
+import { STAFF_COOKIE, getEffectiveStaffPincode } from '@/lib/staffAuth';
 import { ACCOUNTING_COOKIE, sha256Hex } from '@/lib/accountingAuth';
 
 // Path patterns reachable with no login at all — the public client portal
@@ -80,7 +80,7 @@ export async function middleware(request) {
     return NextResponse.next();
   }
 
-  const staffPincode = process.env.STAFF_PINCODE;
+  const staffPincode = await getEffectiveStaffPincode();
   if (!staffPincode) {
     return new NextResponse(
       'Staff access is not configured — set the STAFF_PINCODE environment variable.',
