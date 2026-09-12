@@ -18,6 +18,7 @@ import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { printPdfUrl } from '@/lib/printPdf';
 import InfoHint from '@/app/_components/InfoHint';
+import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import { openWhatsApp } from '@/lib/whatsapp';
 
 function money(n) {
@@ -418,18 +419,19 @@ export default function InvoiceDetailPage() {
         Created: {new Date(invoice.created_at).toLocaleDateString()}
         {invoice.paid_at && ` · Paid: ${new Date(invoice.paid_at).toLocaleDateString()}`}
       </p>
-      <p>
+      <div className="action-row">
         <button type="button" onClick={downloadTaxInvoice}>
           📄 Download
-        </button>{' '}
+        </button>
         <button type="button" onClick={sendInvoiceViaWhatsApp}>
           💬 WhatsApp
-        </button>{' '}
+        </button>
         {editable && (
           <button type="button" onClick={sendPaymentLink}>
             💳 Send
           </button>
-        )}{' '}
+        )}
+      <CrossRecordLinks>
         {invoice.visit_id ? (
           <a className="button-link button-link-consult" href={`/consults/${invoice.visit_id}`}>
             Consult
@@ -466,7 +468,8 @@ export default function InvoiceDetailPage() {
           </button>
         ) : null}
         {linkError && <span className="error" role="alert">{linkError}</span>}
-      </p>
+      </CrossRecordLinks>
+      </div>
       {paymentLinkError && <p className="error">{paymentLinkError}</p>}
       {lineItemEditError && <p className="error">{lineItemEditError}</p>}
 

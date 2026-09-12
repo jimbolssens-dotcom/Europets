@@ -104,14 +104,6 @@ button:disabled {
 
 .hospitalization-reports-section { margin-top: 1rem; }
 
-.linked-day-procedures {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: -0.25rem 0 1rem;
-}
-
 .hospitalization-actions > .button-link {
   flex: 0 0 auto;
 }
@@ -1676,6 +1668,38 @@ button.secondary:hover {
 .button-link-invoice:hover {
   background: #f7cfcf;
   color: #661616;
+}
+
+/* Groups a Consult/Day Procedure/Hospitalization/Invoice page's buttons
+   linking to the other three into one recognizable unit, the same on all
+   four pages — distinct from that page's own actions, which sit outside
+   it. The buttons/dropdowns inside keep their own pink/color-coded
+   styling; this is just the shared frame around them. */
+.cross-record-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border: 2px solid var(--pink);
+  border-radius: 14px;
+  background: var(--pink-tint);
+  /* Sits inline at the end of the same action row on every page (a flex
+     container itself) instead of dropping to its own line — pushed to
+     the right of that row so it lands in the same spot everywhere. Wraps
+     to its own (still right-pushed) line only if the row runs out of
+     width for both. */
+  margin-left: auto;
+}
+
+.cross-record-links-label {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--pink-dark);
+  margin-right: 0.15rem;
 }
 
 /* A same-day case (dropped off in the morning, picked up the same day)

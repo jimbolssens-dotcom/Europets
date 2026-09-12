@@ -29,6 +29,7 @@ import InfoHint from '@/app/_components/InfoHint';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import ProcedureChecklist from '@/app/_components/ProcedureChecklist';
 import DayProcedureNotes from '@/app/_components/DayProcedureNotes';
+import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import HospitalizationReportsSection from '@/app/_components/HospitalizationReportsSection';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
@@ -801,29 +802,31 @@ export default function HospitalizationDetailPage() {
             {admission.status === 'admitted' && (
               <button type="button" className="button-link" onClick={discharge}>Complete</button>
             )}
-            <button type="button" className={`button-link${invoiceInfo ? ' button-link-invoice' : ''}`} onClick={createInvoice} disabled={creatingInvoice}
-              title={invoiceInfo ? `Open the invoice (${invoiceInfo.status}), syncing in anything new from the checklist` : 'Create an invoice from the medications, goods and services on the checklist'}>
-              {creatingInvoice ? 'Saving…' : invoiceInfo ? `Invoiced (${invoiceInfo.status})` : 'Invoice'}
-            </button>
-            {admission.originating_visit_id ? (
-              <a className="button-link button-link-consult" href={`/consults/${admission.originating_visit_id}`}>Consult</a>
-            ) : (
-              <button type="button" className="button-link" onClick={addConsult} disabled={addingConsult}
-                title="Most day procedures don't need one — only add this if you also want to write up an exam/consult note">
-                {addingConsult ? 'Adding…' : 'Add Consult'}
-              </button>
-            )}
             <button type="button" className="button-link" onClick={moveToHospital} title="This case needs to stay longer than planned">
               Move to Hospital
             </button>
-            {admission.originating_hospitalization_id && (
-              <a className="button-link button-link-hospitalization" href={`/hospitalization/${admission.originating_hospitalization_id}`}>
-                Hospitalization
-              </a>
-            )}
             <a className="button-link" href="/day-procedures">Day Procedures</a>
+            <CrossRecordLinks>
+              <button type="button" className={`button-link${invoiceInfo ? ' button-link-invoice' : ''}`} onClick={createInvoice} disabled={creatingInvoice}
+                title={invoiceInfo ? `Open the invoice (${invoiceInfo.status}), syncing in anything new from the checklist` : 'Create an invoice from the medications, goods and services on the checklist'}>
+                {creatingInvoice ? 'Saving…' : invoiceInfo ? `Invoiced (${invoiceInfo.status})` : 'Invoice'}
+              </button>
+              {admission.originating_visit_id ? (
+                <a className="button-link button-link-consult" href={`/consults/${admission.originating_visit_id}`}>Consult</a>
+              ) : (
+                <button type="button" className="button-link" onClick={addConsult} disabled={addingConsult}
+                  title="Most day procedures don't need one — only add this if you also want to write up an exam/consult note">
+                  {addingConsult ? 'Adding…' : 'Add Consult'}
+                </button>
+              )}
+              {admission.originating_hospitalization_id && (
+                <a className="button-link button-link-hospitalization" href={`/hospitalization/${admission.originating_hospitalization_id}`}>
+                  Hospitalization
+                </a>
+              )}
+              {addConsultError && <span className="error" role="alert">{addConsultError}</span>}
+            </CrossRecordLinks>
           </div>
-          {addConsultError && <p className="error" role="alert">{addConsultError}</p>}
           {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
 
           <details className="case-files">
@@ -877,39 +880,34 @@ export default function HospitalizationDetailPage() {
         {admission.status === 'admitted' && (
           <button type="button" className="button-link" onClick={discharge}>Discharge</button>
         )}
-        <button type="button" className={`button-link${invoiceInfo ? ' button-link-invoice' : ''}`} onClick={createInvoice} disabled={creatingInvoice}
-          title={invoiceInfo ? `Open the invoice (${invoiceInfo.status}), syncing in anything new from the worksheet` : 'Create an invoice from the medications, goods and services in this worksheet'}>
-          {creatingInvoice ? 'Saving…' : invoiceInfo ? `Invoiced (${invoiceInfo.status})` : 'Invoice'}
-        </button>
         <button type="button" className="button-link" onClick={downloadSummaryPdf} title="Download the summary PDF">Summary</button>
         <button type="button" className="button-link" onClick={shareViaWhatsApp} title="Open WhatsApp, then attach the downloaded summary PDF">Share</button>
         <button type="button" className="button-link" onClick={copyPortalLink} title="Copy the live care-update link">
           {linkCopied ? 'Copied!' : 'Copy'}
         </button>
-        {admission.originating_visit_id ? (
-          <a className="button-link button-link-consult" href={`/consults/${admission.originating_visit_id}`}>Consult</a>
-        ) : (
-          <button type="button" className="button-link" onClick={addConsult} disabled={addingConsult}
-            title="Most day procedures don't need one — only add this if you also want to write up an exam/consult note">
-            {addingConsult ? 'Adding…' : 'Add Consult'}
-          </button>
-        )}
-        {addConsultError && <span className="error" role="alert">{addConsultError}</span>}
-        <button type="button" className="button-link" onClick={bookDayProcedure} disabled={bookingDayProcedure}
-          title="Book a same-day procedure (surgery, dental, etc.) for this patient without discharging the admission">
-          {bookingDayProcedure ? 'Booking…' : 'Book Day Procedure'}
-        </button>
-        {bookDayProcedureError && <span className="error" role="alert">{bookDayProcedureError}</span>}
         <button type="button" className="button-link report-overview-pill" onClick={() => setReportsOpen((v) => !v)}>
           📑 {reportsOpen ? 'Hide Reports' : 'Reports'}
         </button>
         <a className="button-link" href="/hospitalization">Cage Layout</a>
-      </div>
-      {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
-
-      {linkedDayProcedures.length > 0 && (
-        <p className="linked-day-procedures">
-          Day procedures from this stay:{' '}
+        <CrossRecordLinks>
+          <button type="button" className={`button-link${invoiceInfo ? ' button-link-invoice' : ''}`} onClick={createInvoice} disabled={creatingInvoice}
+            title={invoiceInfo ? `Open the invoice (${invoiceInfo.status}), syncing in anything new from the worksheet` : 'Create an invoice from the medications, goods and services in this worksheet'}>
+            {creatingInvoice ? 'Saving…' : invoiceInfo ? `Invoiced (${invoiceInfo.status})` : 'Invoice'}
+          </button>
+          {admission.originating_visit_id ? (
+            <a className="button-link button-link-consult" href={`/consults/${admission.originating_visit_id}`}>Consult</a>
+          ) : (
+            <button type="button" className="button-link" onClick={addConsult} disabled={addingConsult}
+              title="Most day procedures don't need one — only add this if you also want to write up an exam/consult note">
+              {addingConsult ? 'Adding…' : 'Add Consult'}
+            </button>
+          )}
+          {addConsultError && <span className="error" role="alert">{addConsultError}</span>}
+          <button type="button" className="button-link" onClick={bookDayProcedure} disabled={bookingDayProcedure}
+            title="Book a same-day procedure (surgery, dental, etc.) for this patient without discharging the admission">
+            {bookingDayProcedure ? 'Booking…' : 'Book Day Procedure'}
+          </button>
+          {bookDayProcedureError && <span className="error" role="alert">{bookDayProcedureError}</span>}
           {linkedDayProcedures.map((dp) => {
             // Colored (the day-procedure yellow) only for one booked TODAY
             // — a day procedure from an earlier day in this stay is done
@@ -922,8 +920,9 @@ export default function HospitalizationDetailPage() {
               </a>
             );
           })}
-        </p>
-      )}
+        </CrossRecordLinks>
+      </div>
+      {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
 
       {reportsOpen && (
         <section className="case-files-open" aria-label="Reports">

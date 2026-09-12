@@ -32,6 +32,7 @@ import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
+import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import { openWhatsApp } from '@/lib/whatsapp';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
@@ -860,6 +861,19 @@ export default function ConsultDetailPage() {
         <button type="button" className="button-link" onClick={deleteConsult}>
           Delete Consult
         </button>
+        <details className="consult-action-toggle">
+          <summary className="button-link">📷 Photos</summary>
+          <div className="consult-action-dropdown">
+            <AttachmentSection entityType="visit" entityId={id} />
+          </div>
+        </details>
+        <details className="consult-action-toggle">
+          <summary className="button-link">🎙️ Record</summary>
+          <div className="consult-action-dropdown">
+            <AudioRecorder entityType="visit" entityId={id} />
+          </div>
+        </details>
+        <CrossRecordLinks>
         <button
           type="button"
           className={`button-link${invoiceInfo ? ' button-link-invoice' : ''}`}
@@ -929,18 +943,7 @@ export default function ConsultDetailPage() {
           </>
         )}
         {hospitalizationError && <span className="error" role="alert">{hospitalizationError}</span>}
-        <details className="consult-action-toggle">
-          <summary className="button-link">📷 Photos</summary>
-          <div className="consult-action-dropdown">
-            <AttachmentSection entityType="visit" entityId={id} />
-          </div>
-        </details>
-        <details className="consult-action-toggle">
-          <summary className="button-link">🎙️ Record</summary>
-          <div className="consult-action-dropdown">
-            <AudioRecorder entityType="visit" entityId={id} />
-          </div>
-        </details>
+        </CrossRecordLinks>
       </div>
 
       <div className="consult-tabs-row">
