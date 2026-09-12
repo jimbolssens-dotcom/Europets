@@ -664,9 +664,13 @@ export default function HospitalizationDetailPage() {
     treatmentItems: [...originVisitPlan.treatmentItems, ...consentPlanItems],
   };
 
-  const consentFormsSection = (
-    <details className="case-files" open={consentForms.length === 0}>
-      <summary>📝 Consent Forms {consentForms.length > 0 && `(${consentForms.length} signed)`}</summary>
+  // A signed consent form has nothing left to act on — once it's signed it
+  // belongs with the rest of this admission's paperwork in Reports, not on
+  // the working screen staff use to run the case day to day. Only the
+  // still-useful "sign a new one" form stays up here.
+  const signedConsentFormsList = consentForms.length > 0 && (
+    <details className="case-files">
+      <summary>📝 Consent Forms ({consentForms.length} signed)</summary>
       {consentForms.map((cf) => (
         <div key={cf.id} className="visit-card">
           <strong>{CONSENT_FORM_LABELS[cf.form_type] || cf.form_type}</strong>
@@ -681,6 +685,12 @@ export default function HospitalizationDetailPage() {
           </a>
         </div>
       ))}
+    </details>
+  );
+
+  const consentSignPanel = (
+    <details className="case-files" open={consentForms.length === 0}>
+      <summary>📝 Sign a Consent Form</summary>
       <form className="card" onSubmit={addConsentForm}>
         <h3>Sign {CONSENT_FORM_LABELS[consentFormType]}</h3>
         {consentError && <p className="error">{consentError}</p>}
@@ -847,6 +857,7 @@ export default function HospitalizationDetailPage() {
           <section className="case-files-open" aria-label="Day Procedure Report">
             <h2>Day Procedure Report</h2>
             <DayProcedureNotes hospitalizationId={id} staff={staff} />
+            {signedConsentFormsList}
             <PatientReportOverview patientId={admission.patient_id} title="Earlier reports for this patient" />
             <HospitalizationReportsSection
               ref={reportsSectionRef}
@@ -872,7 +883,7 @@ export default function HospitalizationDetailPage() {
           </section>
 
           {patientHistorySection}
-          {consentFormsSection}
+          {consentSignPanel}
         </>
       ) : (
         <>
@@ -927,6 +938,7 @@ export default function HospitalizationDetailPage() {
 
       {reportsOpen && (
         <section className="case-files-open" aria-label="Reports">
+          {signedConsentFormsList}
           <PatientReportOverview patientId={admission.patient_id} title="Earlier reports for this patient" />
           <HospitalizationReportsSection
             hospitalizationId={id}
@@ -942,7 +954,7 @@ export default function HospitalizationDetailPage() {
       )}
 
       {patientHistorySection}
-      {consentFormsSection}
+      {consentSignPanel}
 
       <DayTreatmentPlan
         key={`${id}-${noteDeleteVersion}`}
