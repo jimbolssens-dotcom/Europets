@@ -436,7 +436,7 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
                     checked={editIsSurgical}
                     onChange={(e) => setEditIsSurgical(e.target.checked)}
                   />
-                  This is a surgery — offer a surgical report
+                  This is an advanced surgery — surgical report + consent warnings
                 </label>
                 <div className="day-plan-edit-actions">
                   <button
@@ -513,7 +513,7 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
               checked={customIsSurgical}
               onChange={(e) => setCustomIsSurgical(e.target.checked)}
             />
-            This is a surgery — offer a surgical report
+            This is an advanced surgery — surgical report + consent warnings
           </label>
           <button type="button" onClick={addCustomTask} disabled={!customLabel.trim()}>
             Add
