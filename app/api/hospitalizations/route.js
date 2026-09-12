@@ -1,16 +1,21 @@
 // app/api/hospitalizations/route.js
-// GET  /api/hospitalizations?status=admitted       -> list admissions
-// GET  /api/hospitalizations?patient_id=X           -> a patient's admission history
-// GET  /api/hospitalizations?client_id=X            -> an owner's admission history, across all their pets
-// GET  /api/hospitalizations?appointment_id=X       -> the day procedure checked in from that appointment
-// GET  /api/hospitalizations?kind=day_procedure     -> only day procedures, or ?kind=admission for real admissions
-// POST /api/hospitalizations                        -> admit a patient, or start a day procedure (kind: 'day_procedure')
+// GET  /api/hospitalizations?status=admitted                    -> list admissions
+// GET  /api/hospitalizations?patient_id=X                        -> a patient's admission history
+// GET  /api/hospitalizations?client_id=X                         -> an owner's admission history, across all their pets
+// GET  /api/hospitalizations?appointment_id=X                    -> the day procedure checked in from that appointment
+// GET  /api/hospitalizations?kind=day_procedure                  -> only day procedures, or ?kind=admission for real admissions
+// GET  /api/hospitalizations?originating_hospitalization_id=X    -> day procedures booked off that admission (see below)
+// POST /api/hospitalizations                                     -> admit a patient, or start a day procedure (kind: 'day_procedure')
 //
 // Can be started from a consult (pass originating_visit_id — the patient,
 // client, and room default from that visit), from a booked appointment
 // (pass appointment_id — a surgery-type slot checks in straight to a day
-// procedure instead of a consult, see the appointments page), or standalone
-// from the patient file.
+// procedure instead of a consult, see the appointments page), from an
+// admission that's still open (pass originating_hospitalization_id — see
+// the "Book Day Procedure" action on the hospitalization page; unlike
+// originating_visit_id/appointment_id this is never deduped, since one
+// stay can have several procedures booked off it), or standalone from the
+// patient file.
 
 import { supabase } from '@/lib/supabaseClient';
 import { attachCages } from '@/lib/attachCages';
@@ -127,6 +132,7 @@ export async function GET(request) {
   const clientId = searchParams.get('client_id');
   const originatingVisitId = searchParams.get('originating_visit_id');
   const appointmentId = searchParams.get('appointment_id');
+  const originatingHospitalizationId = searchParams.get('originating_hospitalization_id');
   const kind = searchParams.get('kind');
 
   let query = supabase
@@ -149,6 +155,9 @@ export async function GET(request) {
   if (appointmentId) {
     query = query.eq('appointment_id', appointmentId);
   }
+  if (originatingHospitalizationId) {
+    query = query.eq('originating_hospitalization_id', originatingHospitalizationId);
+  }
   if (kind) {
     query = query.eq('kind', kind);
   }
@@ -165,7 +174,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  let { patient_id, client_id, originating_visit_id, appointment_id, room_id, cage_id, reason, kind } = body;
+  let { patient_id, client_id, originating_visit_id, appointment_id, originating_hospitalization_id, room_id, cage_id, reason, kind } = body;
 
   if (kind && !['admission', 'day_procedure'].includes(kind)) {
     return NextResponse.json({ error: "kind must be 'admission' or 'day_procedure'" }, { status: 400 });
@@ -224,9 +233,27 @@ export async function POST(request) {
     room_id = room_id || appointment.room_id;
   }
 
+  // Booking a day procedure off a patient who's still admitted — the
+  // admission stays open in parallel, this just spins off a second row
+  // (never deduped: one stay can have several procedures booked off it).
+  if (originating_hospitalization_id && (!patient_id || !client_id)) {
+    const { data: origin, error: originError } = await supabase
+      .from('hospitalizations')
+      .select('patient_id, client_id, room_id')
+      .eq('id', originating_hospitalization_id)
+      .single();
+
+    if (originError || !origin) {
+      return NextResponse.json({ error: 'originating hospitalization not found' }, { status: 400 });
+    }
+    patient_id = patient_id || origin.patient_id;
+    client_id = client_id || origin.client_id;
+    room_id = room_id || origin.room_id;
+  }
+
   if (!patient_id || !client_id) {
     return NextResponse.json(
-      { error: 'patient_id and client_id are required (directly, or via originating_visit_id/appointment_id)' },
+      { error: 'patient_id and client_id are required (directly, or via originating_visit_id/appointment_id/originating_hospitalization_id)' },
       { status: 400 }
     );
   }
@@ -239,10 +266,11 @@ export async function POST(request) {
         client_id,
         originating_visit_id: originating_visit_id || null,
         appointment_id: appointment_id || null,
+        originating_hospitalization_id: originating_hospitalization_id || null,
         room_id: room_id || null,
         cage_id: cage_id || null,
         reason: reason || null,
-        kind: kind || 'admission',
+        kind: kind || (originating_hospitalization_id ? 'day_procedure' : 'admission'),
       },
     ])
     .select('*, patients(name, species, patient_number, current_weight_kg), clients(full_name, phone, client_number), rooms(name)')

@@ -79,6 +79,9 @@ export default function HospitalizationDetailPage() {
   const [invoiceError, setInvoiceError] = useState(null);
   const [addingConsult, setAddingConsult] = useState(false);
   const [addConsultError, setAddConsultError] = useState(null);
+  const [linkedDayProcedures, setLinkedDayProcedures] = useState([]);
+  const [bookingDayProcedure, setBookingDayProcedure] = useState(false);
+  const [bookDayProcedureError, setBookDayProcedureError] = useState(null);
   const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
   const [consentForms, setConsentForms] = useState([]);
   const [consentForm, setConsentForm] = useState({
@@ -137,11 +140,20 @@ export default function HospitalizationDetailPage() {
       .then((res) => res.json())
       .then((data) => setConsentForms(Array.isArray(data) ? data : []));
 
+  // Day procedures booked off this admission while it's still open (see
+  // "Book Day Procedure" below) — a stay can have several, so this is a
+  // list rather than the single-link relationship originating_visit_id has.
+  const loadLinkedDayProcedures = () =>
+    fetch(`/api/hospitalizations?originating_hospitalization_id=${id}`)
+      .then((res) => res.json())
+      .then((data) => setLinkedDayProcedures(Array.isArray(data) ? data : []));
+
   useEffect(() => {
     loadAdmission();
     loadNotes();
     loadInvoiceInfo();
     loadConsentForms();
+    loadLinkedDayProcedures();
     fetch('/api/staff')
       .then((res) => res.json())
       .then((data) => setStaff(Array.isArray(data) ? data : []));
@@ -168,6 +180,11 @@ export default function HospitalizationDetailPage() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'consent_forms', filter: `hospitalization_id=eq.${id}` },
         loadConsentForms
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hospitalizations', filter: `originating_hospitalization_id=eq.${id}` },
+        loadLinkedDayProcedures
       )
       .subscribe();
     return () => supabase.removeChannel(channel);
@@ -559,6 +576,28 @@ export default function HospitalizationDetailPage() {
     }
   }
 
+  // Spins off a genuine day-procedure hospitalization for a patient who's
+  // still admitted (see migration 090) — the admission stays open, and
+  // staff land straight on the new day procedure to start its checklist.
+  async function bookDayProcedure() {
+    setBookingDayProcedure(true);
+    setBookDayProcedureError(null);
+    try {
+      const res = await fetch('/api/hospitalizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ originating_hospitalization_id: id, kind: 'day_procedure' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not book a day procedure.');
+      router.push(`/hospitalization/${data.id}`);
+    } catch (error) {
+      setBookDayProcedureError(error.message);
+    } finally {
+      setBookingDayProcedure(false);
+    }
+  }
+
   // Dismisses the "owner is waiting" flag (and the blinking cage on the
   // Cage Layout page) without necessarily logging a worksheet entry —
   // that also clears it automatically (see the notes route), this is for
@@ -737,6 +776,11 @@ export default function HospitalizationDetailPage() {
             <button type="button" className="button-link" onClick={moveToHospital} title="This case needs to stay longer than planned">
               Move to Hospital
             </button>
+            {admission.originating_hospitalization_id && (
+              <a className="button-link button-link-hospitalization" href={`/hospitalization/${admission.originating_hospitalization_id}`}>
+                Hospitalization
+              </a>
+            )}
             <a className="button-link" href="/day-procedures">Day Procedures</a>
           </div>
           {addConsultError && <p className="error" role="alert">{addConsultError}</p>}
@@ -809,12 +853,28 @@ export default function HospitalizationDetailPage() {
           </button>
         )}
         {addConsultError && <span className="error" role="alert">{addConsultError}</span>}
+        <button type="button" className="button-link" onClick={bookDayProcedure} disabled={bookingDayProcedure}
+          title="Book a same-day procedure (surgery, dental, etc.) for this patient without discharging the admission">
+          {bookingDayProcedure ? 'Booking…' : 'Book Day Procedure'}
+        </button>
+        {bookDayProcedureError && <span className="error" role="alert">{bookDayProcedureError}</span>}
         <button type="button" className="button-link report-overview-pill" onClick={() => setReportsOpen((v) => !v)}>
           📑 {reportsOpen ? 'Hide Reports' : 'Reports'}
         </button>
         <a className="button-link" href="/hospitalization">Cage Layout</a>
       </div>
       {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
+
+      {linkedDayProcedures.length > 0 && (
+        <p className="linked-day-procedures">
+          Day procedures from this stay:{' '}
+          {linkedDayProcedures.map((dp) => (
+            <a key={dp.id} className="button-link button-link-day-procedure" href={`/hospitalization/${dp.id}`}>
+              {dp.reason || 'Day Procedure'} · {dp.status === 'discharged' ? 'Completed' : 'In progress'}
+            </a>
+          ))}
+        </p>
+      )}
 
       {reportsOpen && (
         <section className="case-files-open" aria-label="Reports">

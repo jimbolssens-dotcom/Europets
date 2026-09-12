@@ -104,6 +104,14 @@ button:disabled {
 
 .hospitalization-reports-section { margin-top: 1rem; }
 
+.linked-day-procedures {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: -0.25rem 0 1rem;
+}
+
 .hospitalization-actions > .button-link {
   flex: 0 0 auto;
 }
