@@ -31,6 +31,7 @@ export default function PatientHistoryPanel({
   excludeHospitalizationId,
   showHospitalizations = true,
   title = 'Patient History',
+  pill = false,
 }) {
   const [events, setEvents] = useState([]);
   const showPatientName = !patientId;
@@ -88,13 +89,9 @@ export default function PatientHistoryPanel({
     return `${patient.name}${patient.patient_number ? ` (Patient #${patient.patient_number})` : ''}`;
   }
 
-  return (
-    <details className="consult-history-panel">
-      <summary>
-        🕓 {title} ({events.length})
-      </summary>
-      <ul className="consult-history-list">
-        {events.map((e) => {
+  const list = (
+    <ul className="consult-history-list">
+      {events.map((e) => {
           const petTag = showPatientName && patientNameFor(e) ? `${patientNameFor(e)} · ` : '';
           if (e.type === 'consult') {
             return (
@@ -160,7 +157,26 @@ export default function PatientHistoryPanel({
             </li>
           );
         })}
-      </ul>
+    </ul>
+  );
+
+  if (pill) {
+    return (
+      <details className="consult-action-toggle">
+        <summary className="button-link">
+          🕓 {title} ({events.length})
+        </summary>
+        <div className="consult-action-dropdown">{list}</div>
+      </details>
+    );
+  }
+
+  return (
+    <details className="consult-history-panel">
+      <summary>
+        🕓 {title} ({events.length})
+      </summary>
+      {list}
     </details>
   );
 }

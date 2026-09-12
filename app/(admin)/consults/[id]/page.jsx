@@ -14,8 +14,6 @@ import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { useVaccinations } from '@/app/_components/useVaccinations';
 import VaccinationForm from '@/app/_components/VaccinationForm';
 import VaccinationHistory from '@/app/_components/VaccinationHistory';
-import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
-import PatientAlerts from '@/app/_components/PatientAlerts';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
 import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
@@ -608,7 +606,6 @@ export default function ConsultDetailPage() {
   }
 
   const vac = useVaccinations(consult?.patients?.id, consult?.patients?.species);
-  const patientAlerts = usePatientAlerts(consult?.patients?.id);
 
   if (loading || !consult || !record) return <p>Loading consult...</p>;
   if (consult.error) return <p>Consult not found.</p>;
@@ -618,40 +615,13 @@ export default function ConsultDetailPage() {
 
   return (
     <div>
-      <div className="consult-header-row">
-        <h1>
-          {consult.patients?.name}
-          {consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''}{' '}
-          <span>
-            ({consult.patients?.species}) — {consult.status}
-          </span>
-        </h1>
-        <div className="consult-header-actions">
-          <select
-            className="consult-vet-select"
-            value={consult.attending_vet_id || ''}
-            onChange={(e) => changeVet(e.target.value)}
-          >
-            <option value="">Unassigned</option>
-            {staff
-              .filter((s) => s.role === 'vet')
-              .map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.full_name}
-                </option>
-              ))}
-          </select>
-          {(patientAlerts.alerts.length > 0 || consult?.patients?.id) && (
-            <details className="patient-alerts-panel" open={patientAlerts.alerts.length > 0}>
-              <summary>
-                ⚠️ Long-Term Patient Notes {patientAlerts.alerts.length > 0 && `(${patientAlerts.alerts.length})`}
-              </summary>
-              <PatientAlerts {...patientAlerts} staff={staff} />
-            </details>
-          )}
-          <PatientHistoryPanel patientId={consult.patient_id} clientId={consult.client_id} excludeVisitId={id} />
-        </div>
-      </div>
+      <h1>
+        {consult.patients?.name}
+        {consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''}{' '}
+        <span>
+          ({consult.patients?.species}) — {consult.status}
+        </span>
+      </h1>
       {vetChangeError && <p className="error">{vetChangeError}</p>}
       <p>
         Owner:{' '}
@@ -660,7 +630,22 @@ export default function ConsultDetailPage() {
           {consult.clients?.client_number ? ` (Client #${consult.clients.client_number})` : ''}
         </a>{' '}
         · Patient: <a href={`/patients/${consult.patients?.id}`}>record</a>{' '}
-        · Room: {consult.rooms?.name}
+        · Room: {consult.rooms?.name}{' '}
+        · Vet:{' '}
+        <select
+          className="consult-vet-select"
+          value={consult.attending_vet_id || ''}
+          onChange={(e) => changeVet(e.target.value)}
+        >
+          <option value="">Unassigned</option>
+          {staff
+            .filter((s) => s.role === 'vet')
+            .map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.full_name}
+              </option>
+            ))}
+        </select>
       </p>
 
       <div className="action-row">
@@ -672,6 +657,7 @@ export default function ConsultDetailPage() {
         <button type="button" className="button-link" onClick={deleteConsult}>
           Delete Consult
         </button>
+        <PatientHistoryPanel patientId={consult.patient_id} clientId={consult.client_id} excludeVisitId={id} pill />
         <details className="consult-action-toggle">
           <summary className="button-link">📷 Photos</summary>
           <div className="consult-action-dropdown">
