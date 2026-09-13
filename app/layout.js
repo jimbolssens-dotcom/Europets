@@ -1,8 +1,27 @@
 import './globals.css';
 
+// manifest.json (display: "standalone") + these icons/meta tags are what let
+// a device "install" this as its own app — via the browser's install
+// prompt on desktop, or Add to Home Screen on iOS/Android — so it opens in
+// its own window/icon with no address bar or other tabs to switch away to,
+// rather than living inside an ordinary browser tab.
 export const metadata = {
   title: 'Europets Clinic — Management',
   description: 'Kind, caring, and compassionate veterinary care — clinic management for Europets',
+  manifest: '/manifest.json',
+  icons: {
+    icon: ['/icons/icon-192.png', '/icons/icon-512.png'],
+    apple: '/icons/apple-touch-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Europets',
+  },
+};
+
+export const viewport = {
+  themeColor: '#e6186d',
 };
 
 // Deliberately bare: the internal staff nav lives in app/(admin)/layout.js,
