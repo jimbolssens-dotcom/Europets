@@ -605,7 +605,7 @@ export default function ConsultDetailPage() {
     }
   }
 
-  const vac = useVaccinations(consult?.patients?.id, consult?.patients?.species);
+  const vac = useVaccinations(consult?.patients?.id, consult?.patients?.species, { visitId: id });
 
   if (loading || !consult || !record) return <p>Loading consult...</p>;
   if (consult.error) return <p>Consult not found.</p>;

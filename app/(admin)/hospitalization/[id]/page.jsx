@@ -281,7 +281,8 @@ export default function HospitalizationDetailPage() {
   // Report section below, same hook/form the consult page uses — a
   // vaccine given during a day procedure is still just a vaccination
   // record against the patient, not something tied to the hospitalization.
-  const vac = useVaccinations(admission?.patients?.id, admission?.patients?.species);
+  const vac = useVaccinations(admission?.patients?.id, admission?.patients?.species, { hospitalizationId: id });
+  const [hasVaccineOnChecklist, setHasVaccineOnChecklist] = useState(false);
 
   function appendNoteText(text) {
     setNoteForm((prev) => ({ ...prev, notes: prev.notes ? `${prev.notes}\n${text}` : text }));
@@ -887,6 +888,7 @@ export default function HospitalizationDetailPage() {
                 subcategories={subcategories}
                 onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
                 onOpenReport={openReportFromChecklist}
+                onHasVaccineItem={setHasVaccineOnChecklist}
               />
               {/* Right under the checklist, not buried at the very bottom
                   of the page — this is reached for every same-day case, so
@@ -910,16 +912,24 @@ export default function HospitalizationDetailPage() {
                 onPatientUpdated={(dental_chart) => setAdmission((prev) => ({ ...prev, patients: { ...prev.patients, dental_chart } }))}
                 onAdmissionUpdated={loadAdmission}
               />
-              <section id="vaccination" className="card" aria-label="Vaccination">
-                <h3>
+              {/* Collapsed by default — most day procedures aren't a
+                  vaccination visit, so the full Add Vaccination form
+                  shouldn't always be sitting open here. It only opens
+                  itself once a vaccine is actually on THIS day procedure's
+                  own checklist (the "Open Vaccination" link only shows up
+                  in that same case) — the patient having earlier
+                  vaccination history elsewhere isn't reason enough to
+                  auto-expand a form for a case that isn't about one. */}
+              <details id="vaccination" className="case-files" aria-label="Vaccination" open={hasVaccineOnChecklist}>
+                <summary>
                   Vaccinations
                   {vac.vaccinations.length === 0 && <span className="heading-hint"> — No vaccinations recorded yet.</span>}
-                </h3>
+                </summary>
                 {vac.vaccinations.length > 0 && (
                   <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
                 )}
                 <VaccinationForm {...vac} species={admission.patients?.species} staff={staff} />
-              </section>
+              </details>
             </section>
 
             <DayProcedureTreatmentPlan

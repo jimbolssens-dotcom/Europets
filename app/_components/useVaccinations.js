@@ -50,7 +50,63 @@ function makeEmptyForm() {
   };
 }
 
-export function useVaccinations(patientId, species) {
+// Vaccine auto-invoicing — the catalog items this clinic bills a
+// vaccination visit against. Kept as plain name lookups (rather than
+// stored ids) since the catalog is searched by name at billing time
+// anyway; see migration 094 for where these three rows come from.
+// administration_method is intentionally left NULL on all three in the
+// catalog (not 'injectable') because their price already includes the
+// subcutaneous injection fee — flagging them injectable would add that
+// fee a second time (see lib/invoicing.js#applyAdministrationFee).
+const CORE_VACCINE_NAME = { dog: 'Biocan DHPPiL', cat: 'Biofel PCH' };
+const RABIES_VACCINE_NAME = 'Biocan R';
+const CONSULT_PRIMARY_NAME = 'Consult primo vacc';
+const CONSULT_ANNUAL_NAME = 'Consult vacc';
+
+function findByName(list, name) {
+  return Array.isArray(list) ? list.find((item) => item.name === name) : null;
+}
+
+// Finds (or opens) whichever invoice this vaccination belongs on: the
+// consult's, the hospitalization/day procedure's, or — logged straight
+// from the patient page with neither open — a fresh standalone invoice
+// for the client, same as that page's own "Invoice" button. Returns null
+// if there's nowhere to bill it (no visit/hospitalization/client at all).
+async function resolveInvoiceId({ hospitalizationId, visitId, clientId } = {}) {
+  const endpoint = hospitalizationId
+    ? `/api/hospitalizations/${hospitalizationId}/invoice`
+    : visitId
+      ? `/api/visits/${visitId}/invoice`
+      : null;
+  if (endpoint) {
+    const res = await fetch(endpoint, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to open the invoice');
+    return data.id;
+  }
+  if (clientId) {
+    const res = await fetch('/api/invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: clientId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to open the invoice');
+    return data.id;
+  }
+  return null;
+}
+
+async function addInvoiceLine(invoiceId, item, quantity, description) {
+  if (!item) return; // catalog item missing — skip this line rather than fail the whole visit's billing
+  await fetch(`/api/invoices/${invoiceId}/line-items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ goods_service_id: item.id, quantity, description }),
+  });
+}
+
+export function useVaccinations(patientId, species, invoiceContext = {}) {
   const [vaccinations, setVaccinations] = useState([]);
   const [protocols, setProtocols] = useState([]);
   const [protocolsError, setProtocolsError] = useState(null);
@@ -102,6 +158,49 @@ export function useVaccinations(patientId, species) {
         ? prev.vaccine_protocol_ids.filter((pid) => pid !== protocolId)
         : [...prev.vaccine_protocol_ids, protocolId],
     }));
+  }
+
+  // Auto-invoicing for the vaccine visit just recorded above.
+  //
+  // Primary always bills the SAME fixed bundle — Consult primo vacc, the
+  // species' core vaccine ×2 (today's dose plus the booster dose a month
+  // out, prepaid now), and Biocan R ×1 — regardless of which protocol
+  // checkboxes were actually ticked: whether or not rabies is given today
+  // or held for the booster visit (see the reminder-row logic above), the
+  // client has paid for both today's visit and next month's already, so
+  // the bundle and its price never change. The core vaccine line spells
+  // that out so it doesn't read as a billing mistake.
+  //
+  // Annual only bills for what was actually checked: the core vaccine if
+  // the core protocol was ticked, Biocan R if rabies was ticked, plus one
+  // Consult vacc — nothing prepaid, nothing assumed.
+  async function billVaccinationVisit({ isPrimary, checkedProtocols, coreProtocol, rabiesGiven, boosterDue }) {
+    if (!speciesClass) return; // can't tell cat vs dog — nothing to safely bill
+    const invoiceId = await resolveInvoiceId(invoiceContext);
+    if (!invoiceId) return; // no visit/hospitalization/client to attach the bill to
+
+    const [productCatalog, serviceCatalog] = await Promise.all([
+      fetch('/api/goods-services?main_category=product').then((res) => res.json()),
+      fetch('/api/goods-services?main_category=service').then((res) => res.json()),
+    ]);
+    const coreItem = findByName(productCatalog, CORE_VACCINE_NAME[speciesClass]);
+    const rabiesItem = findByName(productCatalog, RABIES_VACCINE_NAME);
+
+    if (isPrimary) {
+      await addInvoiceLine(invoiceId, findByName(serviceCatalog, CONSULT_PRIMARY_NAME), 1);
+      await addInvoiceLine(
+        invoiceId,
+        coreItem,
+        2,
+        coreItem ? `${coreItem.name} — today's dose plus the booster due ${formatDate(boosterDue)} (already paid)` : undefined
+      );
+      await addInvoiceLine(invoiceId, rabiesItem, 1, rabiesItem ? `${rabiesItem.name} — primary course` : undefined);
+    } else {
+      const coreChecked = coreProtocol && checkedProtocols.some((p) => p.id === coreProtocol.id);
+      if (coreChecked) await addInvoiceLine(invoiceId, coreItem, 1);
+      if (rabiesGiven) await addInvoiceLine(invoiceId, rabiesItem, 1);
+      if (coreChecked || rabiesGiven) await addInvoiceLine(invoiceId, findByName(serviceCatalog, CONSULT_ANNUAL_NAME), 1);
+    }
   }
 
   // Annual: next_due_date is left for the server to compute from each
@@ -167,6 +266,11 @@ export function useVaccinations(patientId, species) {
       setError(failed.data.error || 'Failed to record one or more vaccinations');
     } else {
       setForm(makeEmptyForm());
+      try {
+        await billVaccinationVisit({ isPrimary, checkedProtocols, coreProtocol, rabiesGiven, boosterDue });
+      } catch (billingError) {
+        setError(billingError.message || 'Vaccination saved, but failed to add it to the invoice');
+      }
     }
     loadVaccinations();
     setSubmitting(false);

@@ -96,7 +96,7 @@ export default function PatientDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const vac = useVaccinations(id, patient?.species);
+  const vac = useVaccinations(id, patient?.species, { clientId: patient?.client_id });
   const patientAlerts = usePatientAlerts(id);
 
   async function startDayProcedure() {

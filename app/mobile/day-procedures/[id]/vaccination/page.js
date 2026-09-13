@@ -37,7 +37,7 @@ export default function MobileDayProcedureVaccinationPage() {
       .then((data) => setStaff(Array.isArray(data) ? data : []));
   }, [id]);
 
-  const vac = useVaccinations(admission?.patients?.id, admission?.patients?.species);
+  const vac = useVaccinations(admission?.patients?.id, admission?.patients?.species, { hospitalizationId: id });
 
   useEffect(() => {
     if (initialCountRef.current === null) {

@@ -38,7 +38,7 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function ProcedureChecklist({ hospitalizationId, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport }) {
+export default function ProcedureChecklist({ hospitalizationId, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport, onHasVaccineItem }) {
   const [planItems, setPlanItems] = useState([]);
   const [loggedNotes, setLoggedNotes] = useState([]);
   const [authorId, setAuthorId] = useState('');
@@ -103,6 +103,15 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
     setAuthorId(value);
     localStorage.setItem(MOBILE_STAFF_STORAGE_KEY, value);
   }
+
+  // Lets the page decide whether the Vaccinations section is worth
+  // showing open by default — only relevant once a vaccine is actually
+  // on this day procedure's own checklist (see the page's onHasVaccineItem
+  // usage), not for every same-day case regardless of what it's for.
+  useEffect(() => {
+    onHasVaccineItem?.(planItems.some((item) => checklistItemAction(item, catalog, subcategories) === 'vaccine'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planItems, catalog, subcategories]);
 
   function doneEntries(planItemId) {
     return loggedNotes
