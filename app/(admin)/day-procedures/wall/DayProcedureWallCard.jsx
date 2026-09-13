@@ -9,7 +9,7 @@ function formatTime(iso) {
 // Hospital Wall's cage tiles (see app/(admin)/hospitalization/wall) —
 // a same-day case's checklist is the same underlying plan-items/notes
 // data, just without a physical cage to key off of.
-export default function DayProcedureWallCard({ dayProcedure, details }) {
+export default function DayProcedureWallCard({ dayProcedure, details, interactive, loggingKey, onLogTask }) {
   const planItems = details?.planItems || [];
   const todayNotes = details?.todayNotes || [];
   const patientName = dayProcedure.patients?.name || 'Unnamed patient';
@@ -27,9 +27,27 @@ export default function DayProcedureWallCard({ dayProcedure, details }) {
       ? `Done${done.length > 1 ? ` ${done.length}×` : ''} · last ${formatTime(last.created_at)}${last.staff?.full_name ? ` · ${last.staff.full_name}` : ''}`
       : 'Pending';
     const title = [item.label, methodLabel, item.instructions, statusText].filter(Boolean).join(' — ');
-    return <li key={item.id} className={`${styles.task}${done.length ? ` ${styles.done}` : ''}`} title={title}>
-      <span className={styles.taskLabel}>{item.label}</span>
-    </li>;
+    const className = `${styles.task}${done.length ? ` ${styles.done}` : ''}`;
+    const label = <span className={styles.taskLabel}>{item.label}</span>;
+
+    if (!interactive) {
+      return <li key={item.id} className={className} title={title}>{label}</li>;
+    }
+
+    const isLogging = loggingKey === `${dayProcedure.id}-${item.id}`;
+    return (
+      <li key={item.id} className={styles.taskSlot}>
+        <button
+          type="button"
+          className={`${className} ${styles.taskButton}`}
+          title={`Tap to log done — ${title}`}
+          onClick={() => onLogTask(item)}
+          disabled={isLogging}
+        >
+          {isLogging ? <span className={styles.taskLabel}>Logging…</span> : label}
+        </button>
+      </li>
+    );
   }
 
   return <article className={styles.tile} aria-label={`${patientName} · ${doneCount}/${planItems.length} done`}>

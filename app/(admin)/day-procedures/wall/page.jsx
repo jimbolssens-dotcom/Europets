@@ -10,6 +10,11 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Same key ProcedureChecklist/DayTreatmentPlan use to remember "who's
+// currently logging on this device" — shared on purpose, so picking a
+// name here also carries over to those screens on the same device.
+const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
+
 // See app/(admin)/hospitalization/wall/page.jsx — same Fullscreen API
 // gesture requirement and vendor-prefix fallbacks.
 function requestFullscreen() {
@@ -33,6 +38,22 @@ export default function DayProcedureWallPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [staff, setStaff] = useState([]);
+  const [authorId, setAuthorId] = useState('');
+  const [loggingKey, setLoggingKey] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/staff')
+      .then((res) => res.json())
+      .then((data) => setStaff(Array.isArray(data) ? data : []));
+    const remembered = localStorage.getItem(MOBILE_STAFF_STORAGE_KEY);
+    if (remembered) setAuthorId(remembered);
+  }, []);
+
+  function handleAuthorChange(value) {
+    setAuthorId(value);
+    localStorage.setItem(MOBILE_STAFF_STORAGE_KEY, value);
+  }
 
   useEffect(() => {
     function onFullscreenChange() {
@@ -90,6 +111,43 @@ export default function DayProcedureWallPage() {
     }
   }
 
+  // A simplified version of ProcedureChecklist's logTask, for checking a
+  // task off right from this overview instead of opening each patient's
+  // own page — only offered on the windowed (non-fullscreen) view of this
+  // screen (see the `interactive` prop below); the wall-mounted, true
+  // fullscreen display stays a plain read-only status board. Skips the
+  // same-note consolidation and auto-surgical-report side effects
+  // ProcedureChecklist has — those stay a reason to open the full
+  // checklist rather than something this quick-tap needs to replicate.
+  async function logTask(hospitalizationId, item) {
+    const key = `${hospitalizationId}-${item.id}`;
+    setLoggingKey(key);
+    try {
+      const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          author_id: authorId || null,
+          note_date: todayISODate(),
+          notes: item.instructions ? `${item.label} — ${item.instructions}` : item.label,
+          plan_item_ids: [item.id],
+          treatment_items: item.goods_service_id
+            ? [{ goods_service_id: item.goods_service_id, quantity: 1, administration_method: item.administration_method }]
+            : [],
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to log task');
+      }
+      await loadWall();
+    } catch (err) {
+      setError(err.message || 'Failed to log task');
+    } finally {
+      setLoggingKey(null);
+    }
+  }
+
   useEffect(() => {
     loadWall();
     const timer = window.setInterval(loadWall, 30 * 1000);
@@ -124,6 +182,19 @@ export default function DayProcedureWallPage() {
       >
         {fullscreen ? '⤦ Exit Full Screen' : '⛶ Full Screen'}
       </button>
+      {/* Checking a task off from here (rather than opening each patient's
+          own checklist) is only offered on the windowed view — the true
+          fullscreen wall-mounted display stays a plain status board. */}
+      {!fullscreen && (
+        <select className={styles.authorPicker} value={authorId} onChange={(e) => handleAuthorChange(e.target.value)}>
+          <option value="">Logging as...</option>
+          {staff.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.full_name}
+            </option>
+          ))}
+        </select>
+      )}
       {loading && <div className={styles.loading} role="status">Loading…</div>}
       {error && <div className={styles.error}>{error}</div>}
 
@@ -132,7 +203,14 @@ export default function DayProcedureWallPage() {
       ) : (
         <div className={styles.grid} style={{ '--cols': columns, '--rows': rows }}>
           {dayProcedures.map((dp) => (
-            <DayProcedureWallCard key={dp.id} dayProcedure={dp} details={detailsById[dp.id]} />
+            <DayProcedureWallCard
+              key={dp.id}
+              dayProcedure={dp}
+              details={detailsById[dp.id]}
+              interactive={!fullscreen}
+              loggingKey={loggingKey}
+              onLogTask={(item) => logTask(dp.id, item)}
+            />
           ))}
         </div>
       )}
