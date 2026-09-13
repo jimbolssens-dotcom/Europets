@@ -59,8 +59,11 @@ export default function DayProcedureWallPage() {
       const res = await fetch('/api/hospitalizations?kind=day_procedure&status=admitted');
       const data = await res.json();
       if (!res.ok) throw new Error('Failed to load day procedure wall display');
-      const list = Array.isArray(data) ? data : [];
       const today = todayISODate();
+      // Day procedures are day-by-day — one left open overnight (never
+      // completed) shouldn't linger on the live wall display into the next
+      // day; it's still reachable from the patient's own history.
+      const list = (Array.isArray(data) ? data : []).filter((dp) => dp.admitted_at?.slice(0, 10) === today);
 
       const detailEntries = await Promise.all(
         list.map(async (dp) => {

@@ -812,9 +812,16 @@ export default function HospitalizationDetailPage() {
             {admission.status === 'admitted' && (
               <button type="button" className="button-link" onClick={discharge}>Complete</button>
             )}
-            <button type="button" className="button-link" onClick={moveToHospital} title="This case needs to stay longer than planned">
-              Move to Hospital
-            </button>
+            {/* Only a day procedure with no originating admission needs this —
+                one booked off an existing stay (originating_hospitalization_id)
+                already has an open admission covering "still hospitalized",
+                so there's nothing to move it to: Complete is the only action
+                needed either way. */}
+            {!admission.originating_hospitalization_id && (
+              <button type="button" className="button-link" onClick={moveToHospital} title="This case needs to stay longer than planned">
+                Move to Hospital
+              </button>
+            )}
             <a className="button-link" href="/day-procedures">Day Procedures</a>
             <CrossRecordLinks>
               <button type="button" className={`button-link${invoiceInfo ? ' button-link-invoice' : ''}`} onClick={createInvoice} disabled={creatingInvoice}

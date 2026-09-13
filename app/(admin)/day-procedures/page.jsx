@@ -12,6 +12,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
+function todayISODate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function DayProceduresPage() {
   const [dayProcedures, setDayProcedures] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,8 +44,14 @@ export default function DayProceduresPage() {
 
   if (loading) return <p>Loading day procedures...</p>;
 
-  const inProgress = dayProcedures.filter((d) => d.status === 'admitted');
-  const completed = dayProcedures.filter((d) => d.status === 'discharged').slice(0, 20);
+  // Day procedures are a day-by-day thing — dropped off and picked up the
+  // same day, never carried over as a running worklist. One left unfinished
+  // overnight still exists (open its own hospitalization page from the
+  // patient's file/history), it just no longer clutters today's list.
+  const today = todayISODate();
+  const todaysDayProcedures = dayProcedures.filter((d) => d.admitted_at?.slice(0, 10) === today);
+  const inProgress = todaysDayProcedures.filter((d) => d.status === 'admitted');
+  const completed = todaysDayProcedures.filter((d) => d.status === 'discharged');
 
   return (
     <div>
@@ -91,9 +101,9 @@ export default function DayProceduresPage() {
         </table>
       )}
 
-      <h2>Recently Completed</h2>
+      <h2>Completed Today</h2>
       {completed.length === 0 ? (
-        <p>No day procedures completed yet.</p>
+        <p>No day procedures completed today yet.</p>
       ) : (
         <table>
           <thead>
