@@ -26,7 +26,10 @@ export async function GET(request, { params }) {
     .single();
 
   if (error || !report) {
-    return NextResponse.json({ error: 'surgical report not found' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'surgical report not found' },
+      { status: 404, headers: { 'Cache-Control': 'no-store, must-revalidate' } }
+    );
   }
 
   // Two separate queries rather than one nested visits(...)/hospitalizations(...)
