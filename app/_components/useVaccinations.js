@@ -55,8 +55,8 @@ function makeEmptyForm() {
 // stored ids) since the catalog is searched by name at billing time
 // anyway; see migration 094 for where these three rows come from.
 // administration_method is intentionally left NULL on all three in the
-// catalog (not 'injectable') because their price already includes the
-// subcutaneous injection fee — flagging them injectable would add that
+// catalog (not 'sc') because their price already includes the
+// subcutaneous injection fee — fixing them to 'sc' would add that
 // fee a second time (see lib/invoicing.js#applyAdministrationFee).
 const CORE_VACCINE_NAME = { dog: 'Biocan DHPPiL', cat: 'Biofel PCH' };
 const RABIES_VACCINE_NAME = 'Biocan R';

@@ -362,7 +362,8 @@ export default function CatalogPage() {
                     >
                       <option value="">Not a medication</option>
                       <option value="dispense">Dispensed</option>
-                      <option value="injectable">Injectable</option>
+                      <option value="sc">Subcutaneous (SC)</option>
+                      <option value="im">Intramuscular (IM)</option>
                     </select>
                   </td>
                 )}
@@ -394,7 +395,8 @@ export default function CatalogPage() {
                     >
                       <option value="">Not a medication</option>
                       <option value="dispense">Dispensed</option>
-                      <option value="injectable">Injectable</option>
+                      <option value="sc">Subcutaneous (SC)</option>
+                      <option value="im">Intramuscular (IM)</option>
                     </select>
                   </td>
                 )}
@@ -484,16 +486,17 @@ export default function CatalogPage() {
         />
         {activeTab === 'product' && (
           <label>
-            Administration method (if a medication — dispensed, or injectable with the exact SC/IM
-            route chosen each time it's given; either way its fee, set in Settings, applies
-            automatically wherever it's added)
+            Administration method (if a medication — dispensed, subcutaneous, or intramuscular;
+            fixed here once so it never needs choosing again wherever it's added — its fee, set in
+            Settings, applies automatically)
             <select
               value={form.administration_method}
               onChange={(e) => setForm({ ...form, administration_method: e.target.value })}
             >
               <option value="">Not a medication</option>
               <option value="dispense">Dispensed</option>
-              <option value="injectable">Injectable</option>
+              <option value="sc">Subcutaneous (SC)</option>
+              <option value="im">Intramuscular (IM)</option>
             </select>
           </label>
         )}

@@ -15,7 +15,7 @@ import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { label, goods_service_id, instructions, administration_method, is_surgical } = body;
+  const { label, goods_service_id, instructions, is_surgical } = body;
 
   if (!label) {
     return NextResponse.json({ error: 'label is required' }, { status: 400 });
@@ -28,11 +28,7 @@ export async function PATCH(request, { params }) {
       .select('administration_method')
       .eq('id', goods_service_id)
       .single();
-    const resolved = resolveAdministrationMethod(catalogItem?.administration_method, administration_method);
-    if (resolved.error) {
-      return NextResponse.json({ error: resolved.error }, { status: 400 });
-    }
-    resolvedMethod = resolved.administration_method;
+    resolvedMethod = resolveAdministrationMethod(catalogItem?.administration_method).administration_method;
   }
 
   const update = {

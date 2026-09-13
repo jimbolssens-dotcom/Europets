@@ -19,7 +19,6 @@ import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { formatTime, formatDayHeader, formatDateTime, groupNotesByDate } from '@/lib/formatTimestamp';
 import { isWithinOfficeHours } from '@/lib/officeHours';
 import CatalogPicker from '@/app/_components/CatalogPicker';
-import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
 import { ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 import { ADMINISTRATION_METHOD_LABELS, resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
@@ -51,8 +50,8 @@ const emptyNoteForm = {
   notes: '',
 };
 
-const emptyPendingItem = { goods_service_id: '', instructions: '', quantity: '1', administration_method: '' };
-const emptyDayAddForm = { goods_service_id: '', instructions: '', quantity: '1', administration_method: '' };
+const emptyPendingItem = { goods_service_id: '', instructions: '', quantity: '1' };
+const emptyDayAddForm = { goods_service_id: '', instructions: '', quantity: '1' };
 
 export default function HospitalizationDetailPage() {
   const { id } = useParams();
@@ -326,8 +325,7 @@ export default function HospitalizationDetailPage() {
   function addPendingItem() {
     if (!pendingItemForm.goods_service_id) return;
     const catalogItem = catalog.find((c) => c.id === pendingItemForm.goods_service_id);
-    const resolved = resolveAdministrationMethod(catalogItem?.administration_method, pendingItemForm.administration_method);
-    if (resolved.error) return;
+    const resolved = resolveAdministrationMethod(catalogItem?.administration_method);
     setPendingItems((prev) => [
       ...prev,
       { ...pendingItemForm, name: catalogItem?.name, administration_method: resolved.administration_method },
@@ -677,9 +675,6 @@ export default function HospitalizationDetailPage() {
   if (loading || !admission) return <p>Loading admission...</p>;
   if (admission.error) return <p>Admission not found.</p>;
 
-  const selectedPendingItem = catalog.find((c) => c.id === pendingItemForm.goods_service_id);
-  const selectedDayAddItem = catalog.find((c) => c.id === dayAddForm.goods_service_id);
-  const selectedNoteAddItem = catalog.find((c) => c.id === noteAddItemForm.goods_service_id);
   const consentFormType = admission.kind === 'day_procedure' ? 'day_procedure' : 'hospitalization';
   const consentPreviewPlan = {
     treatmentNotes: originVisitPlan.treatmentNotes,
@@ -1110,12 +1105,6 @@ export default function HospitalizationDetailPage() {
                   onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
                   onCategoryChange={setDayAddCategory}
                 />
-                {selectedDayAddItem?.administration_method === 'injectable' && (
-                  <AdministrationRoutePicker
-                    value={dayAddForm.administration_method}
-                    onChange={(value) => setDayAddForm({ ...dayAddForm, administration_method: value })}
-                  />
-                )}
                 <input
                   placeholder="Instructions (dosage, frequency, duration)"
                   value={dayAddForm.instructions}
@@ -1130,10 +1119,7 @@ export default function HospitalizationDetailPage() {
                 />
                 <button
                   type="button"
-                  disabled={
-                    dayAddSubmitting ||
-                    (selectedDayAddItem?.administration_method === 'injectable' && !dayAddForm.administration_method)
-                  }
+                  disabled={dayAddSubmitting}
                   onClick={() => addDayMedication(group.entries)}
                 >
                   {dayAddSubmitting ? 'Adding...' : '+ Add'}
@@ -1297,12 +1283,6 @@ export default function HospitalizationDetailPage() {
                         onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
                         onCategoryChange={setNoteAddCategory}
                       />
-                      {selectedNoteAddItem?.administration_method === 'injectable' && (
-                        <AdministrationRoutePicker
-                          value={noteAddItemForm.administration_method}
-                          onChange={(value) => setNoteAddItemForm({ ...noteAddItemForm, administration_method: value })}
-                        />
-                      )}
                       <input
                         placeholder="Instructions (dosage, frequency, duration)"
                         value={noteAddItemForm.instructions}
@@ -1317,10 +1297,7 @@ export default function HospitalizationDetailPage() {
                       />
                       <button
                         type="button"
-                        disabled={
-                          noteAddItemSubmitting ||
-                          (selectedNoteAddItem?.administration_method === 'injectable' && !noteAddItemForm.administration_method)
-                        }
+                        disabled={noteAddItemSubmitting}
                         onClick={() => addItemToNote(n.id)}
                       >
                         {noteAddItemSubmitting ? 'Adding...' : '+ Add'}
@@ -1486,12 +1463,6 @@ export default function HospitalizationDetailPage() {
             onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
             onCategoryChange={setPendingItemCategory}
           />
-          {selectedPendingItem?.administration_method === 'injectable' && (
-            <AdministrationRoutePicker
-              value={pendingItemForm.administration_method}
-              onChange={(value) => setPendingItemForm({ ...pendingItemForm, administration_method: value })}
-            />
-          )}
           <input
             placeholder="Instructions (dosage, frequency, duration)"
             value={pendingItemForm.instructions}
@@ -1504,12 +1475,7 @@ export default function HospitalizationDetailPage() {
             value={pendingItemForm.quantity}
             onChange={(e) => setPendingItemForm({ ...pendingItemForm, quantity: e.target.value })}
           />
-          <button
-            type="button"
-            className="secondary"
-            onClick={addPendingItem}
-            disabled={selectedPendingItem?.administration_method === 'injectable' && !pendingItemForm.administration_method}
-          >
+          <button type="button" className="secondary" onClick={addPendingItem}>
             + Add
           </button>
         </fieldset>

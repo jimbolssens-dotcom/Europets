@@ -4,16 +4,13 @@
 //                                                           worksheet entry
 // POST /api/treatment-items                             -> add an item from the catalog, to
 //                                                           one or the other (exactly one).
-//                                                           A dispensed medication's method is
-//                                                           copied on automatically; an
-//                                                           injectable one (goods_services
+//                                                           Its administration_method is copied
+//                                                           straight from the catalog item's own
+//                                                           fixed classification (goods_services
 //                                                           .administration_method — see
-//                                                           migration 078) needs the caller to
-//                                                           say which route was actually used,
-//                                                           via administration_method ('sc' or
-//                                                           'im') in the body. Either way it
-//                                                           drives an automatic fee line when
-//                                                           the treatment plan is invoiced (see
+//                                                           migration 095), which drives an
+//                                                           automatic fee line when the treatment
+//                                                           plan is invoiced (see
 //                                                           lib/invoicing.js) — waiving it is
 //                                                           just removing that fee line from the
 //                                                           invoice afterward.
@@ -50,8 +47,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { visit_id, hospitalization_note_id, goods_service_id, instructions, quantity, administration_method } =
-    body;
+  const { visit_id, hospitalization_note_id, goods_service_id, instructions, quantity } = body;
 
   if (!goods_service_id) {
     return NextResponse.json({ error: 'goods_service_id is required' }, { status: 400 });
@@ -79,10 +75,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'goods/service not found' }, { status: 400 });
   }
 
-  const resolved = resolveAdministrationMethod(catalogItem.administration_method, administration_method);
-  if (resolved.error) {
-    return NextResponse.json({ error: resolved.error }, { status: 400 });
-  }
+  const resolved = resolveAdministrationMethod(catalogItem.administration_method);
 
   const { data, error } = await supabase
     .from('treatment_items')

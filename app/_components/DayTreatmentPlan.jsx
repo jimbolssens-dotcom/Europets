@@ -19,7 +19,6 @@
 import { useEffect, useRef, useState } from 'react';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
-import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { checklistItemAction } from '@/lib/checklistItemAction';
 import { supabase } from '@/lib/supabaseClient';
@@ -43,14 +42,12 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
   const [showCatalogAdd, setShowCatalogAdd] = useState(false);
   const [catalogGoodsServiceId, setCatalogGoodsServiceId] = useState('');
   const [catalogInstructions, setCatalogInstructions] = useState('');
-  const [catalogAdministrationMethod, setCatalogAdministrationMethod] = useState('');
   const [showCustomAdd, setShowCustomAdd] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
   const [error, setError] = useState(null);
   const [editingItemId, setEditingItemId] = useState(null);
   const [editGoodsServiceId, setEditGoodsServiceId] = useState('');
   const [editInstructions, setEditInstructions] = useState('');
-  const [editAdministrationMethod, setEditAdministrationMethod] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);
@@ -230,16 +227,13 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
     if (!catalogGoodsServiceId) return;
     const item = catalog.find((c) => c.id === catalogGoodsServiceId);
     if (!item) return;
-    if (item.administration_method === 'injectable' && !catalogAdministrationMethod) return;
     await addPlanItem({
       label: item.name,
       goods_service_id: item.id,
       instructions: catalogInstructions.trim() || null,
-      administration_method: catalogAdministrationMethod || null,
     });
     setCatalogGoodsServiceId('');
     setCatalogInstructions('');
-    setCatalogAdministrationMethod('');
     setShowCatalogAdd(false);
   }
 
@@ -291,7 +285,6 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
     setEditingItemId(item.id);
     setEditGoodsServiceId(item.goods_service_id || '');
     setEditInstructions(item.instructions || '');
-    setEditAdministrationMethod(item.administration_method || '');
   }
 
   function cancelEditItem() {
@@ -311,7 +304,6 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
         label,
         goods_service_id: editGoodsServiceId || null,
         instructions: editInstructions.trim() || null,
-        administration_method: editAdministrationMethod || null,
       }),
     });
     setEditSaving(false);
@@ -413,24 +405,13 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
                     onChange={setEditGoodsServiceId}
                     onItemCreated={onCatalogItemCreated}
                   />
-                  {catalog.find((c) => c.id === editGoodsServiceId)?.administration_method === 'injectable' && (
-                    <AdministrationRoutePicker value={editAdministrationMethod} onChange={setEditAdministrationMethod} />
-                  )}
                   <input
                     placeholder="Instructions (e.g. PO with food, twice daily)"
                     value={editInstructions}
                     onChange={(e) => setEditInstructions(e.target.value)}
                   />
                   <div className="day-plan-edit-actions">
-                    <button
-                      type="button"
-                      onClick={() => saveEditItem(item.id)}
-                      disabled={
-                        editSaving ||
-                        (catalog.find((c) => c.id === editGoodsServiceId)?.administration_method === 'injectable' &&
-                          !editAdministrationMethod)
-                      }
-                    >
+                    <button type="button" onClick={() => saveEditItem(item.id)} disabled={editSaving}>
                       {editSaving ? 'Saving...' : 'Save'}
                     </button>
                     <button type="button" onClick={cancelEditItem} disabled={editSaving}>
@@ -481,23 +462,12 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
             onChange={setCatalogGoodsServiceId}
             onItemCreated={onCatalogItemCreated}
           />
-          {catalog.find((c) => c.id === catalogGoodsServiceId)?.administration_method === 'injectable' && (
-            <AdministrationRoutePicker value={catalogAdministrationMethod} onChange={setCatalogAdministrationMethod} />
-          )}
           <input
             placeholder="Instructions (e.g. PO with food, twice daily)"
             value={catalogInstructions}
             onChange={(e) => setCatalogInstructions(e.target.value)}
           />
-          <button
-            type="button"
-            onClick={addCatalogTask}
-            disabled={
-              !catalogGoodsServiceId ||
-              (catalog.find((c) => c.id === catalogGoodsServiceId)?.administration_method === 'injectable' &&
-                !catalogAdministrationMethod)
-            }
-          >
+          <button type="button" onClick={addCatalogTask} disabled={!catalogGoodsServiceId}>
             Add to Plan
           </button>
         </div>

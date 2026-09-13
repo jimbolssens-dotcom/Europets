@@ -9,7 +9,6 @@ import { Fragment, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
-import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import VoiceNoteBox from '@/app/_components/VoiceNoteBox';
@@ -44,7 +43,6 @@ export default function InvoiceDetailPage() {
   const [staff, setStaff] = useState([]);
   const [goodsServiceId, setGoodsServiceId] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [administrationMethod, setAdministrationMethod] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [addCategory, setAddCategory] = useState('product');
@@ -106,7 +104,6 @@ export default function InvoiceDetailPage() {
       body: JSON.stringify({
         goods_service_id: goodsServiceId,
         quantity: quantity ? Number(quantity) : undefined,
-        administration_method: administrationMethod || undefined,
       }),
     });
     const data = await res.json();
@@ -117,7 +114,6 @@ export default function InvoiceDetailPage() {
   async function addLineItem(e) {
     e.preventDefault();
     if (!goodsServiceId) return;
-    if (selected?.administration_method === 'injectable' && !administrationMethod) return;
 
     if (isMicrochipProduct(selected?.name)) {
       setMicrochipModalOpen(true);
@@ -130,7 +126,6 @@ export default function InvoiceDetailPage() {
       await postLineItem();
       setGoodsServiceId('');
       setQuantity('');
-      setAdministrationMethod('');
       loadInvoice();
     } catch (err) {
       setError(err.message);
@@ -492,8 +487,6 @@ export default function InvoiceDetailPage() {
                 <td colSpan={columnCount}>{group.label}</td>
               </tr>
               {group.items.map((li) => {
-                const catalogItem = catalog.find((c) => c.id === li.goods_service_id);
-                const isInjectable = catalogItem?.administration_method === 'injectable';
                 const draft = lineItemDrafts[li.id];
                 return (
                   <tr key={li.id}>
@@ -516,18 +509,7 @@ export default function InvoiceDetailPage() {
                         </>
                       )}
                     </td>
-                    <td>
-                      {editable && isInjectable ? (
-                        <AdministrationRoutePicker
-                          value={li.administration_method || ''}
-                          onChange={(value) => saveLineItemField(li.id, { administration_method: value })}
-                        />
-                      ) : li.administration_method ? (
-                        ADMINISTRATION_METHOD_LABELS[li.administration_method]
-                      ) : (
-                        '—'
-                      )}
-                    </td>
+                    <td>{li.administration_method ? ADMINISTRATION_METHOD_LABELS[li.administration_method] : '—'}</td>
                     <td>
                       {editable ? (
                         <input
@@ -580,9 +562,6 @@ export default function InvoiceDetailPage() {
             onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
             onCategoryChange={setAddCategory}
           />
-          {selected?.administration_method === 'injectable' && (
-            <AdministrationRoutePicker value={administrationMethod} onChange={setAdministrationMethod} />
-          )}
           <div className="catalog-add-form-row">
             <input
               className="qty-input"
@@ -592,10 +571,7 @@ export default function InvoiceDetailPage() {
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
             />
-            <button
-              type="submit"
-              disabled={submitting || !goodsServiceId || (selected?.administration_method === 'injectable' && !administrationMethod)}
-            >
+            <button type="submit" disabled={submitting || !goodsServiceId}>
               + Add
             </button>
           </div>

@@ -15,7 +15,6 @@
 
 import { useEffect, useState } from 'react';
 import CatalogPicker from '@/app/_components/CatalogPicker';
-import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { subcategoryName } from '@/lib/catalogGrouping';
@@ -27,7 +26,7 @@ function todayISODate() {
 
 export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, subcategories, onCatalogItemCreated }) {
   const [treatmentItems, setTreatmentItems] = useState([]);
-  const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1', administration_method: '' });
+  const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -60,12 +59,9 @@ export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, 
     setTreatForm((prev) => ({ ...prev, instructions: prev.instructions ? `${prev.instructions}\n${text}` : text }));
   }
 
-  const selectedItem = catalog.find((c) => c.id === treatForm.goods_service_id);
-
   async function addTreatmentItem(e) {
     e.preventDefault();
     if (!treatForm.goods_service_id) return;
-    if (selectedItem?.administration_method === 'injectable' && !treatForm.administration_method) return;
     setSubmitting(true);
     setError(null);
     const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
@@ -77,7 +73,6 @@ export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, 
           goods_service_id: treatForm.goods_service_id,
           instructions: treatForm.instructions,
           quantity: treatForm.quantity,
-          administration_method: treatForm.administration_method || undefined,
         }],
       }),
     });
@@ -87,7 +82,7 @@ export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, 
       setError(data.error || 'Failed to add item');
       return;
     }
-    setTreatForm({ goods_service_id: '', instructions: '', quantity: '1', administration_method: '' });
+    setTreatForm({ goods_service_id: '', instructions: '', quantity: '1' });
     loadTreatmentItems();
   }
 
@@ -108,12 +103,6 @@ export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, 
           onChange={(value) => setTreatForm({ ...treatForm, goods_service_id: value })}
           onItemCreated={onCatalogItemCreated}
         />
-        {selectedItem?.administration_method === 'injectable' && (
-          <AdministrationRoutePicker
-            value={treatForm.administration_method}
-            onChange={(value) => setTreatForm({ ...treatForm, administration_method: value })}
-          />
-        )}
         <div className="instructions-input-row">
           <input
             placeholder="Instructions (dosage, frequency, duration)"
@@ -129,10 +118,7 @@ export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, 
           value={treatForm.quantity}
           onChange={(e) => setTreatForm({ ...treatForm, quantity: e.target.value })}
         />
-        <button
-          type="submit"
-          disabled={submitting || (selectedItem?.administration_method === 'injectable' && !treatForm.administration_method)}
-        >
+        <button type="submit" disabled={submitting}>
           {submitting ? 'Adding...' : '+ Add'}
         </button>
       </form>

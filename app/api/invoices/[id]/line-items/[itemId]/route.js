@@ -6,16 +6,16 @@
 //      and/or its plain voice note (migration 060). Doesn't touch
 //      price/quantity/description.
 //   { quantity, administration_method } -> correct an unpaid/partially-paid
-//      invoice's line — e.g. the wrong number of tablets was logged, or an
-//      injection's SC/IM route was picked wrong. Recomputes line_total
-//      from quantity × the item's existing unit_price, then re-applies the
-//      administration fee fresh (stripping any previous fee tag first —
-//      see stripAdministrationFeeTag) so editing never stacks or leaves a
-//      stale fee. If the item is linked to a catalog medication,
-//      administration_method is validated against it the same way as
-//      adding a new item (see resolveAdministrationMethod) — a dispensed
-//      medication can't be switched to SC/IM here and vice versa; an
-//      unlinked custom line item accepts any of dispense/sc/im directly.
+//      invoice's line — e.g. the wrong number of tablets was logged.
+//      Recomputes line_total from quantity × the item's existing
+//      unit_price, then re-applies the administration fee fresh (stripping
+//      any previous fee tag first — see stripAdministrationFeeTag) so
+//      editing never stacks or leaves a stale fee. If the item is linked
+//      to a catalog medication, administration_method always comes from
+//      that catalog item's own fixed classification (see
+//      resolveAdministrationMethod) — a caller-supplied value is ignored
+//      for those; an unlinked custom line item accepts any of
+//      dispense/sc/im directly, since it has no catalog item to fix it.
 //   At least one field must be given; several may be combined in one call.
 // DELETE /api/invoices/:id/line-items/:itemId  -> remove a line item, recomputing totals
 //
@@ -68,14 +68,7 @@ export async function PATCH(request, { params }) {
 
     let administrationMethod;
     if (current.goods_service_id) {
-      const resolved = resolveAdministrationMethod(
-        current.goods_services?.administration_method,
-        hasAdministrationMethod ? body.administration_method : current.administration_method
-      );
-      if (resolved.error) {
-        return NextResponse.json({ error: resolved.error }, { status: 400 });
-      }
-      administrationMethod = resolved.administration_method;
+      administrationMethod = resolveAdministrationMethod(current.goods_services?.administration_method).administration_method;
     } else {
       const method = hasAdministrationMethod ? body.administration_method : current.administration_method;
       if (method && !['dispense', 'sc', 'im'].includes(method)) {

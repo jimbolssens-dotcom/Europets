@@ -32,7 +32,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
-import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
@@ -53,7 +52,7 @@ const emptyForm = {
   notes: '',
 };
 
-const emptyPendingItem = { goods_service_id: '', instructions: '', quantity: '1', administration_method: '' };
+const emptyPendingItem = { goods_service_id: '', instructions: '', quantity: '1' };
 
 export default function MobileHospitalizationPage() {
   const { id } = useParams();
@@ -128,8 +127,7 @@ export default function MobileHospitalizationPage() {
   function addPendingItem() {
     if (!pendingItemForm.goods_service_id) return;
     const catalogItem = catalog.find((c) => c.id === pendingItemForm.goods_service_id);
-    const resolved = resolveAdministrationMethod(catalogItem?.administration_method, pendingItemForm.administration_method);
-    if (resolved.error) return;
+    const resolved = resolveAdministrationMethod(catalogItem?.administration_method);
     setPendingItems((prev) => [
       ...prev,
       { ...pendingItemForm, name: catalogItem?.name, administration_method: resolved.administration_method },
@@ -198,8 +196,6 @@ export default function MobileHospitalizationPage() {
     setSaved(true);
     if (res.ok) setSavedNoteId(data.id);
   }
-
-  const selectedPendingItem = catalog.find((c) => c.id === pendingItemForm.goods_service_id);
 
   return (
     <div className="mobile-page">
@@ -337,12 +333,6 @@ export default function MobileHospitalizationPage() {
                 onChange={(value) => setPendingItemForm({ ...pendingItemForm, goods_service_id: value })}
                 onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
               />
-              {selectedPendingItem?.administration_method === 'injectable' && (
-                <AdministrationRoutePicker
-                  value={pendingItemForm.administration_method}
-                  onChange={(value) => setPendingItemForm({ ...pendingItemForm, administration_method: value })}
-                />
-              )}
               <input
                 placeholder="Instructions"
                 value={pendingItemForm.instructions}
@@ -355,12 +345,7 @@ export default function MobileHospitalizationPage() {
                 value={pendingItemForm.quantity}
                 onChange={(e) => setPendingItemForm({ ...pendingItemForm, quantity: e.target.value })}
               />
-              <button
-                type="button"
-                className="secondary"
-                onClick={addPendingItem}
-                disabled={selectedPendingItem?.administration_method === 'injectable' && !pendingItemForm.administration_method}
-              >
+              <button type="button" className="secondary" onClick={addPendingItem}>
                 + Add
               </button>
             </fieldset>

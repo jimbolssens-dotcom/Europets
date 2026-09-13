@@ -139,10 +139,8 @@ export async function POST(request, { params }) {
   let insertedItems = [];
   const pendingItems = (Array.isArray(treatment_items) ? treatment_items : []).filter((t) => t.goods_service_id);
 
-  // A dispensed medication's method is applied automatically; an
-  // injectable one needs whichever route was actually chosen for it
-  // (t.administration_method, 'sc' or 'im' — see resolveAdministrationMethod)
-  // — look up each item's catalog classification to know which applies.
+  // Each item's administration_method is copied straight from its
+  // catalog item's own fixed classification — look those up in bulk.
   let methodByGoodsServiceId = {};
   if (pendingItems.length > 0) {
     const { data: catalogItems } = await supabase
@@ -152,15 +150,7 @@ export async function POST(request, { params }) {
     methodByGoodsServiceId = Object.fromEntries((catalogItems || []).map((c) => [c.id, c.administration_method]));
   }
 
-  const resolvedMethods = pendingItems.map((t) =>
-    resolveAdministrationMethod(methodByGoodsServiceId[t.goods_service_id], t.administration_method)
-  );
-  const firstError = resolvedMethods.find((r) => r.error);
-  if (firstError) {
-    // The entry itself is already saved — surface the item failure rather
-    // than losing the note, same as an actual insert failure below.
-    return NextResponse.json({ error: firstError.error }, { status: 400 });
-  }
+  const resolvedMethods = pendingItems.map((t) => resolveAdministrationMethod(methodByGoodsServiceId[t.goods_service_id]));
 
   const itemRows = pendingItems.map((t, i) => ({
     hospitalization_note_id: note.id,

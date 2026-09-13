@@ -285,12 +285,13 @@ create table goods_services (
     base_price numeric(10,2) not null,
     unit text,                       -- e.g. 'mg', 'ml', 'kg' (used when pricing_type != flat)
     active boolean default true,
-    administration_method text check (administration_method in ('dispense', 'injectable')),
-        -- for a medication: dispensed (fee applied automatically wherever
-        -- it's added, see lib/invoicing.js) or injectable — an injectable
-        -- one has its exact SC/IM route chosen each time it's actually
-        -- administered (treatment_items.administration_method below),
-        -- not fixed here (see migration 078)
+    administration_method text check (administration_method in ('dispense', 'sc', 'im')),
+        -- for a medication: dispensed, or injected subcutaneously (sc) or
+        -- intramuscularly (im) — fixed here once on the catalog item so it
+        -- never needs choosing again wherever it's added; the fee, set in
+        -- Settings, applies automatically (see lib/invoicing.js). See
+        -- migration 095 (this was briefly "injectable", chosen per
+        -- administration instead — see migration 078 — before reverting).
     created_at timestamptz default now()
 );
 

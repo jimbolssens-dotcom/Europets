@@ -5,13 +5,13 @@
 // 'per_kg' pricing. If the invoice is linked to a visit and quantity is
 // omitted for a per_kg item, the patient's current weight is used.
 //
-// A dispensed medication's fee is folded into this same line
-// automatically; an injectable one (goods_services.administration_method
-// — see migration 078) needs administration_method ('sc' or 'im') in the
-// body to say which route was used. Either way the fee (short code
-// appended to the description, amount added to the total) is applied the
-// same way — see lib/invoicing.js. Waiving it in the rare exceptional
-// case is just editing/removing that line from the invoice afterward.
+// A medication's fee is folded into this same line automatically, from
+// whichever administration_method is fixed on its catalog item
+// (goods_services.administration_method — see migration 095): dispensed,
+// subcutaneous, or intramuscular. The fee (short code appended to the
+// description, amount added to the total) is applied the same way — see
+// lib/invoicing.js. Waiving it in the rare exceptional case is just
+// editing/removing that line from the invoice afterward.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -20,7 +20,7 @@ import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 
 export async function POST(request, { params }) {
   const body = await request.json();
-  const { goods_service_id, quantity, description, administration_method } = body;
+  const { goods_service_id, quantity, description } = body;
 
   if (!goods_service_id) {
     return NextResponse.json({ error: 'goods_service_id is required' }, { status: 400 });
@@ -52,10 +52,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'quantity must be a positive number' }, { status: 400 });
   }
 
-  const resolved = resolveAdministrationMethod(item.administration_method, administration_method);
-  if (resolved.error) {
-    return NextResponse.json({ error: resolved.error }, { status: 400 });
-  }
+  const resolved = resolveAdministrationMethod(item.administration_method);
 
   const unit_price = Number(item.base_price);
   const line_total = Math.round(unit_price * qty * 100) / 100;
