@@ -28,6 +28,7 @@ import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import ProcedureChecklist from '@/app/_components/ProcedureChecklist';
+import DayProcedureTreatmentPlan from '@/app/_components/DayProcedureTreatmentPlan';
 import DayProcedureNotes from '@/app/_components/DayProcedureNotes';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import HospitalizationReportsSection from '@/app/_components/HospitalizationReportsSection';
@@ -871,22 +872,30 @@ export default function HospitalizationDetailPage() {
             <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} />
           </details>
 
-          {/* Side by side on desktop, same as the consult page's
-              multi-column workbench, instead of one narrow stacked
-              column with the rest of the screen sitting empty. */}
-          <div className="two-col">
-            <ProcedureChecklist
-              key={`${id}-${noteDeleteVersion}`}
-              hospitalizationId={id}
-              staff={staff}
-              catalog={catalog}
-              subcategories={subcategories}
-              onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
-              onOpenReport={openReportFromChecklist}
-            />
+          {/* Three columns side by side on desktop, same .workbench grid
+              (and the same h3-above-a-pink-topped-card title styling) as
+              the consult page's own Vitals & Exam / Diagnostics /
+              Treatment Plan layout, instead of one narrow stacked column
+              with the rest of the screen sitting empty. */}
+          <div className="workbench">
+            <div>
+              <ProcedureChecklist
+                key={`${id}-${noteDeleteVersion}`}
+                hospitalizationId={id}
+                staff={staff}
+                catalog={catalog}
+                subcategories={subcategories}
+                onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+                onOpenReport={openReportFromChecklist}
+              />
+              {/* Right under the checklist, not buried at the very bottom
+                  of the page — this is reached for every same-day case, so
+                  it needs to be one glance away, not a scroll away. */}
+              {consentSignPanel}
+            </div>
 
-            <section className="case-files-open" aria-label="Day Procedure Report">
-              <h2>Day Procedure Report</h2>
+            <section aria-label="Day Procedure Report">
+              <h3>Day Procedure Report</h3>
               <DayProcedureNotes hospitalizationId={id} staff={staff} />
               {signedConsentFormsList}
               <PatientReportOverview patientId={admission.patient_id} title="Earlier reports for this patient" />
@@ -912,10 +921,16 @@ export default function HospitalizationDetailPage() {
                 <VaccinationForm {...vac} species={admission.patients?.species} staff={staff} />
               </section>
             </section>
+
+            <DayProcedureTreatmentPlan
+              hospitalizationId={id}
+              catalog={catalog}
+              subcategories={subcategories}
+              onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+            />
           </div>
 
           {patientHistorySection}
-          {consentSignPanel}
         </>
       ) : (
         <>

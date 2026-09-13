@@ -341,12 +341,19 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
   }
 
   return (
-    <div className="card procedure-checklist">
+    <div>
+      {/* A bare heading above the card, same as the consult page's own
+          column titles (Vitals & Exam / Diagnostics / Treatment Plan) —
+          same font, nothing else sharing the row, so the card's pink top
+          border lines up at the same height under every column's title
+          instead of shifting down wherever a title happens to carry an
+          extra button. The Record button moves inside the card itself. */}
+      <h3>Procedure Checklist</h3>
+      <div className="card procedure-checklist">
       <div className="procedure-checklist-header">
-        <h3>Procedure Checklist</h3>
+        <p className="visit-meta">Dictated once, matched automatically against the service catalog — no manual data entry.</p>
         <AudioRecorder entityType="hospitalization_plan" entityId={hospitalizationId} onExtractedFields={loadPlanItems} />
       </div>
-      <p className="visit-meta">Dictated once, matched automatically against the service catalog — no manual data entry.</p>
       {error && <p className="error">{error}</p>}
 
       <select className="day-plan-author" value={authorId} onChange={(e) => handleAuthorChange(e.target.value)}>
@@ -532,6 +539,7 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }
