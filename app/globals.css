@@ -3320,11 +3320,23 @@ button.secondary:hover {
   color: white;
 }
 
+/* form.card label / form.card input (above) set flex-direction:column and
+   width:100% on every label/input inside a .card form, and that two-element
+   selector outranks this one-class selector on specificity alone —
+   !important is what actually keeps the radio beside the pet name instead
+   of stacked above it (same fix as .vaccine-checklist-item). */
 .intake-pet-choice {
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important;
   align-items: center;
   gap: 0.5rem;
   font-weight: 400;
+}
+
+.intake-pet-choice input {
+  width: auto !important;
+  padding: 0 !important;
+  border: none !important;
 }
 
 .intake-appointment {
