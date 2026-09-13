@@ -49,11 +49,15 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   const [surgForm, setSurgForm] = useState({ surgeon_id: '', procedure_name: '', notes: '' });
   const [dictatingSurgical, setDictatingSurgical] = useState(false);
   const [autoRecordSurgicalId, setAutoRecordSurgicalId] = useState(null);
+  const [startingSurgicalPhoto, setStartingSurgicalPhoto] = useState(false);
+  const [photoRecordSurgicalId, setPhotoRecordSurgicalId] = useState(null);
 
   const [dentalReports, setDentalReports] = useState([]);
   const [dentalForm, setDentalForm] = useState({ performed_by: '', findings: '', procedures_performed: '', notes: '' });
   const [dictatingDental, setDictatingDental] = useState(false);
   const [autoRecordDentalId, setAutoRecordDentalId] = useState(null);
+  const [startingDentalPhoto, setStartingDentalPhoto] = useState(false);
+  const [photoRecordDentalId, setPhotoRecordDentalId] = useState(null);
   const [savingDentalChart, setSavingDentalChart] = useState(false);
 
   const [ultrasoundReports, setUltrasoundReports] = useState([]);
@@ -77,12 +81,15 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   // there at all).
   const startReportDetailsRef = useRef(null);
   useEffect(() => {
-    if (!autoRecordDentalId && !autoRecordSurgicalId && !autoRecordUltrasoundId && !autoRecordXrayId) return;
+    if (
+      !autoRecordDentalId && !autoRecordSurgicalId && !autoRecordUltrasoundId && !autoRecordXrayId &&
+      !photoRecordDentalId && !photoRecordSurgicalId
+    ) return;
     const el = startReportDetailsRef.current;
     if (!el) return;
     el.open = true;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [autoRecordDentalId, autoRecordSurgicalId, autoRecordUltrasoundId, autoRecordXrayId]);
+  }, [autoRecordDentalId, autoRecordSurgicalId, autoRecordUltrasoundId, autoRecordXrayId, photoRecordDentalId, photoRecordSurgicalId]);
 
   async function loadReportList(path, setter) {
     try {
@@ -222,6 +229,15 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   }
 
   async function startDictateSurgicalReport() {
+    // A photo added first (via startPhotoSurgicalReport below) already
+    // has a report waiting — dictate into that same one instead of
+    // starting a second, unrelated report. Once dictation has actually
+    // begun, though, this stays the deliberate "start another one"
+    // action it's always been (see openOrStartSurgicalReport's comment).
+    if (photoRecordSurgicalId && !autoRecordSurgicalId) {
+      setAutoRecordSurgicalId(photoRecordSurgicalId);
+      return;
+    }
     setDictatingSurgical(true);
     const res = await fetch('/api/surgical-reports', {
       method: 'POST',
@@ -232,6 +248,30 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
     setDictatingSurgical(false);
     if (res.ok) {
       setAutoRecordSurgicalId(data.id);
+      setPhotoRecordSurgicalId(null);
+      loadSurgicalReports();
+    }
+  }
+
+  // Lets a photo be attached before dictation even starts — reuses
+  // whichever report is already active (a dictation in progress, or an
+  // earlier photo-first click) rather than creating a new one each time.
+  async function startPhotoSurgicalReport() {
+    if (autoRecordSurgicalId) {
+      setPhotoRecordSurgicalId(autoRecordSurgicalId);
+      return;
+    }
+    if (photoRecordSurgicalId) return;
+    setStartingSurgicalPhoto(true);
+    const res = await fetch('/api/surgical-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hospitalization_id: hospitalizationId }),
+    });
+    const data = await res.json();
+    setStartingSurgicalPhoto(false);
+    if (res.ok) {
+      setPhotoRecordSurgicalId(data.id);
       loadSurgicalReports();
     }
   }
@@ -248,6 +288,12 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   }
 
   async function startDictateDentalReport() {
+    // See startDictateSurgicalReport's comment — reuse a photo-first
+    // draft rather than starting a second, unrelated report.
+    if (photoRecordDentalId && !autoRecordDentalId) {
+      setAutoRecordDentalId(photoRecordDentalId);
+      return;
+    }
     setDictatingDental(true);
     const res = await fetch('/api/dental-reports', {
       method: 'POST',
@@ -258,6 +304,29 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
     setDictatingDental(false);
     if (res.ok) {
       setAutoRecordDentalId(data.id);
+      setPhotoRecordDentalId(null);
+      loadDentalReports();
+    }
+  }
+
+  // Lets a photo be attached before dictation even starts — see
+  // startPhotoSurgicalReport's comment.
+  async function startPhotoDentalReport() {
+    if (autoRecordDentalId) {
+      setPhotoRecordDentalId(autoRecordDentalId);
+      return;
+    }
+    if (photoRecordDentalId) return;
+    setStartingDentalPhoto(true);
+    const res = await fetch('/api/dental-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hospitalization_id: hospitalizationId }),
+    });
+    const data = await res.json();
+    setStartingDentalPhoto(false);
+    if (res.ok) {
+      setPhotoRecordDentalId(data.id);
       loadDentalReports();
     }
   }
@@ -449,10 +518,18 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
 
         <h4>Dental Reports</h4>
         <div className="card">
-          <button type="button" onClick={startDictateDentalReport} disabled={dictatingDental}>
-            🎤 {dictatingDental ? 'Starting...' : 'Dictate'}
-          </button>
+          <div className="home-links">
+            <button type="button" onClick={startDictateDentalReport} disabled={dictatingDental}>
+              🎤 {dictatingDental ? 'Starting...' : 'Dictate'}
+            </button>
+            <button type="button" onClick={startPhotoDentalReport} disabled={startingDentalPhoto}>
+              📷 {startingDentalPhoto ? 'Starting...' : 'Photo'}
+            </button>
+          </div>
           {autoRecordDentalId && <AudioRecorder entityType="dental_report" entityId={autoRecordDentalId} autoStart />}
+          {(photoRecordDentalId || autoRecordDentalId) && (
+            <AttachmentSection entityType="dental_report" entityId={photoRecordDentalId || autoRecordDentalId} />
+          )}
           <details>
             <summary>Or add manually</summary>
             <form className="form-grid" onSubmit={addDentalReport}>
@@ -476,10 +553,18 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
 
         <h4>Surgical Reports</h4>
         <div className="card">
-          <button type="button" onClick={startDictateSurgicalReport} disabled={dictatingSurgical}>
-            🎤 {dictatingSurgical ? 'Starting...' : 'Dictate'}
-          </button>
+          <div className="home-links">
+            <button type="button" onClick={startDictateSurgicalReport} disabled={dictatingSurgical}>
+              🎤 {dictatingSurgical ? 'Starting...' : 'Dictate'}
+            </button>
+            <button type="button" onClick={startPhotoSurgicalReport} disabled={startingSurgicalPhoto}>
+              📷 {startingSurgicalPhoto ? 'Starting...' : 'Photo'}
+            </button>
+          </div>
           {autoRecordSurgicalId && <AudioRecorder entityType="surgical_report" entityId={autoRecordSurgicalId} autoStart />}
+          {(photoRecordSurgicalId || autoRecordSurgicalId) && (
+            <AttachmentSection entityType="surgical_report" entityId={photoRecordSurgicalId || autoRecordSurgicalId} />
+          )}
           <details>
             <summary>Or add manually</summary>
             <form className="form-grid" onSubmit={addSurgicalReport}>
