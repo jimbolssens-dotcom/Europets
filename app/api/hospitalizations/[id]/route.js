@@ -1,11 +1,17 @@
 // app/api/hospitalizations/[id]/route.js
-// GET   /api/hospitalizations/:id  -> a single admission
-// PATCH /api/hospitalizations/:id  -> update status/room/reason; discharging sets discharged_at.
-//       Also: kind ('day_procedure' -> 'admission' — a day procedure that
-//       needs to stay longer, promoted in place rather than re-created),
-//       and originating_visit_id (linking a consult added afterward to a
-//       day procedure that didn't start with one — see the "Add Consult"
-//       button on the hospitalization page).
+// GET    /api/hospitalizations/:id  -> a single admission
+// PATCH  /api/hospitalizations/:id  -> update status/room/reason; discharging sets discharged_at.
+//        Also: kind ('day_procedure' -> 'admission' — a day procedure that
+//        needs to stay longer, promoted in place rather than re-created),
+//        and originating_visit_id (linking a consult added afterward to a
+//        day procedure that didn't start with one — see the "Add Consult"
+//        button on the hospitalization page).
+// DELETE /api/hospitalizations/:id  -> remove an admission or day procedure
+//        (e.g. it was started by mistake). Diagnostics/treatment items/
+//        surgical & dental reports cascade automatically; their file
+//        attachments and audio recordings don't (linked generically via
+//        entity_type/entity_id), so those are cleaned up explicitly here —
+//        same approach as DELETE /api/visits/:id.
 
 import { supabase } from '@/lib/supabaseClient';
 import { attachCages } from '@/lib/attachCages';
@@ -112,4 +118,59 @@ export async function PATCH(request, { params }) {
   }
 
   return NextResponse.json(await attachCages(data));
+}
+
+export async function DELETE(request, { params }) {
+  const hospitalizationId = params.id;
+
+  const [{ data: diagnostics }, { data: surgicalReports }, { data: dentalReports }, { data: notes }] =
+    await Promise.all([
+      supabase.from('diagnostics').select('id').eq('hospitalization_id', hospitalizationId),
+      supabase.from('surgical_reports').select('id').eq('hospitalization_id', hospitalizationId),
+      supabase.from('dental_reports').select('id').eq('hospitalization_id', hospitalizationId),
+      supabase.from('hospitalization_notes').select('id').eq('hospitalization_id', hospitalizationId),
+    ]);
+
+  const relevantIds = [
+    hospitalizationId,
+    ...(diagnostics || []).map((d) => d.id),
+    ...(surgicalReports || []).map((r) => r.id),
+    ...(dentalReports || []).map((r) => r.id),
+    ...(notes || []).map((n) => n.id),
+  ];
+
+  const [{ data: attachments }, { data: recordings }] = await Promise.all([
+    supabase.from('attachments').select('id, file_path').in('entity_id', relevantIds),
+    supabase.from('recordings').select('id, file_path').in('entity_id', relevantIds),
+  ]);
+
+  const filePaths = [
+    ...(attachments || []).map((a) => a.file_path),
+    ...(recordings || []).map((r) => r.file_path),
+  ];
+  if (filePaths.length > 0) {
+    await supabase.storage.from('consult-files').remove(filePaths);
+  }
+  if (attachments?.length) {
+    await supabase.from('attachments').delete().in('id', attachments.map((a) => a.id));
+  }
+  if (recordings?.length) {
+    await supabase.from('recordings').delete().in('id', recordings.map((r) => r.id));
+  }
+
+  const { error } = await supabase.from('hospitalizations').delete().eq('id', hospitalizationId);
+
+  if (error) {
+    if (error.code === '23503') {
+      return NextResponse.json(
+        {
+          error:
+            'cannot delete this case — it has a linked invoice, or another day procedure/admission depends on it. Void the invoice / resolve that link first.',
+        },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
 }

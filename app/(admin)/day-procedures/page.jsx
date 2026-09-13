@@ -20,6 +20,7 @@ export default function DayProceduresPage() {
   const [dayProcedures, setDayProcedures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const load = () =>
     fetch('/api/hospitalizations?kind=day_procedure')
@@ -32,6 +33,23 @@ export default function DayProceduresPage() {
         setError('Failed to load day procedures');
         setLoading(false);
       });
+
+  async function deleteDayProcedure(d) {
+    const patientLabel = `${d.patients?.name}${d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}`;
+    if (!confirm(`Delete this day procedure for ${patientLabel}? This cannot be undone.`)) return;
+    setError(null);
+    setDeletingId(d.id);
+    try {
+      const res = await fetch(`/api/hospitalizations/${d.id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to delete day procedure');
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   useEffect(() => {
     load();
@@ -93,7 +111,10 @@ export default function DayProceduresPage() {
                 <td>{d.reason || '—'}</td>
                 <td>{new Date(d.admitted_at).toLocaleString()}</td>
                 <td>
-                  <a href={`/hospitalization/${d.id}`}>Open</a>
+                  <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
+                  <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
+                    {deletingId === d.id ? 'Deleting…' : 'Delete'}
+                  </button>
                 </td>
               </tr>
             ))}
@@ -127,7 +148,10 @@ export default function DayProceduresPage() {
                 </td>
                 <td>{d.discharged_at ? new Date(d.discharged_at).toLocaleString() : '—'}</td>
                 <td>
-                  <a href={`/hospitalization/${d.id}`}>Open</a>
+                  <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
+                  <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
+                    {deletingId === d.id ? 'Deleting…' : 'Delete'}
+                  </button>
                 </td>
               </tr>
             ))}
