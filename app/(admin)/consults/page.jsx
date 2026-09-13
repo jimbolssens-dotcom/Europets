@@ -144,6 +144,21 @@ function ConsultsPageInner() {
     setSubmitting(false);
   }
 
+  async function completeConsult(consult) {
+    setRowError(null);
+    const res = await fetch(`/api/visits/${consult.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'complete' }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setRowError(data.error || 'Failed to complete consult');
+    } else {
+      loadConsults();
+    }
+  }
+
   async function deleteConsult(consult) {
     const patientLabel = `${consult.patients?.name}${
       consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''
@@ -216,6 +231,9 @@ function ConsultsPageInner() {
                 <td>{elapsedMinutes(c.started_at)} min</td>
                 <td>
                   <a href={`/consults/${c.id}`}>Open</a>
+                  <button type="button" onClick={() => completeConsult(c)}>
+                    Complete
+                  </button>
                   <button type="button" onClick={() => deleteConsult(c)}>
                     Delete
                   </button>
