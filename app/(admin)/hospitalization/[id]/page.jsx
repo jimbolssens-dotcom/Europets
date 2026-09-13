@@ -871,43 +871,48 @@ export default function HospitalizationDetailPage() {
             <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} />
           </details>
 
-          <ProcedureChecklist
-            key={`${id}-${noteDeleteVersion}`}
-            hospitalizationId={id}
-            staff={staff}
-            catalog={catalog}
-            subcategories={subcategories}
-            onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
-            onOpenReport={openReportFromChecklist}
-          />
-
-          <section className="case-files-open" aria-label="Day Procedure Report">
-            <h2>Day Procedure Report</h2>
-            <DayProcedureNotes hospitalizationId={id} staff={staff} />
-            {signedConsentFormsList}
-            <PatientReportOverview patientId={admission.patient_id} title="Earlier reports for this patient" />
-            <HospitalizationReportsSection
-              ref={reportsSectionRef}
+          {/* Side by side on desktop, same as the consult page's
+              multi-column workbench, instead of one narrow stacked
+              column with the rest of the screen sitting empty. */}
+          <div className="two-col">
+            <ProcedureChecklist
+              key={`${id}-${noteDeleteVersion}`}
               hospitalizationId={id}
-              admission={admission}
               staff={staff}
               catalog={catalog}
               subcategories={subcategories}
               onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
-              onPatientUpdated={(dental_chart) => setAdmission((prev) => ({ ...prev, patients: { ...prev.patients, dental_chart } }))}
-              onAdmissionUpdated={loadAdmission}
+              onOpenReport={openReportFromChecklist}
             />
-            <section id="vaccination" className="card" aria-label="Vaccination">
-              <h3>
-                Vaccinations
-                {vac.vaccinations.length === 0 && <span className="heading-hint"> — No vaccinations recorded yet.</span>}
-              </h3>
-              {vac.vaccinations.length > 0 && (
-                <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
-              )}
-              <VaccinationForm {...vac} species={admission.patients?.species} staff={staff} />
+
+            <section className="case-files-open" aria-label="Day Procedure Report">
+              <h2>Day Procedure Report</h2>
+              <DayProcedureNotes hospitalizationId={id} staff={staff} />
+              {signedConsentFormsList}
+              <PatientReportOverview patientId={admission.patient_id} title="Earlier reports for this patient" />
+              <HospitalizationReportsSection
+                ref={reportsSectionRef}
+                hospitalizationId={id}
+                admission={admission}
+                staff={staff}
+                catalog={catalog}
+                subcategories={subcategories}
+                onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+                onPatientUpdated={(dental_chart) => setAdmission((prev) => ({ ...prev, patients: { ...prev.patients, dental_chart } }))}
+                onAdmissionUpdated={loadAdmission}
+              />
+              <section id="vaccination" className="card" aria-label="Vaccination">
+                <h3>
+                  Vaccinations
+                  {vac.vaccinations.length === 0 && <span className="heading-hint"> — No vaccinations recorded yet.</span>}
+                </h3>
+                {vac.vaccinations.length > 0 && (
+                  <VaccinationHistory vaccinations={vac.vaccinations} onDelete={vac.deleteVaccination} />
+                )}
+                <VaccinationForm {...vac} species={admission.patients?.species} staff={staff} />
+              </section>
             </section>
-          </section>
+          </div>
 
           {patientHistorySection}
           {consentSignPanel}
