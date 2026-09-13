@@ -8,7 +8,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS } from '@/lib/catalogGrouping';
 import { CATALOG_ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import InfoHint from '@/app/_components/InfoHint';
@@ -44,6 +44,7 @@ export default function CatalogPage() {
   const [subcategoryError, setSubcategoryError] = useState(null);
   const [editingSubcategoryId, setEditingSubcategoryId] = useState(null);
   const [editSubcategoryName, setEditSubcategoryName] = useState('');
+  const addDetailsRef = useRef(null);
 
   const loadItems = () =>
     fetch('/api/goods-services')
@@ -92,6 +93,7 @@ export default function CatalogPage() {
     } else {
       setForm(emptyForm);
       loadItems();
+      if (addDetailsRef.current) addDetailsRef.current.open = false;
     }
     setSubmitting(false);
   }
@@ -244,23 +246,167 @@ export default function CatalogPage() {
     <div>
       <h1>Goods & Services</h1>
 
-      <div className="catalog-tabs">
-        {MAIN_CATEGORIES.map((mc) => (
-          <button
-            key={mc}
-            type="button"
-            className={mc === activeTab ? 'catalog-tab active' : 'catalog-tab'}
-            onClick={() => setActiveTab(mc)}
-          >
-            {MAIN_CATEGORY_LABELS[mc]}s
-          </button>
-        ))}
+      <div className="catalog-tabs-row">
+        <div className="catalog-tabs">
+          {MAIN_CATEGORIES.map((mc) => (
+            <button
+              key={mc}
+              type="button"
+              className={mc === activeTab ? 'catalog-tab active' : 'catalog-tab'}
+              onClick={() => setActiveTab(mc)}
+            >
+              {MAIN_CATEGORY_LABELS[mc]}s
+            </button>
+          ))}
+        </div>
+
+        <div className="catalog-tabs-actions">
+          <details className="catalog-add-toggle" ref={addDetailsRef}>
+            <summary className="catalog-tab">+ Add {MAIN_CATEGORY_LABELS[activeTab]}</summary>
+            <div className="catalog-add-dropdown">
+              <form className="form-grid" onSubmit={handleSubmit}>
+                <h2>Add {MAIN_CATEGORY_LABELS[activeTab]}</h2>
+                {error && <p className="error">{error}</p>}
+                <input
+                  placeholder="Name"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                />
+                <select
+                  required
+                  value={form.subcategory_id}
+                  onChange={(e) => setForm({ ...form, subcategory_id: e.target.value })}
+                >
+                  <option value="">Select subcategory...</option>
+                  {tabActiveSubcategories.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={form.pricing_type}
+                  onChange={(e) => setForm({ ...form, pricing_type: e.target.value })}
+                >
+                  <option value="flat">Flat</option>
+                  <option value="per_kg">Per kg (bodyweight)</option>
+                  <option value="per_unit">Per unit</option>
+                </select>
+                <input
+                  placeholder="Base price"
+                  type="number"
+                  step="0.01"
+                  required
+                  value={form.base_price}
+                  onChange={(e) => setForm({ ...form, base_price: e.target.value })}
+                />
+                <input
+                  placeholder="Buying price (cost) — optional"
+                  type="number"
+                  step="0.01"
+                  value={form.buying_price}
+                  onChange={(e) => setForm({ ...form, buying_price: e.target.value })}
+                />
+                <input
+                  placeholder="Supplier — optional"
+                  value={form.supplier}
+                  onChange={(e) => setForm({ ...form, supplier: e.target.value })}
+                />
+                <input
+                  placeholder="Unit (e.g. mg, ml, kg) — optional"
+                  value={form.unit}
+                  onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                />
+                {activeTab === 'product' && (
+                  <>
+                    <p className="visit-meta">
+                      Administration method (if a medication — dispensed, subcutaneous, or
+                      intramuscular; fixed here once so it never needs choosing again wherever
+                      it's added — its fee, set in Settings, applies automatically)
+                    </p>
+                    <select
+                      value={form.administration_method}
+                      onChange={(e) => setForm({ ...form, administration_method: e.target.value })}
+                    >
+                      <option value="">Not a medication</option>
+                      <option value="dispense">Dispensed</option>
+                      <option value="sc">Subcutaneous (SC)</option>
+                      <option value="im">Intramuscular (IM)</option>
+                    </select>
+                  </>
+                )}
+                <button type="submit" disabled={submitting}>
+                  {submitting ? 'Saving...' : 'Add'}
+                </button>
+              </form>
+            </div>
+          </details>
+
+          <details className="catalog-add-toggle">
+            <summary className="catalog-tab">Subcategories</summary>
+            <div className="catalog-add-dropdown catalog-subcategories-dropdown">
+              <h2>
+                {MAIN_CATEGORY_LABELS[activeTab]} Subcategories{' '}
+                <InfoHint>
+                  Keep adding to this list as the clinic offers new{' '}
+                  {MAIN_CATEGORY_LABELS[activeTab].toLowerCase()} subdivisions — new ones show up
+                  immediately in Add {MAIN_CATEGORY_LABELS[activeTab]} above.
+                </InfoHint>
+              </h2>
+              {subcategoryError && <p className="error">{subcategoryError}</p>}
+              {tabSubcategories.length === 0 && <p>No subcategories yet.</p>}
+              <ul className="subcategory-list">
+                {tabSubcategories.map((s) =>
+                  editingSubcategoryId === s.id ? (
+                    <li key={s.id}>
+                      <input
+                        value={editSubcategoryName}
+                        onChange={(e) => setEditSubcategoryName(e.target.value)}
+                      />
+                      <button type="button" onClick={() => saveSubcategoryEdit(s.id)}>
+                        Save
+                      </button>
+                      <button type="button" onClick={cancelEditSubcategory}>
+                        Cancel
+                      </button>
+                    </li>
+                  ) : (
+                    <li key={s.id}>
+                      <span>
+                        {s.name}
+                        {!s.active && ' (inactive)'}
+                      </span>
+                      <button type="button" onClick={() => startEditSubcategory(s)}>
+                        Edit
+                      </button>
+                      <button type="button" onClick={() => toggleSubcategoryActive(s)}>
+                        {s.active ? 'Deactivate' : 'Activate'}
+                      </button>
+                      <button type="button" onClick={() => deleteSubcategory(s)}>
+                        Delete
+                      </button>
+                    </li>
+                  )
+                )}
+              </ul>
+              <form className="subcategory-add-form" onSubmit={addSubcategory}>
+                <input
+                  placeholder={`New ${MAIN_CATEGORY_LABELS[activeTab].toLowerCase()} subcategory`}
+                  value={newSubcategoryName}
+                  onChange={(e) => setNewSubcategoryName(e.target.value)}
+                />
+                <button type="submit" className="secondary" disabled={subcategorySubmitting}>
+                  {subcategorySubmitting ? 'Adding...' : '+ Add'}
+                </button>
+              </form>
+            </div>
+          </details>
+        </div>
       </div>
 
       {deleteError && <p className="error">{deleteError}</p>}
 
-      <div className="split">
-      <div className="split-main">
       <div className="catalog-table-wrap">
       <table>
         <thead>
@@ -426,141 +572,6 @@ export default function CatalogPage() {
           )}
         </tbody>
       </table>
-      </div>
-      </div>
-
-      <div className="split-aside">
-      <form className="card" onSubmit={handleSubmit}>
-        <h2>Add {MAIN_CATEGORY_LABELS[activeTab]}</h2>
-        {error && <p className="error">{error}</p>}
-        <input
-          placeholder="Name"
-          required
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-        />
-        <select
-          required
-          value={form.subcategory_id}
-          onChange={(e) => setForm({ ...form, subcategory_id: e.target.value })}
-        >
-          <option value="">Select subcategory...</option>
-          {tabActiveSubcategories.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={form.pricing_type}
-          onChange={(e) => setForm({ ...form, pricing_type: e.target.value })}
-        >
-          <option value="flat">Flat</option>
-          <option value="per_kg">Per kg (bodyweight)</option>
-          <option value="per_unit">Per unit</option>
-        </select>
-        <input
-          placeholder="Base price"
-          type="number"
-          step="0.01"
-          required
-          value={form.base_price}
-          onChange={(e) => setForm({ ...form, base_price: e.target.value })}
-        />
-        <input
-          placeholder="Buying price (cost) — optional"
-          type="number"
-          step="0.01"
-          value={form.buying_price}
-          onChange={(e) => setForm({ ...form, buying_price: e.target.value })}
-        />
-        <input
-          placeholder="Supplier — optional"
-          value={form.supplier}
-          onChange={(e) => setForm({ ...form, supplier: e.target.value })}
-        />
-        <input
-          placeholder="Unit (e.g. mg, ml, kg) — optional"
-          value={form.unit}
-          onChange={(e) => setForm({ ...form, unit: e.target.value })}
-        />
-        {activeTab === 'product' && (
-          <label>
-            Administration method (if a medication — dispensed, subcutaneous, or intramuscular;
-            fixed here once so it never needs choosing again wherever it's added — its fee, set in
-            Settings, applies automatically)
-            <select
-              value={form.administration_method}
-              onChange={(e) => setForm({ ...form, administration_method: e.target.value })}
-            >
-              <option value="">Not a medication</option>
-              <option value="dispense">Dispensed</option>
-              <option value="sc">Subcutaneous (SC)</option>
-              <option value="im">Intramuscular (IM)</option>
-            </select>
-          </label>
-        )}
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Saving...' : 'Add'}
-        </button>
-      </form>
-
-      <div className="card">
-        <h2>
-          {MAIN_CATEGORY_LABELS[activeTab]} Subcategories{' '}
-          <InfoHint>
-            Keep adding to this list as the clinic offers new {MAIN_CATEGORY_LABELS[activeTab].toLowerCase()}{' '}
-            subdivisions — new ones show up immediately in Add {MAIN_CATEGORY_LABELS[activeTab]} above.
-          </InfoHint>
-        </h2>
-        {subcategoryError && <p className="error">{subcategoryError}</p>}
-        {tabSubcategories.length === 0 && <p>No subcategories yet.</p>}
-        <ul className="subcategory-list">
-          {tabSubcategories.map((s) =>
-            editingSubcategoryId === s.id ? (
-              <li key={s.id}>
-                <input
-                  value={editSubcategoryName}
-                  onChange={(e) => setEditSubcategoryName(e.target.value)}
-                />
-                <button type="button" onClick={() => saveSubcategoryEdit(s.id)}>
-                  Save
-                </button>
-                <button type="button" onClick={cancelEditSubcategory}>
-                  Cancel
-                </button>
-              </li>
-            ) : (
-              <li key={s.id}>
-                <span>
-                  {s.name}
-                  {!s.active && ' (inactive)'}
-                </span>
-                <button type="button" onClick={() => startEditSubcategory(s)}>
-                  Edit
-                </button>
-                <button type="button" onClick={() => toggleSubcategoryActive(s)}>
-                  {s.active ? 'Deactivate' : 'Activate'}
-                </button>
-                <button type="button" onClick={() => deleteSubcategory(s)}>
-                  Delete
-                </button>
-              </li>
-            )
-          )}
-        </ul>
-        <form className="subcategory-add-form" onSubmit={addSubcategory}>
-          <input
-            placeholder={`New ${MAIN_CATEGORY_LABELS[activeTab].toLowerCase()} subcategory`}
-            value={newSubcategoryName}
-            onChange={(e) => setNewSubcategoryName(e.target.value)}
-          />
-          <button type="submit" className="secondary" disabled={subcategorySubmitting}>
-            {subcategorySubmitting ? 'Adding...' : '+ Add'}
-          </button>
-        </form>
-      </div>
-      </div>
       </div>
     </div>
   );
