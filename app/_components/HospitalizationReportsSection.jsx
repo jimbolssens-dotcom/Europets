@@ -353,6 +353,26 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
       setAutoRecordSurgicalId(report.id);
       loadSurgicalReports();
     },
+    // A checklist/plan item classified as a plain test (blood panel, PCR,
+    // fecal, urine, ...) never gets its own diagnostics row just from
+    // being added to a checklist — unlike dental/surgical, ticking it
+    // done only logs a worksheet note. This finds the matching one (by
+    // catalog item, same as the mobile checklist's own find-or-create) or
+    // creates it, so "Enter Test Result" always lands on a real row with
+    // a result field and photo/file upload, not an empty section.
+    async openOrStartTestResult(goodsServiceId) {
+      const existing = diagnostics.find((d) => d.goods_service_id === goodsServiceId);
+      if (existing) return existing;
+      const res = await fetch('/api/diagnostics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hospitalization_id: hospitalizationId, goods_service_id: goodsServiceId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to start the test');
+      await loadDiagnostics();
+      return data;
+    },
   }));
 
   async function updateDentalChart(newChart) {

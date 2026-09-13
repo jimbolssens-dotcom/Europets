@@ -84,14 +84,26 @@ export default function HospitalizationDetailPage() {
   const [bookingDayProcedure, setBookingDayProcedure] = useState(false);
   const [bookDayProcedureError, setBookDayProcedureError] = useState(null);
   const reportsSectionRef = useRef(null);
+  const [pendingChecklistAction, setPendingChecklistAction] = useState(null);
 
-  // The Procedure Checklist's "Open Dental/Surgical Report" button
-  // (ProcedureChecklist) triggers HospitalizationReportsSection's own
-  // create-or-resume + auto-dictate flow via this ref — the two are
-  // siblings, so this is the hookup between them.
+  // The Procedure Checklist's/Day Treatment Plan's "Open Dental/Surgical
+  // Report"/"Enter Test Result" buttons trigger HospitalizationReportsSection's
+  // own create-or-resume flow via this ref — the two are siblings, so this
+  // is the hookup between them. On a day procedure that section is always
+  // mounted, but on a regular admission it only mounts once "Reports" is
+  // expanded (see reportsOpen below) — if the ref isn't live yet, open
+  // Reports first and run the action once it mounts (see the effect below)
+  // instead of it silently doing nothing.
+  function runChecklistAction(action, opts) {
+    if (action === 'dental') return reportsSectionRef.current?.openOrStartDentalReport();
+    if (action === 'surgery') return reportsSectionRef.current?.openOrStartSurgicalReport(opts?.procedureName, opts?.isSpayNeuter);
+    if (action === 'test') return reportsSectionRef.current?.openOrStartTestResult(opts?.goodsServiceId);
+  }
+
   function openReportFromChecklist(action, opts) {
-    if (action === 'dental') reportsSectionRef.current?.openOrStartDentalReport();
-    else if (action === 'surgery') reportsSectionRef.current?.openOrStartSurgicalReport(opts?.procedureName, opts?.isSpayNeuter);
+    if (reportsSectionRef.current) return runChecklistAction(action, opts);
+    setReportsOpen(true);
+    setPendingChecklistAction({ action, opts });
   }
   const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
   const [consentForms, setConsentForms] = useState([]);
@@ -124,6 +136,14 @@ export default function HospitalizationDetailPage() {
   const [noteAddCategory, setNoteAddCategory] = useState('product');
   const [pendingItemCategory, setPendingItemCategory] = useState('product');
   const [reportsOpen, setReportsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!pendingChecklistAction || !reportsSectionRef.current) return;
+    const { action, opts } = pendingChecklistAction;
+    setPendingChecklistAction(null);
+    runChecklistAction(action, opts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingChecklistAction, reportsOpen]);
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`)
@@ -948,6 +968,7 @@ export default function HospitalizationDetailPage() {
           {signedConsentFormsList}
           <PatientReportOverview patientId={admission.patient_id} title="Earlier reports for this patient" />
           <HospitalizationReportsSection
+            ref={reportsSectionRef}
             hospitalizationId={id}
             admission={admission}
             staff={staff}
@@ -970,6 +991,7 @@ export default function HospitalizationDetailPage() {
         catalog={catalog}
         subcategories={subcategories}
         onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+        onOpenReport={openReportFromChecklist}
       />
       <div className="split">
       <div className="split-main">

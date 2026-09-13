@@ -2858,6 +2858,20 @@ button.secondary:hover {
   cursor: wait;
 }
 
+.schedule-block-inactive {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.schedule-block-inactive strong {
+  text-decoration: line-through;
+}
+
+.appointments-row-inactive {
+  color: #999;
+  background: #f7f7f7;
+}
+
 /* Bottom-edge resize handle on a surgery block (see startResizeAppointment)
    — a thin strip rather than a visible grip, so it doesn't clutter blocks
    that are often only ~20px tall; the resize cursor is the affordance. */

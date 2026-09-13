@@ -318,19 +318,23 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
     return staff.find((s) => s.id === id)?.full_name || 'Unknown';
   }
 
-  // Dental/surgical reports need more than a scroll — unlike xray/
-  // ultrasound/vaccine/test (still a plain anchor below), nothing
-  // auto-creates them ahead of time, so the link would otherwise land on
-  // an empty section with no dictation control in sight (see
-  // HospitalizationReportsSection, which owns the actual create+dictate
-  // flow — this just triggers it, mirroring what the mobile checklist
-  // does by navigating straight to a dictation screen).
-  function openReport(action, item) {
+  // Dental/surgical/test reports need more than a scroll — unlike xray/
+  // ultrasound/vaccine (still a plain anchor below, since those already
+  // auto-create their diagnostic the moment the item is added), nothing
+  // auto-creates a plain test's diagnostic row ahead of time, so the link
+  // would otherwise land on an empty section with no result field in
+  // sight (see HospitalizationReportsSection, which owns the actual
+  // create+dictate/find-or-create-diagnostic flow — this just triggers
+  // it, mirroring what the mobile checklist does by creating the
+  // diagnostic itself before navigating).
+  async function openReport(action, item) {
     const catalogItem = catalog.find((c) => c.id === item.goods_service_id);
     if (action === 'dental') {
       onOpenReport?.('dental');
     } else if (action === 'surgery' || action === 'spay_neuter') {
       onOpenReport?.('surgery', { procedureName: catalogItem?.name || item.label, isSpayNeuter: action === 'spay_neuter' });
+    } else if (action === 'test') {
+      await onOpenReport?.('test', { goodsServiceId: item.goods_service_id });
     }
     const href = ACTION_LINKS[action]?.href;
     if (href) document.querySelector(href)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -362,7 +366,7 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
         const last = done[done.length - 1];
         const action = checklistItemAction(item, catalog, subcategories);
         const link = ACTION_LINKS[action] || null;
-        const linkTriggersReport = action === 'dental' || action === 'surgery' || action === 'spay_neuter';
+        const linkTriggersReport = action === 'dental' || action === 'surgery' || action === 'spay_neuter' || action === 'test';
         return (
           <div key={item.id} className="procedure-checklist-row">
             <button
@@ -452,6 +456,14 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
                   </button>
                   <button type="button" onClick={cancelEditItem} disabled={editSaving}>
                     Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="day-plan-delete-action"
+                    onClick={() => removePlanItem(item.id)}
+                    disabled={editSaving || deletingId === item.id}
+                  >
+                    {deletingId === item.id ? 'Removing...' : 'Delete'}
                   </button>
                 </div>
               </div>

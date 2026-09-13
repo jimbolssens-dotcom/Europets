@@ -21,6 +21,7 @@ import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import AdministrationRoutePicker from '@/app/_components/AdministrationRoutePicker';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
+import { checklistItemAction } from '@/lib/checklistItemAction';
 import { supabase } from '@/lib/supabaseClient';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
@@ -32,12 +33,13 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalog, subcategories, onCatalogItemCreated }) {
+export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport }) {
   const [planItems, setPlanItems] = useState([]);
   const [todayNotes, setTodayNotes] = useState([]);
   const [authorId, setAuthorId] = useState('');
   const [loggingId, setLoggingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [openingTestId, setOpeningTestId] = useState(null);
   const [showCatalogAdd, setShowCatalogAdd] = useState(false);
   const [catalogGoodsServiceId, setCatalogGoodsServiceId] = useState('');
   const [catalogInstructions, setCatalogInstructions] = useState('');
@@ -249,6 +251,26 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
     loadPlanItems();
   }
 
+  // A plan item recognized as a lab test (blood panel, PCR, fecal, urine,
+  // ...) never gets its own diagnostics row just from being on this plan —
+  // ticking it done only logs a worksheet note, same as any other task.
+  // This asks the page's Reports section to find-or-create the matching
+  // diagnostic (same catalog item) so there's an actual result field/
+  // photo/file upload to land on, then scrolls to it — see
+  // HospitalizationReportsSection.openOrStartTestResult.
+  async function openTestResult(item) {
+    setOpeningTestId(item.id);
+    setError(null);
+    try {
+      await onOpenReport?.('test', { goodsServiceId: item.goods_service_id });
+      document.querySelector('#report-test-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (err) {
+      setError(err.message || 'Failed to open the test result');
+    } finally {
+      setOpeningTestId(null);
+    }
+  }
+
   function startLongPress(item) {
     longPressFired.current = false;
     longPressTimer.current = setTimeout(() => {
@@ -332,6 +354,7 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
         {planItems.map((item) => {
           const done = doneToday(item.id);
           const last = done[done.length - 1];
+          const isTest = checklistItemAction(item, catalog, subcategories) === 'test';
           return (
             <div key={item.id} className={`day-plan-task${done.length ? ' done' : ''}`}>
               <button
@@ -362,6 +385,16 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
                       : 'Not done yet today'}
                 </span>
               </button>
+              {isTest && onOpenReport && (
+                <button
+                  type="button"
+                  className="procedure-checklist-link day-plan-test-link"
+                  onClick={() => openTestResult(item)}
+                  disabled={openingTestId === item.id}
+                >
+                  {openingTestId === item.id ? 'Opening…' : 'Enter Test Result →'}
+                </button>
+              )}
               <button
                 type="button"
                 className="day-plan-remove"
@@ -402,6 +435,14 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
                     </button>
                     <button type="button" onClick={cancelEditItem} disabled={editSaving}>
                       Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="day-plan-delete-action"
+                      onClick={() => removePlanItem(item.id)}
+                      disabled={editSaving || deletingId === item.id}
+                    >
+                      {deletingId === item.id ? 'Removing...' : 'Delete'}
                     </button>
                   </div>
                 </div>
