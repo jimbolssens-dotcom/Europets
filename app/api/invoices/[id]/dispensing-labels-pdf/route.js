@@ -23,14 +23,27 @@ export async function GET(request, { params }) {
 
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
-    .select(
-      '*, clients(full_name), visits(patients(name)), hospitalizations(patients(name))'
-    )
+    .select('*, clients(full_name)')
     .eq('id', params.id)
     .single();
 
   if (invoiceError || !invoice) {
     return NextResponse.json({ error: 'invoice not found' }, { status: 404 });
+  }
+
+  // Two separate queries rather than one nested visits(...)/hospitalizations(...)
+  // embed off invoices — see app/api/invoices/[id]/route.js for why.
+  let patient = null;
+  if (invoice.visit_id) {
+    const { data: visit } = await supabase.from('visits').select('patients(name)').eq('id', invoice.visit_id).single();
+    patient = visit?.patients || null;
+  } else if (invoice.hospitalization_id) {
+    const { data: hospitalization } = await supabase
+      .from('hospitalizations')
+      .select('patients(name)')
+      .eq('id', invoice.hospitalization_id)
+      .single();
+    patient = hospitalization?.patients || null;
   }
 
   const { data: lineItems, error: itemsError } = await supabase
@@ -46,7 +59,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'no matching line items on this invoice' }, { status: 400 });
   }
 
-  const patientName = invoice.visits?.patients?.name || invoice.hospitalizations?.patients?.name || null;
+  const patientName = patient?.name || null;
   const ownerName = invoice.clients?.full_name || null;
 
   const items = lineItems.map((li) => ({

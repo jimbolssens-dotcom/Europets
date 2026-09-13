@@ -15,14 +15,31 @@ export const dynamic = 'force-dynamic';
 export async function GET(request, { params }) {
   const { data: invoice, error } = await supabase
     .from('invoices')
-    .select(
-      '*, clients(client_number, full_name, phone, email, address, trn), visits(patients(patient_number, name, species, microchip_number)), hospitalizations(patients(patient_number, name, species, microchip_number))'
-    )
+    .select('*, clients(client_number, full_name, phone, email, address, trn)')
     .eq('id', params.id)
     .single();
 
   if (error || !invoice) {
     return NextResponse.json({ error: 'invoice not found' }, { status: 404 });
+  }
+
+  // Two separate queries rather than one nested visits(...)/hospitalizations(...)
+  // embed off invoices — see app/api/invoices/[id]/route.js for why.
+  let patient = null;
+  if (invoice.visit_id) {
+    const { data: visit } = await supabase
+      .from('visits')
+      .select('patients(patient_number, name, species, microchip_number)')
+      .eq('id', invoice.visit_id)
+      .single();
+    patient = visit?.patients || null;
+  } else if (invoice.hospitalization_id) {
+    const { data: hospitalization } = await supabase
+      .from('hospitalizations')
+      .select('patients(patient_number, name, species, microchip_number)')
+      .eq('id', invoice.hospitalization_id)
+      .single();
+    patient = hospitalization?.patients || null;
   }
 
   const [{ data: lineItems }, { data: clinic }] = await Promise.all([
@@ -39,7 +56,7 @@ export async function GET(request, { params }) {
     lineItems: lineItems || [],
     clinic,
     client: invoice.clients,
-    patient: invoice.visits?.patients || invoice.hospitalizations?.patients || null,
+    patient,
   });
 
   return new NextResponse(Buffer.from(pdfBytes), {

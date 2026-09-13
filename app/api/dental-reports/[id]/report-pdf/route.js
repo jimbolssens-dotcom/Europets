@@ -32,14 +32,36 @@ const MAX_PHOTOS = 12;
 export async function GET(request, { params }) {
   const { data: report, error } = await supabase
     .from('dental_reports')
-    .select(
-      'id, ai_summary, dental_chart_snapshot, performed_at, staff(full_name), visits(patients(id, name, species, patient_number, dental_chart), clients(full_name, client_number)), hospitalizations(patients(id, name, species, patient_number, dental_chart), clients(full_name, client_number))'
-    )
+    .select('id, ai_summary, dental_chart_snapshot, performed_at, visit_id, hospitalization_id, staff(full_name)')
     .eq('id', params.id)
     .single();
 
   if (error || !report) {
     return NextResponse.json({ error: 'dental report not found' }, { status: 404 });
+  }
+
+  // Two separate queries rather than one nested visits(...)/hospitalizations(...)
+  // embed off dental_reports — a single 3-table-deep embed through whichever
+  // of visit_id/hospitalization_id happens to be set turned out to fail for
+  // hospitalization-linked reports specifically.
+  let patient = null;
+  let client = null;
+  if (report.visit_id) {
+    const { data: visit } = await supabase
+      .from('visits')
+      .select('patients(id, name, species, patient_number, dental_chart), clients(full_name, client_number)')
+      .eq('id', report.visit_id)
+      .single();
+    patient = visit?.patients || null;
+    client = visit?.clients || null;
+  } else if (report.hospitalization_id) {
+    const { data: hospitalization } = await supabase
+      .from('hospitalizations')
+      .select('patients(id, name, species, patient_number, dental_chart), clients(full_name, client_number)')
+      .eq('id', report.hospitalization_id)
+      .single();
+    patient = hospitalization?.patients || null;
+    client = hospitalization?.clients || null;
   }
 
   const [{ data: clinic }, { data: attachments }] = await Promise.all([
@@ -49,9 +71,6 @@ export async function GET(request, { params }) {
 
   const imageAttachments = (attachments || []).filter(isImageAttachment).slice(0, MAX_PHOTOS);
   const photos = (await Promise.all(imageAttachments.map(fetchAttachmentBytes))).filter(Boolean);
-
-  const patient = report.visits?.patients || report.hospitalizations?.patients;
-  const client = report.visits?.clients || report.hospitalizations?.clients;
 
   // Capture the chart exactly as it looked when this report was first
   // rendered. Later lifetime-chart cleanup (extracted -> missing) must not

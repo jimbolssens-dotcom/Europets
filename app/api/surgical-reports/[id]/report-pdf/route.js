@@ -21,17 +21,36 @@ const MAX_PHOTOS = 12;
 export async function GET(request, { params }) {
   const { data: report, error } = await supabase
     .from('surgical_reports')
-    .select(
-      'procedure_name, ai_summary, performed_at, staff(full_name), visits(patients(name, species, patient_number), clients(full_name, client_number)), hospitalizations(patients(name, species, patient_number), clients(full_name, client_number))'
-    )
+    .select('procedure_name, ai_summary, performed_at, visit_id, hospitalization_id, staff(full_name)')
     .eq('id', params.id)
     .single();
 
   if (error || !report) {
     return NextResponse.json({ error: 'surgical report not found' }, { status: 404 });
   }
-  const patient = report.visits?.patients || report.hospitalizations?.patients;
-  const client = report.visits?.clients || report.hospitalizations?.clients;
+
+  // Two separate queries rather than one nested visits(...)/hospitalizations(...)
+  // embed off surgical_reports — see the dental-reports version of this
+  // route for why.
+  let patient = null;
+  let client = null;
+  if (report.visit_id) {
+    const { data: visit } = await supabase
+      .from('visits')
+      .select('patients(name, species, patient_number), clients(full_name, client_number)')
+      .eq('id', report.visit_id)
+      .single();
+    patient = visit?.patients || null;
+    client = visit?.clients || null;
+  } else if (report.hospitalization_id) {
+    const { data: hospitalization } = await supabase
+      .from('hospitalizations')
+      .select('patients(name, species, patient_number), clients(full_name, client_number)')
+      .eq('id', report.hospitalization_id)
+      .single();
+    patient = hospitalization?.patients || null;
+    client = hospitalization?.clients || null;
+  }
 
   const [{ data: clinic }, { data: attachments }] = await Promise.all([
     supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),

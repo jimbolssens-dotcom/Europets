@@ -20,15 +20,33 @@ const EDITABLE_FIELDS = ['performed_by', 'findings', 'procedures_performed', 'no
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('dental_reports')
-    .select(
-      '*, staff(full_name), visits(patient_id, client_id, patients(name, species, patient_number, microchip_number), clients(full_name, phone, email, client_number)), hospitalizations(patient_id, client_id, patients(name, species, patient_number, microchip_number), clients(full_name, phone, email, client_number))'
-    )
+    .select('*, staff(full_name)')
     .eq('id', params.id)
     .single();
 
   if (error || !data) {
     return NextResponse.json({ error: 'dental report not found' }, { status: 404 });
   }
+
+  // Two separate queries rather than one nested visits(...)/hospitalizations(...)
+  // embed off dental_reports — see the report-pdf route in this same
+  // folder for why.
+  if (data.visit_id) {
+    const { data: visit } = await supabase
+      .from('visits')
+      .select('patient_id, client_id, patients(name, species, patient_number, microchip_number), clients(full_name, phone, email, client_number)')
+      .eq('id', data.visit_id)
+      .single();
+    data.visits = visit || null;
+  } else if (data.hospitalization_id) {
+    const { data: hospitalization } = await supabase
+      .from('hospitalizations')
+      .select('patient_id, client_id, patients(name, species, patient_number, microchip_number), clients(full_name, phone, email, client_number)')
+      .eq('id', data.hospitalization_id)
+      .single();
+    data.hospitalizations = hospitalization || null;
+  }
+
   return NextResponse.json(data);
 }
 

@@ -15,14 +15,30 @@ const VALID_STATUSES = ['void'];
 export async function GET(request, { params }) {
   const { data: invoice, error } = await supabase
     .from('invoices')
-    .select(
-      '*, clients(full_name, phone, email), visits(patients(id, name)), hospitalizations(patients(id, name), kind)'
-    )
+    .select('*, clients(full_name, phone, email)')
     .eq('id', params.id)
     .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 404 });
+  }
+
+  // Two separate queries rather than one nested visits(...)/hospitalizations(...)
+  // embed off invoices — a single embed through whichever of visit_id/
+  // hospitalization_id happens to be set turned out to fail for
+  // hospitalization-linked invoices specifically. invoice.visits/
+  // invoice.hospitalizations are still set below so callers reading them
+  // (the invoice detail page) don't need to change.
+  if (invoice.visit_id) {
+    const { data: visit } = await supabase.from('visits').select('patients(id, name)').eq('id', invoice.visit_id).single();
+    invoice.visits = visit || null;
+  } else if (invoice.hospitalization_id) {
+    const { data: hospitalization } = await supabase
+      .from('hospitalizations')
+      .select('patients(id, name), kind')
+      .eq('id', invoice.hospitalization_id)
+      .single();
+    invoice.hospitalizations = hospitalization || null;
   }
 
   const { data: lineItems, error: itemsError } = await supabase
