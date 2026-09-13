@@ -393,6 +393,10 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
                   longPressFired.current = false;
                   return;
                 }
+                // Already logged — nothing more to do here (use the report
+                // link above to get back into it); re-clicking must not
+                // log it as a second billable entry.
+                if (isDone) return;
                 logTask(item);
               }}
               onPointerDown={() => startLongPress(item)}
@@ -400,7 +404,7 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
               onPointerLeave={cancelLongPress}
               onContextMenu={(e) => e.preventDefault()}
               disabled={loggingId === item.id}
-              title="Long-press to correct its catalog item"
+              title={isDone ? 'Already logged — long-press to correct its catalog item' : 'Long-press to correct its catalog item'}
             >
               {loggingId === item.id ? 'Logging…' : isDone ? '✓ Done' : 'Not done yet'}
             </button>

@@ -193,11 +193,17 @@ export default function MobileDayProcedurePage() {
       return;
     }
 
+    // Tapping the tile again to get back into an already-logged item's
+    // report (the whole point of leaving it tappable once done) must not
+    // log it a second time — only the first tap that actually marks the
+    // item done should create a billable entry.
+    const alreadyLogged = isDone(item.id);
+
     setBusyId(item.id);
     setItemError((prev) => ({ ...prev, [item.id]: null }));
     try {
       if (action === 'dental') {
-        await logDone(item);
+        if (!alreadyLogged) await logDone(item);
         const report = await findOrCreateDentalReport();
         router.push(`/mobile/dental/${report.id}`);
         return;
@@ -213,18 +219,18 @@ export default function MobileDayProcedurePage() {
           procedureName: catalogItem?.name || item.label,
           isSpayNeuter: action === 'spay_neuter',
         });
-        await logDone(item);
+        if (!alreadyLogged) await logDone(item);
         if (action === 'surgery') router.push(`/mobile/surgery/${report.id}`);
         return;
       }
       if (action === 'xray' || action === 'ultrasound') {
         const diagnostic = await findOrCreateDiagnostic(item.goods_service_id);
         const report = await findOrCreateImagingReport(action, diagnostic.id);
-        await logDone(item);
+        if (!alreadyLogged) await logDone(item);
         router.push(`/mobile/${action}/${report.id}`);
         return;
       }
-      await logDone(item);
+      if (!alreadyLogged) await logDone(item);
     } catch (err) {
       setItemError((prev) => ({ ...prev, [item.id]: err.message || 'Something went wrong' }));
     } finally {
