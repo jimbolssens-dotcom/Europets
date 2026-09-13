@@ -75,6 +75,11 @@ export default function MobileSurgeryPickerPage() {
       });
       const data = await res.json();
       setStartingId(null);
+      if (res.status === 409 && data.existingVisitId) {
+        alert('This patient already has an open consult — opening it now.');
+        startSurgicalReport({ id: data.existingVisitId });
+        return;
+      }
       if (!res.ok) {
         setError(data.error || 'Failed to check in — please try again');
         return;

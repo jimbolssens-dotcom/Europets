@@ -17,6 +17,7 @@ import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
 import DentalChart from '@/app/_components/DentalChart';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
+import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import SpeciesField from '@/app/_components/SpeciesField';
 import PetAttributeField from '@/app/_components/PetAttributeField';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
@@ -41,6 +42,8 @@ export default function PatientDetailPage() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState(null);
   const [startingDayProcedure, setStartingDayProcedure] = useState(false);
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
+  const [statusOverview, setStatusOverview] = useState(null);
 
   const load = () =>
     fetch(`/api/patients/${id}`)
@@ -50,8 +53,14 @@ export default function PatientDetailPage() {
         setLoading(false);
       });
 
+  const loadStatusOverview = () =>
+    fetch(`/api/patients/${id}/status-overview`)
+      .then((res) => res.json())
+      .then((data) => setStatusOverview(data));
+
   useEffect(() => {
     load();
+    loadStatusOverview();
     fetch('/api/staff')
       .then((res) => res.json())
       .then((data) => setStaff(Array.isArray(data) ? data : []));
@@ -63,6 +72,22 @@ export default function PatientDetailPage() {
         { event: '*', schema: 'public', table: 'patients', filter: `id=eq.${id}` },
         () => load()
       )
+      // Any of these changing for this patient can flip a status pill
+      // (a consult finishing, an admission starting, an invoice getting
+      // paid) — invoices aren't filterable by patient_id directly, so
+      // that one just re-checks on any invoice change rather than trying
+      // to filter server-side.
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'visits', filter: `patient_id=eq.${id}` },
+        () => loadStatusOverview()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hospitalizations', filter: `patient_id=eq.${id}` },
+        () => loadStatusOverview()
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => loadStatusOverview())
       .subscribe();
 
     return () => {
@@ -86,6 +111,24 @@ export default function PatientDetailPage() {
       if (res.ok) router.push(`/hospitalization/${data.id}`);
     } finally {
       setStartingDayProcedure(false);
+    }
+  }
+
+  // A standalone invoice, not tied to any consult/hospitalization — for a
+  // client who buys something separately (food, a refill) while their pet
+  // has its own open case with its own bill (see POST /api/invoices).
+  async function createInvoice() {
+    setCreatingInvoice(true);
+    try {
+      const res = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: patient.client_id }),
+      });
+      const data = await res.json();
+      if (res.ok) router.push(`/invoices/${data.id}`);
+    } finally {
+      setCreatingInvoice(false);
     }
   }
 
@@ -173,31 +216,7 @@ export default function PatientDetailPage() {
       <div className="consult-header-row">
         <h1>
           {patient.name} <span>(Patient #{patient.patient_number})</span>
-          {patient.deceased && <span className="error"> · Deceased</span>}{' '}
-          <a href={`/appointments?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
-            Book Appointment
-          </a>{' '}
-          <a href={`/consults?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
-            New Consult
-          </a>{' '}
-          <button type="button" className="button-link" onClick={startDayProcedure} disabled={startingDayProcedure}>
-            {startingDayProcedure ? 'Starting...' : '📋 Day Procedure'}
-          </button>{' '}
-          <a href={`/invoices?client_id=${patient.client_id}`} className="button-link">
-            Invoice
-          </a>{' '}
-          <a href={`/patients/${patient.id}/history`} className="button-link">
-            📖 Full Patient History
-          </a>{' '}
-          <button type="button" className="button-link" onClick={toggleDeceased}>
-            {patient.deceased ? (
-              'Undo RIP'
-            ) : (
-              <>
-                Mark as RIP <span style={{ fontSize: '0.8em' }}>🐾</span>
-              </>
-            )}
-          </button>
+          {patient.deceased && <span className="error"> · Deceased</span>}
         </h1>
         <details className="patient-alerts-panel" open={patientAlerts.alerts.length > 0}>
           <summary>
@@ -205,6 +224,77 @@ export default function PatientDetailPage() {
           </summary>
           <PatientAlerts {...patientAlerts} staff={staff} />
         </details>
+      </div>
+
+      <div className="action-row">
+        <a href={`/appointments?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
+          Book Appointment
+        </a>
+        <button type="button" className="button-link" onClick={createInvoice} disabled={creatingInvoice}
+          title="Start a standalone invoice not tied to any consult or admission — e.g. a separate retail purchase">
+          {creatingInvoice ? 'Creating…' : 'Create Invoice'}
+        </button>
+        <a href={`/patients/${patient.id}/history`} className="button-link">
+          📖 Full Patient History
+        </a>
+        <button type="button" className="button-link" onClick={toggleDeceased}>
+          {patient.deceased ? (
+            'Undo RIP'
+          ) : (
+            <>
+              Mark as RIP <span style={{ fontSize: '0.8em' }}>🐾</span>
+            </>
+          )}
+        </button>
+        {/* Same color-coded pattern as the Consult/Hospitalization/Invoice
+            pages' own cross-record links: colored + linked straight to the
+            open record when one exists, plain pink "start one" when not —
+            an at-a-glance status overview instead of just a list of
+            actions. */}
+        <CrossRecordLinks>
+          {statusOverview?.consult ? (
+            <a className="button-link button-link-consult" href={`/consults/${statusOverview.consult.id}`}>
+              Consult
+            </a>
+          ) : (
+            <a href={`/consults?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
+              New Consult
+            </a>
+          )}
+          {statusOverview?.hospitalization ? (
+            <a
+              className="button-link button-link-hospitalization"
+              href={`/hospitalization/${statusOverview.hospitalization.id}`}
+            >
+              Hospitalization
+            </a>
+          ) : (
+            <a href="/hospitalization" className="button-link">
+              Admit to Hospital
+            </a>
+          )}
+          {statusOverview?.dayProcedure ? (
+            <a
+              className="button-link button-link-day-procedure"
+              href={`/hospitalization/${statusOverview.dayProcedure.id}`}
+            >
+              Day Procedure
+            </a>
+          ) : (
+            <button type="button" className="button-link" onClick={startDayProcedure} disabled={startingDayProcedure}>
+              {startingDayProcedure ? 'Starting...' : '📋 Day Procedure'}
+            </button>
+          )}
+          {statusOverview?.invoice ? (
+            <a className="button-link button-link-invoice" href={`/invoices/${statusOverview.invoice.id}`}>
+              Invoice
+            </a>
+          ) : (
+            <a href={`/invoices?client_id=${patient.client_id}`} className="button-link">
+              Invoice
+            </a>
+          )}
+        </CrossRecordLinks>
       </div>
 
       <div className="split">

@@ -56,7 +56,12 @@ export default function MobileConsultsPage() {
     });
     const data = await res.json();
     setStartingId(null);
-    if (res.ok) router.push(`/mobile/consults/${data.id}`);
+    if (res.status === 409 && data.existingVisitId) {
+      alert('This patient already has an open consult — opening it now.');
+      router.push(`/mobile/consults/${data.existingVisitId}`);
+    } else if (res.ok) {
+      router.push(`/mobile/consults/${data.id}`);
+    }
   }
 
   return (

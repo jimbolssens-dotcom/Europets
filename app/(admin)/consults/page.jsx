@@ -129,7 +129,12 @@ function ConsultsPageInner() {
     });
     const data = await res.json();
 
-    if (!res.ok) {
+    if (res.status === 409 && data.existingVisitId) {
+      alert('This patient already has an open consult — opening it now.');
+      setWalkIn(emptyWalkIn);
+      setSelectedOwner(null);
+      router.push(`/consults/${data.existingVisitId}`);
+    } else if (!res.ok) {
       setError(data.error || 'Failed to start consult');
     } else {
       setWalkIn(emptyWalkIn);

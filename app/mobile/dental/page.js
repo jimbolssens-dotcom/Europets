@@ -64,7 +64,12 @@ export default function MobileDentalPickerPage() {
     });
     const data = await res.json();
     setStartingId(null);
-    if (res.ok) startDentalReport(data);
+    if (res.status === 409 && data.existingVisitId) {
+      alert('This patient already has an open consult — opening it now.');
+      startDentalReport({ id: data.existingVisitId });
+    } else if (res.ok) {
+      startDentalReport(data);
+    }
   }
 
   return (

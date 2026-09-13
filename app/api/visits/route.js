@@ -8,6 +8,9 @@
 // A visit is started either from an appointment (pass appointment_id — the
 // patient/client/room/vet are taken from the appointment, which is also
 // marked 'checked_in') or as a walk-in (pass patient_id, room_id directly).
+// Rejects with 409 (+ existingVisitId) if that patient already has an
+// in_progress visit — every check-in screen redirects there instead of
+// creating a second, parallel consult for the same patient.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -79,6 +82,25 @@ export async function POST(request) {
     return NextResponse.json(
       { error: 'patient_id and room_id are required (directly, or via appointment_id)' },
       { status: 400 }
+    );
+  }
+
+  // A patient can only ever have one open consult at a time — whichever
+  // screen this came from (a walk-in, an appointment check-in, a mobile
+  // check-in) should land staff on that existing consult instead of
+  // starting a second one alongside it.
+  const { data: existingVisit } = await supabase
+    .from('visits')
+    .select('id')
+    .eq('patient_id', patient_id)
+    .eq('status', 'in_progress')
+    .limit(1)
+    .maybeSingle();
+
+  if (existingVisit) {
+    return NextResponse.json(
+      { error: 'This patient already has an open consult', existingVisitId: existingVisit.id },
+      { status: 409 }
     );
   }
 
