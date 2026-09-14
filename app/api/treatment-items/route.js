@@ -13,7 +13,12 @@
 //                                                           plan is invoiced (see
 //                                                           lib/invoicing.js) — waiving it is
 //                                                           just removing that fee line from the
-//                                                           invoice afterward.
+//                                                           invoice afterward. billable defaults
+//                                                           to true; pass false to log it on the
+//                                                           plan as a clinical record without it
+//                                                           ever turning into an invoice charge
+//                                                           (see migration 096) — e.g. the owner
+//                                                           already has this medication at home.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -47,7 +52,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { visit_id, hospitalization_note_id, goods_service_id, instructions, quantity } = body;
+  const { visit_id, hospitalization_note_id, goods_service_id, instructions, quantity, billable } = body;
 
   if (!goods_service_id) {
     return NextResponse.json({ error: 'goods_service_id is required' }, { status: 400 });
@@ -87,6 +92,7 @@ export async function POST(request) {
         instructions: instructions || null,
         quantity: quantity !== undefined && quantity !== '' ? Number(quantity) : 1,
         administration_method: resolved.administration_method,
+        billable: billable === false ? false : true,
       },
     ])
     .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price)')

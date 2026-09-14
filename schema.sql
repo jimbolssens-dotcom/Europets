@@ -312,6 +312,9 @@ create table treatment_items (
     instructions text,               -- dosage / frequency / duration
     quantity numeric(10,2) default 1,
     administration_method text check (administration_method in ('dispense', 'sc', 'im')),
+    billable boolean not null default true,  -- false: logged on the plan but never turned into an
+                                              -- invoice charge, e.g. the owner already has it at
+                                              -- home (see migration 096)
     created_at timestamptz default now()
 );
 

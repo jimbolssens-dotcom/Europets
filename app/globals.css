@@ -363,6 +363,14 @@ button:disabled {
   align-items: start;
 }
 
+/* A grid item's default min-width is auto, not 0 — without this, a wide
+   child (e.g. the Treatment Plan's item table, which grew a column) can
+   force its whole 1fr track wider than the other two instead of just
+   scrolling internally (see .table-wrap on that table). */
+.workbench > div {
+  min-width: 0;
+}
+
 .workbench form.card,
 .workbench .card {
   max-width: none;
@@ -715,6 +723,109 @@ td select {
   overflow-x: auto;
 }
 
+/* The consult Treatment Plan table sits in a 1/3-width .workbench column —
+   table-layout:auto (the default) sizes each column to its own content's
+   min-content width and sums them, which can exceed that column's actual
+   width even after wrapping, forcing this table into the .table-wrap
+   scrollbar above. Fixed layout + explicit column widths keeps every
+   column in view without scrolling: quantity, the given method (DIS/SC/IM
+   — see ADMINISTRATION_METHOD_CODES) and instructions are all editable
+   inline. Don't charge/Remove sit last and narrow, right where the eye
+   expects row actions — a checkbox and a plain icon button take far less
+   room than a second checkbox-plus-header would, leaving more of the row
+   for Instructions. */
+.treatment-items-table {
+  table-layout: fixed;
+}
+
+.treatment-items-table th:nth-child(1),
+.treatment-items-table td:nth-child(1) {
+  width: 22%;
+}
+
+.treatment-items-table th:nth-child(2),
+.treatment-items-table td:nth-child(2) {
+  width: 34%;
+}
+
+.treatment-items-table th:nth-child(3),
+.treatment-items-table td:nth-child(3) {
+  width: 8%;
+}
+
+.treatment-items-table th:nth-child(4),
+.treatment-items-table td:nth-child(4) {
+  width: 13%;
+}
+
+.treatment-items-table th:nth-child(5),
+.treatment-items-table td:nth-child(5) {
+  width: 15%;
+  text-align: center;
+}
+
+.treatment-items-table th:nth-child(6),
+.treatment-items-table td:nth-child(6) {
+  width: 8%;
+  text-align: center;
+}
+
+/* The quantity input's native spinner arrows otherwise eat almost this
+   whole narrow column, hiding the digit behind them entirely. */
+.treatment-items-table input[type='number']::-webkit-outer-spin-button,
+.treatment-items-table input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.treatment-items-table input[type='number'] {
+  -moz-appearance: textfield;
+  text-align: center;
+}
+
+.treatment-items-table th,
+.treatment-items-table td {
+  padding: 0.35rem 0.3rem;
+}
+
+.treatment-items-table th,
+.treatment-items-table td {
+  overflow-wrap: break-word;
+}
+
+/* "Don't charge", uppercased and letter-spaced by the generic th rule
+   above, is too wide for its narrow column at that treatment — mixed
+   case and a smaller size let it wrap onto two lines instead of
+   overflowing into the next column. */
+.treatment-items-table th:nth-child(5) {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.68rem;
+  line-height: 1.15;
+}
+
+.treatment-items-table td input,
+.treatment-items-table td select {
+  width: 100%;
+  min-width: 0;
+  padding: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.treatment-items-table td input[type='checkbox'] {
+  width: auto;
+}
+
+.treatment-item-remove {
+  background: transparent;
+  border: none;
+  color: #b91257;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0.15rem 0.3rem;
+  cursor: pointer;
+}
+
 th {
   background: var(--pink-tint);
   color: var(--pink-dark);
@@ -839,6 +950,26 @@ form.card label {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--ink);
+}
+
+/* form.card label / form.card input (see the fee-tag comment above
+   .vaccine-checklist-item) would otherwise stack this checkbox above its
+   own text full-width — !important keeps it a plain inline checkbox
+   beside the label, same fix as .vaccine-checklist-item. */
+.treat-item-billable-toggle {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: #555;
+}
+
+.treat-item-billable-toggle input {
+  width: auto !important;
+  padding: 0 !important;
+  border: none !important;
 }
 
 .vaccine-checklist-item {
