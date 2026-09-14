@@ -6,7 +6,12 @@
 // POST /api/hospitalizations/:id/notes  -> add a day's entry, optionally
 //                                           with a treatment_items array
 //                                           of catalog items given as part
-//                                           of that same entry
+//                                           of that same entry. Each item's
+//                                           billable defaults to true; pass
+//                                           false to log it without ever
+//                                           charging the invoice for it
+//                                           (see migration 096) — same flag
+//                                           as POST /api/treatment-items.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
@@ -158,6 +163,7 @@ export async function POST(request, { params }) {
     instructions: t.instructions || null,
     quantity: t.quantity !== undefined && t.quantity !== '' ? Number(t.quantity) : 1,
     administration_method: resolvedMethods[i].administration_method,
+    billable: t.billable === false ? false : true,
   }));
 
   if (itemRows.length > 0) {

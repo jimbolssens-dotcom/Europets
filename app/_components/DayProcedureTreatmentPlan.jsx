@@ -10,13 +10,20 @@
 // AND no notes text, and ProcedureChecklist only shows notes that DO have
 // plan_item_ids — so this never shows up as a stray empty note, only as a
 // line here and on the invoice.
+//
+// The list itself matches the consult page's Treatment Plan table exactly
+// (same .treatment-items-table styling and on-blur-commit editing) —
+// Instructions/Qty/Given adjustable straight from the list, a Don't
+// charge checkbox, and a compact × remove button — so items landing here
+// from the Procedure Checklist can be corrected the same way a dictated
+// consult item can.
 
 'use client';
 
 import { useEffect, useState } from 'react';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
-import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
+import { ADMINISTRATION_METHOD_LABELS, ADMINISTRATION_METHOD_CODES } from '@/lib/administrationMethods';
 import { subcategoryName } from '@/lib/catalogGrouping';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -26,9 +33,10 @@ function todayISODate() {
 
 export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, subcategories, onCatalogItemCreated }) {
   const [treatmentItems, setTreatmentItems] = useState([]);
-  const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1' });
+  const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1', billable: true });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [treatItemDrafts, setTreatItemDrafts] = useState({}); // item id -> { quantity, instructions } while typing, before it's saved on blur
 
   function loadTreatmentItems() {
     fetch(`/api/hospitalizations/${hospitalizationId}/notes`)
@@ -73,6 +81,7 @@ export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, 
           goods_service_id: treatForm.goods_service_id,
           instructions: treatForm.instructions,
           quantity: treatForm.quantity,
+          billable: treatForm.billable,
         }],
       }),
     });
@@ -82,13 +91,75 @@ export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, 
       setError(data.error || 'Failed to add item');
       return;
     }
-    setTreatForm({ goods_service_id: '', instructions: '', quantity: '1' });
+    setTreatForm({ goods_service_id: '', instructions: '', quantity: '1', billable: true });
     loadTreatmentItems();
   }
 
   async function deleteTreatmentItem(itemId) {
     await fetch(`/api/treatment-items/${itemId}`, { method: 'DELETE' });
     loadTreatmentItems();
+  }
+
+  // Toggled straight from the list — especially needed for an item that
+  // landed here from the Procedure Checklist, which never went through
+  // the add form's own checkbox in the first place.
+  async function toggleTreatmentItemBillable(item) {
+    await fetch(`/api/treatment-items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ billable: item.billable === false }),
+    });
+    loadTreatmentItems();
+  }
+
+  // Quantity/instructions/administration_method are all correctable
+  // straight from the list — same on-blur-commit pattern as the consult
+  // page's own Treatment Plan list and the invoice page's line items.
+  async function saveTreatmentItemField(itemId, patch) {
+    const res = await fetch(`/api/treatment-items/${itemId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || 'Failed to save changes');
+    }
+    setTreatItemDrafts((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+    loadTreatmentItems();
+  }
+
+  function commitTreatmentItemQuantity(item, value) {
+    const quantity = Number(value);
+    if (!value || Number.isNaN(quantity) || quantity <= 0 || quantity === Number(item.quantity)) {
+      setTreatItemDrafts((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+      return;
+    }
+    saveTreatmentItemField(item.id, { quantity });
+  }
+
+  function commitTreatmentItemInstructions(item, value) {
+    if (value === (item.instructions || '')) {
+      setTreatItemDrafts((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+      return;
+    }
+    saveTreatmentItemField(item.id, { instructions: value });
+  }
+
+  function changeTreatmentItemMethod(item, value) {
+    saveTreatmentItemField(item.id, { administration_method: value || null });
   }
 
   return (
@@ -118,46 +189,102 @@ export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, 
           value={treatForm.quantity}
           onChange={(e) => setTreatForm({ ...treatForm, quantity: e.target.value })}
         />
+        <label className="treat-item-billable-toggle">
+          <input
+            type="checkbox"
+            checked={!treatForm.billable}
+            onChange={(e) => setTreatForm({ ...treatForm, billable: !e.target.checked })}
+          />
+          Don't charge to invoice — owner already has this
+        </label>
         <button type="submit" disabled={submitting}>
           {submitting ? 'Adding...' : '+ Add'}
         </button>
       </form>
 
-      <table>
+      <div className="table-wrap">
+      <table className="treatment-items-table">
         <thead>
           <tr>
             <th>Item</th>
             <th>Instructions</th>
             <th>Qty</th>
             <th>Given</th>
+            <th>Don't charge</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {treatmentItems.length === 0 && (
             <tr>
-              <td colSpan={5}>No treatment items yet.</td>
+              <td colSpan={6}>No treatment items yet.</td>
             </tr>
           )}
-          {treatmentItems.map((t) => (
+          {treatmentItems.map((t) => {
+            const draft = treatItemDrafts[t.id];
+            return (
             <tr key={t.id}>
               <td>
                 {t.goods_services?.name}
                 {subcategoryName(subcategories, t.goods_services?.subcategory_id) &&
                   ` (${subcategoryName(subcategories, t.goods_services?.subcategory_id)})`}
               </td>
-              <td>{t.instructions}</td>
-              <td>{t.quantity}</td>
-              <td>{t.administration_method ? ADMINISTRATION_METHOD_LABELS[t.administration_method] : '—'}</td>
               <td>
-                <button type="button" onClick={() => deleteTreatmentItem(t.id)}>
-                  Remove
+                <input
+                  value={draft?.instructions ?? (t.instructions || '')}
+                  onChange={(e) =>
+                    setTreatItemDrafts({ ...treatItemDrafts, [t.id]: { ...draft, instructions: e.target.value } })
+                  }
+                  onBlur={(e) => commitTreatmentItemInstructions(t, e.target.value)}
+                />
+              </td>
+              <td>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={draft?.quantity ?? t.quantity}
+                  onChange={(e) =>
+                    setTreatItemDrafts({ ...treatItemDrafts, [t.id]: { ...draft, quantity: e.target.value } })
+                  }
+                  onBlur={(e) => commitTreatmentItemQuantity(t, e.target.value)}
+                />
+              </td>
+              <td>
+                <select
+                  value={t.administration_method || ''}
+                  onChange={(e) => changeTreatmentItemMethod(t, e.target.value)}
+                  title={t.administration_method ? ADMINISTRATION_METHOD_LABELS[t.administration_method] : 'Not a medication'}
+                >
+                  <option value="">—</option>
+                  <option value="dispense">{ADMINISTRATION_METHOD_CODES.dispense}</option>
+                  <option value="sc">{ADMINISTRATION_METHOD_CODES.sc}</option>
+                  <option value="im">{ADMINISTRATION_METHOD_CODES.im}</option>
+                </select>
+              </td>
+              <td>
+                <input
+                  type="checkbox"
+                  checked={t.billable === false}
+                  onChange={() => toggleTreatmentItemBillable(t)}
+                  title={t.billable === false ? 'Not charged — owner already has this' : 'Charged to invoice'}
+                />
+              </td>
+              <td>
+                <button
+                  type="button"
+                  className="treatment-item-remove"
+                  onClick={() => deleteTreatmentItem(t.id)}
+                  title="Remove from treatment plan"
+                >
+                  &times;
                 </button>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
