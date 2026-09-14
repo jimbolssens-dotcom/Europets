@@ -90,12 +90,10 @@ export default function ConsultDetailPage() {
 
   const [ultrasoundReports, setUltrasoundReports] = useState([]);
   const [dictatingUltrasoundFor, setDictatingUltrasoundFor] = useState(null); // diagnostic id currently starting a report
-  const [autoRecordUltrasoundId, setAutoRecordUltrasoundId] = useState(null);
   const [ultrasoundForm, setUltrasoundForm] = useState({}); // diagnostic id -> { performed_by, findings, notes }
 
   const [xrayReports, setXrayReports] = useState([]);
   const [dictatingXrayFor, setDictatingXrayFor] = useState(null); // diagnostic id currently starting a report
-  const [autoRecordXrayId, setAutoRecordXrayId] = useState(null);
   const [xrayForm, setXrayForm] = useState({}); // diagnostic id -> { performed_by, findings, notes }
 
   // Shared across all four report types' "Generate AI Report" button — only
@@ -573,12 +571,8 @@ export default function ConsultDetailPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId }),
     });
-    const data = await res.json();
     setDictatingUltrasoundFor(null);
-    if (res.ok) {
-      setAutoRecordUltrasoundId(data.id);
-      loadUltrasoundReports();
-    }
+    if (res.ok) loadUltrasoundReports();
   }
 
   // Same pattern, for an X-ray diagnostic entry.
@@ -589,12 +583,8 @@ export default function ConsultDetailPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId }),
     });
-    const data = await res.json();
     setDictatingXrayFor(null);
-    if (res.ok) {
-      setAutoRecordXrayId(data.id);
-      loadXrayReports();
-    }
+    if (res.ok) loadXrayReports();
   }
 
   // Alternative to "Dictate Report" for ultrasound/x-ray — types findings
@@ -1136,7 +1126,6 @@ export default function ConsultDetailPage() {
                         entityType="ultrasound_report"
                         entityId={ultrasoundReport.id}
                         onRefresh={loadUltrasoundReports}
-                        autoStart={ultrasoundReport.id === autoRecordUltrasoundId}
                       />
                       <AttachmentSection entityType="ultrasound_report" entityId={ultrasoundReport.id} />
                       <button
@@ -1233,7 +1222,6 @@ export default function ConsultDetailPage() {
                         entityType="xray_report"
                         entityId={xrayReport.id}
                         onRefresh={loadXrayReports}
-                        autoStart={xrayReport.id === autoRecordXrayId}
                       />
                       <AttachmentSection entityType="xray_report" entityId={xrayReport.id} />
                       <button
