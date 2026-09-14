@@ -11,9 +11,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { lockExtractedTeeth } from '@/lib/dentalChartLayout';
-import { compressAttachmentsForClosedRecord, isXrayDiagnostic } from '@/lib/attachmentCompression';
-import { generateReportForConsult } from '@/lib/consultReportGeneration';
+import { runConsultCompletionEffects } from '@/lib/consultCompletion';
 import { NextResponse } from 'next/server';
 
 export const maxDuration = 60;
@@ -97,76 +95,8 @@ export async function PATCH(request, { params }) {
       .eq('id', data.patient_id);
   }
 
-  if (status === 'complete' && data.appointment_id) {
-    await supabase
-      .from('appointments')
-      .update({ status: 'complete' })
-      .eq('id', data.appointment_id);
-  }
-
-  // Draft the client-facing report now, from whatever's in the record at
-  // completion time — staff still review/edit it (ClientReportEditor)
-  // before sharing, same as the surgical/dental reports. Best-effort:
-  // never let a Claude hiccup fail the "complete this consult" action,
-  // which has already succeeded above.
   if (status === 'complete') {
-    try {
-      const clientReport = await generateReportForConsult(data);
-      if (clientReport) {
-        const { error: reportError } = await supabase.from('visits').update({ ai_summary: clientReport }).eq('id', params.id);
-        if (reportError) throw reportError;
-        data.ai_summary = clientReport;
-      }
-    } catch {
-      // See comment above — this is a nice-to-have draft, not part of completing the consult.
-    }
-  }
-
-  // Completing a consult "locks in" this visit's dental work — any tooth
-  // just marked extracted (documented as such on the report already sent)
-  // becomes a plain missing tooth for every future visit, same as one
-  // that was already gone. Only touches patients with an actual dental
-  // report on this visit, and only if there's something to convert.
-  if (status === 'complete') {
-    const { data: dentalReports } = await supabase
-      .from('dental_reports')
-      .select('id')
-      .eq('visit_id', params.id)
-      .limit(1);
-    if (dentalReports?.length) {
-      const { data: patient } = await supabase
-        .from('patients')
-        .select('dental_chart')
-        .eq('id', data.patient_id)
-        .single();
-      const locked = lockExtractedTeeth(patient?.dental_chart);
-      if (locked && JSON.stringify(locked) !== JSON.stringify(patient.dental_chart)) {
-        await supabaseAdmin.from('patients').update({ dental_chart: locked }).eq('id', data.patient_id);
-      }
-    }
-
-    // The consult is done — its photos won't be pulled up again the way
-    // they are while active, so shrink them now to save Storage space.
-    // Best-effort: never let a compression hiccup fail the actual
-    // "complete this consult" action, which has already succeeded above.
-    try {
-      const [{ data: diagnostics }, { data: surgicalReports }, { data: dentalReports }] = await Promise.all([
-        supabase.from('diagnostics').select('id, type, goods_services(name)').eq('visit_id', params.id),
-        supabase.from('surgical_reports').select('id').eq('visit_id', params.id),
-        supabase.from('dental_reports').select('id').eq('visit_id', params.id),
-      ]);
-
-      const entityRefs = [
-        ...(diagnostics || []).map((d) => ({ entity_type: 'diagnostic', entity_id: d.id })),
-        ...(surgicalReports || []).map((r) => ({ entity_type: 'surgical_report', entity_id: r.id })),
-        ...(dentalReports || []).map((r) => ({ entity_type: 'dental_report', entity_id: r.id })),
-      ];
-      const xrayEntityIds = new Set((diagnostics || []).filter(isXrayDiagnostic).map((d) => d.id));
-
-      await compressAttachmentsForClosedRecord(entityRefs, xrayEntityIds);
-    } catch {
-      // See comment above — this is cleanup, not part of completing the consult.
-    }
+    await runConsultCompletionEffects(supabase, data);
   }
 
   return NextResponse.json(data);
