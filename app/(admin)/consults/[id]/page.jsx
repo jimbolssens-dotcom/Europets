@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
@@ -57,6 +57,7 @@ export default function ConsultDetailPage() {
   const [subcategories, setSubcategories] = useState([]);
 
   const [record, setRecord] = useState(null);
+  const lastServerRecordRef = useRef(null); // last record snapshot fetched from the server, to tell an untouched field from an unsaved edit on the next refresh
   const [savingRecord, setSavingRecord] = useState(false);
   const [recordError, setRecordError] = useState(null);
   const [vetChangeError, setVetChangeError] = useState(null);
@@ -134,12 +135,21 @@ export default function ConsultDetailPage() {
   // recording, an unsaved draft) when the vet switches tabs.
   const [activeTab, setActiveTab] = useState('exam');
 
+  // Reloaded automatically on every realtime change to this visit's row
+  // (see the postgres_changes subscription below) — including the AI's own
+  // treatment-plan-notes sync (see POST /api/treatment-items) — not just on
+  // the vet's own explicit actions, so a field the vet is mid-typing must
+  // survive a reload that landed elsewhere. Merges in the fresh server
+  // value per field, but only where the local value still matches the last
+  // server snapshot — i.e. the vet hasn't touched it since; an untouched
+  // field always takes the update (so e.g. the auto-added note appears),
+  // while a field they've since edited keeps their unsaved draft.
   const loadConsult = () =>
     fetch(`/api/visits/${id}`)
       .then((res) => res.json())
       .then((data) => {
         setConsult(data);
-        setRecord({
+        const serverRecord = {
           weight_kg: data.weight_kg ?? data.patients?.current_weight_kg ?? '',
           temperature_c: data.temperature_c ?? '',
           body_condition_score: data.body_condition_score ?? '',
@@ -148,7 +158,16 @@ export default function ConsultDetailPage() {
           diagnosis: data.diagnosis ?? '',
           test_results: data.test_results ?? '',
           treatment_notes: data.treatment_notes ?? '',
+        };
+        setRecord((prev) => {
+          if (!prev || !lastServerRecordRef.current) return serverRecord;
+          const merged = { ...serverRecord };
+          for (const field of Object.keys(serverRecord)) {
+            if (prev[field] !== lastServerRecordRef.current[field]) merged[field] = prev[field];
+          }
+          return merged;
         });
+        lastServerRecordRef.current = serverRecord;
         setLoading(false);
       });
 

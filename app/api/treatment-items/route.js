@@ -19,10 +19,19 @@
 //                                                           ever turning into an invoice charge
 //                                                           (see migration 096) — e.g. the owner
 //                                                           already has this medication at home.
+//                                                           Adding an item to a consult (visit_id)
+//                                                           also checks whether it's already
+//                                                           mentioned in that consult's own
+//                                                           "Treatment plan notes" narrative (the
+//                                                           text that actually carries into the
+//                                                           consult notes/report) and appends a
+//                                                           short line if not — best-effort, never
+//                                                           blocks the item being added.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
+import { checkTreatmentNoteCoverage } from '@/lib/anthropicClient';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -101,5 +110,32 @@ export async function POST(request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  if (visit_id) {
+    await syncTreatmentPlanNotes(visit_id, data.goods_services?.name, data.instructions);
+  }
+
   return NextResponse.json(data, { status: 201 });
+}
+
+// Best-effort: keeps the Vitals & Exam "Treatment plan notes" narrative in
+// sync with what actually lands on the treatment plan list, since that
+// narrative — not the list itself — is what carries into the consult
+// notes/report. Never blocks or fails the item add itself; a missed AI
+// call just leaves the vet's own narrative exactly as it was before this
+// existed.
+async function syncTreatmentPlanNotes(visitId, itemName, instructions) {
+  if (!itemName) return;
+  try {
+    const { data: visit } = await supabase.from('visits').select('treatment_notes').eq('id', visitId).single();
+    const currentNotes = visit?.treatment_notes || '';
+
+    const { already_covered, note_addition } = await checkTreatmentNoteCoverage(currentNotes, itemName, instructions);
+    if (already_covered || !note_addition) return;
+
+    const updatedNotes = currentNotes.trim() ? `${currentNotes}\n${note_addition}` : note_addition;
+    await supabase.from('visits').update({ treatment_notes: updatedNotes }).eq('id', visitId);
+  } catch (err) {
+    console.error('Failed to sync treatment plan notes for visit', visitId, err);
+  }
 }
