@@ -52,12 +52,20 @@ const PUBLIC_PATTERNS = [
   /^\/api\/hospitalizations\/[^/]+\/test-report-pdf$/,
 ];
 
-// Hospitalization by-id and its /notes are public for the client portal's
-// read-only status/worksheet view, but each also has a staff-only write
-// (PATCH the admission — status/room/cage/reason; POST a worksheet entry)
-// under the same path — a plain path-only pattern would expose those too,
-// so these two need the same GET-only carve-out as /api/staff below.
-const HOSPITALIZATION_READ_PATTERNS = [/^\/api\/hospitalizations\/[^/]+$/, /^\/api\/hospitalizations\/[^/]+\/notes$/];
+// Hospitalization by-id, its /notes, and its /messages are public for the
+// client portal's read-only status/worksheet/chat view, but each also has
+// a staff-only write (PATCH the admission — status/room/cage/reason; POST
+// a worksheet entry; POST a staff chat reply) under the same path — a
+// plain path-only pattern would expose those too, so these need the same
+// GET-only carve-out as /api/staff below. The client's own chat messages
+// go in via POST /api/hospitalizations/:id/request-update instead, which
+// is fully public (see PUBLIC_PATTERNS) since only the client ever sends
+// through that route.
+const HOSPITALIZATION_READ_PATTERNS = [
+  /^\/api\/hospitalizations\/[^/]+$/,
+  /^\/api\/hospitalizations\/[^/]+\/notes$/,
+  /^\/api\/hospitalizations\/[^/]+\/messages$/,
+];
 
 function isPublicPath(pathname, method) {
   if (pathname === '/api/staff' && method === 'GET') return true; // vet picker on the booking form

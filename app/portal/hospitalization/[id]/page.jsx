@@ -7,11 +7,11 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
-import { formatTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
+import { formatTime, formatDateTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 import { isWithinOfficeHours, OFFICE_HOURS_LABEL } from '@/lib/officeHours';
 
@@ -26,9 +26,11 @@ export default function HospitalizationPortalPage() {
   const { id } = useParams();
   const [admission, setAdmission] = useState(null);
   const [notes, setNotes] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [requestingUpdate, setRequestingUpdate] = useState(false);
-  const [updateMessage, setUpdateMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [draft, setDraft] = useState('');
+  const chatThreadRef = useRef(null);
 
   const loadAdmission = () =>
     fetch(`/api/hospitalizations/${id}`, { cache: 'no-store' })
@@ -43,9 +45,15 @@ export default function HospitalizationPortalPage() {
       .then((res) => res.json())
       .then((data) => setNotes(Array.isArray(data) ? data : []));
 
+  const loadMessages = () =>
+    fetch(`/api/hospitalizations/${id}/messages`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => setMessages(Array.isArray(data) ? data : []));
+
   useEffect(() => {
     loadAdmission();
     loadNotes();
+    loadMessages();
 
     const channel = supabase
       .channel(`portal-hospitalization-${id}`)
@@ -59,20 +67,38 @@ export default function HospitalizationPortalPage() {
         { event: '*', schema: 'public', table: 'hospitalization_notes', filter: `hospitalization_id=eq.${id}` },
         loadNotes
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hospitalization_messages', filter: `hospitalization_id=eq.${id}` },
+        loadMessages
+      )
       .subscribe();
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function requestUpdate() {
-    setRequestingUpdate(true);
+  // The thread is a fixed-height scroll box (see .portal-chat-thread) —
+  // without this it stays scrolled to the top, so a growing conversation
+  // shows the oldest messages instead of the latest one.
+  useEffect(() => {
+    if (chatThreadRef.current) {
+      chatThreadRef.current.scrollTop = chatThreadRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  async function sendMessage(e) {
+    e.preventDefault();
+    const text = draft.trim();
+    if (!text) return;
+    setSending(true);
     await fetch(`/api/hospitalizations/${id}/request-update`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: updateMessage.trim() }),
+      body: JSON.stringify({ message: text }),
     });
-    setRequestingUpdate(false);
-    setUpdateMessage('');
+    setSending(false);
+    setDraft('');
+    loadMessages();
     loadAdmission();
   }
 
@@ -98,42 +124,43 @@ export default function HospitalizationPortalPage() {
           {admission.discharged_at && ` · Discharged ${new Date(admission.discharged_at).toLocaleString()}`}
         </p>
         {admission.reason && <p>{admission.reason}</p>}
-        {admission.status === 'admitted' && (
-          <div className="portal-update-request">
-            {!admission.update_requested_at && (
-              <label className="portal-update-request-note">
-                Want to ask something specific? (optional)
-                <textarea
-                  rows={2}
-                  maxLength={500}
-                  placeholder="e.g. Is she eating yet?"
-                  value={updateMessage}
-                  onChange={(e) => setUpdateMessage(e.target.value)}
-                />
-              </label>
-            )}
-            <button type="button" onClick={requestUpdate} disabled={requestingUpdate || !!admission.update_requested_at}>
-              {requestingUpdate
-                ? 'Sending...'
-                : admission.update_requested_at
-                ? '🔔 Requested'
-                : '🔔 Request'}
-            </button>
-            {admission.update_requested_at && (
-              <>
-                <p className="visit-meta">
-                  {isWithinOfficeHours(new Date(admission.update_requested_at))
-                    ? "We've let the team know — they'll post an update soon."
-                    : `You've reached us outside office hours (${OFFICE_HOURS_LABEL}). We've received your request and will get back to you once we're back in the office.`}
-                </p>
-                {admission.update_request_message && (
-                  <p className="portal-update-request-sent">&quot;{admission.update_request_message}&quot;</p>
-                )}
-              </>
-            )}
-          </div>
-        )}
       </div>
+
+      {admission.status === 'admitted' && (
+        <div className="portal-card">
+          <h2>Message the Team</h2>
+          <div className="portal-chat-thread" ref={chatThreadRef}>
+            {messages.length === 0 && (
+              <p className="visit-meta">Ask us anything about {admission.patients?.name || 'your pet'} — we'll reply right here.</p>
+            )}
+            {messages.map((m) => (
+              <div key={m.id} className={`portal-chat-bubble portal-chat-bubble-${m.sender === 'client' ? 'mine' : 'theirs'}`}>
+                <p>{m.body}</p>
+                <span className="portal-chat-bubble-meta">
+                  {m.sender === 'staff' ? m.staff?.full_name || 'Europets Team' : 'You'} · {formatDateTime(m.created_at)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <form className="portal-chat-form" onSubmit={sendMessage}>
+            <textarea
+              rows={2}
+              maxLength={2000}
+              placeholder="e.g. Is she eating yet?"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+            />
+            <button type="submit" disabled={sending || !draft.trim()}>
+              {sending ? 'Sending...' : 'Send'}
+            </button>
+          </form>
+          {!isWithinOfficeHours(new Date()) && (
+            <p className="visit-meta">
+              You've reached us outside office hours ({OFFICE_HOURS_LABEL}) — we'll reply once we're back in the office.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="portal-card">
         <h2>Photos</h2>

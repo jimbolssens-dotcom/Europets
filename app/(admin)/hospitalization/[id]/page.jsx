@@ -60,6 +60,12 @@ export default function HospitalizationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [replyStaffId, setReplyStaffId] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+  const chatThreadRef = useRef(null);
   const [noteForm, setNoteForm] = useState(emptyNoteForm);
   const [pendingItems, setPendingItems] = useState([]);
   const [pendingItemForm, setPendingItemForm] = useState(emptyPendingItem);
@@ -185,6 +191,11 @@ export default function HospitalizationDetailPage() {
     setNotes(merged);
   };
 
+  const loadMessages = () =>
+    fetch(`/api/hospitalizations/${id}/messages`)
+      .then((res) => res.json())
+      .then((data) => setMessages(Array.isArray(data) ? data : []));
+
   const loadInvoiceInfo = () =>
     fetch(`/api/invoices?hospitalization_id=${id}`)
       .then((res) => res.json())
@@ -209,6 +220,7 @@ export default function HospitalizationDetailPage() {
   useEffect(() => {
     loadAdmission();
     loadNotes();
+    loadMessages();
     loadInvoiceInfo();
     loadConsentForms();
     loadLinkedDayProcedures();
@@ -233,6 +245,11 @@ export default function HospitalizationDetailPage() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hospitalization_notes', filter: `hospitalization_id=eq.${id}` },
         loadNotes
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hospitalization_messages', filter: `hospitalization_id=eq.${id}` },
+        loadMessages
       )
       .on(
         'postgres_changes',
@@ -672,6 +689,41 @@ export default function HospitalizationDetailPage() {
     loadAdmission();
   }
 
+  // Same fixed-height scroll box as the portal's thread — keep it pinned
+  // to the latest message instead of the top.
+  useEffect(() => {
+    if (chatThreadRef.current) {
+      chatThreadRef.current.scrollTop = chatThreadRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Pop the panel open whenever a new client message comes in (this fires
+  // on the timestamp actually changing, not just being present, so if
+  // staff close it back down while still pending, it stays closed until
+  // another message bumps the timestamp again).
+  useEffect(() => {
+    if (admission?.update_requested_at) setChatOpen(true);
+  }, [admission?.update_requested_at]);
+
+  // Replies directly into the client's chat thread — same effect on the
+  // "owner is waiting" flag as dismissUpdateRequest, but the client
+  // actually sees this text instead of the flag just quietly going away.
+  async function sendReply(e) {
+    e.preventDefault();
+    const text = replyDraft.trim();
+    if (!text || !replyStaffId) return;
+    setSendingReply(true);
+    await fetch(`/api/hospitalizations/${id}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: text, staff_id: replyStaffId }),
+    });
+    setSendingReply(false);
+    setReplyDraft('');
+    loadMessages();
+    loadAdmission();
+  }
+
   if (loading || !admission) return <p>Loading admission...</p>;
   if (admission.error) return <p>Admission not found.</p>;
 
@@ -772,20 +824,68 @@ export default function HospitalizationDetailPage() {
           <span>({admission.status})</span>{' '}
           {admission.kind === 'day_procedure' && <span className="day-procedure-badge">📋 Day Procedure</span>}
         </h1>
-      </div>
-      {admission.update_requested_at && (
-        <div className="update-requested-banner">
-          <span>
-            🔔 {admission.clients?.full_name || 'The owner'}
-            {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''} requested an
-            update at{' '}
-            {formatDateTime(admission.update_requested_at)}
-            {!isWithinOfficeHours(new Date(admission.update_requested_at)) && ' (after hours)'}
-            {admission.update_request_message && <> — &quot;{admission.update_request_message}&quot;</>}
-          </span>
-          <button type="button" onClick={dismissUpdateRequest}>
-            Dismiss
+        {admission.status === 'admitted' && (
+          <button
+            type="button"
+            className={`chat-toggle-pill${admission.update_requested_at ? ' chat-toggle-pending' : ''}`}
+            onClick={() => setChatOpen((v) => !v)}
+            aria-expanded={chatOpen}
+          >
+            {admission.update_requested_at ? (
+              <>
+                🔔 {admission.clients?.full_name || 'The owner'} is waiting on a reply
+              </>
+            ) : (
+              <>💬 Messages{messages.length > 0 ? ` (${messages.length})` : ''}</>
+            )}
+            <span className="chat-toggle-chev">{chatOpen ? '▾' : '▸'}</span>
           </button>
+        )}
+      </div>
+      {admission.status === 'admitted' && chatOpen && (
+        <div className="case-files hospitalization-chat">
+          {admission.update_requested_at && (
+            <p className="hospitalization-chat-meta">
+              Last message at {formatDateTime(admission.update_requested_at)}
+              {!isWithinOfficeHours(new Date(admission.update_requested_at)) && ' (after hours)'}
+              <button type="button" onClick={dismissUpdateRequest}>
+                Dismiss
+              </button>
+            </p>
+          )}
+          <div className="portal-chat-thread staff-chat-thread" ref={chatThreadRef}>
+            {messages.length === 0 && <p className="visit-meta">No messages yet.</p>}
+            {messages.map((m) => (
+              <div key={m.id} className={`portal-chat-bubble portal-chat-bubble-${m.sender === 'staff' ? 'mine' : 'theirs'}`}>
+                <p>{m.body}</p>
+                <span className="portal-chat-bubble-meta">
+                  {m.sender === 'staff'
+                    ? m.staff?.full_name || 'Staff'
+                    : admission.clients?.full_name || 'Owner'}{' '}
+                  · {formatDateTime(m.created_at)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <form className="portal-chat-form" onSubmit={sendReply}>
+            <select value={replyStaffId} onChange={(e) => setReplyStaffId(e.target.value)} required>
+              <option value="">Replying as...</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.full_name}
+                </option>
+              ))}
+            </select>
+            <textarea
+              rows={2}
+              placeholder="Reply to the owner..."
+              value={replyDraft}
+              onChange={(e) => setReplyDraft(e.target.value)}
+            />
+            <button type="submit" disabled={sendingReply || !replyDraft.trim() || !replyStaffId}>
+              {sendingReply ? 'Sending...' : 'Send'}
+            </button>
+          </form>
         </div>
       )}
       <p>

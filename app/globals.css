@@ -3657,52 +3657,145 @@ button.secondary:hover {
   color: #555;
 }
 
-/* "Request an Update" button on the hospitalization portal page — see
-   app/portal/hospitalization/[id]. Flags the case for staff on the Cage
-   Layout page (see .cage-update-requested below) until they respond. */
-.portal-update-request {
-  margin-top: 0.75rem;
+/* Staff-side toggle on the admission page (app/hospitalization/[id]),
+   sitting next to the patient name in .page-header — mirrors the
+   blinking cage for whichever page staff happen to be looking at first.
+   It's the open/close control for the chat panel below (see
+   .hospitalization-chat / .portal-chat-*), not just a notice: pending
+   (yellow) or not (neutral pink-tint), it's a button either way. */
+.chat-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--pink-tint);
+  color: var(--pink-dark);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: normal;
+  text-align: left;
 }
 
-.portal-update-request button:disabled {
-  opacity: 0.7;
-  cursor: default;
+.chat-toggle-pill.chat-toggle-pending {
+  background: #fff3cd;
+  border-color: #ffc107;
+  color: #6b5300;
 }
 
-.portal-update-request-note {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.85rem;
-  color: #555;
-  margin-bottom: 0.5rem;
+.chat-toggle-chev {
+  font-size: 0.75rem;
 }
 
-.portal-update-request-note textarea {
-  font-family: inherit;
-  resize: vertical;
-}
-
-.portal-update-request-sent {
-  font-style: italic;
-  color: #555;
-  margin-top: 0.3rem;
-}
-
-/* Staff-side banner on the admission page (app/hospitalization/[id]) when
-   a client has requested an update — mirrors the blinking cage, for
-   whichever page staff happen to be looking at first. */
-.update-requested-banner {
+.hospitalization-chat-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  background: #fff3cd;
-  border: 1px solid #ffc107;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0 0 0.6rem;
+}
+
+.hospitalization-chat-meta button {
+  padding: 0.2rem 0.65rem;
+  font-size: 0.78rem;
+}
+
+/* Two-way hospitalization chat (migration 097) — shared bubble styling
+   between the client portal (app/portal/hospitalization/[id]) and the
+   staff admission page (app/(admin)/hospitalization/[id]). "mine" is
+   whoever is looking at the page (the client on the portal, staff on the
+   admin page) — right-aligned and in the brand pink; "theirs" is the
+   other party — left-aligned and neutral. Each page computes which
+   physical sender maps to which class itself, since "mine" flips
+   depending on who's viewing. */
+.portal-chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 0.25rem 0.25rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.staff-chat-thread {
+  max-height: 300px;
+  background: #fafafa;
+  border: 1px solid #eee;
   border-radius: 8px;
-  padding: 0.6rem 1rem;
-  margin: 0.75rem 0;
-  font-weight: 600;
+  padding: 0.75rem;
+}
+
+.portal-chat-bubble {
+  max-width: 80%;
+  padding: 0.5rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
+.portal-chat-bubble p {
+  margin: 0 0 0.2rem;
+  white-space: pre-wrap;
+}
+
+.portal-chat-bubble-mine {
+  align-self: flex-end;
+  background: var(--pink);
+  color: white;
+  border-bottom-right-radius: 3px;
+}
+
+.portal-chat-bubble-mine .portal-chat-bubble-meta {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.portal-chat-bubble-theirs {
+  align-self: flex-start;
+  background: #eee;
+  color: var(--ink);
+  border-bottom-left-radius: 3px;
+}
+
+.portal-chat-bubble-theirs .portal-chat-bubble-meta {
+  color: #666;
+}
+
+.portal-chat-bubble-meta {
+  display: block;
+  font-size: 0.72rem;
+}
+
+.portal-chat-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.portal-chat-form textarea {
+  flex: 1;
+  font-family: inherit;
+  resize: vertical;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+/* The staff reply form adds a "Replying as..." staff picker before the
+   textarea — same row on a wide screen, its own row above the textarea
+   once things get tight, since the picker's contents (a full name list)
+   can't shrink the way the textarea can. */
+.hospitalization-chat .portal-chat-form {
+  flex-wrap: wrap;
+}
+
+.hospitalization-chat .portal-chat-form select {
+  flex: 0 0 auto;
+}
+
+.hospitalization-chat .portal-chat-form textarea {
+  flex-basis: 200px;
 }
 
 .portal-note {
