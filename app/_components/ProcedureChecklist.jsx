@@ -41,7 +41,7 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
   const [planItems, setPlanItems] = useState([]);
   const [loggedNotes, setLoggedNotes] = useState([]);
   const [authorId, setAuthorId] = useState('');
-  const [loggingId, setLoggingId] = useState(null);
+  const [loggingIds, setLoggingIds] = useState(() => new Set());
   const [deletingId, setDeletingId] = useState(null);
   const [showCatalogAdd, setShowCatalogAdd] = useState(false);
   const [catalogGoodsServiceId, setCatalogGoodsServiceId] = useState('');
@@ -58,6 +58,7 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);
   const lastNoteRef = useRef(null);
+  const logQueueRef = useRef(Promise.resolve());
 
   function loadPlanItems() {
     fetch(`/api/hospitalizations/${hospitalizationId}/plan-items`)
@@ -135,37 +136,56 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
     return loggedNotes.filter(isValid).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
   }
 
-  async function logTask(item) {
+  // Taps fire off fetches without waiting for each other, so two items
+  // ticked closer together than one round-trip would otherwise both call
+  // findMergeableNote() before either's create/merge has actually
+  // finished — each sees no mergeable note yet and both create their own
+  // entry instead of the second merging into the first. Chaining every
+  // tap onto one shared queue forces them to run strictly one after
+  // another, so by the time a tap checks for a mergeable note, the
+  // previous tap's result (via lastNoteRef, updated synchronously) is
+  // already there to merge into. Same fix as DayTreatmentPlan.
+  function logTask(item) {
     setError(null);
-    setLoggingId(item.id);
+    setLoggingIds((prev) => new Set(prev).add(item.id));
 
-    try {
-      const mergeInto = findMergeableNote();
-      if (mergeInto) {
-        await mergeTaskIntoNote(mergeInto, item);
-      } else {
-        await createTaskNote(item);
+    const run = async () => {
+      let succeeded = false;
+      try {
+        const mergeInto = findMergeableNote();
+        if (mergeInto) {
+          await mergeTaskIntoNote(mergeInto, item);
+        } else {
+          await createTaskNote(item);
+        }
+        succeeded = true;
+      } catch (err) {
+        setError(err.message || 'Failed to log task');
+      } finally {
+        setLoggingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
+        loadLoggedNotes();
       }
-    } catch (err) {
-      setLoggingId(null);
-      setError(err.message || 'Failed to log task');
-      return;
-    }
-    setLoggingId(null);
-    loadLoggedNotes();
+      if (!succeeded) return;
 
-    // A spay/neuter or other surgery gets its own surgical report the
-    // moment it's confirmed done, instead of waiting for someone to
-    // separately start one from Reports — see lib/surgicalReportAuto.js.
-    const action = checklistItemAction(item, catalog, subcategories);
-    if (action === 'spay_neuter' || action === 'surgery') {
-      const catalogItem = catalog.find((c) => c.id === item.goods_service_id);
-      ensureSurgicalReport({
-        hospitalizationId,
-        procedureName: catalogItem?.name || item.label,
-        isSpayNeuter: action === 'spay_neuter',
-      }).catch(() => {});
-    }
+      // A spay/neuter or other surgery gets its own surgical report the
+      // moment it's confirmed done, instead of waiting for someone to
+      // separately start one from Reports — see lib/surgicalReportAuto.js.
+      const action = checklistItemAction(item, catalog, subcategories);
+      if (action === 'spay_neuter' || action === 'surgery') {
+        const catalogItem = catalog.find((c) => c.id === item.goods_service_id);
+        ensureSurgicalReport({
+          hospitalizationId,
+          procedureName: catalogItem?.name || item.label,
+          isSpayNeuter: action === 'spay_neuter',
+        }).catch(() => {});
+      }
+    };
+
+    logQueueRef.current = logQueueRef.current.then(run, run);
   }
 
   async function createTaskNote(item) {
@@ -395,10 +415,10 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
               onPointerUp={cancelLongPress}
               onPointerLeave={cancelLongPress}
               onContextMenu={(e) => e.preventDefault()}
-              disabled={loggingId === item.id}
+              disabled={loggingIds.has(item.id)}
               title={isDone ? 'Already logged — long-press to correct its catalog item' : 'Long-press to correct its catalog item'}
             >
-              {loggingId === item.id ? 'Logging…' : isDone ? '✓ Done' : 'Not done yet'}
+              {loggingIds.has(item.id) ? 'Logging…' : isDone ? '✓ Done' : 'Not done yet'}
             </button>
             <span className="procedure-checklist-label">
               {item.label}

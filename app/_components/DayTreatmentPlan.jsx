@@ -36,7 +36,7 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
   const [planItems, setPlanItems] = useState([]);
   const [todayNotes, setTodayNotes] = useState([]);
   const [authorId, setAuthorId] = useState('');
-  const [loggingId, setLoggingId] = useState(null);
+  const [loggingIds, setLoggingIds] = useState(() => new Set());
   const [deletingId, setDeletingId] = useState(null);
   const [openingTestId, setOpeningTestId] = useState(null);
   const [showCatalogAdd, setShowCatalogAdd] = useState(false);
@@ -52,6 +52,7 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);
   const lastNoteRef = useRef(null);
+  const logQueueRef = useRef(Promise.resolve());
 
   function loadPlanItems() {
     fetch(`/api/hospitalizations/${hospitalizationId}/plan-items`)
@@ -128,24 +129,40 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
     return todayNotes.filter(isValid).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
   }
 
-  async function logTask(item) {
+  // Taps fire off fetches without waiting for each other, so two tasks
+  // tapped closer together than one round-trip would otherwise both call
+  // findMergeableNote() before either's create/merge has actually
+  // finished — each sees no mergeable note yet and both create their own
+  // entry instead of the second merging into the first. Chaining every
+  // tap onto one shared queue forces them to run strictly one after
+  // another, so by the time a tap checks for a mergeable note, the
+  // previous tap's result (via lastNoteRef, updated synchronously) is
+  // already there to merge into.
+  function logTask(item) {
     setError(null);
-    setLoggingId(item.id);
+    setLoggingIds((prev) => new Set(prev).add(item.id));
 
-    try {
-      const mergeInto = findMergeableNote();
-      if (mergeInto) {
-        await mergeTaskIntoNote(mergeInto, item);
-      } else {
-        await createTaskNote(item);
+    const run = async () => {
+      try {
+        const mergeInto = findMergeableNote();
+        if (mergeInto) {
+          await mergeTaskIntoNote(mergeInto, item);
+        } else {
+          await createTaskNote(item);
+        }
+      } catch (err) {
+        setError(err.message || 'Failed to log task');
+      } finally {
+        setLoggingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
+        loadTodayNotes();
       }
-    } catch (err) {
-      setLoggingId(null);
-      setError(err.message || 'Failed to log task');
-      return;
-    }
-    setLoggingId(null);
-    loadTodayNotes();
+    };
+
+    logQueueRef.current = logQueueRef.current.then(run, run);
   }
 
   async function createTaskNote(item) {
@@ -362,7 +379,7 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
                 onPointerUp={cancelLongPress}
                 onPointerLeave={cancelLongPress}
                 onContextMenu={(e) => e.preventDefault()}
-                disabled={loggingId === item.id}
+                disabled={loggingIds.has(item.id)}
               >
                 <span className="day-plan-task-label">
                   {item.label}
@@ -370,7 +387,7 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
                 </span>
                 {item.instructions && <span className="day-plan-task-meta">{item.instructions}</span>}
                 <span className="day-plan-task-status">
-                  {loggingId === item.id
+                  {loggingIds.has(item.id)
                     ? 'Logging...'
                     : done.length
                       ? `✓ ${done.length > 1 ? `${done.length}× today · ` : ''}last ${formatTime(last.created_at)} · ${authorName(last.author_id)}`
