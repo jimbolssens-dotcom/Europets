@@ -46,6 +46,11 @@ export default function CatalogPage() {
   const [editSubcategoryName, setEditSubcategoryName] = useState('');
   const addDetailsRef = useRef(null);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [highlightedItemId, setHighlightedItemId] = useState(null);
+  const searchWrapRef = useRef(null);
+
   const loadItems = () =>
     fetch('/api/goods-services')
       .then((res) => res.json())
@@ -63,6 +68,45 @@ export default function CatalogPage() {
     loadItems();
     loadSubcategories();
   }, []);
+
+  // Close the search results dropdown on an outside click, same pattern as
+  // the <details>-based dropdowns elsewhere on this page but needed
+  // explicitly here since this one is a plain div (it needs to stay open
+  // while the input has focus and results are being scanned by keyboard).
+  useEffect(() => {
+    if (!searchOpen) return;
+    function handleClickOutside(e) {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
+        setSearchOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [searchOpen]);
+
+  // Jumping to a search result can switch tabs, so wait for that item's row
+  // to actually be in the DOM before scrolling to it, then briefly flash it
+  // so it's easy to spot in a long table.
+  useEffect(() => {
+    if (!highlightedItemId) return;
+    const el = document.getElementById(`catalog-item-${highlightedItemId}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const timer = setTimeout(() => setHighlightedItemId(null), 2200);
+    return () => clearTimeout(timer);
+  }, [highlightedItemId, activeTab]);
+
+  const searchResults = searchQuery.trim()
+    ? items
+        .filter((item) => item.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+        .slice(0, 8)
+    : [];
+
+  function goToSearchResult(item) {
+    setSearchQuery('');
+    setSearchOpen(false);
+    setActiveTab(item.main_category);
+    setHighlightedItemId(item.id);
+  }
 
   const tabItems = items.filter((item) => item.main_category === activeTab);
   const tabSubcategories = subcategories.filter((s) => s.main_category === activeTab);
@@ -261,6 +305,37 @@ export default function CatalogPage() {
         </div>
 
         <div className="catalog-tabs-actions">
+          <div className="catalog-search-wrap" ref={searchWrapRef}>
+            <input
+              type="text"
+              className="catalog-search-input"
+              placeholder="Search medicines, tests, services..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+            />
+            {searchOpen && searchQuery.trim() && (
+              <div className="catalog-search-dropdown">
+                {searchResults.length === 0 && <p className="catalog-search-empty">No matches.</p>}
+                <ul>
+                  {searchResults.map((item) => (
+                    <li key={item.id}>
+                      <button type="button" onClick={() => goToSearchResult(item)}>
+                        <span className="catalog-search-name">{item.name}</span>
+                        <span className="catalog-search-meta">
+                          {MAIN_CATEGORY_LABELS[item.main_category]} &middot; {subcategoryNameFor(item)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
           <details className="catalog-add-toggle" ref={addDetailsRef}>
             <summary className="catalog-tab">+ Add {MAIN_CATEGORY_LABELS[activeTab]}</summary>
             <div className="catalog-add-dropdown">
@@ -525,7 +600,14 @@ export default function CatalogPage() {
                 </td>
               </tr>
             ) : (
-              <tr key={item.id} className="catalog-row" onClick={() => startEdit(item)}>
+              <tr
+                key={item.id}
+                id={`catalog-item-${item.id}`}
+                className={
+                  item.id === highlightedItemId ? 'catalog-row catalog-row-highlight' : 'catalog-row'
+                }
+                onClick={() => startEdit(item)}
+              >
                 <td>{item.name}</td>
                 <td>{subcategoryNameFor(item)}</td>
                 <td>{item.pricing_type}</td>
