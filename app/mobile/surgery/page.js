@@ -41,9 +41,17 @@ export default function MobileSurgeryPickerPage() {
     });
   }, []);
 
+  // Resumes this visit's existing surgical report rather than always
+  // starting a fresh one — see the dental picker's identical comment for
+  // why (splits photos/dictation across two records otherwise).
   async function startSurgicalReport(visit) {
     setError(null);
     try {
+      const existing = await fetch(`/api/surgical-reports?visit_id=${visit.id}`).then((res) => res.json());
+      if (Array.isArray(existing) && existing.length > 0) {
+        router.push(`/mobile/surgery/${existing[existing.length - 1].id}`);
+        return;
+      }
       const res = await fetch('/api/surgical-reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

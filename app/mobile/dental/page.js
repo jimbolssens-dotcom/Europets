@@ -41,7 +41,18 @@ export default function MobileDentalPickerPage() {
     });
   }, []);
 
+  // Resumes this visit's existing dental report rather than always
+  // starting a fresh one — tapping the same "In Progress" patient twice
+  // (or once from here and once from the desktop side) used to create a
+  // second, unrelated report, silently splitting photos and dictation
+  // across two records so only one of them ever made it into the report
+  // actually shared with the owner.
   async function startDentalReport(visit) {
+    const existing = await fetch(`/api/dental-reports?visit_id=${visit.id}`).then((res) => res.json());
+    if (Array.isArray(existing) && existing.length > 0) {
+      router.push(`/mobile/dental/${existing[existing.length - 1].id}`);
+      return;
+    }
     const res = await fetch('/api/dental-reports', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
