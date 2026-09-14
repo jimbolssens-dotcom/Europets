@@ -40,12 +40,12 @@ function addMonths(dateStr, months) {
   return d.toISOString().slice(0, 10);
 }
 
-function makeEmptyForm() {
+function makeEmptyForm(defaultVetId = '') {
   return {
     vaccine_protocol_ids: [],
     date_given: todayISODate(),
     batch_number: '',
-    administered_by: '',
+    administered_by: defaultVetId,
     notes: '',
   };
 }
@@ -106,13 +106,23 @@ async function addInvoiceLine(invoiceId, item, quantity, description) {
   });
 }
 
-export function useVaccinations(patientId, species, invoiceContext = {}) {
+export function useVaccinations(patientId, species, invoiceContext = {}, defaultVetId = '') {
   const [vaccinations, setVaccinations] = useState([]);
   const [protocols, setProtocols] = useState([]);
   const [protocolsError, setProtocolsError] = useState(null);
-  const [form, setForm] = useState(makeEmptyForm);
+  const [form, setForm] = useState(() => makeEmptyForm(defaultVetId));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  // The attending vet (e.g. the consult's) usually loads a moment after
+  // this hook's first render — pre-fill "Administered by" once it's known,
+  // but only while the field is still blank so it never overrides a
+  // deliberate different choice.
+  useEffect(() => {
+    if (defaultVetId) {
+      setForm((prev) => (prev.administered_by ? prev : { ...prev, administered_by: defaultVetId }));
+    }
+  }, [defaultVetId]);
 
   const loadVaccinations = () =>
     fetch(`/api/vaccinations?patient_id=${patientId}`)
@@ -265,7 +275,7 @@ export function useVaccinations(patientId, species, invoiceContext = {}) {
     if (failed) {
       setError(failed.data.error || 'Failed to record one or more vaccinations');
     } else {
-      setForm(makeEmptyForm());
+      setForm(makeEmptyForm(defaultVetId));
       try {
         await billVaccinationVisit({ isPrimary, checkedProtocols, coreProtocol, rabiesGiven, boosterDue });
       } catch (billingError) {
