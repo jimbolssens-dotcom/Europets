@@ -159,11 +159,17 @@ export default function ConsultDetailPage() {
           test_results: data.test_results ?? '',
           treatment_notes: data.treatment_notes ?? '',
         };
+        // Captured before the ref is updated below: setRecord's updater
+        // can run after this .then() returns, by which point the ref
+        // would already hold serverRecord itself — comparing against that
+        // instead of the PREVIOUS snapshot would make every field look
+        // "changed" and this would never take an update.
+        const previousServerRecord = lastServerRecordRef.current;
         setRecord((prev) => {
-          if (!prev || !lastServerRecordRef.current) return serverRecord;
+          if (!prev || !previousServerRecord) return serverRecord;
           const merged = { ...serverRecord };
           for (const field of Object.keys(serverRecord)) {
-            if (prev[field] !== lastServerRecordRef.current[field]) merged[field] = prev[field];
+            if (prev[field] !== previousServerRecord[field]) merged[field] = prev[field];
           }
           return merged;
         });
@@ -260,6 +266,29 @@ export default function ConsultDetailPage() {
 
   function appendRecordField(field, text) {
     setRecord((prev) => ({ ...prev, [field]: prev[field] ? `${prev[field]}\n${text}` : text }));
+  }
+
+  // Weight/temperature get saved the moment the vet leaves the field,
+  // rather than waiting for the Save button below — a manually entered
+  // vital only stays put through a later dictation because
+  // recordingProcessing.js only ever fills a numeric field that's still
+  // null in the DB; while it's sitting unsaved in this form, dictating
+  // something else entirely still writes to this same visit row (a
+  // finding, a treatment note, ...), which briefly turns it into
+  // whatever the DB has for weight/temperature at that moment. Saving
+  // on blur closes that gap instead of just papering over it on this
+  // one screen (see loadConsult's merge above for the display side of
+  // the same problem).
+  async function saveVitalField(field, rawValue) {
+    const value = rawValue === '' ? null : Number(rawValue);
+    const res = await fetch(`/api/visits/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: value }),
+    });
+    if (res.ok && lastServerRecordRef.current) {
+      lastServerRecordRef.current = { ...lastServerRecordRef.current, [field]: value ?? '' };
+    }
   }
 
   // Dictated straight into the treatment item's own Instructions field —
@@ -752,7 +781,15 @@ export default function ConsultDetailPage() {
         <details className="consult-action-toggle">
           <summary className="button-link">🎙️ Record</summary>
           <div className="consult-action-dropdown">
-            <AudioRecorder entityType="visit" entityId={id} />
+            <AudioRecorder
+              entityType="visit"
+              entityId={id}
+              onRefresh={() => {
+                loadConsult();
+                loadDiagnostics();
+                loadTreatmentItems();
+              }}
+            />
           </div>
         </details>
       </div>
@@ -860,6 +897,7 @@ export default function ConsultDetailPage() {
               step="0.01"
               value={record.weight_kg}
               onChange={(e) => setRecord({ ...record, weight_kg: e.target.value })}
+              onBlur={(e) => saveVitalField('weight_kg', e.target.value)}
             />
           </label>
           <label>
@@ -869,6 +907,7 @@ export default function ConsultDetailPage() {
               step="0.1"
               value={record.temperature_c}
               onChange={(e) => setRecord({ ...record, temperature_c: e.target.value })}
+              onBlur={(e) => saveVitalField('temperature_c', e.target.value)}
             />
           </label>
           <label>
@@ -1096,6 +1135,7 @@ export default function ConsultDetailPage() {
                       <AudioRecorder
                         entityType="ultrasound_report"
                         entityId={ultrasoundReport.id}
+                        onRefresh={loadUltrasoundReports}
                         autoStart={ultrasoundReport.id === autoRecordUltrasoundId}
                       />
                       <AttachmentSection entityType="ultrasound_report" entityId={ultrasoundReport.id} />
@@ -1192,6 +1232,7 @@ export default function ConsultDetailPage() {
                       <AudioRecorder
                         entityType="xray_report"
                         entityId={xrayReport.id}
+                        onRefresh={loadXrayReports}
                         autoStart={xrayReport.id === autoRecordXrayId}
                       />
                       <AttachmentSection entityType="xray_report" entityId={xrayReport.id} />

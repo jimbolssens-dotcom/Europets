@@ -546,7 +546,9 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
               📷 {startingDentalPhoto ? 'Starting...' : 'Photo'}
             </button>
           </div>
-          {autoRecordDentalId && <AudioRecorder entityType="dental_report" entityId={autoRecordDentalId} autoStart />}
+          {autoRecordDentalId && (
+            <AudioRecorder entityType="dental_report" entityId={autoRecordDentalId} onRefresh={loadDentalReports} autoStart />
+          )}
           {(photoRecordDentalId || autoRecordDentalId) && (
             <AttachmentSection entityType="dental_report" entityId={photoRecordDentalId || autoRecordDentalId} />
           )}
@@ -581,7 +583,9 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
               📷 {startingSurgicalPhoto ? 'Starting...' : 'Photo'}
             </button>
           </div>
-          {autoRecordSurgicalId && <AudioRecorder entityType="surgical_report" entityId={autoRecordSurgicalId} autoStart />}
+          {autoRecordSurgicalId && (
+            <AudioRecorder entityType="surgical_report" entityId={autoRecordSurgicalId} onRefresh={loadSurgicalReports} autoStart />
+          )}
           {(photoRecordSurgicalId || autoRecordSurgicalId) && (
             <AttachmentSection entityType="surgical_report" entityId={photoRecordSurgicalId || autoRecordSurgicalId} />
           )}
@@ -602,13 +606,13 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
         {autoRecordUltrasoundId && (
           <div className="card">
             <p className="visit-meta">Ultrasound report — dictate now</p>
-            <AudioRecorder entityType="ultrasound_report" entityId={autoRecordUltrasoundId} autoStart />
+            <AudioRecorder entityType="ultrasound_report" entityId={autoRecordUltrasoundId} onRefresh={loadUltrasoundReports} autoStart />
           </div>
         )}
         {autoRecordXrayId && (
           <div className="card">
             <p className="visit-meta">X-ray report — dictate now</p>
-            <AudioRecorder entityType="xray_report" entityId={autoRecordXrayId} autoStart />
+            <AudioRecorder entityType="xray_report" entityId={autoRecordXrayId} onRefresh={loadXrayReports} autoStart />
           </div>
         )}
       </details>

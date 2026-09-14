@@ -21,9 +21,10 @@ const STATUS_LABEL = {
   error: 'Failed',
 };
 
-export default function AudioRecorder({ entityType, entityId, onExtractedFields, autoStart }) {
+export default function AudioRecorder({ entityType, entityId, onExtractedFields, onRefresh, autoStart }) {
   const [recording, setRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [items, setItems] = useState([]);
   const [expanded, setExpanded] = useState({});
@@ -196,6 +197,41 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
     load();
   }
 
+  // Everything above normally arrives on its own — a postgres_changes
+  // subscription on the page holding this recorder reloads its own fields
+  // the moment the webhook finishes writing them (see e.g. the consult
+  // page's `recordings` channel), the same way a manual browser refresh
+  // would just re-fetch them fresh. But that live channel depends on a
+  // websocket that stays connected, which isn't a given — especially in
+  // the wrapped app view, which has no pull-to-refresh or reload button to
+  // fall back on if it drops. This button does the same job without
+  // relying on that connection: re-fetch this recording's own status, and
+  // for a still-unsaved draft (entityType "hospitalization" — see
+  // onExtractedFields above) push its already-finished extraction into
+  // the form again even if this page reported it once already, since the
+  // point of pressing this is "it didn't take, put it in now."
+  async function forceRefresh() {
+    setRefreshing(true);
+    try {
+      const res = await fetch(`/api/recordings?entity_type=${entityType}&entity_id=${entityId}`);
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : [];
+      itemsRef.current = list;
+      setItems(list);
+      if (onExtractedFields) {
+        for (const r of list) {
+          if (r.status === 'done' && r.extracted_fields) {
+            seenDoneIdsRef.current?.add(r.id);
+            onExtractedFields(r.extracted_fields);
+          }
+        }
+      }
+      onRefresh?.();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <div className="recorder">
       {error && <p className="error">{error}</p>}
@@ -209,6 +245,15 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
             <span className="recorder-dot" /> Stop
           </button>
         )}
+        <button
+          type="button"
+          className="secondary"
+          onClick={forceRefresh}
+          disabled={refreshing}
+          title="Re-check this dictation and push it into the fields above, without waiting on a live update"
+        >
+          {refreshing ? 'Refreshing...' : '↻ Refresh'}
+        </button>
       </div>
 
       {items.length > 0 && (
