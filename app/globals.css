@@ -574,6 +574,30 @@ td select {
   gap: 0.4rem;
 }
 
+/* The Products/Tests/Services tabs and the "+ New" catalog-item toggle
+   share one row (rather than "+ New" sitting on its own row below the
+   search box) so picking a category and adding a missing item both live
+   at the top of the picker. */
+.catalog-picker-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.catalog-picker-tabs-row .catalog-tabs-compact {
+  margin: 0;
+}
+
+/* Matches .catalog-tab's compact sizing so "+ New" reads as part of the
+   same row of pills instead of a full-size button crowding it onto its
+   own line on a phone-width screen. */
+.catalog-picker-tabs-row .catalog-picker-add-toggle {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+}
+
 /* The Products/Tests/Services tabs share this row with the Add/
    Subcategories dropdown triggers on the right, so the item table below
    (.catalog-table-wrap) can use the page's full width instead of being
@@ -3123,6 +3147,10 @@ button.secondary:hover {
 }
 
 .recorder-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
   margin-bottom: 0.5rem;
 }
 

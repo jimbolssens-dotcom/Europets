@@ -89,20 +89,27 @@ export default function CatalogPicker({
 
   return (
     <div className="catalog-picker">
-      {!fixedMainCategory && (
-        <div className="catalog-tabs catalog-tabs-compact">
-          {MAIN_CATEGORIES.map((mc) => (
-            <button
-              key={mc}
-              type="button"
-              className={mc === activeCategory ? 'catalog-tab active' : 'catalog-tab'}
-              onClick={() => selectCategory(mc)}
-            >
-              {MAIN_CATEGORY_LABELS[mc]}s
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="catalog-picker-tabs-row">
+        {!fixedMainCategory && (
+          <div className="catalog-tabs catalog-tabs-compact">
+            {MAIN_CATEGORIES.map((mc) => (
+              <button
+                key={mc}
+                type="button"
+                className={mc === activeCategory ? 'catalog-tab active' : 'catalog-tab'}
+                onClick={() => selectCategory(mc)}
+              >
+                {MAIN_CATEGORY_LABELS[mc]}s
+              </button>
+            ))}
+          </div>
+        )}
+        {!adding && (
+          <button type="button" className="secondary catalog-picker-add-toggle" onClick={startAdding}>
+            + New
+          </button>
+        )}
+      </div>
 
       <SearchSelect
         items={groups.flatMap((group) =>
@@ -115,11 +122,7 @@ export default function CatalogPicker({
         placeholder="Type to search the catalog..."
       />
 
-      {!adding ? (
-        <button type="button" className="secondary catalog-picker-add-toggle" onClick={startAdding}>
-          + New
-        </button>
-      ) : (
+      {adding && (
         <div className="catalog-picker-inline-add">
           {createError && <p className="error">{createError}</p>}
           <input
