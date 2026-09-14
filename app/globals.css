@@ -2487,6 +2487,199 @@ button.secondary:hover {
   gap: 0.5rem;
 }
 
+/* Compact invoice list (app/(admin)/invoices/page.jsx) — one row per
+   invoice with just enough to scan (owner, patient, invoice #, date,
+   total, outstanding, status); clicking a row drops down the full
+   invoice card below it instead of every invoice always sitting open. */
+.invoice-row-list {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.invoice-row-card {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.invoice-row-summary {
+  display: grid;
+  /* minmax(90px, ...) on the name column is a real floor, not just a
+     ratio — without it, the date/total/due columns' own min-content
+     (numbers and a date never wrap) wins every fight for space on a
+     merely-narrow window, and the name column can be squeezed to a
+     single character while the others sit at full width. */
+  grid-template-columns: 10px minmax(90px, 1.6fr) 1fr 0.8fr 0.8fr auto 18px;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0.65rem 1rem;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.invoice-row-summary:hover {
+  background: var(--pink-tint);
+}
+
+/* min-width: 0 on the actual grid item is what lets its track shrink to
+   its 1.6fr share instead of growing to fit the unbroken name text —
+   without it the column (and therefore every column after it) sizes to
+   content and the ellipsis rules below never get a chance to apply. */
+.invoice-row-name-wrap {
+  min-width: 0;
+}
+
+.invoice-row-name {
+  display: block;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invoice-row-patient {
+  font-weight: 400;
+  color: #767171;
+}
+
+.invoice-row-inv {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: #767171;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invoice-row-date {
+  font-size: 0.82rem;
+  color: #767171;
+  white-space: nowrap;
+}
+
+.invoice-row-total {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.invoice-row-due {
+  text-align: right;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.invoice-row-due.zero {
+  font-weight: 400;
+  color: #767171;
+}
+
+.invoice-row-chev {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: #767171;
+  transition: transform 0.15s ease;
+}
+
+.invoice-row-summary[aria-expanded='true'] .invoice-row-chev {
+  transform: rotate(90deg);
+}
+
+.invoice-row-detail {
+  padding: 0 1rem 1rem;
+  border-top: 1px dashed #eee;
+}
+
+.invoice-row-detail-link {
+  font-size: 0.85rem;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.unpaid {
+  background: var(--pink);
+}
+
+.status-dot.partial {
+  background: #d99a1f;
+}
+
+.status-dot.paid {
+  background: #1f8a4c;
+}
+
+.status-dot.void {
+  background: #999;
+}
+
+.status-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.status-pill.unpaid {
+  background: var(--pink-tint);
+  color: var(--pink-dark);
+}
+
+.status-pill.partial {
+  background: #fbf0dc;
+  color: #8a5f0c;
+}
+
+.status-pill.paid {
+  background: #e8f5ec;
+  color: #1f8a4c;
+}
+
+.status-pill.void {
+  background: #eee;
+  color: #666;
+}
+
+/* Narrow enough that the fixed-column grid stops making sense — stack the
+   summary into two lines instead of squeezing every column. This has to
+   trigger well above a typical "mobile" width: the invoices page's
+   two-column .split layout (list + Open Invoice form) only drops to one
+   column at 900px, and a row with 5 nowrap fields packed into the
+   narrower list column starts running out of room again well before
+   that, around 1100px of total page width. */
+@media (max-width: 1100px) {
+  .invoice-row-summary {
+    grid-template-columns: 10px 1fr auto 18px;
+    grid-template-areas:
+      'dot name pill chev'
+      'dot meta total chev';
+    row-gap: 0.25rem;
+  }
+  .invoice-row-summary .status-dot { grid-area: dot; }
+  .invoice-row-summary .invoice-row-name-wrap { grid-area: name; }
+  .invoice-row-summary .status-pill { grid-area: pill; }
+  .invoice-row-summary .invoice-row-chev { grid-area: chev; }
+  .invoice-row-summary .invoice-row-date { grid-area: meta; text-align: left; }
+  .invoice-row-summary .invoice-row-total { display: none; }
+  .invoice-row-summary .invoice-row-due { grid-area: total; }
+}
+
 /* Balance summary + payment log + "log a payment" form on an invoice —
    app/_components/InvoicePaymentPanel.jsx, shared by the invoices list
    and the invoice detail page. */

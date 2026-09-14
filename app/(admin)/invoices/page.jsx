@@ -1,7 +1,12 @@
 // app/invoices/page.jsx
-// Invoice list + builder. Each invoice card fetches its own line items and
-// stays live via realtime, so totals update immediately as items are added
-// or removed on any terminal. VAT is UAE standard 5%, computed server-side.
+// Invoice list + builder. The list itself is a compact row per invoice
+// (owner, patient, invoice #, date, total, outstanding, status) — clicking
+// a row drops down the full invoice: line items, totals, the add-item
+// form, and the payment panel. That detail is only fetched and only stays
+// live via realtime while its row is expanded, so opening a filtered view
+// with many invoices doesn't open a realtime channel and a detail fetch
+// for every single one of them up front. VAT is UAE standard 5%, computed
+// server-side.
 
 'use client';
 
@@ -24,7 +29,25 @@ const STATUS_LABELS = {
   void: 'void',
 };
 
-function InvoiceCard({ summary, catalog, subcategories, staff, onCatalogChange, onChanged }) {
+// Maps a status to the compact row's dot/pill color — 'partial' and 'void'
+// are their own shorter class names distinct from the full status keys.
+const STATUS_DOT_CLASS = {
+  unpaid: 'unpaid',
+  partially_paid: 'partial',
+  paid: 'paid',
+  void: 'void',
+};
+
+function balanceDueFor(summary) {
+  return Math.max(0, Math.round((Number(summary.total) - Number(summary.amount_paid || 0)) * 100) / 100);
+}
+
+function patientNameFor(summary) {
+  return summary.visits?.patients?.name || summary.hospitalizations?.patients?.name || '';
+}
+
+function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, onChanged }) {
+  const [expanded, setExpanded] = useState(false);
   const [invoice, setInvoice] = useState(null);
   const [goodsServiceId, setGoodsServiceId] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -37,7 +60,13 @@ function InvoiceCard({ summary, catalog, subcategories, staff, onCatalogChange, 
       .then((res) => res.json())
       .then(setInvoice);
 
+  // Only fetch the full invoice (line items, payments) and only keep a
+  // realtime channel open for it while this row is actually expanded —
+  // collapsed rows already have everything they need to display from
+  // `summary` (see the page-level invoices-table subscription below for
+  // how those stay live too).
   useEffect(() => {
+    if (!expanded) return;
     loadInvoice();
 
     const channel = supabase
@@ -66,7 +95,7 @@ function InvoiceCard({ summary, catalog, subcategories, staff, onCatalogChange, 
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summary.id]);
+  }, [expanded, summary.id]);
 
   async function addLineItem(e) {
     e.preventDefault();
@@ -105,115 +134,140 @@ function InvoiceCard({ summary, catalog, subcategories, staff, onCatalogChange, 
     loadInvoice();
   }
 
-  if (!invoice) return null;
-
   const selected = catalog.find((c) => c.id === goodsServiceId);
-  const patientName = invoice.visits?.patients?.name || invoice.hospitalizations?.patients?.name;
-  const lineItemGroups = groupLineItemsByCategory(invoice.line_items);
-  const editable = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
+  const patientName = patientNameFor(summary);
+  const balanceDue = balanceDueFor(summary);
+  const dotClass = STATUS_DOT_CLASS[summary.status] || 'unpaid';
+  const invoiceNumberLabel = summary.invoice_number
+    ? `INV-${String(summary.invoice_number).padStart(6, '0')}`
+    : '';
+
+  const lineItemGroups = invoice ? groupLineItemsByCategory(invoice.line_items) : [];
+  const editable = invoice && (invoice.status === 'unpaid' || invoice.status === 'partially_paid');
   const columnCount = editable ? 5 : 4;
 
   return (
-    <div className="visit-card">
-      <div className="visit-header">
-        <div>
-          {invoice.invoice_number && (
-            <span className="visit-meta">INV-{String(invoice.invoice_number).padStart(6, '0')} · </span>
-          )}
-          <strong>
-            <a href={`/invoices/${summary.id}`}>{invoice.clients?.full_name}</a>
-          </strong>
-          {patientName ? ` — ${patientName}` : ''}
-          <div className="visit-meta">
-            Created: {new Date(invoice.created_at).toLocaleDateString()}
-            {invoice.paid_at && ` · Paid: ${new Date(invoice.paid_at).toLocaleDateString()}`}
-          </div>
-        </div>
-        <span>{STATUS_LABELS[invoice.status] || invoice.status}</span>
-      </div>
+    <div className="invoice-row-card">
+      <button
+        type="button"
+        className="invoice-row-summary"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        <span className={`status-dot ${dotClass}`}></span>
+        <span className="invoice-row-name-wrap">
+          <span className="invoice-row-name">
+            {summary.clients?.full_name}
+            {patientName && <span className="invoice-row-patient"> — {patientName}</span>}
+          </span>
+          {invoiceNumberLabel && <span className="invoice-row-inv">{invoiceNumberLabel}</span>}
+        </span>
+        <span className="invoice-row-date">{new Date(summary.created_at).toLocaleDateString()}</span>
+        <span className="invoice-row-total">AED {money(summary.total)}</span>
+        <span className={`invoice-row-due${balanceDue === 0 ? ' zero' : ''}`}>AED {money(balanceDue)}</span>
+        <span className={`status-pill ${dotClass}`}>{STATUS_LABELS[summary.status] || summary.status}</span>
+        <svg className="invoice-row-chev" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Qty</th>
-            <th>Unit price</th>
-            <th>Line total</th>
-            {editable && <th></th>}
-          </tr>
-        </thead>
-        <tbody>
-          {lineItemGroups.map((group) => (
-            <Fragment key={group.mainCategory || 'other'}>
-              <tr className="invoice-category-row">
-                <td colSpan={columnCount}>{group.label}</td>
-              </tr>
-              {group.items.map((li) => (
-                <tr key={li.id}>
-                  <td>{li.description}</td>
-                  <td>
-                    {li.quantity} {li.goods_services?.unit || ''}
-                  </td>
-                  <td>{money(li.unit_price)}</td>
-                  <td>{money(li.line_total)}</td>
-                  {editable && (
-                    <td>
-                      <button type="button" onClick={() => removeLineItem(li.id)}>
-                        Remove
-                      </button>
-                    </td>
+      {expanded && (
+        <div className="invoice-row-detail">
+          {!invoice ? (
+            <p>Loading...</p>
+          ) : (
+            <>
+              <p className="invoice-row-detail-link">
+                <a href={`/invoices/${summary.id}`}>Open full invoice page ↗</a>
+                {invoice.paid_at && ` · Paid: ${new Date(invoice.paid_at).toLocaleDateString()}`}
+              </p>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Unit price</th>
+                    <th>Line total</th>
+                    {editable && <th></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {lineItemGroups.map((group) => (
+                    <Fragment key={group.mainCategory || 'other'}>
+                      <tr className="invoice-category-row">
+                        <td colSpan={columnCount}>{group.label}</td>
+                      </tr>
+                      {group.items.map((li) => (
+                        <tr key={li.id}>
+                          <td>{li.description}</td>
+                          <td>
+                            {li.quantity} {li.goods_services?.unit || ''}
+                          </td>
+                          <td>{money(li.unit_price)}</td>
+                          <td>{money(li.line_total)}</td>
+                          {editable && (
+                            <td>
+                              <button type="button" onClick={() => removeLineItem(li.id)}>
+                                Remove
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                  {invoice.line_items.length === 0 && (
+                    <tr>
+                      <td colSpan={5}>No line items yet.</td>
+                    </tr>
                   )}
-                </tr>
-              ))}
-            </Fragment>
-          ))}
-          {invoice.line_items.length === 0 && (
-            <tr>
-              <td colSpan={5}>No line items yet.</td>
-            </tr>
+                </tbody>
+              </table>
+
+              <p>
+                Subtotal: {money(invoice.subtotal)} · VAT (5%): {money(invoice.vat_amount)} · <strong>Total: {money(invoice.total)}</strong>
+              </p>
+
+              {editable && (
+                <form className="note-form catalog-add-form" onSubmit={addLineItem}>
+                  {error && <p className="error">{error}</p>}
+                  <CatalogPicker
+                    catalog={catalog}
+                    subcategories={subcategories}
+                    value={goodsServiceId}
+                    onChange={setGoodsServiceId}
+                    onItemCreated={onCatalogChange}
+                    onCategoryChange={setAddCategory}
+                  />
+                  <div className="catalog-add-form-row">
+                    <input
+                      className="qty-input"
+                      type="number"
+                      step="0.01"
+                      placeholder={selected?.pricing_type === 'per_kg' ? 'kg (blank = patient weight)' : 'qty (default 1)'}
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                    />
+                    <button type="submit" disabled={submitting || !goodsServiceId}>
+                      + Add
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              <InvoicePaymentPanel
+                invoice={invoice}
+                staff={staff}
+                onChanged={() => {
+                  loadInvoice();
+                  onChanged();
+                }}
+              />
+            </>
           )}
-        </tbody>
-      </table>
-
-      <p>
-        Subtotal: {money(invoice.subtotal)} · VAT (5%): {money(invoice.vat_amount)} · <strong>Total: {money(invoice.total)}</strong>
-      </p>
-
-      {editable && (
-        <form className="note-form catalog-add-form" onSubmit={addLineItem}>
-          {error && <p className="error">{error}</p>}
-          <CatalogPicker
-            catalog={catalog}
-            subcategories={subcategories}
-            value={goodsServiceId}
-            onChange={setGoodsServiceId}
-            onItemCreated={onCatalogChange}
-            onCategoryChange={setAddCategory}
-          />
-          <div className="catalog-add-form-row">
-            <input
-              className="qty-input"
-              type="number"
-              step="0.01"
-              placeholder={selected?.pricing_type === 'per_kg' ? 'kg (blank = patient weight)' : 'qty (default 1)'}
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-            />
-            <button type="submit" disabled={submitting || !goodsServiceId}>
-              + Add
-            </button>
-          </div>
-        </form>
+        </div>
       )}
-
-      <InvoicePaymentPanel
-        invoice={invoice}
-        staff={staff}
-        onChanged={() => {
-          loadInvoice();
-          onChanged();
-        }}
-      />
     </div>
   );
 }
@@ -260,6 +314,29 @@ function InvoicesPageInner() {
     setLoading(true);
     loadInvoices(statusFilter);
   }, [statusFilter]);
+
+  // One list-level subscription keeps every collapsed row's total/status
+  // fresh (e.g. another terminal logs a payment) without opening a
+  // per-invoice realtime channel for every row up front — those only open
+  // once a row is actually expanded (see InvoiceRow above).
+  const statusFilterRef = useRef(statusFilter);
+  useEffect(() => {
+    statusFilterRef.current = statusFilter;
+  }, [statusFilter]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('invoices-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => {
+        loadInvoices(statusFilterRef.current);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -344,9 +421,9 @@ function InvoicesPageInner() {
       ) : invoices.length === 0 ? (
         <p>No invoices in this view.</p>
       ) : (
-        <div className="visit-board">
+        <div className="invoice-row-list">
           {invoices.map((inv) => (
-            <InvoiceCard
+            <InvoiceRow
               key={inv.id}
               summary={inv}
               catalog={catalog}
