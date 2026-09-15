@@ -29,14 +29,31 @@ The honeycomb isn't decoration borrowed from a wallpaper — it's doing three
 jobs at once, which is what lets the medical content sit inside the geometry
 rather than on top of it.
 
-**The mark is the logo, rebuilt cell by cell.** `build-mark.js` reads
-`public/logo.png`, separates the artwork into three channels by colour
-(pink cross, near-black dog, grey cat), samples each hexagon's coverage over
-a 31 × 36 grid, and emits a compact per-cell string. The page decodes that
-string and draws it: the cross as an open lattice, the dog as dark tiles read
-by their lit rims, the cat in the logo's own grey. It assembles outward from
-the centre on load. Re-run `node build-mark.js` after any logo change — it
-prints an ASCII proof and rewrites `mosaic.json` / `mark.txt`.
+**The mark is the logo, rebuilt cell by cell.** `build-marks.js` reads
+`public/logo.png` and emits `marks.json` — the mark as hexagonal cell maps at
+three grid resolutions (coarse 23x26, medium 35x40, fine 53x61). Three things
+decide whether the result reads as a dog and a cat, and only one of them is
+grid size:
+
+1. The artwork strokes both animals in a white keyline to lift them off the
+   cross. Classifying that stroke as "not a shape" erodes both silhouettes, so
+   a breadth-first flood pushes it back into whichever animal it outlines.
+2. Where an animal overlaps the cross, the animal wins the cell. The
+   silhouette is the recognisable part; the cross is backdrop.
+3. Every cell carries a coverage level, and partial cells are drawn smaller
+   and dimmer. That is what turns a hard grid into something that reads as a
+   curve, and it matters far more than adding cells.
+
+`mark-study.html` compares the three against the original and at working sizes
+(200 / 112 / 64 / 40px), on either ground, with or without the cross layer, and
+with an adjustable cell gap. Run `node build-marks.js` after any logo change —
+it prints an ASCII proof per grid (`proof-*.txt`) so a bad extraction is
+obvious before anything is rendered.
+
+Whatever the grid, the logo's value structure has to survive: solid pink cross,
+dark dog, grey cat, light keyline between them. Inverting any of those — a
+lattice cross with rim-lit animals, say — makes the dog read as a pink dog on a
+dark cross, which is backwards.
 
 The same data drives the dog-and-cat mark in the strays band (cross channel
 filtered out) and the species glyphs in the vitals table (one channel each).

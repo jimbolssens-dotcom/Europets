@@ -1,0 +1,514 @@
+<title>Europets Hex Marks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,600&family=Karla:wght@400;500;700&display=swap">
+
+<style>
+:root {
+  color-scheme: dark;
+
+  --void:      #07060a;
+  --void-2:    #0b0910;
+  --carbon:    #121017;
+  --magenta:   #e6186d;
+  --hot:       #ff3d8c;
+  --blush:     #ffc5dd;
+
+  --chalk:     #f6eef2;
+  --ash:       #a79ba3;
+  --ash-dim:   #6f6570;
+  --hair:      rgba(255, 168, 205, 0.14);
+  --hair-hot:  rgba(255, 61, 140, 0.4);
+
+  --display: 'Fraunces', Georgia, serif;
+  --body: 'Karla', system-ui, -apple-system, sans-serif;
+  --mono: 'Azeret Mono', ui-monospace, Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--chalk);
+  font-family: var(--body);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; line-height: 1.12; text-wrap: balance; }
+p { margin: 0; }
+img { max-width: 100%; display: block; }
+
+:focus-visible { outline: 2px solid var(--hot); outline-offset: 3px; }
+
+.shell { max-width: 78rem; margin: 0 auto; padding-inline: clamp(1rem, 4vw, 2rem); }
+
+.label {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hot);
+  margin: 0;
+}
+
+.dim { color: var(--ash); }
+
+/* ---------- header ---------- */
+
+.head { padding-block: clamp(2.25rem, 5vw, 3.25rem) 1.75rem; border-bottom: 1px solid var(--hair); }
+.head h1 { font-size: clamp(1.9rem, 4vw, 2.8rem); margin-top: 0.7rem; max-width: 20ch; }
+.head h1 em { font-style: italic; color: var(--blush); }
+.head p.dim { margin-top: 1rem; max-width: 62ch; }
+
+/* ---------- controls ---------- */
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(7, 6, 10, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--hair);
+}
+
+.bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 2rem;
+  padding-block: 0.9rem;
+}
+
+.ctl { display: flex; align-items: center; gap: 0.7rem; }
+
+.ctl > span:first-child {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ash-dim);
+}
+
+.seg { display: flex; border: 1px solid var(--hair); border-radius: 999px; overflow: hidden; }
+
+.seg button {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.35rem 0.9rem;
+  background: transparent;
+  color: var(--ash);
+  border: 0;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.seg button:hover { color: var(--chalk); }
+.seg button[aria-pressed='true'] { background: var(--magenta); color: #fff; }
+
+.ctl input[type='range'] { width: 8rem; accent-color: var(--hot); }
+.ctl output { font-family: var(--mono); font-size: 0.75rem; color: var(--blush); min-width: 2.6rem; font-variant-numeric: tabular-nums; }
+
+/* ---------- comparison row ---------- */
+
+.section { padding-block: clamp(2.25rem, 5vw, 3.25rem); }
+.section h2 { font-size: clamp(1.35rem, 2.6vw, 1.8rem); margin-top: 0.6rem; }
+.section > .shell > p.dim { margin-top: 0.8rem; max-width: 64ch; }
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 2rem;
+  background: var(--hair);
+  border: 1px solid var(--hair);
+}
+
+.cellbox { background: var(--void-2); padding: clamp(0.9rem, 2vw, 1.4rem); display: flex; flex-direction: column; gap: 0.9rem; }
+
+.cellbox .stage {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 6%;
+  border-radius: 3px;
+  background: #0a0810;
+  transition: background 0.2s ease;
+}
+
+body[data-bg='light'] .cellbox .stage { background: #ffffff; }
+
+.stage canvas, .stage img { width: 100%; height: auto; display: block; }
+
+.meta { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+.meta strong { font-family: var(--display); font-size: 1.05rem; font-weight: 600; }
+.meta span { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.1em; color: var(--ash-dim); font-variant-numeric: tabular-nums; }
+.cellbox p { font-size: 0.85rem; color: var(--ash); }
+
+@media (max-width: 900px) { .row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+
+/* ---------- scale test ---------- */
+
+.scales { display: grid; gap: 1px; margin-top: 2rem; background: var(--hair); border: 1px solid var(--hair); }
+
+.scale-row {
+  background: var(--void-2);
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: clamp(1rem, 3vw, 2rem);
+  align-items: center;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.scale-row > div:first-child strong { display: block; font-family: var(--display); font-size: 1.05rem; }
+.scale-row > div:first-child span { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; color: var(--ash-dim); }
+
+.sizes { display: flex; flex-wrap: wrap; align-items: flex-end; gap: clamp(1rem, 3vw, 2.25rem); }
+.size-item { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+
+.size-item .pad {
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  background: #0a0810;
+  padding: 7%;
+  transition: background 0.2s ease;
+}
+
+body[data-bg='light'] .size-item .pad { background: #ffffff; }
+
+.size-item canvas { display: block; }
+.size-item em { font-family: var(--mono); font-style: normal; font-size: 0.6rem; letter-spacing: 0.1em; color: var(--ash-dim); }
+
+@media (max-width: 720px) { .scale-row { grid-template-columns: 1fr; } }
+
+/* ---------- notes ---------- */
+
+.notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; margin-top: 2rem; }
+
+.note { border-left: 2px solid var(--hair-hot); padding-left: 1.1rem; }
+.note h3 { font-size: 1rem; margin-bottom: 0.4rem; }
+.note p { font-size: 0.88rem; color: var(--ash); }
+
+@media (max-width: 780px) { .notes { grid-template-columns: 1fr; } }
+
+.foot {
+  border-top: 1px solid var(--hair);
+  padding-block: 1.25rem 2.5rem;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ash-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.001ms !important; }
+}
+</style>
+
+<header class="head">
+  <div class="shell">
+    <p class="label">Mark study &middot; Hexfield direction</p>
+    <h1>The Europets mark, <em>at three cell sizes</em></h1>
+    <p class="dim">
+      Same source artwork, same extraction, three hexagon grids. The white keyline the logo
+      draws around the dog and cat is flooded back into them rather than discarded, and where an
+      animal crosses the medical cross the animal wins the cell &mdash; so the silhouettes stay
+      the readable part. Partial cells shrink and dim, which is what softens a hard grid into
+      something that reads as a curve.
+    </p>
+  </div>
+</header>
+
+<div class="bar">
+  <div class="shell bar-row">
+    <div class="ctl">
+      <span>Ground</span>
+      <div class="seg" role="group" aria-label="Background">
+        <button type="button" id="bg-dark" data-bg="dark" aria-pressed="true">Dark</button>
+        <button type="button" id="bg-light" data-bg="light" aria-pressed="false">Light</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span>Cross</span>
+      <div class="seg" role="group" aria-label="Cross layer">
+        <button type="button" id="cross-on" data-cross="1" aria-pressed="true">Show</button>
+        <button type="button" id="cross-off" data-cross="0" aria-pressed="false">Dog &amp; cat only</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span>Cell gap</span>
+      <input type="range" id="gap" min="2" max="26" step="1" value="12" aria-label="Cell gap percentage">
+      <output id="gapout" for="gap">12%</output>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section class="section">
+    <div class="shell">
+      <p class="label">Side by side</p>
+      <h2>Original, then coarse to fine</h2>
+      <p class="dim">All four rendered at the same size, so the only variable is how many cells the silhouette gets to spend.</p>
+
+      <div class="row">
+        <figure class="cellbox" style="margin:0">
+          <div class="stage"><img src="logo-mark.png" onerror="this.src='/logo-mark.png'" alt="The original Europets logo mark"></div>
+          <div class="meta"><strong>Original</strong><span>Vector</span></div>
+          <figcaption><p>The reference. Continuous edges, full detail in the ears, tail and paws.</p></figcaption>
+        </figure>
+
+        <figure class="cellbox" style="margin:0">
+          <div class="stage"><canvas class="big" data-key="coarse" role="img" aria-label="The mark at 23 by 27 hexagonal cells"></canvas></div>
+          <div class="meta"><strong>Coarse</strong><span id="m-coarse"></span></div>
+          <figcaption><p>Reads as an emblem. The dog keeps its stance; the ears and tail become suggestions.</p></figcaption>
+        </figure>
+
+        <figure class="cellbox" style="margin:0">
+          <div class="stage"><canvas class="big" data-key="medium" role="img" aria-label="The mark at 35 by 41 hexagonal cells"></canvas></div>
+          <div class="meta"><strong>Medium</strong><span id="m-medium"></span></div>
+          <figcaption><p>The balance point. Legs separate cleanly and the cat holds its own shape beside the dog.</p></figcaption>
+        </figure>
+
+        <figure class="cellbox" style="margin:0">
+          <div class="stage"><canvas class="big" data-key="fine" role="img" aria-label="The mark at 53 by 62 hexagonal cells"></canvas></div>
+          <div class="meta"><strong>Fine</strong><span id="m-fine"></span></div>
+          <figcaption><p>Nearly the original silhouette. At small sizes the cells stop reading as cells.</p></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="shell">
+      <p class="label">The real test</p>
+      <h2>How each one holds up at working size</h2>
+      <p class="dim">A mark has to survive the favicon. Below, each grid rendered at the sizes it would actually be used at.</p>
+
+      <div class="scales">
+        <div class="scale-row">
+          <div><strong>Coarse</strong><br><span id="s-coarse"></span></div>
+          <div class="sizes" data-key="coarse"></div>
+        </div>
+        <div class="scale-row">
+          <div><strong>Medium</strong><br><span id="s-medium"></span></div>
+          <div class="sizes" data-key="medium"></div>
+        </div>
+        <div class="scale-row">
+          <div><strong>Fine</strong><br><span id="s-fine"></span></div>
+          <div class="sizes" data-key="fine"></div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <div class="note">
+          <h3>Coarse &mdash; 23 &times; 27</h3>
+          <p>Use it where the mark is small and alone: favicon, app icon, a stamp on paperwork. The honeycomb is unmistakable because each cell is large enough to be a shape rather than a dot.</p>
+        </div>
+        <div class="note">
+          <h3>Medium &mdash; 35 &times; 41</h3>
+          <p>The hero mark. Large enough that the dog's legs and the cat's ears survive, coarse enough that it still reads as built from cells rather than printed.</p>
+        </div>
+        <div class="note">
+          <h3>Fine &mdash; 53 &times; 62</h3>
+          <p>For large formats &mdash; a wall, a vehicle, a full-bleed header. Below about 160px the cells disappear and you may as well use the original artwork.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="shell foot">Mark study for Europets Clinic &middot; generated from the production logo</div>
+</main>
+
+<script>
+var MARKS = {"coarse": {"cols": 23, "rows": 27, "data": "0000000002222222000000000000002555555540000000000000005555555500000000000000e55555554000000000000079f55555550000000000008aa5555555400000000000b9aaa555555500000000009aaaaa555555400000000000aaaaaa5555552000000555555aaaaf5555555555502555555aaaaaaaaaa555552555555faaaaaaaaaaa555502555555aaaaaaaaaaaa5552555555faaaaaaaaaaaa55502555555faaaaaaaaaaaa55255555555aaaa55faaaaa550255555fffaa5555faadaa5245555fffaa55555faabde4000000efffaa55555b9a70000000bfffaa55555307a00000000effffaa555550088000000effffaa55555300a0000000dffffaa55555500a8000000ffef5555555530000000000dffef5555555500000000000000255555553000000000000000000000000000000"}, "medium": {"cols": 35, "rows": 41, "data": "000000000000022222222222000000000000000000000005555555555550000000000000000000000055555555555540000000000000000000000555555555555000000000000000000000005555555555554000000000000000000000a5555555555550000000000000000000009aa55555555555400000000000000000009aaf555555555550000000000000000000caaaa555555555554000000000000000008aaaaa555555555550000000000000000b9aaaaaaa55555555554000000000000000aaaaaaaaa55555555550000000000000000baaaaaaaaa55555555540000000000344444ffffaaaaaf55555555544444444302555555555faaaaaff555555555555555525555555555aaaaaaaaaaafffff5555555502555555555faaaaaaaaaaaaaaaff55555525555555555aaaaaaaaaaaaaaaaaf55555502555555555faaaaaaaaaaaaaaaaaa5555525555555555aaaaaaaaaaaaaaaaaaa5555502555555555faaaaaaaaaaaaaaaaaaf555525555555555faaaaaaaaaaaaaaaaaaf5555025555555555faaaaaaaaaffaaaaaaaf5552555555555555aaaaaaaf55faaaafaaf5550255555555ff55aaaff55555faaaadaaf55255555555fff5faaa5555555faaaabaaaf5025555555ffff5faaf5555555faaa80eaf520000002fffff5aaf55555555daaad0000000000000cffffffaa5555555530daa9000000000000bffff5aaf5555555500baad000000000000effffffaa555555554000aa0000000000cffffff5aaf55555555000cad0000000000dffffff55aa5555555540009a000000000cffffffffaaf55555555000dad0000000000ffffffffaaf555555553009aa000000000effffff5fff555555555000dd0000000000bffffdff555555555555400000000000000dffffeff5555555555550000000000000000000b00b555555555555300000000000000000000004444444444430000000000000000000000000000000000000000000000"}, "fine": {"cols": 53, "rows": 62, "data": "0000000000000000000222222222222222222000000000000000000000000000000000055555555555555555550000000000000000000000000000000000455555555555555555530000000000000000000000000000000005555555555555555555000000000000000000000000000000000045555555555555555553000000000000000000000000000000000555555555555555555500000000000000000000000000000000004555555555555555555300000000000000000000000000000000f55555555555555555550000000000000000000000000000000b0aa5555555555555555553000000000000000000000000000009d9af5555555555555555550000000000000000000000000000000aaaaf555555555555555553000000000000000000000000000009aaaf555555555555555555000000000000000000000000000009aaaaaf555555555555555553000000000000000000000000000aaaaaaaf55555555555555555000000000000000000000000000daaaaaaaaf5555555555555555300000000000000000000000c9aaaaaaaaaaf5555555555555555000000000000000000000000aaaaaaaaaaaaaf55555555555555530000000000000000000000caaaaaaaaaaaaaf555555555555555000000000000000000000000daaaaaaaaaaaaaf55555555555555300000000000000000000000daaaaaaaaaaaaaf5555555555555500000000000000000555555555fffffaaaaaaaaaf555555555555555555555555555055555555555555faaaaaaaaaff555555555555555555555555550255555555555555faaaaaaaaaafff544444455555555555555552555555555555555faaaaaaaaaaaaffaafffffff555555555555502555555555555555aaaaaaaaaaaaaaaaaaaaaaaff555555555552555555555555555faaaaaaaaaaaaaaaaaaaaaaaaff555555555502555555555555555aaaaaaaaaaaaaaaaaaaaaaaaaaf5555555552555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaf555555550255555555555555eaaaaaaaaaaaaaaaaaaaaaaaaaaaaf55555552555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf555555502555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf5555552555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf555555502555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf55555525555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf555555025555555555555555ffaaaaaaaaaaaaff5faaaaaaafaaaf555552555555555555555555faaaaaaaaaaf5555faaaaaaafaaaf55555025555555555555ff555faaaaaaaff55555faaaaaaaaeaaaf555525555555555555fff555faaaaf555555555faaaaaaadeaaaf5555025555555555555fff55faaaaa5555555555faaaaaaa0eaaaff552555555555555ffffff5faaaaf55555555555faaaaaf0caaaaf550255555555555fffffff5faaaf555555555555faaaaae00efff55204444444444fffffff5faaaa5555555555555daaaaae00003440000000000000ffffffff5faaaf55555555555530eaaaae0000000000000000000fffffff55aaaf555555555555500caaaaf00000000000000000000dffffff5faaaf5555555555552000eaaae000000000000000000dfffffff5aaaa55555555555550000daaab00000000000000000effffffff5faaaf55555555555530000daae000000000000000bffffffffff5faaf555555555555500000eaab000000000000000cffffffffff5aaaa555555555555530000baa900000000000000cffffffffff55aaaf555555555555500000daab00000000000000bffffffffff55faaa5555555555555200000aaf00000000000000fffffffffff5faaaf55555555555550000daaac00000000000000effffffffff5aaaaf55555555555552000eaaae0000000000000bffffffffff5faaaf555555555555550000faae000000000000000fffffffefff5fff5555555555555553000000000000000000000dffffffcfff5555555555555555555500000000000000000000000fffffffeffff55555555555555555520000000000000000000000fffffffdfff55555555555555555550000000000000000000000000bbbbb00bb55555555555555555552000000000000000000000000000000000555555555555555555500000000000000000000000000000000000222222222222222222000000000000000000000000000000000000000000000000000000000000000000000"}};
+var KEY = '0123456789abcdef';
+
+/* decode the packed per-cell map once per grid */
+Object.keys(MARKS).forEach(function (k) {
+  var m = MARKS[k], cells = [];
+  for (var n = 0; n < m.data.length; n++) {
+    var v = KEY.indexOf(m.data.charAt(n));
+    if (v <= 0) continue;
+    v -= 1;
+    cells.push({ col: n % m.cols, row: (n / m.cols) | 0, ch: ((v / 5) | 0) + 1, lvl: v % 5 });
+  }
+  m.cells = cells;
+  // full-mark bounds, kept fixed so hiding the cross never reframes the animals
+  m.c0 = Math.min.apply(null, cells.map(function (c) { return c.col; }));
+  m.c1 = Math.max.apply(null, cells.map(function (c) { return c.col; }));
+  m.r0 = Math.min.apply(null, cells.map(function (c) { return c.row; }));
+  m.r1 = Math.max.apply(null, cells.map(function (c) { return c.row; }));
+});
+
+/* The logo's own value structure has to survive: a solid pink cross, a dark
+   dog, a grey cat, and a light keyline separating the animals from the cross.
+   Invert any of those and the dog stops reading as a dog. Only the weight of
+   the keyline changes with cell size — at 53 cells wide a heavy one closes
+   the silhouette up. */
+var TREATMENT = {
+  coarse: { crossL: 50, rim: 1.0 },
+  medium: { crossL: 47, rim: 0.85 },
+  fine:   { crossL: 44, rim: 0.62 }
+};
+
+var state = { bg: 'dark', cross: true, gap: 12 };
+
+function hexPath(ctx, cx, cy, r) {
+  ctx.beginPath();
+  for (var k = 0; k < 6; k++) {
+    var a = Math.PI / 180 * (60 * k - 90);
+    var x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+    if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function styleFor(c, t) {
+  // partial cells sit lower on every ramp, so an edge fades instead of stepping
+  var L = c.lvl / 4;
+  if (state.bg === 'light') {
+    if (c.ch === 1) return { fill: 'hsl(336,86%,' + (62 - L * 8) + '%)', rim: 'rgba(255,255,255,0.92)' };
+    if (c.ch === 2) return { fill: 'hsl(276,6%,' + (32 - L * 14) + '%)', rim: 'rgba(255,255,255,0.92)' };
+    return { fill: 'hsl(218,7%,' + (72 - L * 14) + '%)', rim: 'rgba(255,255,255,0.92)' };
+  }
+  if (c.ch === 1) return { fill: 'hsl(336,84%,' + (t.crossL - 16 + L * 16) + '%)', rim: 'rgba(255,140,190,0.5)' };
+  if (c.ch === 2) return { fill: 'hsl(282,8%,' + (7 + L * 6) + '%)', rim: 'rgba(255,228,240,0.62)' };
+  return { fill: 'hsl(314,7%,' + (52 + L * 26) + '%)', rim: 'rgba(255,240,247,0.7)' };
+}
+
+function draw(canvas, key, px) {
+  var m = MARKS[key], t = TREATMENT[key];
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var w = px || canvas.clientWidth || 260;
+  var h = px ? px : Math.round(w * ((m.r1 - m.r0 + 1) * 1.5 + 0.5) / ((m.c1 - m.c0 + 1.5) * Math.sqrt(3)));
+
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  var cols = m.c1 - m.c0 + 1, rows = m.r1 - m.r0 + 1;
+  var R = Math.min(W / ((cols + 0.5) * Math.sqrt(3)), H / (rows * 1.5 + 0.5));
+  var COLW = Math.sqrt(3) * R, ROWH = 1.5 * R;
+  var ox = (W - (cols + 0.5) * COLW) / 2 + COLW / 2;
+  var oy = (H - (rows * ROWH + R * 0.5)) / 2 + R;
+
+  var gap = state.gap / 100;
+  var lineBase = Math.max(0.5, R * 0.1);
+
+  // backdrop first, animals over it
+  var order = m.cells.slice().sort(function (a, b) { return a.ch - b.ch; });
+
+  for (var k = 0; k < order.length; k++) {
+    var c = order[k];
+    if (c.ch === 1 && !state.cross) continue;
+
+    var cx = ox + (c.col - m.c0) * COLW + ((c.row % 2) ? COLW / 2 : 0);
+    var cy = oy + (c.row - m.r0) * ROWH;
+
+    // partial cells shrink as well as dim: that is the anti-aliasing
+    var r = R * (1 - gap) * (0.66 + 0.085 * c.lvl);
+    var s = styleFor(c, t);
+
+    hexPath(ctx, cx, cy, r);
+    ctx.fillStyle = s.fill;
+    ctx.fill();
+
+    // the keyline is what lifts the animals off the cross, exactly as in the
+    // artwork; the cross itself only needs a whisper of edge
+    if (R > 2.2) {
+      ctx.lineWidth = lineBase * t.rim * (c.ch === 1 ? 0.55 : 1);
+      ctx.strokeStyle = s.rim;
+      ctx.stroke();
+    }
+  }
+}
+
+/* build the scale strips */
+var SIZES = [200, 112, 64, 40];
+[].forEach.call(document.querySelectorAll('.sizes'), function (host) {
+  SIZES.forEach(function (px) {
+    var item = document.createElement('div');
+    item.className = 'size-item';
+    var pad = document.createElement('div');
+    pad.className = 'pad';
+    var cv = document.createElement('canvas');
+    cv.className = 'scaled';
+    cv.setAttribute('data-key', host.getAttribute('data-key'));
+    cv.setAttribute('data-px', px);
+    cv.setAttribute('role', 'img');
+    cv.setAttribute('aria-label', 'The mark at ' + px + ' pixels');
+    pad.appendChild(cv);
+    var cap = document.createElement('em');
+    cap.textContent = px + 'px';
+    item.appendChild(pad);
+    item.appendChild(cap);
+    host.appendChild(item);
+  });
+});
+
+function renderAll() {
+  [].forEach.call(document.querySelectorAll('canvas.big'), function (cv) {
+    draw(cv, cv.getAttribute('data-key'));
+  });
+  [].forEach.call(document.querySelectorAll('canvas.scaled'), function (cv) {
+    draw(cv, cv.getAttribute('data-key'), +cv.getAttribute('data-px'));
+  });
+}
+
+/* counts in the labels */
+Object.keys(MARKS).forEach(function (k) {
+  var m = MARKS[k];
+  var dims = (m.c1 - m.c0 + 1) + ' × ' + (m.r1 - m.r0 + 1);
+  var animals = m.cells.filter(function (c) { return c.ch !== 1; }).length;
+  var a = document.getElementById('m-' + k);
+  if (a) a.textContent = dims + ' · ' + m.cells.length + ' cells';
+  var b = document.getElementById('s-' + k);
+  if (b) b.textContent = dims + ' grid · ' + animals + ' animal cells';
+});
+
+/* controls */
+function seg(ids, apply) {
+  ids.forEach(function (id) {
+    var el = document.getElementById(id);
+    el.addEventListener('click', function () {
+      ids.forEach(function (o) { document.getElementById(o).setAttribute('aria-pressed', o === id ? 'true' : 'false'); });
+      apply(el);
+      renderAll();
+    });
+  });
+}
+
+seg(['bg-dark', 'bg-light'], function (el) {
+  state.bg = el.getAttribute('data-bg');
+  document.body.setAttribute('data-bg', state.bg);
+});
+
+seg(['cross-on', 'cross-off'], function (el) {
+  state.cross = el.getAttribute('data-cross') === '1';
+});
+
+var gapEl = document.getElementById('gap'), gapOut = document.getElementById('gapout');
+gapEl.addEventListener('input', function () {
+  state.gap = +gapEl.value;
+  gapOut.textContent = state.gap + '%';
+  renderAll();
+});
+
+document.body.setAttribute('data-bg', 'dark');
+renderAll();
+
+var t;
+window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(renderAll, 140); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderAll);
+</script>
