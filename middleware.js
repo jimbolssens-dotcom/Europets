@@ -50,6 +50,7 @@ const PUBLIC_PATTERNS = [
   /^\/api\/visits\/[^/]+\/report-pdf$/,
   /^\/api\/visits\/[^/]+\/test-report-pdf$/,
   /^\/api\/hospitalizations\/[^/]+\/test-report-pdf$/,
+  /^\/api\/hospitalizations\/[^/]+\/summary-pdf$/,
   /^\/api\/clients\/[^/]+\/statement-pdf$/,
   /^\/api\/proforma-invoices\/[^/]+\/quote-pdf$/,
 ];
