@@ -301,6 +301,8 @@ function InvoicesPageInner() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [statusFilter, setStatusFilter] = useState('unpaid,partially_paid');
+  const [quotes, setQuotes] = useState([]);
+  const [discardingQuoteId, setDiscardingQuoteId] = useState(null);
 
   const loadInvoices = (status) =>
     fetch(`/api/invoices${status ? `?status=${status}` : ''}`)
@@ -310,10 +312,30 @@ function InvoicesPageInner() {
         setLoading(false);
       });
 
+  // Proforma quotes have no status/payment concept of their own — kept as
+  // a separate list entirely, fetched only while this filter is selected,
+  // rather than forced through the paid/unpaid/void invoice shape.
+  const loadQuotes = () =>
+    fetch('/api/proforma-invoices')
+      .then((res) => res.json())
+      .then((data) => {
+        setQuotes(Array.isArray(data) ? data : []);
+        setLoading(false);
+      });
+
   useEffect(() => {
     setLoading(true);
-    loadInvoices(statusFilter);
+    if (statusFilter === 'proforma') loadQuotes();
+    else loadInvoices(statusFilter);
   }, [statusFilter]);
+
+  async function discardQuote(quoteId) {
+    if (!confirm('Discard this quote? This cannot be undone.')) return;
+    setDiscardingQuoteId(quoteId);
+    await fetch(`/api/proforma-invoices/${quoteId}`, { method: 'DELETE' });
+    setDiscardingQuoteId(null);
+    loadQuotes();
+  }
 
   // One list-level subscription keeps every collapsed row's total/status
   // fresh (e.g. another terminal logs a payment) without opening a
@@ -328,7 +350,10 @@ function InvoicesPageInner() {
     const channel = supabase
       .channel('invoices-list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => {
-        loadInvoices(statusFilterRef.current);
+        if (statusFilterRef.current !== 'proforma') loadInvoices(statusFilterRef.current);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'proforma_invoices' }, () => {
+        if (statusFilterRef.current === 'proforma') loadQuotes();
       })
       .subscribe();
 
@@ -413,10 +438,55 @@ function InvoicesPageInner() {
           <option value="paid">Paid</option>
           <option value="void">Void</option>
           <option value="">All</option>
+          <option value="proforma">Quotes (Proforma)</option>
         </select>
       </label>
 
-      {loading ? (
+      {statusFilter === 'proforma' ? (
+        loading ? (
+          <p>Loading quotes...</p>
+        ) : quotes.length === 0 ? (
+          <p>No proforma quotes on file.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Client</th>
+                <th>Patient</th>
+                <th>Items</th>
+                <th>Est. Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {quotes.map((q) => {
+                const items = q.proforma_invoice_items || [];
+                const subtotal = items.reduce((sum, item) => sum + Number(item.line_total), 0);
+                const total = Math.round(subtotal * 1.05 * 100) / 100;
+                return (
+                  <tr key={q.id}>
+                    <td>{new Date(q.created_at).toLocaleDateString()}</td>
+                    <td>
+                      {q.clients?.full_name}
+                      {q.clients?.client_number ? ` (Client #${q.clients.client_number})` : ''}
+                    </td>
+                    <td>{q.patients?.name}</td>
+                    <td>{items.length}</td>
+                    <td>AED {money(total)}</td>
+                    <td>
+                      <a href={`/proforma/${q.id}`}>Open</a>{' '}
+                      <button type="button" onClick={() => discardQuote(q.id)} disabled={discardingQuoteId === q.id}>
+                        {discardingQuoteId === q.id ? 'Discarding…' : 'Discard'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )
+      ) : loading ? (
         <p>Loading invoices...</p>
       ) : invoices.length === 0 ? (
         <p>No invoices in this view.</p>
