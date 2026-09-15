@@ -44,6 +44,7 @@ export default function PatientDetailPage() {
   const [startingDayProcedure, setStartingDayProcedure] = useState(false);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
   const [creatingQuote, setCreatingQuote] = useState(false);
+  const [quoteError, setQuoteError] = useState(null);
   const [statusOverview, setStatusOverview] = useState(null);
   const [quotes, setQuotes] = useState([]);
 
@@ -150,10 +151,17 @@ export default function PatientDetailPage() {
   // reaches accounting or a Statement of Account.
   async function createProformaInvoice() {
     setCreatingQuote(true);
+    setQuoteError(null);
     try {
       const res = await fetch(`/api/patients/${id}/proforma-invoices`, { method: 'POST' });
-      const data = await res.json();
-      if (res.ok) router.push(`/proforma/${data.id}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setQuoteError(data.error || `Failed to create the quote (HTTP ${res.status})`);
+        return;
+      }
+      router.push(`/proforma/${data.id}`);
+    } catch (err) {
+      setQuoteError(err.message || 'Failed to create the quote — check your connection and try again');
     } finally {
       setCreatingQuote(false);
     }
@@ -327,6 +335,7 @@ export default function PatientDetailPage() {
           )}
         </CrossRecordLinks>
       </div>
+      {quoteError && <p className="error">{quoteError}</p>}
 
       <div className="split">
         <div className="split-main">
