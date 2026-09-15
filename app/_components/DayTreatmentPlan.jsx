@@ -249,6 +249,16 @@ export default function DayTreatmentPlan({ hospitalizationId, staff = [], catalo
       goods_service_id: item.id,
       instructions: catalogInstructions.trim() || null,
     });
+    // A plan item that's a lab test is also ordered as a diagnostic the
+    // moment it lands on the plan (not just once its "Enter Test Result"
+    // button below is first clicked) — same find-or-create as
+    // openTestResult, so it's already waiting in the Reports section for
+    // a result to be entered later, findable from either place. Best-
+    // effort: an admission with reports not yet loaded (onOpenReport not
+    // wired up) just skips this, same as elsewhere it's optional.
+    if (checklistItemAction({ goods_service_id: item.id, label: item.name }, catalog, subcategories) === 'test') {
+      onOpenReport?.('test', { goodsServiceId: item.id })?.catch(() => {});
+    }
     setCatalogGoodsServiceId('');
     setCatalogInstructions('');
     setShowCatalogAdd(false);
