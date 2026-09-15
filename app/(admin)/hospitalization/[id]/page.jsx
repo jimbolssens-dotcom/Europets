@@ -33,6 +33,7 @@ import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import HospitalizationReportsSection from '@/app/_components/HospitalizationReportsSection';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
+import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import { useVaccinations } from '@/app/_components/useVaccinations';
 import VaccinationForm from '@/app/_components/VaccinationForm';
 import VaccinationHistory from '@/app/_components/VaccinationHistory';
@@ -815,15 +816,25 @@ export default function HospitalizationDetailPage() {
     />
   );
 
+  // Just this stay's own weigh-ins (including any linked day procedure's,
+  // already merged into `notes` above) — not the patient's lifetime
+  // history, which lives on the patient page instead.
+  const stayWeightHistory = notes
+    .filter((n) => n.weight_kg != null)
+    .map((n) => ({ date: n.note_date, weight_kg: n.weight_kg }));
+
   return (
     <div>
       <div className="page-header">
-        <h1>
-          {admission.patients?.name}
-          {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''}{' '}
-          <span>({admission.status})</span>{' '}
-          {admission.kind === 'day_procedure' && <span className="day-procedure-badge">📋 Day Procedure</span>}
-        </h1>
+        <div className="hospitalization-header-name">
+          <h1>
+            {admission.patients?.name}
+            {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''}{' '}
+            <span>({admission.status})</span>{' '}
+            {admission.kind === 'day_procedure' && <span className="day-procedure-badge">📋 Day Procedure</span>}
+          </h1>
+          <WeightHistoryChart data={stayWeightHistory} mini />
+        </div>
         {admission.status === 'admitted' && (
           <button
             type="button"
