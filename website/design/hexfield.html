@@ -39,6 +39,7 @@
 
   --shell: 74rem;
   --hex: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  --hex-flat: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
   --pad-y: clamp(3.75rem, 7vw, 6rem);
 }
 
@@ -302,10 +303,10 @@ p { margin: 0; }
 
 .hero-inner {
   position: relative;
-  padding-block: clamp(3rem, 6vw, 4.5rem) clamp(4rem, 8vw, 6.5rem);
+  padding-block: clamp(2.5rem, 5vw, 3.75rem) clamp(3.5rem, 7vw, 5.5rem);
   display: grid;
-  grid-template-columns: 1.04fr 0.96fr;
-  gap: clamp(2rem, 5vw, 3.5rem);
+  grid-template-columns: 0.88fr 1.12fr;
+  gap: clamp(1.75rem, 4vw, 3rem);
   align-items: center;
 }
 
@@ -319,7 +320,7 @@ p { margin: 0; }
   to   { opacity: 1; transform: none; }
 }
 
-.hero h1 { font-size: clamp(2.4rem, 5.4vw, 3.9rem); margin: 1.1rem 0 0; max-width: 15ch; }
+.hero h1 { font-size: clamp(1.95rem, 3.8vw, 2.95rem); margin: 0.9rem 0 0; max-width: 16ch; }
 
 .hero h1 em {
   font-style: italic;
@@ -330,25 +331,194 @@ p { margin: 0; }
   background-clip: text;
 }
 
-.hero-lede { color: #cbbdc5; font-size: clamp(1rem, 1.4vw, 1.1rem); max-width: 44ch; margin-top: 1.3rem; }
-.hero-actions { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 2rem; }
+.hero-lede { color: #cbbdc5; font-size: clamp(0.94rem, 1.15vw, 1.02rem); max-width: 38ch; margin-top: 1.1rem; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.6rem; }
+.hero .btn { padding: 0.72rem 1.3rem; font-size: 0.88rem; }
 
-/* the logo, rebuilt cell by cell out of the same honeycomb */
-.mark { position: relative; width: 100%; max-width: 31rem; margin-inline: auto; }
-.mark canvas { display: block; width: 100%; aspect-ratio: 0.99; }
+/* ---- the team, as honeycomb ----
+   Three arrangements of the same five cells. Every position is a percentage
+   of the container, and the container's aspect ratio is derived from the
+   packing, so each layout stays a true comb at any width. */
 
-.mark::before {
+.docs { position: relative; width: 100%; margin-inline: auto; }
+
+.docs::before {
   content: '';
   position: absolute;
-  inset: -12%;
+  inset: -14%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(5, 4, 9, 0.94), rgba(5, 4, 9, 0.62) 58%, transparent 80%);
+  background: radial-gradient(closest-side, rgba(5, 4, 9, 0.82), rgba(5, 4, 9, 0.42) 60%, transparent 80%);
 }
+
+.doc {
+  position: absolute;
+  margin: 0;
+  container-type: inline-size;
+  clip-path: var(--hex);
+  padding: 2.5px;
+  background: linear-gradient(152deg, #ffe3ef 0%, var(--hot) 32%, var(--magenta) 62%, #8c0b45 100%);
+  filter: drop-shadow(0 14px 30px rgba(255, 61, 140, 0.34));
+  transition: transform 0.28s cubic-bezier(0.22, 0.9, 0.3, 1), filter 0.28s ease;
+  animation: pop 0.7s cubic-bezier(0.22, 0.9, 0.3, 1) both;
+}
+
+.doc:nth-child(2) { animation-delay: 0.07s; }
+.doc:nth-child(3) { animation-delay: 0.14s; }
+.doc:nth-child(4) { animation-delay: 0.21s; }
+.doc:nth-child(5) { animation-delay: 0.28s; }
+
+@keyframes pop {
+  from { opacity: 0; transform: translateY(12px) scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+
+.doc:hover { transform: translateY(-6px); filter: drop-shadow(0 18px 34px rgba(255, 61, 140, 0.55)); z-index: 2; }
+
+.doc-face {
+  position: relative;
+  display: block;
+  height: 100%;
+  clip-path: var(--hex);
+  overflow: hidden;
+  background: linear-gradient(158deg, #2a1e2a, #100c15 62%);
+}
+
+.doc-face > img {
+  display: block;
+  width: 100%;
+  height: 116%;
+  margin-top: -9%;
+  object-fit: cover;
+  object-position: center 34%;
+}
+
+/* placeholder until the real portraits land */
+.doc-ph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 26cqi;
+  line-height: 1;
+  color: var(--hot);
+  text-shadow: 0 0 22px rgba(255, 61, 140, 0.5);
+  background:
+    radial-gradient(70% 55% at 50% 22%, rgba(255, 61, 140, 0.16), transparent 70%),
+    linear-gradient(158deg, #2a1e2a, #0f0b14 65%);
+}
+
+.doc-tag {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: 12cqi 15cqi 23cqi;
+  display: grid;
+  gap: 0.15em;
+  text-align: center;
+  background: linear-gradient(to top, rgba(6, 4, 10, 0.96) 30%, rgba(6, 4, 10, 0.72) 62%, transparent);
+}
+
+.doc-tag b { font-size: 8cqi; font-weight: 700; color: var(--chalk); line-height: 1.15; }
+
+.doc-tag i {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 5.2cqi;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--blush);
+  opacity: 0.85;
+}
+
+/* --- 1. Comb: three over two, tightly packed --- */
+.docs[data-layout='comb'] { max-width: 34rem; aspect-ratio: 1.4846; }
+.docs[data-layout='comb'] .doc { width: 33.333%; aspect-ratio: 0.866; }
+.docs[data-layout='comb'] .doc:nth-child(1) { left: 0; top: 0; }
+.docs[data-layout='comb'] .doc:nth-child(2) { left: 33.333%; top: 0; }
+.docs[data-layout='comb'] .doc:nth-child(3) { left: 66.667%; top: 0; }
+.docs[data-layout='comb'] .doc:nth-child(4) { left: 16.667%; top: 42.857%; }
+.docs[data-layout='comb'] .doc:nth-child(5) { left: 50%; top: 42.857%; }
+
+/* --- 2. Lead: the owner large, the team tucked beneath --- */
+.docs[data-layout='lead'] { max-width: 31rem; aspect-ratio: 1.264; }
+.docs[data-layout='lead'] .doc { width: 25%; aspect-ratio: 0.866; }
+.docs[data-layout='lead'] .doc:nth-child(1) { width: 50%; left: 25%; top: 0; }
+.docs[data-layout='lead'] .doc:nth-child(2) { left: 0; top: 63.5%; }
+.docs[data-layout='lead'] .doc:nth-child(3) { left: 25%; top: 63.5%; }
+.docs[data-layout='lead'] .doc:nth-child(4) { left: 50%; top: 63.5%; }
+.docs[data-layout='lead'] .doc:nth-child(5) { left: 75%; top: 63.5%; }
+
+/* --- 3. Column: flat-top cells stacked into a vertical ribbon --- */
+.docs[data-layout='column'] { max-width: 21rem; aspect-ratio: 0.6736; }
+.docs[data-layout='column'] .doc,
+.docs[data-layout='column'] .doc-face { clip-path: var(--hex-flat); }
+.docs[data-layout='column'] .doc { width: 57.14%; aspect-ratio: 1.1547; }
+.docs[data-layout='column'] .doc:nth-child(1) { left: 0; top: 0; }
+.docs[data-layout='column'] .doc:nth-child(2) { left: 42.86%; top: 16.667%; }
+.docs[data-layout='column'] .doc:nth-child(3) { left: 0; top: 33.333%; }
+.docs[data-layout='column'] .doc:nth-child(4) { left: 42.86%; top: 50%; }
+.docs[data-layout='column'] .doc:nth-child(5) { left: 0; top: 66.667%; }
+.docs[data-layout='column'] .doc-tag { padding: 9cqi 13cqi 6cqi; }
+.docs[data-layout='column'] .doc-tag b { font-size: 7.2cqi; }
+.docs[data-layout='column'] .doc-tag i { font-size: 4.4cqi; }
+.docs[data-layout='column'] .doc-face > img { height: 108%; margin-top: -4%; }
 
 @media (max-width: 880px) {
   .hero-inner { grid-template-columns: 1fr; }
-  .mark { order: 2; max-width: 20rem; }
+  .docs { order: 2; }
+  .docs[data-layout='comb'] { max-width: 26rem; }
+  .docs[data-layout='lead'] { max-width: 24rem; }
+  .docs[data-layout='column'] { max-width: 17rem; }
 }
+
+/* ---- preview control, not part of the design ---- */
+.switch {
+  position: fixed;
+  left: 50%;
+  bottom: 1.1rem;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.45rem 0.4rem 0.95rem;
+  border-radius: 999px;
+  background: rgba(10, 8, 14, 0.92);
+  backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--hair-hot);
+  box-shadow: 0 20px 44px -20px rgba(0, 0, 0, 0.95);
+  max-width: calc(100vw - 1.5rem);
+}
+
+.switch > span {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ash-dim);
+  margin-right: 0.35rem;
+}
+
+.switch button {
+  font: inherit;
+  font-family: var(--body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ash);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.switch button:hover { color: var(--chalk); }
+.switch button[aria-pressed='true'] { background: var(--magenta); color: #fff; }
 
 /* ============ STAT STRIP ============ */
 
@@ -800,8 +970,37 @@ p { margin: 0; }
           <a href="#visit" class="btn btn-ghost">New patient? Start here</a>
         </div>
       </div>
-      <div class="mark">
-        <canvas id="markcanvas" role="img" aria-label="The Europets Clinic mark — a dog, a cat and a medical cross — built from hexagonal cells"></canvas>
+      <div class="docs" id="docs" data-layout="comb">
+        <figure class="doc">
+          <span class="doc-face">
+            <img src="../public/team/jim-bolssens.jpg" alt="Dr. Jim Bolssens">
+            <span class="doc-tag"><b>Dr. Jim Bolssens</b><i>DVM &middot; Owner</i></span>
+          </span>
+        </figure>
+        <figure class="doc">
+          <span class="doc-face">
+            <span class="doc-ph" aria-hidden="true">N</span>
+            <span class="doc-tag"><b>Dr. Nada</b><i>DVM</i></span>
+          </span>
+        </figure>
+        <figure class="doc">
+          <span class="doc-face">
+            <span class="doc-ph" aria-hidden="true">G</span>
+            <span class="doc-tag"><b>Dr. Greta</b><i>DVM</i></span>
+          </span>
+        </figure>
+        <figure class="doc">
+          <span class="doc-face">
+            <span class="doc-ph" aria-hidden="true">D</span>
+            <span class="doc-tag"><b>Dr. Dalma</b><i>DVM</i></span>
+          </span>
+        </figure>
+        <figure class="doc">
+          <span class="doc-face">
+            <span class="doc-ph" aria-hidden="true">E</span>
+            <span class="doc-tag"><b>Dr. Eva</b><i>DVM</i></span>
+          </span>
+        </figure>
       </div>
     </div>
   </section>
@@ -1116,7 +1315,14 @@ p { margin: 0; }
   </div>
 </footer>
 
-<p class="ribbon">Design concept &mdash; &ldquo;Hexfield&rdquo; direction &middot; not the live site</p>
+<p class="ribbon">Design concept &mdash; &ldquo;Hexfield&rdquo; direction &middot; portraits are placeholders &middot; not the live site</p>
+
+<div class="switch" role="group" aria-label="Hero layout option">
+  <span>Hero</span>
+  <button type="button" data-layout="comb" aria-pressed="true">1 &middot; Comb</button>
+  <button type="button" data-layout="lead" aria-pressed="false">2 &middot; Lead</button>
+  <button type="button" data-layout="column" aria-pressed="false">3 &middot; Column</button>
+</div>
 
 <script>
 var REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1322,54 +1528,41 @@ function hexPath(ctx, cx, cy, r) {
 })();
 
 /* ==================================================================
-   THE MARK
-   The Europets logo, sampled off the real artwork and rebuilt cell
-   by cell: pink cells for the cross, dark cells for the dog, pale
-   cells for the cat. It assembles itself outward from the centre.
+   DECORATIVE GLYPHS
+   The same logo extraction still drives the dog-and-cat mark in the
+   strays band and the species glyphs in the vitals table. Here they are
+   ornaments rather than the logo, so the dog is drawn in brand pink
+   instead of the artwork's black — a black silhouette would vanish.
    ================================================================== */
 (function () {
-  var COLS = 31, ROWS = 36;
-  var KEY = '0123456789abc';
-  var DATA = '00000000000222222222210000000000000000000333333333332000000000000000000003333333333300000000000000000003333333333320000000000000000000033333333333000000000000000006553333333333200000000000000000077133333333330000000000000000677733333333332000000000000000077777333333333300000000000005777777733333333320000000000000077777777333333333000000000000006767777723333333200000000023333333377777033333333333333323333333327777770000002333333330233333333077777777777770333333233333333377777777777777703333302333333330777777777777777033332333333333777777777777777703333023333333317777777777777777033323333333331777777776677776723330233333333327777770337777777333233333333a3377701333377770772330233333330b3277033333377770770323333333bbb2077333333357760060300000000bbbb377233333330777000000000000bbb1076333333300677000000000000abbb3773333333300070000000000abbbb02703333333000570000000000bbbbba377333333330007500000000bbbbbb30703333333000070000000009bbb9b2676333333330077500000000bbbbb02003333333300000000000000bbbb0b03333333333300000000000009bbb0b33333333333000000000000000000000333333333330000000000000000000000000000000000000000';
+  var MARKS = {"coarse": {"cols": 23, "rows": 27, "data": "0000000002222222000000000000002555555540000000000000005555555500000000000000e55555554000000000000079f55555550000000000008aa5555555400000000000b9aaa555555500000000009aaaaa555555400000000000aaaaaa5555552000000555555aaaaf5555555555502555555aaaaaaaaaa555552555555faaaaaaaaaaa555502555555aaaaaaaaaaaa5552555555faaaaaaaaaaaa55502555555faaaaaaaaaaaa55255555555aaaa55faaaaa550255555fffaa5555faadaa5245555fffaa55555faabde4000000efffaa55555b9a70000000bfffaa55555307a00000000effffaa555550088000000effffaa55555300a0000000dffffaa55555500a8000000ffef5555555530000000000dffef5555555500000000000000255555553000000000000000000000000000000"}, "medium": {"cols": 35, "rows": 41, "data": "000000000000022222222222000000000000000000000005555555555550000000000000000000000055555555555540000000000000000000000555555555555000000000000000000000005555555555554000000000000000000000a5555555555550000000000000000000009aa55555555555400000000000000000009aaf555555555550000000000000000000caaaa555555555554000000000000000008aaaaa555555555550000000000000000b9aaaaaaa55555555554000000000000000aaaaaaaaa55555555550000000000000000baaaaaaaaa55555555540000000000344444ffffaaaaaf55555555544444444302555555555faaaaaff555555555555555525555555555aaaaaaaaaaafffff5555555502555555555faaaaaaaaaaaaaaaff55555525555555555aaaaaaaaaaaaaaaaaf55555502555555555faaaaaaaaaaaaaaaaaa5555525555555555aaaaaaaaaaaaaaaaaaa5555502555555555faaaaaaaaaaaaaaaaaaf555525555555555faaaaaaaaaaaaaaaaaaf5555025555555555faaaaaaaaaffaaaaaaaf5552555555555555aaaaaaaf55faaaafaaf5550255555555ff55aaaff55555faaaadaaf55255555555fff5faaa5555555faaaabaaaf5025555555ffff5faaf5555555faaa80eaf520000002fffff5aaf55555555daaad0000000000000cffffffaa5555555530daa9000000000000bffff5aaf5555555500baad000000000000effffffaa555555554000aa0000000000cffffff5aaf55555555000cad0000000000dffffff55aa5555555540009a000000000cffffffffaaf55555555000dad0000000000ffffffffaaf555555553009aa000000000effffff5fff555555555000dd0000000000bffffdff555555555555400000000000000dffffeff5555555555550000000000000000000b00b555555555555300000000000000000000004444444444430000000000000000000000000000000000000000000000"}, "fine": {"cols": 53, "rows": 62, "data": "0000000000000000000222222222222222222000000000000000000000000000000000055555555555555555550000000000000000000000000000000000455555555555555555530000000000000000000000000000000005555555555555555555000000000000000000000000000000000045555555555555555553000000000000000000000000000000000555555555555555555500000000000000000000000000000000004555555555555555555300000000000000000000000000000000f55555555555555555550000000000000000000000000000000b0aa5555555555555555553000000000000000000000000000009d9af5555555555555555550000000000000000000000000000000aaaaf555555555555555553000000000000000000000000000009aaaf555555555555555555000000000000000000000000000009aaaaaf555555555555555553000000000000000000000000000aaaaaaaf55555555555555555000000000000000000000000000daaaaaaaaf5555555555555555300000000000000000000000c9aaaaaaaaaaf5555555555555555000000000000000000000000aaaaaaaaaaaaaf55555555555555530000000000000000000000caaaaaaaaaaaaaf555555555555555000000000000000000000000daaaaaaaaaaaaaf55555555555555300000000000000000000000daaaaaaaaaaaaaf5555555555555500000000000000000555555555fffffaaaaaaaaaf555555555555555555555555555055555555555555faaaaaaaaaff555555555555555555555555550255555555555555faaaaaaaaaafff544444455555555555555552555555555555555faaaaaaaaaaaaffaafffffff555555555555502555555555555555aaaaaaaaaaaaaaaaaaaaaaaff555555555552555555555555555faaaaaaaaaaaaaaaaaaaaaaaaff555555555502555555555555555aaaaaaaaaaaaaaaaaaaaaaaaaaf5555555552555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaf555555550255555555555555eaaaaaaaaaaaaaaaaaaaaaaaaaaaaf55555552555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf555555502555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf5555552555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf555555502555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf55555525555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf555555025555555555555555ffaaaaaaaaaaaaff5faaaaaaafaaaf555552555555555555555555faaaaaaaaaaf5555faaaaaaafaaaf55555025555555555555ff555faaaaaaaff55555faaaaaaaaeaaaf555525555555555555fff555faaaaf555555555faaaaaaadeaaaf5555025555555555555fff55faaaaa5555555555faaaaaaa0eaaaff552555555555555ffffff5faaaaf55555555555faaaaaf0caaaaf550255555555555fffffff5faaaf555555555555faaaaae00efff55204444444444fffffff5faaaa5555555555555daaaaae00003440000000000000ffffffff5faaaf55555555555530eaaaae0000000000000000000fffffff55aaaf555555555555500caaaaf00000000000000000000dffffff5faaaf5555555555552000eaaae000000000000000000dfffffff5aaaa55555555555550000daaab00000000000000000effffffff5faaaf55555555555530000daae000000000000000bffffffffff5faaf555555555555500000eaab000000000000000cffffffffff5aaaa555555555555530000baa900000000000000cffffffffff55aaaf555555555555500000daab00000000000000bffffffffff55faaa5555555555555200000aaf00000000000000fffffffffff5faaaf55555555555550000daaac00000000000000effffffffff5aaaaf55555555555552000eaaae0000000000000bffffffffff5faaaf555555555555550000faae000000000000000fffffffefff5fff5555555555555553000000000000000000000dffffffcfff5555555555555555555500000000000000000000000fffffffeffff55555555555555555520000000000000000000000fffffffdfff55555555555555555550000000000000000000000000bbbbb00bb55555555555555555552000000000000000000000000000000000555555555555555555500000000000000000000000000000000000222222222222222222000000000000000000000000000000000000000000000000000000000000000000000"}};
+  var KEY = '0123456789abcdef';
 
-  var cells = [];
-  for (var n = 0; n < DATA.length; n++) {
-    var v = KEY.indexOf(DATA.charAt(n));
-    if (v <= 0) continue;
-    v -= 1;
-    cells.push({ col: n % COLS, row: (n / COLS) | 0, ch: ((v / 4) | 0) + 1, lvl: v % 4 });
-  }
-
-  var midC = COLS / 2, midR = ROWS / 2, maxD = 0;
-  cells.forEach(function (c) {
-    var dx = (c.col - midC) * 0.9, dy = c.row - midR;
-    c.d = Math.sqrt(dx * dx + dy * dy);
-    if (c.d > maxD) maxD = c.d;
+  Object.keys(MARKS).forEach(function (k) {
+    var m = MARKS[k], cells = [];
+    for (var n = 0; n < m.data.length; n++) {
+      var v = KEY.indexOf(m.data.charAt(n));
+      if (v <= 0) continue;
+      v -= 1;
+      cells.push({ col: n % m.cols, row: (n / m.cols) | 0, ch: ((v / 5) | 0) + 1, lvl: v % 5 });
+    }
+    m.cells = cells;
   });
 
-  /* dog cells stay dark like the field's black tiles and are read by
-     their lit rim; cat cells carry the logo's grey; cross cells the
-     brand pink. */
   function fillFor(c) {
-    if (c.ch === 1) return 'rgba(230,24,109,' + (0.1 + c.lvl * 0.035) + ')';
-    if (c.ch === 2) return 'hsl(288,9%,' + (12 + c.lvl * 3.5) + '%)';
-    return 'hsl(312,8%,' + (62 + c.lvl * 7) + '%)';
+    var L = c.lvl / 4;
+    if (c.ch === 2) return 'hsl(336,84%,' + (34 + L * 18) + '%)';
+    return 'hsl(314,7%,' + (54 + L * 26) + '%)';
   }
 
   function rimFor(c) {
-    if (c.ch === 1) return 'rgba(255,74,150,0.5)';
-    if (c.ch === 2) return 'rgba(255,86,164,1)';
-    return 'rgba(255,236,245,0.72)';
+    return c.ch === 2 ? 'rgba(255,164,204,0.55)' : 'rgba(255,240,247,0.6)';
   }
 
-  // the dog is a dark silhouette on a dark page: it reads by its lit rim,
-  // so give that rim a glow and a little more weight than the scaffold
-  function rimWeight(c) { return c.ch === 2 ? 1.5 : c.ch === 3 ? 1.1 : 0.85; }
-
-  function build(canvas, filter, pad) {
+  function build(canvas, map, filter, pad) {
     if (!canvas || !canvas.getContext) return;
     var ctx = canvas.getContext('2d');
-    var mine = cells.filter(filter);
+    var mine = map.cells.filter(filter);
     if (!mine.length) return;
 
     var c0 = Math.min.apply(null, mine.map(function (c) { return c.col; }));
@@ -1377,78 +1570,57 @@ function hexPath(ctx, cx, cy, r) {
     var r0 = Math.min.apply(null, mine.map(function (c) { return c.row; }));
     var r1 = Math.max.apply(null, mine.map(function (c) { return c.row; }));
 
-    var start = 0, raf = 0;
-
-    function draw(prog) {
+    function draw() {
       var dpr = Math.min(window.devicePixelRatio || 1, 2);
-      var w = canvas.clientWidth || 300, h = canvas.clientHeight || 300;
+      var w = canvas.clientWidth || 200, h = canvas.clientHeight || 200;
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
       var W = canvas.width, H = canvas.height, P = (pad || 0.04) * W;
 
       var cols = c1 - c0 + 1, rows = r1 - r0 + 1;
-      var rW = (W - P * 2) / ((cols + 0.5) * Math.sqrt(3));
-      var rH = (H - P * 2) / (rows * 1.5 + 0.5);
-      var R = Math.min(rW, rH);
+      var R = Math.min((W - P * 2) / ((cols + 0.5) * Math.sqrt(3)), (H - P * 2) / (rows * 1.5 + 0.5));
       var COLW = Math.sqrt(3) * R, ROWH = 1.5 * R;
       var ox = (W - (cols + 0.5) * COLW) / 2 + COLW / 2;
       var oy = (H - (rows * ROWH + R * 0.5)) / 2 + R;
 
       ctx.clearRect(0, 0, W, H);
-      var base = Math.max(0.7, R * 0.1);
+      ctx.lineWidth = Math.max(0.5, R * 0.09);
 
-      var order = mine.slice().sort(function (a, b) { return a.ch - b.ch; });
-      for (var k = 0; k < order.length; k++) {
-        var c = order[k];
-        var delay = (c.d / maxD) * 0.52;
-        var p = prog >= 1 ? 1 : Math.max(0, Math.min(1, (prog - delay) / 0.46));
-        if (p <= 0) continue;
-        var e = 1 - Math.pow(1 - p, 3);
-
+      for (var k = 0; k < mine.length; k++) {
+        var c = mine[k];
         var cx = ox + (c.col - c0) * COLW + ((c.row % 2) ? COLW / 2 : 0);
         var cy = oy + (c.row - r0) * ROWH;
-
-        ctx.globalAlpha = e;
-        hexPath(ctx, cx, cy, R * 0.87 * (0.35 + 0.65 * e));
+        hexPath(ctx, cx, cy, R * (0.66 + 0.085 * c.lvl) * 0.88);
         ctx.fillStyle = fillFor(c);
         ctx.fill();
-        ctx.lineWidth = base * rimWeight(c);
-        ctx.shadowBlur = c.ch === 2 ? R * 0.5 : 0;
-        ctx.shadowColor = 'rgba(255,61,140,0.85)';
-        ctx.strokeStyle = rimFor(c);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
+        if (R > 2.2) { ctx.strokeStyle = rimFor(c); ctx.stroke(); }
       }
-      ctx.globalAlpha = 1;
     }
 
-    function frame(ts) {
-      if (!start) start = ts;
-      var prog = (ts - start) / 1150;
-      draw(Math.min(1, prog));
-      if (prog < 1) raf = requestAnimationFrame(frame);
-    }
-
-    function go() {
-      cancelAnimationFrame(raf);
-      start = 0;
-      if (REDUCED) draw(1); else raf = requestAnimationFrame(frame);
-    }
-
-    go();
+    draw();
     var t;
-    window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(function () { draw(1); }, 150); });
+    window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(draw, 150); });
   }
 
-  build(document.getElementById('markcanvas'), function () { return true; }, 0.05);
-  build(document.getElementById('straymark'), function (c) { return c.ch !== 1; }, 0.06);
-
-  // the species glyphs in the vitals chart: dog alone, cat alone
+  build(document.getElementById('straymark'), MARKS.medium, function (c) { return c.ch !== 1; }, 0.06);
   [].forEach.call(document.querySelectorAll('.sp-dog'), function (el) {
-    build(el, function (c) { return c.ch === 2; }, 0.02);
+    build(el, MARKS.fine, function (c) { return c.ch === 2; }, 0.02);
   });
   [].forEach.call(document.querySelectorAll('.sp-cat'), function (el) {
-    build(el, function (c) { return c.ch === 3; }, 0.02);
+    build(el, MARKS.fine, function (c) { return c.ch === 3; }, 0.02);
+  });
+})();
+
+/* hero layout switcher (preview control) */
+(function () {
+  var docs = document.getElementById('docs');
+  var btns = [].slice.call(document.querySelectorAll('.switch button'));
+  if (!docs || !btns.length) return;
+  btns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      btns.forEach(function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+      docs.setAttribute('data-layout', b.getAttribute('data-layout'));
+    });
   });
 })();
 
