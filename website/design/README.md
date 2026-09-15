@@ -90,10 +90,11 @@ dark cross, which is backwards.
 The same data drives the dog-and-cat mark in the strays band (cross channel
 filtered out) and the species glyphs in the vitals table (one channel each).
 
-**The vitals table is real.** Adult canine and feline reference ranges —
-temperature, heart rate, respiration, capillary refill, body condition —
-set in mono with tabular figures. It is the page's clinical anchor, and the
-caption says plainly that puppies, kittens and seniors sit outside them.
+**An ECG leads the page.** A resting trace with a travelling QRS complex runs
+full width directly under the hero, above the numbers — the first thing below
+the fold and the page's clearest medical signal. It replaces a vitals table of
+canine and feline reference ranges that sat further down; the trace carries the
+same idea in a tenth of the space, so the table came out.
 
 **The glyphs encode which kind of section they mark.** A hex-built paw for
 animal-facing sections, the chamfered brand cross for clinical ones, a plain

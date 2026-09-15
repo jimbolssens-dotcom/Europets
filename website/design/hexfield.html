@@ -185,6 +185,17 @@ p { margin: 0; }
 /* ---------- the ECG rule: a vet's divider ---------- */
 
 .ecg { position: relative; height: 56px; overflow: hidden; }
+
+/* leading the page rather than dividing it: taller, and seated on its own
+   hairline so it reads as a trace on a monitor rather than a stray rule */
+.ecg-lead {
+  height: clamp(58px, 7vw, 82px);
+  background: linear-gradient(180deg, var(--void) 0%, #0a0810 100%);
+  border-bottom: 1px solid var(--hair);
+}
+
+.ecg-lead .ecg-base { stroke: rgba(255, 61, 140, 0.3); }
+.ecg-lead .ecg-live { stroke-width: 3; stroke-dasharray: 96 1112; animation-duration: 4.4s; }
 .ecg svg { display: block; width: 100%; height: 100%; }
 .ecg-base { fill: none; stroke: var(--hair-hot); stroke-width: 1.4; }
 
@@ -671,54 +682,14 @@ p { margin: 0; }
 @media (max-width: 880px) { .svc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .svc-grid { grid-template-columns: 1fr; } }
 
-/* ============ VITALS ============ */
-
-.vitals { background: linear-gradient(180deg, var(--void-2), var(--void)); border-block: 1px solid var(--hair); position: relative; overflow: hidden; }
-.vitals-head { display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; align-items: end; justify-content: space-between; }
-
-.chart-wrap { margin-top: 2.5rem; overflow-x: auto; }
-
-.chart {
-  width: 100%;
-  min-width: 33rem;
-  border-collapse: collapse;
-  font-variant-numeric: tabular-nums;
-}
-
-.chart caption { caption-side: bottom; margin-top: 1.1rem; font-size: 0.82rem; color: var(--ash-dim); text-align: left; }
-
-.chart th, .chart td { text-align: left; padding: 0.85rem 1rem; border-bottom: 1px solid var(--hair); }
-.chart thead th { border-bottom-color: var(--hair-hot); padding-bottom: 0.7rem; }
-
-.chart tbody th {
-  font-family: var(--body);
-  font-weight: 500;
-  font-size: 0.95rem;
-  color: var(--chalk);
-  width: 34%;
-}
-
-.chart td { font-family: var(--mono); font-size: 0.86rem; color: var(--blush); }
-.chart td.unit { color: var(--ash); }
-.chart tbody tr:last-child th, .chart tbody tr:last-child td { border-bottom: 0; }
-
-.species {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  font-weight: 500;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ash);
-}
-
-.species canvas { display: block; width: 2.9rem; height: 2.9rem; }
-
 /* ============ EQUIPMENT ============ */
 
-.kit { position: relative; overflow: hidden; }
+.kit {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--void-2), var(--void));
+  border-block: 1px solid var(--hair);
+}
 .kit-head { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: end; justify-content: space-between; }
 .kit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr)); gap: 1.25rem; margin-top: 2.5rem; }
 .kit-item { display: flex; gap: 1rem; align-items: flex-start; }
@@ -1018,6 +989,14 @@ p { margin: 0; }
     </div>
   </section>
 
+  <!-- ============ PULSE ============ -->
+  <div class="ecg ecg-lead" aria-hidden="true">
+    <svg viewBox="0 0 1200 80" preserveAspectRatio="none">
+      <path class="ecg-base" d="M0,44 h62 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108"/>
+      <path class="ecg-live" d="M0,44 h62 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108"/>
+    </svg>
+  </div>
+
   <!-- ============ STATS ============ -->
   <section class="stats">
     <div class="shell">
@@ -1091,50 +1070,11 @@ p { margin: 0; }
     </div>
   </section>
 
-  <!-- ============ VITALS ============ -->
-  <section class="section vitals" id="vitals">
-    <svg class="lattice" aria-hidden="true"><rect width="100%" height="100%" fill="url(#hexgrid)"></rect></svg>
-    <div class="shell" style="position:relative">
-      <div class="vitals-head">
-        <div>
-          <p class="eyebrow has-glyph"><svg class="ebg" aria-hidden="true"><use href="#cross"></use></svg>Nose to tail</p>
-          <h2 class="h2">What a wellness exam <em>actually checks</em></h2>
-        </div>
-        <p class="lede" style="max-width:28ch;margin:0">Every visit starts with a baseline. These are the numbers we measure your pet against &mdash; and chart, visit after visit.</p>
-      </div>
 
-      <div class="chart-wrap">
-        <table class="chart">
-          <caption>Adult reference ranges. Puppies, kittens and seniors sit outside them &mdash; which is exactly why we chart every visit rather than read one in isolation.</caption>
-          <thead>
-            <tr>
-              <th scope="col"><span class="species" style="color:var(--ash-dim)">Measure</span></th>
-              <th scope="col"><span class="species"><canvas class="sp-dog" role="img" aria-label="Dog"></canvas>Dog</span></th>
-              <th scope="col"><span class="species"><canvas class="sp-cat" role="img" aria-label="Cat"></canvas>Cat</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><th scope="row">Temperature</th><td>38.3 &ndash; 39.2 &deg;C</td><td>38.1 &ndash; 39.2 &deg;C</td></tr>
-            <tr><th scope="row">Heart rate</th><td>60 &ndash; 140 bpm</td><td>140 &ndash; 220 bpm</td></tr>
-            <tr><th scope="row">Respiration</th><td>10 &ndash; 30 / min</td><td>20 &ndash; 30 / min</td></tr>
-            <tr><th scope="row">Capillary refill</th><td>under 2 s</td><td>under 2 s</td></tr>
-            <tr><th scope="row">Body condition</th><td>4 &ndash; 5 / 9</td><td>4 &ndash; 5 / 9</td></tr>
-            <tr><th scope="row">Mucous membranes</th><td class="unit">pink, moist</td><td class="unit">pink, moist</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <div class="ecg" aria-hidden="true">
-    <svg viewBox="0 0 1200 80" preserveAspectRatio="none">
-      <path class="ecg-base" d="M0,44 h62 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108"/>
-      <path class="ecg-live" d="M0,44 h62 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108 c6,-9 16,-9 22,0 h16 l7,7 l8,-34 l9,42 l8,-15 h22 c12,-13 26,-13 38,0 h108"/>
-    </svg>
-  </div>
 
   <!-- ============ EQUIPMENT ============ -->
-  <section class="section kit" id="kit" style="padding-top:0">
+  <section class="section kit" id="kit">
+    <svg class="lattice" aria-hidden="true"><rect width="100%" height="100%" fill="url(#hexgrid)"></rect></svg>
     <div class="shell" style="position:relative">
       <div class="kit-head">
         <div>
@@ -1548,10 +1488,10 @@ function hexPath(ctx, cx, cy, r) {
 
 /* ==================================================================
    DECORATIVE GLYPHS
-   The same logo extraction still drives the dog-and-cat mark in the
-   strays band and the species glyphs in the vitals table. Here they are
-   ornaments rather than the logo, so the dog is drawn in brand pink
-   instead of the artwork's black — a black silhouette would vanish.
+   The logo extraction still drives the dog-and-cat mark in the strays
+   band. There it is an ornament rather than the logo, so the dog is drawn
+   in brand pink instead of the artwork's black — a black silhouette would
+   vanish against the ground.
    ================================================================== */
 (function () {
   var MARKS = {"coarse": {"cols": 23, "rows": 27, "data": "0000000002222222000000000000002555555540000000000000005555555500000000000000e55555554000000000000079f55555550000000000008aa5555555400000000000b9aaa555555500000000009aaaaa555555400000000000aaaaaa5555552000000555555aaaaf5555555555502555555aaaaaaaaaa555552555555faaaaaaaaaaa555502555555aaaaaaaaaaaa5552555555faaaaaaaaaaaa55502555555faaaaaaaaaaaa55255555555aaaa55faaaaa550255555fffaa5555faadaa5245555fffaa55555faabde4000000efffaa55555b9a70000000bfffaa55555307a00000000effffaa555550088000000effffaa55555300a0000000dffffaa55555500a8000000ffef5555555530000000000dffef5555555500000000000000255555553000000000000000000000000000000"}, "medium": {"cols": 35, "rows": 41, "data": "000000000000022222222222000000000000000000000005555555555550000000000000000000000055555555555540000000000000000000000555555555555000000000000000000000005555555555554000000000000000000000a5555555555550000000000000000000009aa55555555555400000000000000000009aaf555555555550000000000000000000caaaa555555555554000000000000000008aaaaa555555555550000000000000000b9aaaaaaa55555555554000000000000000aaaaaaaaa55555555550000000000000000baaaaaaaaa55555555540000000000344444ffffaaaaaf55555555544444444302555555555faaaaaff555555555555555525555555555aaaaaaaaaaafffff5555555502555555555faaaaaaaaaaaaaaaff55555525555555555aaaaaaaaaaaaaaaaaf55555502555555555faaaaaaaaaaaaaaaaaa5555525555555555aaaaaaaaaaaaaaaaaaa5555502555555555faaaaaaaaaaaaaaaaaaf555525555555555faaaaaaaaaaaaaaaaaaf5555025555555555faaaaaaaaaffaaaaaaaf5552555555555555aaaaaaaf55faaaafaaf5550255555555ff55aaaff55555faaaadaaf55255555555fff5faaa5555555faaaabaaaf5025555555ffff5faaf5555555faaa80eaf520000002fffff5aaf55555555daaad0000000000000cffffffaa5555555530daa9000000000000bffff5aaf5555555500baad000000000000effffffaa555555554000aa0000000000cffffff5aaf55555555000cad0000000000dffffff55aa5555555540009a000000000cffffffffaaf55555555000dad0000000000ffffffffaaf555555553009aa000000000effffff5fff555555555000dd0000000000bffffdff555555555555400000000000000dffffeff5555555555550000000000000000000b00b555555555555300000000000000000000004444444444430000000000000000000000000000000000000000000000"}, "fine": {"cols": 53, "rows": 62, "data": "0000000000000000000222222222222222222000000000000000000000000000000000055555555555555555550000000000000000000000000000000000455555555555555555530000000000000000000000000000000005555555555555555555000000000000000000000000000000000045555555555555555553000000000000000000000000000000000555555555555555555500000000000000000000000000000000004555555555555555555300000000000000000000000000000000f55555555555555555550000000000000000000000000000000b0aa5555555555555555553000000000000000000000000000009d9af5555555555555555550000000000000000000000000000000aaaaf555555555555555553000000000000000000000000000009aaaf555555555555555555000000000000000000000000000009aaaaaf555555555555555553000000000000000000000000000aaaaaaaf55555555555555555000000000000000000000000000daaaaaaaaf5555555555555555300000000000000000000000c9aaaaaaaaaaf5555555555555555000000000000000000000000aaaaaaaaaaaaaf55555555555555530000000000000000000000caaaaaaaaaaaaaf555555555555555000000000000000000000000daaaaaaaaaaaaaf55555555555555300000000000000000000000daaaaaaaaaaaaaf5555555555555500000000000000000555555555fffffaaaaaaaaaf555555555555555555555555555055555555555555faaaaaaaaaff555555555555555555555555550255555555555555faaaaaaaaaafff544444455555555555555552555555555555555faaaaaaaaaaaaffaafffffff555555555555502555555555555555aaaaaaaaaaaaaaaaaaaaaaaff555555555552555555555555555faaaaaaaaaaaaaaaaaaaaaaaaff555555555502555555555555555aaaaaaaaaaaaaaaaaaaaaaaaaaf5555555552555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaf555555550255555555555555eaaaaaaaaaaaaaaaaaaaaaaaaaaaaf55555552555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf555555502555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf5555552555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf555555502555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf55555525555555555555555faaaaaaaaaaaaaaaaaaaaaaaaaaaaf555555025555555555555555ffaaaaaaaaaaaaff5faaaaaaafaaaf555552555555555555555555faaaaaaaaaaf5555faaaaaaafaaaf55555025555555555555ff555faaaaaaaff55555faaaaaaaaeaaaf555525555555555555fff555faaaaf555555555faaaaaaadeaaaf5555025555555555555fff55faaaaa5555555555faaaaaaa0eaaaff552555555555555ffffff5faaaaf55555555555faaaaaf0caaaaf550255555555555fffffff5faaaf555555555555faaaaae00efff55204444444444fffffff5faaaa5555555555555daaaaae00003440000000000000ffffffff5faaaf55555555555530eaaaae0000000000000000000fffffff55aaaf555555555555500caaaaf00000000000000000000dffffff5faaaf5555555555552000eaaae000000000000000000dfffffff5aaaa55555555555550000daaab00000000000000000effffffff5faaaf55555555555530000daae000000000000000bffffffffff5faaf555555555555500000eaab000000000000000cffffffffff5aaaa555555555555530000baa900000000000000cffffffffff55aaaf555555555555500000daab00000000000000bffffffffff55faaa5555555555555200000aaf00000000000000fffffffffff5faaaf55555555555550000daaac00000000000000effffffffff5aaaaf55555555555552000eaaae0000000000000bffffffffff5faaaf555555555555550000faae000000000000000fffffffefff5fff5555555555555553000000000000000000000dffffffcfff5555555555555555555500000000000000000000000fffffffeffff55555555555555555520000000000000000000000fffffffdfff55555555555555555550000000000000000000000000bbbbb00bb55555555555555555552000000000000000000000000000000000555555555555555555500000000000000000000000000000000000222222222222222222000000000000000000000000000000000000000000000000000000000000000000000"}};
@@ -1622,12 +1562,6 @@ function hexPath(ctx, cx, cy, r) {
   }
 
   build(document.getElementById('straymark'), MARKS.medium, function (c) { return c.ch !== 1; }, 0.06);
-  [].forEach.call(document.querySelectorAll('.sp-dog'), function (el) {
-    build(el, MARKS.fine, function (c) { return c.ch === 2; }, 0.02);
-  });
-  [].forEach.call(document.querySelectorAll('.sp-cat'), function (el) {
-    build(el, MARKS.fine, function (c) { return c.ch === 3; }, 0.02);
-  });
 })();
 
 /* hero layout switcher (preview control) */
