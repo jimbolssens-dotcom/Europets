@@ -25,8 +25,11 @@ file only renders correctly from this directory.
 
 ### The hero: the team as honeycomb
 
-The hero's right-hand side carries the five vets as hexagonal portraits rather
-than the logo mosaic, and the headline steps down a size to give them the room.
+The hero's right-hand side carries the five vets as hexagonal portraits, and
+the headline steps down a size to give them the room. They appear here and
+nowhere else on the page — the section further down covers the reception,
+nursing and admin team instead.
+
 Two arrangements ship in the same file, switched by the `data-layout` attribute
 on `.docs` (a floating control in the page toggles it, and dials the spacing —
 that control is a preview affordance, not part of the design):
@@ -54,6 +57,22 @@ slack at all, so `object-position` does nothing until the image is overscaled.
 
 Portraits are placeholders: initials on a plum gradient. Swapping in a real
 photo is one line per doctor — replace `<span class="doc-ph">` with an `<img>`.
+
+### The logo on a dark ground
+
+`make-dark-logo.js` builds two files into `public/` from the production logo:
+
+- `logo-on-dark.png` — the stacked logo with only its wordmark recoloured.
+  The type is set in near-black with a slate sub-line and vanishes on this
+  ground; the cross, dog and cat are left exactly as drawn, and alpha is
+  preserved so the type keeps its antialiasing.
+- `logo-lockup-dark.png` — the same two elements relocked side by side. A
+  stacked mark-over-wordmark logo cannot read in a 4-5rem navigation bar:
+  fit it to the bar's height and the type is a few pixels tall. No new
+  artwork, just a horizontal arrangement of what already exists.
+
+The nav takes the lockup, the footer takes the stacked one. Re-run the script
+after any logo change.
 
 ### The veterinary layer
 
