@@ -49,7 +49,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { expense_date, vendor_name, description, category, amount, vat_amount, payment_method } = body;
+  const { expense_date, vendor_name, invoice_number, description, category, amount, vat_amount, payment_method } = body;
 
   if (amount === undefined || amount === null || Number.isNaN(Number(amount))) {
     return NextResponse.json({ error: 'amount is required' }, { status: 400 });
@@ -73,6 +73,7 @@ export async function POST(request) {
       {
         expense_date: expense_date || undefined,
         vendor_name: vendor_name || null,
+        invoice_number: invoice_number || null,
         description: description || null,
         category: category || 'other',
         amount: amountNum,

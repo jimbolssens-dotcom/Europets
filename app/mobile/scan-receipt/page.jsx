@@ -55,6 +55,7 @@ export default function MobileScanReceiptPage() {
     setForm({
       expense_date: data.expense_date || today(),
       vendor_name: data.vendor_name || '',
+      invoice_number: data.invoice_number || '',
       description: '',
       category: data.category || 'other',
       amount: data.amount !== null && data.amount !== undefined ? String(data.amount) : '',
@@ -141,6 +142,11 @@ export default function MobileScanReceiptPage() {
             placeholder="Vendor"
             value={form.vendor_name}
             onChange={(e) => updateForm({ vendor_name: e.target.value })}
+          />
+          <input
+            placeholder="Invoice / receipt #"
+            value={form.invoice_number}
+            onChange={(e) => updateForm({ invoice_number: e.target.value })}
           />
           <input
             placeholder="Description"

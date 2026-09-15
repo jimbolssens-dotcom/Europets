@@ -19,7 +19,7 @@ const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'payment_link'];
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { expense_date, vendor_name, description, category, amount, vat_amount, payment_method } = body;
+  const { expense_date, vendor_name, invoice_number, description, category, amount, vat_amount, payment_method } = body;
 
   if (category !== undefined && category !== null && !CATEGORIES.includes(category)) {
     return NextResponse.json({ error: `category must be one of ${CATEGORIES.join(', ')}` }, { status: 400 });
@@ -34,6 +34,7 @@ export async function PATCH(request, { params }) {
   const update = {};
   if (expense_date !== undefined) update.expense_date = expense_date;
   if (vendor_name !== undefined) update.vendor_name = vendor_name;
+  if (invoice_number !== undefined) update.invoice_number = invoice_number || null;
   if (description !== undefined) update.description = description;
   if (category !== undefined) update.category = category;
   if (payment_method !== undefined) update.payment_method = payment_method;

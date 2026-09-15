@@ -1,10 +1,11 @@
 // app/_components/ScanReceiptButton.jsx
 // Reads a photo of a supplier receipt/invoice via /api/expenses/scan and
-// hands back { vendor_name, expense_date, amount, vat_amount, category,
-// file } — the caller decides what to do with the extracted fields and
-// the photo itself (fill the expense form, attach it once the expense is
-// saved, etc.). Same two-ways-in pattern as ScanIdButton: camera directly,
-// or picking an already-taken photo from the gallery/files.
+// hands back { vendor_name, invoice_number, expense_date, amount,
+// vat_amount, category, file } — the caller decides what to do with the
+// extracted fields and the photo itself (fill the expense form, attach it
+// once the expense is saved, etc.). Same two-ways-in pattern as
+// ScanIdButton: camera directly, or picking an already-taken photo from
+// the gallery/files.
 
 'use client';
 
@@ -45,6 +46,7 @@ export default function ScanReceiptButton({
 
       onScanned({
         vendor_name: data.vendor_name,
+        invoice_number: data.invoice_number,
         expense_date: data.expense_date,
         amount: data.amount,
         vat_amount: data.vat_amount,

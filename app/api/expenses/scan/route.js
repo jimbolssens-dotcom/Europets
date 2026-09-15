@@ -1,9 +1,9 @@
 // app/api/expenses/scan/route.js
 // POST /api/expenses/scan  -> read a photo of a supplier receipt/invoice
-// (FormData: `image`) and return { vendor_name, expense_date, amount,
-// vat_amount, category }. Doesn't save anything — the caller fills in the
-// expense form and attaches the photo itself, same pattern as
-// /api/clients/scan-id.
+// (FormData: `image`) and return { vendor_name, invoice_number,
+// expense_date, amount, vat_amount, category }. Doesn't save anything —
+// the caller fills in the expense form and attaches the photo itself,
+// same pattern as /api/clients/scan-id.
 
 import { extractExpenseReceipt } from '@/lib/anthropicClient';
 import { NextResponse } from 'next/server';

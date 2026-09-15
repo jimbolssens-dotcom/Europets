@@ -49,6 +49,7 @@ const CATEGORY_LABELS = {
 const emptyForm = {
   expense_date: today(),
   vendor_name: '',
+  invoice_number: '',
   description: '',
   category: 'other',
   amount: '',
@@ -102,6 +103,7 @@ export default function ExpensesPage() {
   function handleScanned(data) {
     updateForm({
       vendor_name: data.vendor_name || form.vendor_name,
+      invoice_number: data.invoice_number || form.invoice_number,
       expense_date: data.expense_date || form.expense_date,
       amount: data.amount !== null && data.amount !== undefined ? String(data.amount) : form.amount,
       vat_amount: data.vat_amount !== null && data.vat_amount !== undefined ? String(data.vat_amount) : form.vat_amount,
@@ -230,6 +232,7 @@ export default function ExpensesPage() {
                 <tr>
                   <th>Date</th>
                   <th>Vendor</th>
+                  <th>Invoice #</th>
                   <th>Category</th>
                   <th>Amount</th>
                   <th>VAT</th>
@@ -243,6 +246,7 @@ export default function ExpensesPage() {
                   <tr key={ex.id}>
                     <td>{ex.expense_date}</td>
                     <td>{ex.vendor_name || '—'}</td>
+                    <td>{ex.invoice_number || '—'}</td>
                     <td>{CATEGORY_LABELS[ex.category] || ex.category}</td>
                     <td>AED {money(ex.amount)}</td>
                     <td>AED {money(ex.vat_amount)}</td>
@@ -278,6 +282,11 @@ export default function ExpensesPage() {
               placeholder="Vendor"
               value={form.vendor_name}
               onChange={(e) => updateForm({ vendor_name: e.target.value })}
+            />
+            <input
+              placeholder="Invoice / receipt #"
+              value={form.invoice_number}
+              onChange={(e) => updateForm({ invoice_number: e.target.value })}
             />
             <input
               placeholder="Description"
