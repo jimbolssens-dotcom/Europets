@@ -19,7 +19,7 @@ const MAX_PHOTOS = 12;
 export async function GET(request, { params }) {
   const { data: report, error } = await supabase
     .from('xray_reports')
-    .select('ai_summary, performed_at, visit_id, hospitalization_id, staff(full_name)')
+    .select('ai_summary, client_summary, performed_at, visit_id, hospitalization_id, staff(full_name)')
     .eq('id', params.id)
     .single();
 
@@ -66,7 +66,7 @@ export async function GET(request, { params }) {
     clinic,
     performedAt: report.performed_at,
     staffName: report.staff?.full_name,
-    sections: [{ text: report.ai_summary }],
+    sections: [{ text: report.client_summary || report.ai_summary }],
     photos,
   });
 

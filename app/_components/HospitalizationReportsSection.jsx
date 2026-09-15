@@ -493,8 +493,8 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
         groups={[
           { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', anchorId: 'report-dental', reload: loadDentalReports },
           { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', anchorId: 'report-surgical', reload: loadSurgicalReports },
-          { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', anchorId: 'report-ultrasound', reload: loadUltrasoundReports },
-          { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', anchorId: 'report-xray', reload: loadXrayReports },
+          { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', anchorId: 'report-ultrasound', reload: loadUltrasoundReports, hasClientSummary: true },
+          { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', anchorId: 'report-xray', reload: loadXrayReports, hasClientSummary: true },
         ]}
         onGenerate={generateAiReport} generatingId={generatingReportId}
         generationError={generateReportError} generationErrorId={generateReportErrorId}

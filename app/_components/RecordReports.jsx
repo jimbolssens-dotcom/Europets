@@ -87,7 +87,10 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
           </button>
         </div>
         {generationErrorId === report.id && <p className="error" role="alert">{generationError}</p>}
-        {report.ai_summary && <ClientReportEditor reportId={report.id} apiBase={group.apiBase} savedReport={report.ai_summary} onSaved={group.reload} />}
+        {report.ai_summary && <ClientReportEditor reportId={report.id} apiBase={group.apiBase} savedReport={report.ai_summary} onSaved={group.reload}
+          title={group.hasClientSummary ? 'Clinical Report' : 'Client Report'} />}
+        {group.hasClientSummary && report.client_summary && <ClientReportEditor reportId={report.id} apiBase={group.apiBase}
+          savedReport={report.client_summary} onSaved={group.reload} field="client_summary" title="Client Summary" />}
         <ReportShareActions reportId={report.id} apiBase={group.apiBase} client={record.clients} patient={record.patients} reportLabel={group.label.toLowerCase()} />
         <AttachmentSection entityType={group.entityType} entityId={report.id} />
       </details>)}

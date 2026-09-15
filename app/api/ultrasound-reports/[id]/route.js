@@ -15,7 +15,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 
-const EDITABLE_FIELDS = ['performed_by', 'findings', 'notes', 'ai_summary'];
+const EDITABLE_FIELDS = ['performed_by', 'findings', 'notes', 'ai_summary', 'client_summary'];
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase

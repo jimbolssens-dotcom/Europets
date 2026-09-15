@@ -1408,8 +1408,8 @@ export default function ConsultDetailPage() {
           groups={[
             { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', reload: loadDentalReports },
             { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', reload: loadSurgicalReports },
-            { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', sourceTab: 'exam', reload: loadUltrasoundReports },
-            { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', sourceTab: 'exam', reload: loadXrayReports },
+            { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', sourceTab: 'exam', reload: loadUltrasoundReports, hasClientSummary: true },
+            { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', sourceTab: 'exam', reload: loadXrayReports, hasClientSummary: true },
           ]}
           onRecordSaved={loadConsult} onOpenSource={setActiveTab}
           onGenerate={generateAiReport} generatingId={generatingReportId}

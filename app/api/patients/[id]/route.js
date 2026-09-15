@@ -39,7 +39,13 @@ export async function PATCH(request, { params }) {
   const body = await request.json();
   const update = {};
   for (const field of EDITABLE_FIELDS) {
-    if (body[field] !== undefined) update[field] = body[field];
+    if (body[field] === undefined) continue;
+    // microchip_number is `text unique` — a plain "not provided" NULL lets
+    // any number of patients go unchipped, but an empty string is a real
+    // value, so two blanked-out patients would collide on '' and get
+    // rejected as duplicates of each other. Normalize blank to NULL here
+    // the same way POST /api/patients already does.
+    update[field] = field === 'microchip_number' && !body[field] ? null : body[field];
   }
 
   if (Object.keys(update).length === 0) {

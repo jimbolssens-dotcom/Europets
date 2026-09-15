@@ -324,6 +324,23 @@ export default function InvoiceDetailPage() {
     }
   }
 
+  // Same handoff-to-another-app pattern as sendInvoiceViaWhatsApp, just a
+  // mailto: link (no email-sending service is wired into this app) —
+  // opens the staff member's own mail client with the invoice link
+  // pre-filled, same as ReportShareActions does for report PDFs.
+  function sendInvoiceViaEmail() {
+    setPaymentLinkError(null);
+    const url = `${window.location.origin}/api/invoices/${id}/tax-invoice-pdf`;
+    if (!invoice.clients?.email) {
+      setPaymentLinkError('No email address on file for this client.');
+      return;
+    }
+    const invoiceLabel = invoice.invoice_number ? `INV-${String(invoice.invoice_number).padStart(6, '0')}` : 'your invoice';
+    const subject = `Europets Clinic — ${invoiceLabel}`;
+    const body = `Hi ${invoice.clients?.full_name || ''},\n\nHere is your invoice from Europets Clinic: ${url}\n\nPlease don't hesitate to reach out if you have any questions.`;
+    window.open(`mailto:${invoice.clients.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+  }
+
   // Cross-record links (Consult/Hospitalization/Day Procedure) — same
   // click-to-create pattern as the consult and hospitalization pages: a
   // plain pink button creates the link on the spot instead of just being
@@ -420,6 +437,9 @@ export default function InvoiceDetailPage() {
         </button>
         <button type="button" onClick={sendInvoiceViaWhatsApp}>
           💬 WhatsApp
+        </button>
+        <button type="button" onClick={sendInvoiceViaEmail}>
+          ✉️ Email
         </button>
         {editable && (
           <button type="button" onClick={sendPaymentLink}>
