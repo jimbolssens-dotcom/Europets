@@ -340,7 +340,16 @@ p { margin: 0; }
    of the container, and the container's aspect ratio is derived from the
    packing, so each layout stays a true comb at any width. */
 
-.docs { position: relative; width: 100%; margin-inline: auto; }
+.docs {
+  position: relative;
+  width: 100%;
+  margin-inline: auto;
+  /* gap between cell edges, as a share of the container width. In a
+     honeycomb every neighbour — sideways and diagonal — sits the same
+     distance from centre to centre, so shrinking each cell about its own
+     centre opens an even gap in all six directions. */
+  --gap: 3.5%;
+}
 
 .docs::before {
   content: '';
@@ -354,6 +363,7 @@ p { margin: 0; }
   position: absolute;
   margin: 0;
   container-type: inline-size;
+  translate: -50% -50%;
   clip-path: var(--hex);
   padding: 2.5px;
   background: linear-gradient(152deg, #ffe3ef 0%, var(--hot) 32%, var(--magenta) 62%, #8c0b45 100%);
@@ -431,34 +441,25 @@ p { margin: 0; }
   opacity: 0.85;
 }
 
-/* --- 1. Comb: three over two, tightly packed --- */
-.docs[data-layout='comb'] { max-width: 34rem; aspect-ratio: 1.4846; }
-.docs[data-layout='comb'] .doc { width: 33.333%; aspect-ratio: 0.866; }
-.docs[data-layout='comb'] .doc:nth-child(1) { left: 0; top: 0; }
-.docs[data-layout='comb'] .doc:nth-child(2) { left: 33.333%; top: 0; }
-.docs[data-layout='comb'] .doc:nth-child(3) { left: 66.667%; top: 0; }
-.docs[data-layout='comb'] .doc:nth-child(4) { left: 16.667%; top: 42.857%; }
-.docs[data-layout='comb'] .doc:nth-child(5) { left: 50%; top: 42.857%; }
+/* --- 1. Comb: three over two --- */
+.docs[data-layout='comb'] { max-width: 36rem; aspect-ratio: 1.4846; }
+.docs[data-layout='comb'] .doc { width: calc(33.333% - var(--gap)); aspect-ratio: 0.866; }
+.docs[data-layout='comb'] .doc:nth-child(1) { left: 16.667%; top: 28.571%; }
+.docs[data-layout='comb'] .doc:nth-child(2) { left: 50%; top: 28.571%; }
+.docs[data-layout='comb'] .doc:nth-child(3) { left: 83.333%; top: 28.571%; }
+.docs[data-layout='comb'] .doc:nth-child(4) { left: 33.333%; top: 71.429%; }
+.docs[data-layout='comb'] .doc:nth-child(5) { left: 66.667%; top: 71.429%; }
 
-/* --- 2. Lead: the owner large, the team tucked beneath --- */
-.docs[data-layout='lead'] { max-width: 31rem; aspect-ratio: 1.264; }
-.docs[data-layout='lead'] .doc { width: 25%; aspect-ratio: 0.866; }
-.docs[data-layout='lead'] .doc:nth-child(1) { width: 50%; left: 25%; top: 0; }
-.docs[data-layout='lead'] .doc:nth-child(2) { left: 0; top: 63.5%; }
-.docs[data-layout='lead'] .doc:nth-child(3) { left: 25%; top: 63.5%; }
-.docs[data-layout='lead'] .doc:nth-child(4) { left: 50%; top: 63.5%; }
-.docs[data-layout='lead'] .doc:nth-child(5) { left: 75%; top: 63.5%; }
-
-/* --- 3. Column: flat-top cells stacked into a vertical ribbon --- */
-.docs[data-layout='column'] { max-width: 21rem; aspect-ratio: 0.6736; }
+/* --- 2. Column: flat-top cells stacked into a vertical ribbon --- */
+.docs[data-layout='column'] { max-width: 22rem; aspect-ratio: 0.6736; }
 .docs[data-layout='column'] .doc,
 .docs[data-layout='column'] .doc-face { clip-path: var(--hex-flat); }
-.docs[data-layout='column'] .doc { width: 57.14%; aspect-ratio: 1.1547; }
-.docs[data-layout='column'] .doc:nth-child(1) { left: 0; top: 0; }
-.docs[data-layout='column'] .doc:nth-child(2) { left: 42.86%; top: 16.667%; }
-.docs[data-layout='column'] .doc:nth-child(3) { left: 0; top: 33.333%; }
-.docs[data-layout='column'] .doc:nth-child(4) { left: 42.86%; top: 50%; }
-.docs[data-layout='column'] .doc:nth-child(5) { left: 0; top: 66.667%; }
+.docs[data-layout='column'] .doc { width: calc(57.14% - var(--gap)); aspect-ratio: 1.1547; }
+.docs[data-layout='column'] .doc:nth-child(1) { left: 28.57%; top: 16.667%; }
+.docs[data-layout='column'] .doc:nth-child(2) { left: 71.43%; top: 33.333%; }
+.docs[data-layout='column'] .doc:nth-child(3) { left: 28.57%; top: 50%; }
+.docs[data-layout='column'] .doc:nth-child(4) { left: 71.43%; top: 66.667%; }
+.docs[data-layout='column'] .doc:nth-child(5) { left: 28.57%; top: 83.333%; }
 .docs[data-layout='column'] .doc-tag { padding: 9cqi 13cqi 6cqi; }
 .docs[data-layout='column'] .doc-tag b { font-size: 7.2cqi; }
 .docs[data-layout='column'] .doc-tag i { font-size: 4.4cqi; }
@@ -467,9 +468,8 @@ p { margin: 0; }
 @media (max-width: 880px) {
   .hero-inner { grid-template-columns: 1fr; }
   .docs { order: 2; }
-  .docs[data-layout='comb'] { max-width: 26rem; }
-  .docs[data-layout='lead'] { max-width: 24rem; }
-  .docs[data-layout='column'] { max-width: 17rem; }
+  .docs[data-layout='comb'] { max-width: 27rem; }
+  .docs[data-layout='column'] { max-width: 18rem; }
 }
 
 /* ---- preview control, not part of the design ---- */
@@ -484,7 +484,8 @@ p { margin: 0; }
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.35rem;
-  padding: 0.4rem 0.45rem 0.4rem 0.95rem;
+  padding: 0.4rem 0.9rem;
+  gap: 0.3rem 1.25rem;
   border-radius: 999px;
   background: rgba(10, 8, 14, 0.92);
   backdrop-filter: blur(16px) saturate(140%);
@@ -493,7 +494,19 @@ p { margin: 0; }
   max-width: calc(100vw - 1.5rem);
 }
 
-.switch > span {
+.switch-grp { display: flex; align-items: center; gap: 0.35rem; }
+
+.switch input[type='range'] { width: 7rem; accent-color: var(--hot); }
+
+.switch output {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--blush);
+  min-width: 2.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.switch span {
   font-family: var(--mono);
   font-size: 0.6rem;
   letter-spacing: 0.16em;
@@ -1317,11 +1330,17 @@ p { margin: 0; }
 
 <p class="ribbon">Design concept &mdash; &ldquo;Hexfield&rdquo; direction &middot; portraits are placeholders &middot; not the live site</p>
 
-<div class="switch" role="group" aria-label="Hero layout option">
-  <span>Hero</span>
-  <button type="button" data-layout="comb" aria-pressed="true">1 &middot; Comb</button>
-  <button type="button" data-layout="lead" aria-pressed="false">2 &middot; Lead</button>
-  <button type="button" data-layout="column" aria-pressed="false">3 &middot; Column</button>
+<div class="switch">
+  <div class="switch-grp" role="group" aria-label="Hero layout">
+    <span>Hero</span>
+    <button type="button" data-layout="comb" aria-pressed="true">Comb</button>
+    <button type="button" data-layout="column" aria-pressed="false">Column</button>
+  </div>
+  <div class="switch-grp">
+    <span>Spacing</span>
+    <input type="range" id="gap" min="0" max="9" step="0.5" value="3.5" aria-label="Spacing between hexagons">
+    <output id="gapout" for="gap">3.5%</output>
+  </div>
 </div>
 
 <script>
@@ -1614,13 +1633,21 @@ function hexPath(ctx, cx, cy, r) {
 /* hero layout switcher (preview control) */
 (function () {
   var docs = document.getElementById('docs');
+  if (!docs) return;
+
   var btns = [].slice.call(document.querySelectorAll('.switch button'));
-  if (!docs || !btns.length) return;
   btns.forEach(function (b) {
     b.addEventListener('click', function () {
       btns.forEach(function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
       docs.setAttribute('data-layout', b.getAttribute('data-layout'));
     });
+  });
+
+  var gap = document.getElementById('gap'), out = document.getElementById('gapout');
+  if (!gap) return;
+  gap.addEventListener('input', function () {
+    docs.style.setProperty('--gap', gap.value + '%');
+    out.textContent = gap.value + '%';
   });
 })();
 

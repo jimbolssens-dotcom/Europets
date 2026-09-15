@@ -27,18 +27,24 @@ file only renders correctly from this directory.
 
 The hero's right-hand side carries the five vets as hexagonal portraits rather
 than the logo mosaic, and the headline steps down a size to give them the room.
-Three arrangements ship in the same file, switched by the `data-layout`
-attribute on `.docs` (a floating control in the page toggles it — that control
-is a preview affordance, not part of the design):
+Two arrangements ship in the same file, switched by the `data-layout` attribute
+on `.docs` (a floating control in the page toggles it, and dials the spacing —
+that control is a preview affordance, not part of the design):
 
-- **comb** — three cells over two, tightly packed. Pointy-top, 1.4846 aspect.
-- **lead** — the owner at double size with the team tucked beneath. 1.264.
+- **comb** — three cells over two. Pointy-top, 1.4846 aspect. The chosen one.
 - **column** — flat-top cells stacked into a vertical ribbon. 0.6736, tall.
 
-Every position is a percentage of the container and each container's aspect
-ratio is derived from its packing, so a layout stays a true comb at any width.
-Cells are `container-type: inline-size`, so the name, role and placeholder
-initial are sized in `cqi` and scale with the cell rather than the viewport.
+The cells do not touch. Each one is positioned by its *centre* and sized
+`calc(pitch - var(--gap))`, so it shrinks about its own centre while the comb
+keeps its shape. That gives an even gap in every direction for free: in a
+honeycomb each neighbour — sideways and diagonal alike — sits exactly one pitch
+from centre to centre, so one shrink opens all six gaps equally. `--gap` is a
+share of the container width; 3.5% is the default.
+
+Each container's aspect ratio is derived from its packing, so a layout stays a
+true comb at any width. Cells are `container-type: inline-size`, so the name,
+role and placeholder initial are sized in `cqi` and scale with the cell rather
+than the viewport.
 
 Two things are easy to get wrong here. A pointy-top hexagon ends in a point, so
 a caption pinned to its bottom edge lands where the cell has no width left —
