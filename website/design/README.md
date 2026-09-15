@@ -60,19 +60,25 @@ photo is one line per doctor — replace `<span class="doc-ph">` with an `<img>`
 
 ### The logo on a dark ground
 
-`make-dark-logo.js` builds two files into `public/` from the production logo:
+The logo stays in its normal stacked arrangement — mark over wordmark, no
+relocking and no box — sitting straight on the black ground in both the nav and
+the footer. The navigation bar is sized around it rather than the other way
+round: a stacked logo squeezed into a short bar leaves the type a few pixels
+tall, so the bar runs `clamp(4.6rem, 6vw, 5.7rem)` and the logo
+`clamp(3.4rem, 4.6vw, 4.3rem)`.
 
-- `logo-on-dark.png` — the stacked logo with only its wordmark recoloured.
-  The type is set in near-black with a slate sub-line and vanishes on this
-  ground; the cross, dog and cat are left exactly as drawn, and alpha is
-  preserved so the type keeps its antialiasing.
-- `logo-lockup-dark.png` — the same two elements relocked side by side. A
-  stacked mark-over-wordmark logo cannot read in a 4-5rem navigation bar:
-  fit it to the bar's height and the type is a few pixels tall. No new
-  artwork, just a horizontal arrangement of what already exists.
+`make-dark-logo.js` builds the dark-ground files into `public/`:
 
-The nav takes the lockup, the footer takes the stacked one. Re-run the script
-after any logo change.
+- `logo-on-dark.png` — what both the nav and footer use. The artwork sets its
+  wordmark in near-black with a slate sub-line, which vanishes on this ground,
+  so that type is recoloured to chalk and soft grey. Nothing else is touched:
+  the cross, dog and cat are exactly as drawn, and alpha is preserved so the
+  type keeps its antialiasing over any background.
+- `logo-lockup-dark.png` — the same two elements relocked side by side. Built
+  and kept for anywhere the layout is wide and short, but the page does not
+  use it.
+
+Re-run the script after any logo change.
 
 ### The veterinary layer
 

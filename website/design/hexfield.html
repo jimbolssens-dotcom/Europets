@@ -222,15 +222,16 @@ p { margin: 0; }
   border-bottom: 1px solid var(--hair);
 }
 
-.nav-row { display: flex; align-items: center; gap: 1.75rem; height: 4.4rem; }
+.nav-row { display: flex; align-items: center; gap: 1.75rem; height: clamp(4.6rem, 6vw, 5.7rem); }
 .brand { flex: none; display: flex; align-items: center; text-decoration: none; }
 
-/* The production logo sets its wordmark in near-black, so on this ground it
-   needs the dark-ground build (see design/make-dark-logo.js). The nav takes
-   the horizontal lockup — a stacked logo fitted to a 4.4rem bar leaves the
-   type a few pixels tall — and the footer, which has the vertical room,
-   takes the stacked one. */
-.brand-logo { display: block; height: 2.6rem; width: auto; }
+/* The logo in its normal stacked arrangement, sitting straight on the black
+   ground. The artwork sets its wordmark in near-black, so the page uses the
+   dark-ground build (see design/make-dark-logo.js) in which only that type is
+   recoloured — the cross, dog and cat are exactly as drawn. The bar is sized
+   around the logo rather than the other way round, since a stacked logo
+   squeezed into a short bar leaves the type a few pixels tall. */
+.brand-logo { display: block; height: clamp(3.4rem, 4.6vw, 4.3rem); width: auto; }
 
 .nav-links { display: flex; gap: 1.5rem; flex: 1; }
 
@@ -868,7 +869,7 @@ p { margin: 0; }
 <header class="nav">
   <div class="shell nav-row">
     <a class="brand" href="#top" aria-label="Europets Clinic, home">
-      <img class="brand-logo" src="../public/logo-lockup-dark.png" alt="Europets Clinic">
+      <img class="brand-logo" src="../public/logo-on-dark.png" alt="Europets Clinic">
     </a>
     <nav class="nav-links nav-desktop" aria-label="Primary">
       <a href="#story">About</a>
