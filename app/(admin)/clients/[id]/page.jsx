@@ -436,9 +436,12 @@ export default function ClientDetailPage() {
           </span>
         </div>
 
+        <p className="financial-overview-group-label">
+          Send full statement <InfoHint>Every invoice and payment on file, with dates and running balance — a document, not just a reminder.</InfoHint>
+        </p>
         <div className="financial-overview-actions">
           <button type="button" onClick={downloadStatement}>
-            📄 Statement of Account
+            📄 Download
           </button>
           <button type="button" onClick={sendStatementViaWhatsApp} disabled={!client.phone}>
             💬 WhatsApp
@@ -449,25 +452,30 @@ export default function ClientDetailPage() {
         </div>
 
         {totalOutstanding > 0 && (
-          <div className="financial-overview-actions">
-            <button
-              type="button"
-              onClick={() => openWhatsAppReminder(client.phone, client.full_name, outstandingInvoices)}
-              disabled={!client.phone}
-            >
-              💬 WhatsApp
-            </button>
-            <button
-              type="button"
-              onClick={() => openEmailReminder(client.email, client.full_name, outstandingInvoices)}
-              disabled={!client.email}
-            >
-              ✉️ Email
-            </button>
-            <button type="button" onClick={sendPaymentLink}>
-              💳 Pay All
-            </button>
-          </div>
+          <>
+            <p className="financial-overview-group-label">
+              Remind to pay <InfoHint>A short message naming what's still owed, with a link to pay online — no attachment.</InfoHint>
+            </p>
+            <div className="financial-overview-actions">
+              <button
+                type="button"
+                onClick={() => openWhatsAppReminder(client.phone, client.full_name, outstandingInvoices)}
+                disabled={!client.phone}
+              >
+                💬 WhatsApp
+              </button>
+              <button
+                type="button"
+                onClick={() => openEmailReminder(client.email, client.full_name, outstandingInvoices)}
+                disabled={!client.email}
+              >
+                ✉️ Email
+              </button>
+              <button type="button" onClick={sendPaymentLink}>
+                💳 Pay All
+              </button>
+            </div>
+          </>
         )}
         {paymentLinkError && <p className="error">{paymentLinkError}</p>}
 

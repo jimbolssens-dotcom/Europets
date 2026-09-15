@@ -1430,6 +1430,15 @@ button.secondary:hover {
   color: #b00020;
 }
 
+.financial-overview-group-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #999;
+  margin: 0 0 0.35rem;
+}
+
 .financial-overview-actions {
   display: flex;
   gap: 0.5rem;
