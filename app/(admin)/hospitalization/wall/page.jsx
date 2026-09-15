@@ -11,6 +11,12 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Whoever is standing at the wall picks themselves once before tapping —
+// same mechanism as the mobile self-service staff picker (see
+// DayTreatmentPlan/ProcedureChecklist), just its own storage key since
+// this is a shared kiosk, not one person's device.
+const WALL_STAFF_STORAGE_KEY = 'europets_wall_staff_id';
+
 // The Fullscreen API requires calling requestFullscreen() from inside a
 // real user gesture (a click) — it can't be triggered automatically on
 // page load — so this is wired to a button tap, not an effect. Vendor
@@ -37,6 +43,8 @@ export default function HospitalizationWallPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [staff, setStaff] = useState([]);
+  const [authorId, setAuthorId] = useState('');
 
   useEffect(() => {
     function onFullscreenChange() {
@@ -56,6 +64,19 @@ export default function HospitalizationWallPage() {
     } else {
       requestFullscreen();
     }
+  }
+
+  useEffect(() => {
+    fetch('/api/staff')
+      .then((res) => res.json())
+      .then((data) => setStaff(Array.isArray(data) ? data : []));
+    const remembered = localStorage.getItem(WALL_STAFF_STORAGE_KEY);
+    if (remembered) setAuthorId(remembered);
+  }, []);
+
+  function handleAuthorChange(value) {
+    setAuthorId(value);
+    localStorage.setItem(WALL_STAFF_STORAGE_KEY, value);
   }
 
   async function loadWall() {
@@ -122,14 +143,27 @@ export default function HospitalizationWallPage() {
   return (
     <div className={styles.wall}>
       <Link className={styles.back} href="/hospitalization" aria-label="Back to hospitalization">Back</Link>
-      <button
-        type="button"
-        className={styles.fullscreenToggle}
-        onClick={toggleFullscreen}
-        aria-label={fullscreen ? 'Exit full screen' : 'Enter full screen'}
-      >
-        {fullscreen ? '⤦ Exit Full Screen' : '⛶ Full Screen'}
-      </button>
+      <div className={styles.topRight}>
+        <select
+          className={styles.staffPicker}
+          value={authorId}
+          onChange={(e) => handleAuthorChange(e.target.value)}
+          aria-label="Logging as"
+        >
+          <option value="">Logging as…</option>
+          {staff.map((s) => (
+            <option key={s.id} value={s.id}>{s.full_name}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className={styles.fullscreenToggle}
+          onClick={toggleFullscreen}
+          aria-label={fullscreen ? 'Exit full screen' : 'Enter full screen'}
+        >
+          {fullscreen ? '⤦ Exit Full Screen' : '⛶ Full Screen'}
+        </button>
+      </div>
       {loading && <div className={styles.loading} role="status">Loading…</div>}
       {error && <div className={styles.error}>{error}</div>}
 
@@ -143,6 +177,8 @@ export default function HospitalizationWallPage() {
               cage={cage}
               hospitalization={hospitalization}
               details={hospitalization ? detailsByHospitalization[hospitalization.id] : null}
+              authorId={authorId}
+              onLogged={loadWall}
             />
           );
         }}

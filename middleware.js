@@ -50,6 +50,8 @@ const PUBLIC_PATTERNS = [
   /^\/api\/visits\/[^/]+\/report-pdf$/,
   /^\/api\/visits\/[^/]+\/test-report-pdf$/,
   /^\/api\/hospitalizations\/[^/]+\/test-report-pdf$/,
+  /^\/api\/clients\/[^/]+\/statement-pdf$/,
+  /^\/api\/proforma-invoices\/[^/]+\/quote-pdf$/,
 ];
 
 // Hospitalization by-id, its /notes, and its /messages are public for the

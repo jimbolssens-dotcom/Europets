@@ -158,6 +158,42 @@ export default function ClientDetailPage() {
     }
   }
 
+  // Cache-busting param, on top of the route's own no-store headers, so a
+  // browser/download manager can never reuse a previous download of this
+  // same statement after another payment or invoice has landed.
+  function downloadStatement() {
+    window.open(`/api/clients/${id}/statement-pdf?t=${Date.now()}`, '_blank');
+  }
+
+  // No cache-busting here — a client-facing link, same reasoning as the
+  // invoice page's own sendInvoiceViaWhatsApp/sendInvoiceViaEmail: the
+  // route's no-store headers already guarantee a fresh statement every
+  // time they open it themselves.
+  function sendStatementViaWhatsApp() {
+    setPaymentLinkError(null);
+    const url = `${window.location.origin}/api/clients/${id}/statement-pdf`;
+    const message = `Hi ${client.full_name}! Here is your statement of account from Europets Clinic: ${url}`;
+    const digits = (client.phone || '').replace(/\D/g, '');
+    if (digits.length > 3) {
+      openWhatsApp(client.phone, message);
+    } else {
+      navigator.clipboard.writeText(url);
+      setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
+    }
+  }
+
+  function sendStatementViaEmail() {
+    setPaymentLinkError(null);
+    if (!client.email) {
+      setPaymentLinkError('No email address on file for this client.');
+      return;
+    }
+    const url = `${window.location.origin}/api/clients/${id}/statement-pdf`;
+    const subject = `Europets Clinic — Statement of Account`;
+    const body = `Hi ${client.full_name},\n\nHere is your statement of account from Europets Clinic: ${url}\n\nPlease don't hesitate to reach out if you have any questions.`;
+    window.open(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+  }
+
   async function handleScanned({ full_name, emirates_id, file }) {
     const update = {};
     if (full_name && !client.full_name) update.full_name = full_name;
@@ -398,6 +434,18 @@ export default function ClientDetailPage() {
           <span className={`financial-overview-total-amount${totalOutstanding > 0 ? ' financial-overview-total-amount-due' : ''}`}>
             AED {money(totalOutstanding)}
           </span>
+        </div>
+
+        <div className="financial-overview-actions">
+          <button type="button" onClick={downloadStatement}>
+            📄 Statement of Account
+          </button>
+          <button type="button" onClick={sendStatementViaWhatsApp} disabled={!client.phone}>
+            💬 WhatsApp
+          </button>
+          <button type="button" onClick={sendStatementViaEmail} disabled={!client.email}>
+            ✉️ Email
+          </button>
         </div>
 
         {totalOutstanding > 0 && (

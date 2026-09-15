@@ -21,10 +21,15 @@
   line-height: 18px;
   text-decoration: none;
 }
-.fullscreenToggle {
+.topRight {
   position: absolute;
   top: 3px;
   right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.fullscreenToggle {
   padding: 1px 7px;
   border: 1px solid #d9c5ce;
   border-radius: 3px;
@@ -33,6 +38,16 @@
   font-size: 11px;
   line-height: 18px;
   cursor: pointer;
+}
+.staffPicker {
+  padding: 1px 5px;
+  border: 1px solid #d9c5ce;
+  border-radius: 3px;
+  color: #743954;
+  background: white;
+  font-size: 11px;
+  line-height: 18px;
+  max-width: 130px;
 }
 /* Locked map: eight equal square cage columns. The top occupies three
    rows (LT5/LT4 | Hospital 2x6 | LT3/LT2/LT1); the lower block occupies
@@ -104,6 +119,16 @@
   container-type: size;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
+}
+/* `all: unset` strips default button chrome (border/font/background) so
+   the tap target reads exactly like the old plain .task cell, just now
+   clickable — mouse or touch, since the wall runs on both. */
+.taskButton {
+  all: unset;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -113,10 +138,13 @@
   box-shadow: inset 0 0 0 1px #d48a00;
   border-radius: 2px;
   padding: 2px 3px;
-  overflow: hidden;
+  cursor: pointer;
 }
+.taskButton:hover { filter: brightness(0.97); }
+.taskButton:active { filter: brightness(0.9); }
 .taskLabel { font-weight: 700; font-size: clamp(7px, 26cqh, 22px); line-height: 1.05; overflow-wrap: anywhere; }
 .done { background: #08783e; color: #fff; box-shadow: inset 0 0 0 1px #034a26; }
+.logging { background: #ded9dc; color: #4a4249; box-shadow: inset 0 0 0 1px #a89aa1; cursor: default; }
 .attention { box-shadow: inset 0 0 0 2px #ffc107; background: #fff3cd; }
 .attentionLabel { font-size: clamp(9px, .48vw, 20px); font-weight: 700; color: #815000; }
 .noPlan { color: #71676d; font-size: clamp(9px, .55vw, 24px); }

@@ -43,7 +43,9 @@ export default function PatientDetailPage() {
   const [editError, setEditError] = useState(null);
   const [startingDayProcedure, setStartingDayProcedure] = useState(false);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
+  const [creatingQuote, setCreatingQuote] = useState(false);
   const [statusOverview, setStatusOverview] = useState(null);
+  const [quotes, setQuotes] = useState([]);
 
   const load = () =>
     fetch(`/api/patients/${id}`)
@@ -58,9 +60,15 @@ export default function PatientDetailPage() {
       .then((res) => res.json())
       .then((data) => setStatusOverview(data));
 
+  const loadQuotes = () =>
+    fetch(`/api/patients/${id}/proforma-invoices`)
+      .then((res) => res.json())
+      .then((data) => setQuotes(Array.isArray(data) ? data : []));
+
   useEffect(() => {
     load();
     loadStatusOverview();
+    loadQuotes();
     fetch('/api/staff')
       .then((res) => res.json())
       .then((data) => setStaff(Array.isArray(data) ? data : []));
@@ -88,6 +96,11 @@ export default function PatientDetailPage() {
         () => loadStatusOverview()
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => loadStatusOverview())
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'proforma_invoices', filter: `patient_id=eq.${id}` },
+        () => loadQuotes()
+      )
       .subscribe();
 
     return () => {
@@ -129,6 +142,20 @@ export default function PatientDetailPage() {
       if (res.ok) router.push(`/invoices/${data.id}`);
     } finally {
       setCreatingInvoice(false);
+    }
+  }
+
+  // A quote for the client, entirely separate from the real invoicing
+  // system (see migrations/101_proforma_invoices.sql) — nothing here ever
+  // reaches accounting or a Statement of Account.
+  async function createProformaInvoice() {
+    setCreatingQuote(true);
+    try {
+      const res = await fetch(`/api/patients/${id}/proforma-invoices`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) router.push(`/proforma/${data.id}`);
+    } finally {
+      setCreatingQuote(false);
     }
   }
 
@@ -233,6 +260,10 @@ export default function PatientDetailPage() {
         <button type="button" className="button-link" onClick={createInvoice} disabled={creatingInvoice}
           title="Start a standalone invoice not tied to any consult or admission — e.g. a separate retail purchase">
           {creatingInvoice ? 'Creating…' : 'Create Invoice'}
+        </button>
+        <button type="button" className="button-link" onClick={createProformaInvoice} disabled={creatingQuote}
+          title="Draft a price quote to send the client — never logged to accounting, no VAT invoice, no accounting effect">
+          {creatingQuote ? 'Creating…' : '📝 Create Proforma Invoice'}
         </button>
         <a href={`/patients/${patient.id}/history`} className="button-link">
           📖 Full Patient History
@@ -445,6 +476,39 @@ export default function PatientDetailPage() {
           <VaccinationForm {...vac} species={patient.species} staff={staff} />
         </div>
       </div>
+
+      {quotes.length > 0 && (
+        <>
+          <h2>Quotes</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Items</th>
+                <th>Estimated Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {quotes.map((q) => {
+                const items = q.proforma_invoice_items || [];
+                const subtotal = items.reduce((sum, item) => sum + Number(item.line_total), 0);
+                const total = Math.round(subtotal * 1.05 * 100) / 100;
+                return (
+                  <tr key={q.id}>
+                    <td>{new Date(q.created_at).toLocaleDateString()}</td>
+                    <td>{items.length}</td>
+                    <td>AED {total.toFixed(2)}</td>
+                    <td>
+                      <a href={`/proforma/${q.id}`}>Open</a>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
 
       <PatientHistoryPanel
         patientId={patient.id}
