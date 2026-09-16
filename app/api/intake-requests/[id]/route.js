@@ -73,7 +73,7 @@ async function linkExistingClient(id, phone) {
     return NextResponse.json({ matched: false });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('intake_requests')
     .update({ client_id: matches[0].id, sent_to_phone: phone })
     .eq('id', id)
@@ -197,7 +197,7 @@ async function submit(id, body) {
 
   const isCustomSurgery = appointment_type === 'other_surgery';
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('intake_requests')
     .update({
       full_name: isExistingClient ? undefined : full_name,
@@ -242,7 +242,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
   }
 
   if (action === 'reject') {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('intake_requests')
       .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
       .eq('id', id)
@@ -407,7 +407,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
 
   let appointmentId = null;
   if (intake.appointment_type) {
-    const { data: appointment, error: appointmentError } = await supabase
+    const { data: appointment, error: appointmentError } = await supabaseAdmin
       .from('appointments')
       .insert([{
         patient_id: bookingPatientId,
@@ -432,7 +432,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
     appointmentId = appointment.id;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('intake_requests')
     .update({
       status: 'approved',
@@ -478,7 +478,7 @@ export async function PATCH(request, { params }) {
   // Editing/resending the number staff sent an unsubmitted link to —
   // updates the record shown in the "Sent, Awaiting Submission" list.
   if (body.action === 'update_phone') {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('intake_requests')
       .update({ sent_to_phone: body.sent_to_phone || null })
       .eq('id', params.id)
@@ -499,7 +499,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: 'Staff login required at /login' }, { status: 401 });
   }
 
-  const { error } = await supabase.from('intake_requests').delete().eq('id', params.id);
+  const { error } = await supabaseAdmin.from('intake_requests').delete().eq('id', params.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

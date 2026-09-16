@@ -93,7 +93,7 @@ export async function GET(request, { params }) {
 
   if (patient) {
     if (!report.dental_chart_snapshot) {
-      await supabase.from('dental_reports').update({ dental_chart_snapshot: reportChart }).eq('id', params.id);
+      await supabaseAdmin.from('dental_reports').update({ dental_chart_snapshot: reportChart }).eq('id', params.id);
     }
     const locked = lockExtractedTeeth(patient.dental_chart);
     if (locked && JSON.stringify(locked) !== JSON.stringify(patient.dental_chart)) {

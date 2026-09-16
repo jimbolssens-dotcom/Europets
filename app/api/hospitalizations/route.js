@@ -18,6 +18,7 @@
 // patient file.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { attachCages } from '@/lib/attachCages';
 import { NextResponse } from 'next/server';
 
@@ -258,7 +259,7 @@ export async function POST(request) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('hospitalizations')
     .insert([
       {
@@ -286,7 +287,7 @@ export async function POST(request) {
   }
 
   if (appointment_id) {
-    await supabase.from('appointments').update({ status: 'checked_in' }).eq('id', appointment_id);
+    await supabaseAdmin.from('appointments').update({ status: 'checked_in' }).eq('id', appointment_id);
   }
 
   return NextResponse.json(await attachCages(data), { status: 201 });

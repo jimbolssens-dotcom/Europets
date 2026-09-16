@@ -6,6 +6,7 @@
 //        left out for routine care (cage cleaning, feeding, checks, ...)
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 
@@ -40,7 +41,7 @@ export async function POST(request, { params }) {
     resolvedMethod = resolveAdministrationMethod(catalogItem?.administration_method).administration_method;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('hospitalization_plan_items')
     .insert([
       {

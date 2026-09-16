@@ -11,6 +11,7 @@
 // Public (no staff PIN) — see the PUBLIC_PATTERNS entry in middleware.js.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { createSignedConsentForm, resolveConsentFormContext } from '@/lib/consentForms';
 import { NextResponse } from 'next/server';
@@ -82,7 +83,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
-  await supabase
+  await supabaseAdmin
     .from('consent_form_requests')
     .update({ status: 'submitted', submitted_at: new Date().toISOString(), consent_form_id: result.data.id })
     .eq('id', params.id);

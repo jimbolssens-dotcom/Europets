@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { generateReportForHospitalization } from '@/lib/hospitalizationReportGeneration';
 
 export const maxDuration = 60;
@@ -10,7 +11,7 @@ export async function POST(request, { params }) {
   try {
     const summary = await generateReportForHospitalization(admission);
     if (!summary) return NextResponse.json({ error: 'Add worksheet notes or test results before generating a hospital report.' }, { status: 400 });
-    const { data, error: saveError } = await supabase.from('hospitalizations').update({ ai_summary: summary }).eq('id', params.id).select().single();
+    const { data, error: saveError } = await supabaseAdmin.from('hospitalizations').update({ ai_summary: summary }).eq('id', params.id).select().single();
     if (saveError) throw new Error(saveError.message);
     return NextResponse.json(data);
   } catch (err) {

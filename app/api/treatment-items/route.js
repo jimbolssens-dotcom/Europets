@@ -29,6 +29,7 @@
 //                                                           blocks the item being added.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { checkTreatmentNoteCoverage } from '@/lib/anthropicClient';
@@ -91,7 +92,7 @@ export async function POST(request) {
 
   const resolved = resolveAdministrationMethod(catalogItem.administration_method);
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('treatment_items')
     .insert([
       {
@@ -134,7 +135,7 @@ async function syncTreatmentPlanNotes(visitId, itemName, instructions) {
     if (already_covered || !note_addition) return;
 
     const updatedNotes = currentNotes.trim() ? `${currentNotes}\n${note_addition}` : note_addition;
-    await supabase.from('visits').update({ treatment_notes: updatedNotes }).eq('id', visitId);
+    await supabaseAdmin.from('visits').update({ treatment_notes: updatedNotes }).eq('id', visitId);
   } catch (err) {
     console.error('Failed to sync treatment plan notes for visit', visitId, err);
   }

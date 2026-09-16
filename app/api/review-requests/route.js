@@ -8,6 +8,7 @@
 //                                [id]'s "Request a Review")
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -38,7 +39,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'client not found' }, { status: 404 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('review_requests')
     .insert([{ client_id: body.client_id, sent_to_phone: body.sent_to_phone || null }])
     .select()

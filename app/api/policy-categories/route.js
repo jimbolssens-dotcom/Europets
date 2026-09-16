@@ -3,6 +3,7 @@
 // POST /api/policy-categories  -> add a category
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -26,7 +27,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'name is required' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('policy_categories')
     .insert([{ name, sort_order: sort_order ?? 0 }])
     .select()

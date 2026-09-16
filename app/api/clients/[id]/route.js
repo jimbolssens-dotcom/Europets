@@ -100,7 +100,7 @@ export async function DELETE(request, { params }) {
 
   if (attachments?.length) {
     await supabase.storage.from('consult-files').remove(attachments.map((a) => a.file_path));
-    await supabase.from('attachments').delete().in('id', attachments.map((a) => a.id));
+    await supabaseAdmin.from('attachments').delete().in('id', attachments.map((a) => a.id));
   }
 
   const { error } = await supabaseAdmin.from('clients').delete().eq('id', params.id);

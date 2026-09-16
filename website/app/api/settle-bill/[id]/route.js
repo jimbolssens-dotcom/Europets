@@ -13,6 +13,7 @@
 //          for the page to redirect to.
 
 import { supabaseServer } from '@/lib/supabaseServer';
+import { supabaseServerAdmin } from '@/lib/supabaseServerAdmin';
 import { createPaymentLink } from '@/lib/nomod';
 import { reconcilePendingNomodLink } from '@/lib/nomodPayments';
 import { NextResponse } from 'next/server';
@@ -95,7 +96,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'payments are temporarily unavailable, please try again shortly' }, { status: 502 });
   }
 
-  const { data: link, error: insertError } = await supabaseServer
+  const { data: link, error: insertError } = await supabaseServerAdmin
     .from('nomod_payment_links')
     .insert([{ invoice_id: params.id, nomod_link_id: nomodLink.id, url: nomodLink.url, amount }])
     .select('url')

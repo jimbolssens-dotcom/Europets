@@ -11,6 +11,7 @@
 //        treatment_items line, the same way DayTreatmentPlan logs meds.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -64,7 +65,7 @@ export async function POST(request) {
   // creates that entry, the same way DayTreatmentPlan logs a medication.
   let hospitalizationNoteId = null;
   if (hospitalization_id) {
-    const { data: note, error: noteError } = await supabase
+    const { data: note, error: noteError } = await supabaseAdmin
       .from('hospitalization_notes')
       .insert([{ hospitalization_id, notes: `Test ordered: ${catalogItem.name}` }])
       .select('id')
@@ -75,7 +76,7 @@ export async function POST(request) {
     hospitalizationNoteId = note.id;
   }
 
-  const { data: treatmentItem, error: treatmentItemError } = await supabase
+  const { data: treatmentItem, error: treatmentItemError } = await supabaseAdmin
     .from('treatment_items')
     .insert([
       {
@@ -92,7 +93,7 @@ export async function POST(request) {
     return NextResponse.json({ error: treatmentItemError.message }, { status: 500 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('diagnostics')
     .insert([
       {
@@ -111,7 +112,7 @@ export async function POST(request) {
     // Roll back the treatment item we just created — there's no
     // cross-table transaction here, so this stays a clean retry instead
     // of leaving a stray, unexplained line on the treatment plan.
-    await supabase.from('treatment_items').delete().eq('id', treatmentItem.id);
+    await supabaseAdmin.from('treatment_items').delete().eq('id', treatmentItem.id);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json(data, { status: 201 });

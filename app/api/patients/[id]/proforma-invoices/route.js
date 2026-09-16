@@ -7,6 +7,7 @@
 //      via /api/proforma-invoices/:id/items, same shape as a real invoice.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
@@ -35,7 +36,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'patient not found' }, { status: 404 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('proforma_invoices')
     .insert([{ patient_id: params.id, client_id: patient.client_id, created_by: body.created_by || null }])
     .select()

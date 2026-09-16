@@ -10,6 +10,7 @@
 //        (on delete set null — see migrations/076).
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 
@@ -43,7 +44,7 @@ export async function PATCH(request, { params }) {
   // unrelated edit.
   if (is_surgical !== undefined) update.is_surgical = !!is_surgical;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('hospitalization_plan_items')
     .update(update)
     .eq('id', params.id)
@@ -57,7 +58,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { error } = await supabase.from('hospitalization_plan_items').delete().eq('id', params.id);
+  const { error } = await supabaseAdmin.from('hospitalization_plan_items').delete().eq('id', params.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

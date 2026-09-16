@@ -11,6 +11,7 @@
 //           error.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { defaultRosterCapabilities } from '@/lib/rosterDefaults';
 
@@ -68,7 +69,7 @@ export async function POST(request) {
     Object.assign(row, defaultRosterCapabilities(shift, staffMember?.full_name));
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('staff_roster_entries')
     .insert([row])
     .select('*, staff(full_name, role)')

@@ -27,6 +27,7 @@
 // total that's silently less than the cash received.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { recomputeInvoiceTotals, applyAdministrationFee, stripAdministrationFeeTag, VAT_RATE } from '@/lib/invoicing';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
@@ -120,7 +121,7 @@ export async function PATCH(request, { params }) {
     previousVoiceNotePath = current.voice_note_path || null;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('invoice_line_items')
     .update(update)
     .eq('id', params.itemId)
@@ -183,7 +184,7 @@ export async function DELETE(request, { params }) {
     }
   }
 
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await supabaseAdmin
     .from('invoice_line_items')
     .delete()
     .eq('id', params.itemId)

@@ -5,6 +5,7 @@
 //        (which fixes its main_category — product/test/service — for you)
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const PRICING_TYPES = ['flat', 'per_kg', 'per_unit'];
@@ -73,7 +74,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'invalid subcategory_id' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('goods_services')
     .insert([
       {

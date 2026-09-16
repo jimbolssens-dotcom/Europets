@@ -5,6 +5,7 @@
 // POST /api/vaccinations                          -> record a vaccination given
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -109,7 +110,7 @@ export async function POST(request) {
     dueDate = given.toISOString().slice(0, 10);
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('vaccinations')
     .insert([
       {

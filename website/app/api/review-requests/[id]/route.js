@@ -10,6 +10,7 @@
 //           near a 'use client' file.
 
 import { supabaseServer } from '@/lib/supabaseServer';
+import { supabaseServerAdmin } from '@/lib/supabaseServerAdmin';
 import { NextResponse } from 'next/server';
 
 function firstNameLastInitial(fullName) {
@@ -60,7 +61,7 @@ export async function POST(request, { params }) {
   // the submit form promises this, since a review is shown publicly.
   const displayName = typedDisplayName || firstNameLastInitial(existing.clients?.full_name) || 'A client';
 
-  const { error } = await supabaseServer
+  const { error } = await supabaseServerAdmin
     .from('review_requests')
     .update({
       rating,

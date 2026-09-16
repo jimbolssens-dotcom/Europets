@@ -5,6 +5,7 @@
 // Block imaging using the stored diagnostic identity before reading bytes.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { extractDiagnosticResult } from '@/lib/anthropicClient';
 import { isImagingDiagnostic } from '@/lib/diagnosticReportPolicy';
 import { NextResponse } from 'next/server';
@@ -74,7 +75,7 @@ export async function POST(request, { params }) {
     const extracted = await extractDiagnosticResult(buffer, mediaType, diagnostic.goods_services?.name || testName);
     const mergedResult = diagnostic.result?.trim() ? `${diagnostic.result.trim()}\n\n${extracted}` : extracted;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('diagnostics')
       .update({ result: mergedResult })
       .eq('id', params.id)

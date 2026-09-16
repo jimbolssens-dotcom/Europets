@@ -14,6 +14,7 @@
 // unassigned calendar entries. See the Appointments page's Import control.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const MAX_BATCH = 2000;
@@ -68,7 +69,7 @@ export async function POST(request) {
     });
   }
 
-  const { data, error } = await supabase.from('appointments').insert(rows).select('id');
+  const { data, error } = await supabaseAdmin.from('appointments').insert(rows).select('id');
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

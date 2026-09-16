@@ -12,6 +12,7 @@
 // recorded payments) untouched.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { gatherInvoiceTreatmentItems, syncInvoiceTreatmentItems } from '@/lib/invoicing';
 import { NextResponse } from 'next/server';
 
@@ -49,7 +50,7 @@ export async function POST(request, { params }) {
       .limit(1)
       .maybeSingle();
     if (consultInvoice) {
-      await supabase.from('invoices').update({ hospitalization_id: hospitalizationId }).eq('id', consultInvoice.id);
+      await supabaseAdmin.from('invoices').update({ hospitalization_id: hospitalizationId }).eq('id', consultInvoice.id);
       existing = consultInvoice;
     }
   }
@@ -60,7 +61,7 @@ export async function POST(request, { params }) {
     const invoiceInsert = { client_id: admission.client_id, hospitalization_id: hospitalizationId };
     if (admission.originating_visit_id) invoiceInsert.visit_id = admission.originating_visit_id;
 
-    const { data: invoice, error: invoiceError } = await supabase
+    const { data: invoice, error: invoiceError } = await supabaseAdmin
       .from('invoices')
       .insert([invoiceInsert])
       .select()

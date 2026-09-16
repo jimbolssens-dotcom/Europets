@@ -8,6 +8,7 @@
 //                             was actually collected.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const VALID_STATUSES = ['void'];
@@ -74,7 +75,7 @@ export async function PATCH(request, { params }) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('invoices')
     .update({ status })
     .eq('id', params.id)

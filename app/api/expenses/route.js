@@ -7,6 +7,7 @@
 // on every read).
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const CATEGORIES = [
@@ -67,7 +68,7 @@ export async function POST(request) {
   const amountNum = Number(amount);
   const vatNum = Number(vat_amount) || 0;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('expenses')
     .insert([
       {

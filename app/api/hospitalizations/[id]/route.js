@@ -14,6 +14,7 @@
 //        same approach as DELETE /api/visits/:id.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { attachCages } from '@/lib/attachCages';
 import { runHospitalizationDischargeEffects } from '@/lib/hospitalizationDischarge';
 import { NextResponse } from 'next/server';
@@ -81,7 +82,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('hospitalizations')
     .update(update)
     .eq('id', params.id)
@@ -136,13 +137,13 @@ export async function DELETE(request, { params }) {
     await supabase.storage.from('consult-files').remove(filePaths);
   }
   if (attachments?.length) {
-    await supabase.from('attachments').delete().in('id', attachments.map((a) => a.id));
+    await supabaseAdmin.from('attachments').delete().in('id', attachments.map((a) => a.id));
   }
   if (recordings?.length) {
-    await supabase.from('recordings').delete().in('id', recordings.map((r) => r.id));
+    await supabaseAdmin.from('recordings').delete().in('id', recordings.map((r) => r.id));
   }
 
-  const { error } = await supabase.from('hospitalizations').delete().eq('id', hospitalizationId);
+  const { error } = await supabaseAdmin.from('hospitalizations').delete().eq('id', hospitalizationId);
 
   if (error) {
     if (error.code === '23503') {

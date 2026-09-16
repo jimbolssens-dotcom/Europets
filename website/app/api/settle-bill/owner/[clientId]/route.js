@@ -18,6 +18,7 @@
 //          returns its URL for the page to redirect to.
 
 import { supabaseServer } from '@/lib/supabaseServer';
+import { supabaseServerAdmin } from '@/lib/supabaseServerAdmin';
 import { createPaymentLink } from '@/lib/nomod';
 import { reconcilePendingNomodOwnerLink } from '@/lib/nomodPayments';
 import { NextResponse } from 'next/server';
@@ -104,7 +105,7 @@ export async function POST(request, { params }) {
     );
   }
 
-  const { data: link, error: insertError } = await supabaseServer
+  const { data: link, error: insertError } = await supabaseServerAdmin
     .from('nomod_payment_links')
     .insert([
       { client_id: params.clientId, nomod_link_id: nomodLink.id, url: nomodLink.url, amount: result.balanceDue },

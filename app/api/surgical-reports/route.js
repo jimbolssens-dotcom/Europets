@@ -5,6 +5,7 @@
 //        a hospitalization (exactly one)
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -34,7 +35,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'visit_id or hospitalization_id is required' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('surgical_reports')
     .insert([
       {

@@ -7,6 +7,7 @@
 // status via GET /v1/links/:id is the reliable path.
 
 import { supabaseServer } from '@/lib/supabaseServer';
+import { supabaseServerAdmin } from '@/lib/supabaseServerAdmin';
 import { getPaymentLink, isPaidLinkStatus } from '@/lib/nomod';
 
 // Looks up the most recent still-pending Nomod link for this invoice,
@@ -105,7 +106,7 @@ export async function recordNomodOwnerPayment(link, clientId) {
 }
 
 async function markLinkPaid(linkId) {
-  await supabaseServer
+  await supabaseServerAdmin
     .from('nomod_payment_links')
     .update({ status: 'paid', paid_at: new Date().toISOString() })
     .eq('id', linkId);
@@ -113,7 +114,7 @@ async function markLinkPaid(linkId) {
 
 async function applyPaymentToInvoice(invoiceId, amount) {
   const now = new Date().toISOString();
-  await supabaseServer
+  await supabaseServerAdmin
     .from('invoice_payments')
     .insert([{ invoice_id: invoiceId, amount, payment_method: 'payment_link', paid_at: now }]);
 
@@ -140,6 +141,6 @@ async function applyPaymentToInvoice(invoiceId, amount) {
       update.status = 'paid';
       update.paid_at = payments.reduce((latest, p) => (!latest || p.paid_at > latest ? p.paid_at : latest), null);
     }
-    await supabaseServer.from('invoices').update(update).eq('id', invoiceId);
+    await supabaseServerAdmin.from('invoices').update(update).eq('id', invoiceId);
   }
 }

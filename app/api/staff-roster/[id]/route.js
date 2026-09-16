@@ -7,7 +7,7 @@
 // (taking themselves off the roster, or an admin/another staff member
 // clearing it).
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function PATCH(request, { params }) {
@@ -20,7 +20,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'can_consult and/or can_surgery is required' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('staff_roster_entries')
     .update(update)
     .eq('id', params.id)
@@ -34,7 +34,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { error } = await supabase.from('staff_roster_entries').delete().eq('id', params.id);
+  const { error } = await supabaseAdmin.from('staff_roster_entries').delete().eq('id', params.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

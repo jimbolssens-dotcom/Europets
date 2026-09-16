@@ -14,6 +14,7 @@
 //                                           as POST /api/treatment-items.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
@@ -88,7 +89,7 @@ export async function POST(request, { params }) {
     clientSummary = buildEmpathicCheckinText(checkinFields, hosp?.patients?.name);
   }
 
-  const { data: note, error } = await supabase
+  const { data: note, error } = await supabaseAdmin
     .from('hospitalization_notes')
     .insert([
       {
@@ -136,7 +137,7 @@ export async function POST(request, { params }) {
   // "Request an Update" flag (see the request-update route) so that
   // case's cage stops blinking on the Cage Layout page. Best-effort: a
   // failure here shouldn't lose the note that was just saved.
-  await supabase
+  await supabaseAdmin
     .from('hospitalizations')
     .update({ update_requested_at: null, update_request_message: null })
     .eq('id', params.id);
@@ -167,7 +168,7 @@ export async function POST(request, { params }) {
   }));
 
   if (itemRows.length > 0) {
-    const { data: items, error: itemsError } = await supabase
+    const { data: items, error: itemsError } = await supabaseAdmin
       .from('treatment_items')
       .insert(itemRows)
       .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price)');

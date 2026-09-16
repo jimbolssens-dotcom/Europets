@@ -7,6 +7,7 @@
 //        doesn't linger as a billable item nobody remembers adding
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const EDITABLE_FIELDS = ['description', 'result'];
@@ -22,7 +23,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('diagnostics')
     .update(update)
     .eq('id', params.id)
@@ -42,13 +43,13 @@ export async function DELETE(request, { params }) {
     .eq('id', params.id)
     .single();
 
-  const { error } = await supabase.from('diagnostics').delete().eq('id', params.id);
+  const { error } = await supabaseAdmin.from('diagnostics').delete().eq('id', params.id);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   if (diagnostic?.treatment_item_id) {
-    await supabase.from('treatment_items').delete().eq('id', diagnostic.treatment_item_id);
+    await supabaseAdmin.from('treatment_items').delete().eq('id', diagnostic.treatment_item_id);
   }
 
   return NextResponse.json({ ok: true });

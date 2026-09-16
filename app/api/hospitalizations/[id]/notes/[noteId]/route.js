@@ -5,6 +5,7 @@
 // entry is visibly different from a freshly-logged one.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const EDITABLE_FIELDS = [
@@ -36,14 +37,14 @@ export async function DELETE(request, { params }) {
   if (!note) return NextResponse.json({ error: 'Worksheet entry not found.' }, { status: 404 });
 
   // Preserve source files under the case instead of leaving orphan attachments.
-  const { error: attachmentError } = await supabase.from('attachments')
+  const { error: attachmentError } = await supabaseAdmin.from('attachments')
     .update({ entity_type: 'hospitalization', entity_id: params.id })
     .eq('entity_type', 'hospitalization_note').eq('entity_id', note.id);
   if (attachmentError) return NextResponse.json({ error: 'Could not preserve the attached files. Entry was not deleted.' }, { status: 500 });
 
   // The existing foreign key cascades this entry's treatment_items.
   // Invoice line items are independent and are not modified here.
-  const { data: deleted, error } = await supabase.from('hospitalization_notes')
+  const { data: deleted, error } = await supabaseAdmin.from('hospitalization_notes')
     .delete().eq('id', note.id).eq('hospitalization_id', params.id).select('id').maybeSingle();
   if (error) return NextResponse.json({ error: 'Could not delete the worksheet entry.' }, { status: 500 });
   if (!deleted) return NextResponse.json({ error: 'Worksheet entry not found.' }, { status: 404 });
@@ -69,7 +70,7 @@ export async function PATCH(request, { params }) {
   }
   update.updated_at = new Date().toISOString();
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('hospitalization_notes')
     .update(update)
     .eq('id', params.noteId)

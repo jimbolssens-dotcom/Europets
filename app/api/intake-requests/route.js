@@ -23,6 +23,7 @@
 //                                form to just that client's own pets.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { phoneSearchDigits, clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 
@@ -65,7 +66,7 @@ export async function POST(request) {
     }
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('intake_requests')
     .insert([{ sent_to_phone: body.sent_to_phone || null, client_id: clientId }])
     .select()

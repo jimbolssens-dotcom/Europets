@@ -4,6 +4,7 @@
 // DELETE /api/policies/:id  -> remove a policy
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const EDITABLE_FIELDS = ['category_id', 'title', 'content', 'sort_order'];
@@ -29,7 +30,7 @@ export async function PATCH(request, { params }) {
   }
   update.updated_at = new Date().toISOString();
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('policies')
     .update(update)
     .eq('id', params.id)
@@ -43,7 +44,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { error } = await supabase.from('policies').delete().eq('id', params.id);
+  const { error } = await supabaseAdmin.from('policies').delete().eq('id', params.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

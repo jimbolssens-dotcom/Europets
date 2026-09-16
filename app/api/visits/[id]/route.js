@@ -77,7 +77,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('visits')
     .update(update)
     .eq('id', params.id)
@@ -132,13 +132,13 @@ export async function DELETE(request, { params }) {
     await supabase.storage.from('consult-files').remove(filePaths);
   }
   if (attachments?.length) {
-    await supabase.from('attachments').delete().in('id', attachments.map((a) => a.id));
+    await supabaseAdmin.from('attachments').delete().in('id', attachments.map((a) => a.id));
   }
   if (recordings?.length) {
-    await supabase.from('recordings').delete().in('id', recordings.map((r) => r.id));
+    await supabaseAdmin.from('recordings').delete().in('id', recordings.map((r) => r.id));
   }
 
-  const { error } = await supabase.from('visits').delete().eq('id', visitId);
+  const { error } = await supabaseAdmin.from('visits').delete().eq('id', visitId);
 
   if (error) {
     if (error.code === '23503') {

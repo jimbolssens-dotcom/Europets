@@ -3,6 +3,7 @@
 // POST /api/attachments                            -> record a file already uploaded to Storage
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -41,7 +42,7 @@ export async function POST(request) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('attachments')
     .insert([
       {

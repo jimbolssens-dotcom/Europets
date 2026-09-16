@@ -21,6 +21,7 @@
 //                                              worksheet entry does.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'staff_id is required' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('hospitalization_messages')
     .insert([{ hospitalization_id: params.id, sender: 'staff', staff_id: body.staff_id, body: text }])
     .select('*, staff(full_name)')
@@ -61,7 +62,7 @@ export async function POST(request, { params }) {
 
   // A staff reply IS the response the owner was waiting on — clear the
   // flag, same as POST .../notes does for a worksheet entry.
-  await supabase
+  await supabaseAdmin
     .from('hospitalizations')
     .update({ update_requested_at: null, update_request_message: null })
     .eq('id', params.id);

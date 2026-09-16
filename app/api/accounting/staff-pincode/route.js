@@ -9,6 +9,7 @@
 // so rotating it needs the stronger password, not just the PIN itself.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -26,7 +27,7 @@ export async function PATCH(request) {
     return NextResponse.json({ error: 'PIN must be at least 4 characters' }, { status: 400 });
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('clinic_settings')
     .upsert({ id: true, staff_pincode: trimmed, updated_at: new Date().toISOString() }, { onConflict: 'id' });
 

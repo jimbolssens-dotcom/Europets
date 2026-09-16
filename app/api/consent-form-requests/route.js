@@ -5,7 +5,7 @@
 // Behind the staff PIN gate like everywhere else — the public-facing half
 // of this feature is GET/POST /api/consent-form-requests/[id].
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_ATTACHMENT } from '@/lib/consentTemplates';
 import { NextResponse } from 'next/server';
 
@@ -31,7 +31,7 @@ export async function POST(request) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('consent_form_requests')
     .insert([
       {

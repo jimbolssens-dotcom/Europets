@@ -13,6 +13,7 @@
 // plenty of day procedures never get a room assigned at all.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function POST(request, { params }) {
@@ -40,7 +41,7 @@ export async function POST(request, { params }) {
 
   const resolvedRoomId = room_id || admission.room_id || null;
 
-  const { data: visit, error: visitError } = await supabase
+  const { data: visit, error: visitError } = await supabaseAdmin
     .from('visits')
     .insert([
       {
@@ -57,7 +58,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: visitError.message }, { status: 500 });
   }
 
-  const { error: linkError } = await supabase
+  const { error: linkError } = await supabaseAdmin
     .from('hospitalizations')
     .update({ originating_visit_id: visit.id })
     .eq('id', params.id);

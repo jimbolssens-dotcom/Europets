@@ -2,7 +2,7 @@
 // PATCH  /api/policy-categories/:id  -> rename / reorder a category
 // DELETE /api/policy-categories/:id  -> remove a category (and its policies — on delete cascade)
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const EDITABLE_FIELDS = ['name', 'sort_order'];
@@ -18,7 +18,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('policy_categories')
     .update(update)
     .eq('id', params.id)
@@ -32,7 +32,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { error } = await supabase.from('policy_categories').delete().eq('id', params.id);
+  const { error } = await supabaseAdmin.from('policy_categories').delete().eq('id', params.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

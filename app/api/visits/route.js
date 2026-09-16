@@ -13,6 +13,7 @@
 // creating a second, parallel consult for the same patient.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -117,7 +118,7 @@ export async function POST(request) {
     client_id = patient.client_id;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('visits')
     .insert([
       {
@@ -137,7 +138,7 @@ export async function POST(request) {
   }
 
   if (appointment_id) {
-    await supabase.from('appointments').update({ status: 'checked_in' }).eq('id', appointment_id);
+    await supabaseAdmin.from('appointments').update({ status: 'checked_in' }).eq('id', appointment_id);
   }
 
   return NextResponse.json(data, { status: 201 });

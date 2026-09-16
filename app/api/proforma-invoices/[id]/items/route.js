@@ -8,6 +8,7 @@
 // weight when omitted, same as a real invoice).
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { applyAdministrationFee } from '@/lib/invoicing';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
@@ -65,7 +66,7 @@ export async function POST(request, { params }) {
     row = applyAdministrationFee(row, resolved.administration_method, clinicSettings);
   }
 
-  const { data: lineItem, error: insertError } = await supabase
+  const { data: lineItem, error: insertError } = await supabaseAdmin
     .from('proforma_invoice_items')
     .insert([row])
     .select('*, goods_services(name, pricing_type, unit, main_category)')

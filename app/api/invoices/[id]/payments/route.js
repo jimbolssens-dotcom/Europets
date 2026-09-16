@@ -10,6 +10,7 @@
 // staff member who took it (see migrations/042).
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { recomputeInvoicePayments } from '@/lib/invoicing';
 
@@ -62,7 +63,7 @@ export async function POST(request, { params }) {
     );
   }
 
-  const { data: payment, error: insertError } = await supabase
+  const { data: payment, error: insertError } = await supabaseAdmin
     .from('invoice_payments')
     .insert([
       {

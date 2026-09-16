@@ -6,6 +6,7 @@
 // DELETE /api/proforma-invoices/:id/items/:itemId  -> remove a quoted item
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { applyAdministrationFee, stripAdministrationFeeTag } from '@/lib/invoicing';
 
@@ -37,7 +38,7 @@ export async function PATCH(request, { params }) {
     line = applyAdministrationFee(line, current.administration_method, clinicSettings);
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('proforma_invoice_items')
     .update({ quantity, description: line.description, line_total: line.line_total })
     .eq('id', params.itemId)
@@ -51,7 +52,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('proforma_invoice_items')
     .delete()
     .eq('id', params.itemId)

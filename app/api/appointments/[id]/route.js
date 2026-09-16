@@ -18,6 +18,7 @@
 //        type to surgery without a duration defaults to one increment.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import {
   CONSULT_DURATION_MINUTES,
@@ -33,7 +34,7 @@ export async function PATCH(request, { params }) {
   const { status, room_id, start_time, duration_minutes, vet_id, type, patient_id, reason, date, shift } = body;
 
   if (body.mark_reminded || body.clear_reminder) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('appointments')
       .update({ reminder_sent_at: body.mark_reminded ? new Date().toISOString() : null })
       .eq('id', params.id)
@@ -62,7 +63,7 @@ export async function PATCH(request, { params }) {
         { status: 400 }
       );
     }
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('appointments')
       .update({ status })
       .eq('id', params.id)
@@ -195,7 +196,7 @@ export async function PATCH(request, { params }) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('appointments')
     .update({
       patient_id: nextPatientId,

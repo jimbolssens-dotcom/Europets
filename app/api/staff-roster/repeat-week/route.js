@@ -16,6 +16,7 @@
 // missing to match last week.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { defaultRosterCapabilities } from '@/lib/rosterDefaults';
 
@@ -70,7 +71,7 @@ export async function POST(request) {
     ...defaultRosterCapabilities(entry.shift, nameById.get(entry.staff_id)),
   }));
 
-  const { data: inserted, error: insertError } = await supabase
+  const { data: inserted, error: insertError } = await supabaseAdmin
     .from('staff_roster_entries')
     .upsert(rows, { onConflict: 'staff_id,date,shift', ignoreDuplicates: true })
     .select('*, staff(full_name, role)');

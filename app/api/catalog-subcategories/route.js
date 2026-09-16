@@ -4,6 +4,7 @@
 // POST /api/catalog-subcategories  -> add one
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const MAIN_CATEGORIES = ['product', 'test', 'service'];
@@ -48,7 +49,7 @@ export async function POST(request) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('catalog_subcategories')
     .insert([{ main_category, name }])
     .select()

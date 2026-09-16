@@ -4,11 +4,12 @@
 // status back down afterward.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { recomputeInvoicePayments } from '@/lib/invoicing';
 
 export async function DELETE(request, { params }) {
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await supabaseAdmin
     .from('invoice_payments')
     .delete()
     .eq('id', params.paymentId)

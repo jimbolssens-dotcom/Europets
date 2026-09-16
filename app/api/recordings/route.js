@@ -5,6 +5,7 @@
 //                                                      transcription
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { submitTranscription } from '@/lib/assemblyai';
 import { NextResponse } from 'next/server';
 
@@ -57,7 +58,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'invalid entity_type' }, { status: 400 });
   }
 
-  const { data: recording, error } = await supabase
+  const { data: recording, error } = await supabaseAdmin
     .from('recordings')
     .insert([{ entity_type, entity_id, file_path, file_name: file_name || null }])
     .select()
@@ -75,12 +76,12 @@ export async function POST(request) {
       audioUrl: publicUrlData.publicUrl,
       webhookUrl: `${origin}/api/recordings/${recording.id}/webhook`,
     });
-    await supabase
+    await supabaseAdmin
       .from('recordings')
       .update({ assemblyai_transcript_id: job.id })
       .eq('id', recording.id);
   } catch (err) {
-    await supabase
+    await supabaseAdmin
       .from('recordings')
       .update({ status: 'error', error_message: err.message })
       .eq('id', recording.id);

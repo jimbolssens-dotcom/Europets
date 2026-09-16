@@ -18,6 +18,7 @@
 //     stored UTC start_time.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import {
   CONSULT_DURATION_MINUTES,
@@ -161,7 +162,7 @@ export async function POST(request) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('appointments')
     .insert([
       {

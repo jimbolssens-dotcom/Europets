@@ -2,7 +2,7 @@
 // PATCH  /api/rooms/:id  -> edit a room
 // DELETE /api/rooms/:id  -> remove a room (blocked if it has appointments/visits)
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function PATCH(request, { params }) {
@@ -24,7 +24,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('rooms')
     .update(update)
     .eq('id', params.id)
@@ -38,7 +38,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { error } = await supabase.from('rooms').delete().eq('id', params.id);
+  const { error } = await supabaseAdmin.from('rooms').delete().eq('id', params.id);
 
   if (error) {
     if (error.code === '23503') {

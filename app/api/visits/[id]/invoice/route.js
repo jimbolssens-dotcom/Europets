@@ -14,6 +14,7 @@
 // recognizes and syncs this same invoice instead of creating a second one.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { gatherInvoiceTreatmentItems, syncInvoiceTreatmentItems } from '@/lib/invoicing';
 import { NextResponse } from 'next/server';
 
@@ -50,7 +51,7 @@ export async function POST(request, { params }) {
     const invoiceInsert = { client_id: visit.client_id, visit_id: visitId };
     if (hospitalizationIds.length === 1) invoiceInsert.hospitalization_id = hospitalizationIds[0];
 
-    const { data: invoice, error: invoiceError } = await supabase
+    const { data: invoice, error: invoiceError } = await supabaseAdmin
       .from('invoices')
       .insert([invoiceInsert])
       .select()
@@ -65,7 +66,7 @@ export async function POST(request, { params }) {
     // before it was the only one) — link them now so the hospitalization
     // page's own Invoice button (which looks up by hospitalization_id)
     // finds this same invoice instead of creating a second one.
-    await supabase.from('invoices').update({ hospitalization_id: hospitalizationIds[0] }).eq('id', invoiceId);
+    await supabaseAdmin.from('invoices').update({ hospitalization_id: hospitalizationIds[0] }).eq('id', invoiceId);
   }
 
   const treatmentItems = await gatherInvoiceTreatmentItems(supabase, { visitId, hospitalizationIds });

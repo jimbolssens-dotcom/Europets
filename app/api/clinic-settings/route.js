@@ -14,6 +14,7 @@
 // seed insert wasn't run), rather than erroring on "no rows found".
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -26,7 +27,7 @@ export async function GET() {
     return NextResponse.json(data);
   }
 
-  const { data: created, error: createError } = await supabase
+  const { data: created, error: createError } = await supabaseAdmin
     .from('clinic_settings')
     .insert([{ id: true }])
     .select()
@@ -75,7 +76,7 @@ export async function PATCH(request) {
   if (booking_afternoon_start !== undefined) update.booking_afternoon_start = booking_afternoon_start;
   if (booking_afternoon_end !== undefined) update.booking_afternoon_end = booking_afternoon_end;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('clinic_settings')
     .upsert(update, { onConflict: 'id' })
     .select()

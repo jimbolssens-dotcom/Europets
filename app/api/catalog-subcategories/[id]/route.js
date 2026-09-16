@@ -2,7 +2,7 @@
 // PATCH  /api/catalog-subcategories/:id  -> rename/deactivate a subcategory
 // DELETE /api/catalog-subcategories/:id  -> remove one (blocked if used)
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const MAIN_CATEGORIES = ['product', 'test', 'service'];
@@ -25,7 +25,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('catalog_subcategories')
     .update(update)
     .eq('id', params.id)
@@ -46,7 +46,7 @@ export async function PATCH(request, { params }) {
   // subcategory's, kept for cheap filtering without a join — re-point
   // every item under this subcategory if its main category just moved.
   if (update.main_category) {
-    const { error: cascadeError } = await supabase
+    const { error: cascadeError } = await supabaseAdmin
       .from('goods_services')
       .update({ main_category: update.main_category })
       .eq('subcategory_id', params.id);
@@ -59,7 +59,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { error } = await supabase.from('catalog_subcategories').delete().eq('id', params.id);
+  const { error } = await supabaseAdmin.from('catalog_subcategories').delete().eq('id', params.id);
 
   if (error) {
     if (error.code === '23503') {

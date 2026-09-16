@@ -13,6 +13,7 @@
 // recording still "processing", plus a manual "Check now" button.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { resolveRecording } from '@/lib/recordingProcessing';
 import { NextResponse } from 'next/server';
 
@@ -39,7 +40,7 @@ export async function POST(request, { params }) {
     const result = await resolveRecording(recording);
     return NextResponse.json(result);
   } catch (err) {
-    await supabase
+    await supabaseAdmin
       .from('recordings')
       .update({ status: 'error', error_message: err.message })
       .eq('id', recording.id);

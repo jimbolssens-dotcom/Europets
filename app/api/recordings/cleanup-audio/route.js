@@ -7,6 +7,7 @@
 // safe to call again (e.g. to pick up where a previous call left off).
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const BATCH_SIZE = 200;
@@ -39,7 +40,7 @@ export async function POST() {
       return NextResponse.json({ error: removeError.message, deleted }, { status: 500 });
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('recordings')
       .update({ file_path: null })
       .in('id', batch.map((r) => r.id));

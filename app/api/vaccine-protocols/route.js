@@ -3,6 +3,7 @@
 // POST /api/vaccine-protocols                          -> add a protocol
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -42,7 +43,7 @@ export async function POST(request) {
     return NextResponse.json({ error: "species must be 'cat' or 'dog'" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('vaccine_protocols')
     .insert([
       {

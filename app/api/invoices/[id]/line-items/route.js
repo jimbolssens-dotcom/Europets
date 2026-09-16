@@ -14,6 +14,7 @@
 // editing/removing that line from the invoice afterward.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { recomputeInvoiceTotals, applyAdministrationFee } from '@/lib/invoicing';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
@@ -76,7 +77,7 @@ export async function POST(request, { params }) {
     row = applyAdministrationFee(row, resolved.administration_method, clinicSettings);
   }
 
-  const { data: lineItem, error: insertError } = await supabase
+  const { data: lineItem, error: insertError } = await supabaseAdmin
     .from('invoice_line_items')
     .insert([row])
     .select()

@@ -15,7 +15,7 @@
 // Unauthenticated like the rest of the portal — there's no client login,
 // same as everywhere else in the app.
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { attachCages } from '@/lib/attachCages';
 import { NextResponse } from 'next/server';
 
@@ -29,7 +29,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'message is required' }, { status: 400 });
   }
 
-  const { error: messageError } = await supabase
+  const { error: messageError } = await supabaseAdmin
     .from('hospitalization_messages')
     .insert([{ hospitalization_id: params.id, sender: 'client', body: message }]);
 
@@ -37,7 +37,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: messageError.message }, { status: 500 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('hospitalizations')
     .update({ update_requested_at: new Date().toISOString(), update_request_message: message })
     .eq('id', params.id)

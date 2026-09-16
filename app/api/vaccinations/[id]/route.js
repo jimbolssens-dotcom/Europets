@@ -2,7 +2,7 @@
 // PATCH  /api/vaccinations/:id  -> edit a record, or mark/clear its reminder
 // DELETE /api/vaccinations/:id  -> remove a mistaken entry
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 const EDITABLE_FIELDS = ['date_given', 'next_due_date', 'batch_number', 'administered_by', 'notes'];
@@ -23,7 +23,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('vaccinations')
     .update(update)
     .eq('id', params.id)
@@ -37,7 +37,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { error } = await supabase.from('vaccinations').delete().eq('id', params.id);
+  const { error } = await supabaseAdmin.from('vaccinations').delete().eq('id', params.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
