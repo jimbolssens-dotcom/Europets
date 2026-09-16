@@ -68,7 +68,7 @@ export default function ExpensesPage() {
   const [error, setError] = useState(null);
   const [possibleDuplicates, setPossibleDuplicates] = useState(null);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
-  const [noteDrafts, setNoteDrafts] = useState({}); // expense id -> description while typing, before it's saved on blur
+  const [drafts, setDrafts] = useState({}); // `${expenseId}:${field}` -> value while typing, before it's saved on blur
 
   const loadExpenses = () =>
     fetch(`/api/expenses${showAllMonths ? '' : `?month=${month}`}`)
@@ -182,17 +182,37 @@ export default function ExpensesPage() {
     setSubmitting(false);
   }
 
-  function commitNote(expense, value) {
-    setNoteDrafts((prev) => {
+  function draftKey(expenseId, field) {
+    return `${expenseId}:${field}`;
+  }
+
+  function draftValue(expense, field, currentValue) {
+    const key = draftKey(expense.id, field);
+    return key in drafts ? drafts[key] : currentValue;
+  }
+
+  function setDraft(expenseId, field, value) {
+    setDrafts((prev) => ({ ...prev, [draftKey(expenseId, field)]: value }));
+  }
+
+  // Every field on a logged expense edits in place, on blur (or on change
+  // for a <select>, which has no "still typing" state to wait out) — no
+  // Save button, same pattern as the rest of the app's inline-editable
+  // tables. Only PATCHes when the value actually changed.
+  function commitField(expense, field, rawValue, { numeric = false } = {}) {
+    setDrafts((prev) => {
       const next = { ...prev };
-      delete next[expense.id];
+      delete next[draftKey(expense.id, field)];
       return next;
     });
-    if (value === (expense.description || '')) return;
+    if (numeric && (rawValue === '' || Number.isNaN(Number(rawValue)))) return;
+    const value = numeric ? Number(rawValue) : rawValue;
+    const current = numeric ? Number(expense[field] || 0) : expense[field] || '';
+    if (value === current) return;
     fetch(`/api/expenses/${expense.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ description: value }),
+      body: JSON.stringify({ [field]: value }),
     }).then(loadExpenses);
   }
 
@@ -260,20 +280,81 @@ export default function ExpensesPage() {
               <tbody>
                 {expenses.map((ex) => (
                   <tr key={ex.id}>
-                    <td>{ex.expense_date}</td>
-                    <td>{ex.vendor_name || '—'}</td>
-                    <td>{ex.invoice_number || '—'}</td>
-                    <td>{CATEGORY_LABELS[ex.category] || ex.category}</td>
-                    <td>AED {money(ex.amount)}</td>
-                    <td>AED {money(ex.vat_amount)}</td>
+                    <td>
+                      <input
+                        type="date"
+                        value={draftValue(ex, 'expense_date', ex.expense_date || '')}
+                        onChange={(e) => setDraft(ex.id, 'expense_date', e.target.value)}
+                        onBlur={(e) => commitField(ex, 'expense_date', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        placeholder="Vendor"
+                        value={draftValue(ex, 'vendor_name', ex.vendor_name || '')}
+                        onChange={(e) => setDraft(ex.id, 'vendor_name', e.target.value)}
+                        onBlur={(e) => commitField(ex, 'vendor_name', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        placeholder="Invoice #"
+                        value={draftValue(ex, 'invoice_number', ex.invoice_number || '')}
+                        onChange={(e) => setDraft(ex.id, 'invoice_number', e.target.value)}
+                        onBlur={(e) => commitField(ex, 'invoice_number', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <select
+                        value={ex.category}
+                        onChange={(e) => commitField(ex, 'category', e.target.value)}
+                      >
+                        {CATEGORIES.map((c) => (
+                          <option key={c} value={c}>
+                            {CATEGORY_LABELS[c]}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={draftValue(ex, 'amount', ex.amount)}
+                        onChange={(e) => setDraft(ex.id, 'amount', e.target.value)}
+                        onBlur={(e) => commitField(ex, 'amount', e.target.value, { numeric: true })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={draftValue(ex, 'vat_amount', ex.vat_amount)}
+                        onChange={(e) => setDraft(ex.id, 'vat_amount', e.target.value)}
+                        onBlur={(e) => commitField(ex, 'vat_amount', e.target.value, { numeric: true })}
+                      />
+                    </td>
                     <td>AED {money(ex.total)}</td>
-                    <td>{ex.payment_method ? ex.payment_method.replace('_', ' ') : '—'}</td>
+                    <td>
+                      <select
+                        value={ex.payment_method || ''}
+                        onChange={(e) => commitField(ex, 'payment_method', e.target.value || null)}
+                      >
+                        <option value="">Paid via...</option>
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="payment_link">Payment Link</option>
+                      </select>
+                    </td>
                     <td>
                       <input
                         placeholder="Add a note..."
-                        value={noteDrafts[ex.id] ?? ex.description ?? ''}
-                        onChange={(e) => setNoteDrafts({ ...noteDrafts, [ex.id]: e.target.value })}
-                        onBlur={(e) => commitNote(ex, e.target.value)}
+                        value={draftValue(ex, 'description', ex.description || '')}
+                        onChange={(e) => setDraft(ex.id, 'description', e.target.value)}
+                        onBlur={(e) => commitField(ex, 'description', e.target.value)}
                       />
                     </td>
                     <td>
