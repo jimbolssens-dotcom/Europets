@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
+import { hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 import styles from './page.module.css';
 
 // Same tap-to-log-a-worksheet-entry mechanism as DayTreatmentPlan/
@@ -32,10 +33,8 @@ export default function WallCageTile({ cage, hospitalization, details, authorId,
     (item) => item.kind !== 'vitals_temperature' && item.kind !== 'vitals_weight'
   );
   const todayNotes = details?.todayNotes || [];
-  const needsAttention =
-    hospitalization?.update_requested_at ||
-    hospitalization?.scheduled_update_overdue ||
-    hospitalization?.vitals_weight_overdue;
+  const alarmLevel = hospitalization ? hospitalizationAlarmLevel(hospitalization) : 'none';
+  const needsAttention = alarmLevel !== 'none';
   const patientName = hospitalization?.patients?.name || 'Unnamed patient';
 
   const [loggingIds, setLoggingIds] = useState(() => new Set());
@@ -182,7 +181,7 @@ export default function WallCageTile({ cage, hospitalization, details, authorId,
     </li>;
   }
 
-  return <article className={`${styles.tile}${!hospitalization ? ` ${styles.empty}` : ''}${needsAttention ? ` ${styles.attention} cage-update-requested` : ''}`}
+  return <article className={`${styles.tile}${!hospitalization ? ` ${styles.empty}` : ''}${needsAttention ? ` ${styles.attention} ${cageAlarmClass(alarmLevel)}` : ''}`}
     aria-label={`${cage.name} · ${hospitalization ? patientName : 'Empty'}${needsAttention ? ' · Needs attention' : ''}`}>
     <div className={styles.tileHeader}>
       <span className={styles.cageName}>{cage.name}</span>

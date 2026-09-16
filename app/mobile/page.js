@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react';
 import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
 import { useHospitalizationUpdatePending } from '@/app/_components/useHospitalizationUpdatePending';
+import { cageAlarmClass } from '@/lib/hospitalizationAttention';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 
@@ -30,7 +31,8 @@ export default function MobileHomePage() {
   const [staffId, setStaffId] = useState(null);
   const [ready, setReady] = useState(false);
   const [staff, setStaff] = useState([]);
-  const updatePending = useHospitalizationUpdatePending();
+  const alarmLevel = useHospitalizationUpdatePending();
+  const alarmClass = cageAlarmClass(alarmLevel);
 
   useEffect(() => {
     setStaffId(localStorage.getItem(MOBILE_STAFF_STORAGE_KEY));
@@ -104,10 +106,10 @@ export default function MobileHomePage() {
               </a>
               <a
                 href="/mobile/hospitalization"
-                className={`mobile-square-tile${updatePending ? ' cage-update-requested' : ''}`}
+                className={`mobile-square-tile${alarmClass ? ` ${alarmClass}` : ''}`}
               >
                 <span className="mobile-square-tile-icon">🏥</span>
-                <span>Hospitalization{updatePending && ' 🔔'}</span>
+                <span>Hospitalization{alarmLevel === 'red' || alarmLevel === 'both' ? ' 🩺' : alarmLevel === 'yellow' ? ' 🔔' : ''}</span>
               </a>
               <a href="/mobile/day-procedures" className="mobile-square-tile">
                 <span className="mobile-square-tile-icon">📋</span>

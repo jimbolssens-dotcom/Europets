@@ -46,7 +46,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { status, room_id, cage_id, reason, update_requested_at, ai_summary, kind, originating_visit_id } = body;
+  const { status, room_id, cage_id, reason, update_requested_at, doctor_checkup_requested, ai_summary, kind, originating_visit_id } = body;
 
   const update = {};
   if (status !== undefined) {
@@ -76,6 +76,16 @@ export async function PATCH(request, { params }) {
   if (update_requested_at === null) {
     update.update_requested_at = null;
     update.update_request_message = null;
+  }
+  // Server sets/clears the timestamp itself rather than trusting a
+  // client-supplied one — true to request (the moment staff click
+  // "Request Doctor Checkup"), false to dismiss (a doctor actually
+  // checked the case). Never auto-clears from a worksheet entry the way
+  // update_requested_at does — see migration 106.
+  if (doctor_checkup_requested === true) {
+    update.doctor_checkup_requested_at = new Date().toISOString();
+  } else if (doctor_checkup_requested === false) {
+    update.doctor_checkup_requested_at = null;
   }
 
   if (Object.keys(update).length === 0) {

@@ -1,9 +1,12 @@
 // app/_components/useHospitalizationUpdatePending.js
-// Shared "does any admitted hospitalization need an update?" check.
-// This covers both a client's explicit Request an Update flag and the
-// twice-daily cage-update deadlines (morning by 12:00, afternoon by 18:00).
-// It drives the desktop Hospitalization nav link and the mobile app's
-// Hospitalization tile / cleaner Hospital tab.
+// Shared "does any admitted hospitalization need attention?" check,
+// returning the worst alarm level found across all of them ('none' |
+// 'yellow' | 'red' | 'both' — see lib/hospitalizationAttention.js): a
+// client's explicit Request an Update flag, the twice-daily cage-update
+// deadlines (morning by 12:00, afternoon by 18:00), and a staff-requested
+// doctor checkup all roll up into this one signal. It drives the desktop
+// Hospitalization nav link and the mobile app's Hospitalization tile /
+// cleaner Hospital tab.
 //
 // The one-minute timer matters for scheduled deadlines: unlike a client
 // request, noon and 18:00 can arrive without any database row changing.
@@ -19,9 +22,10 @@
 
 import { useEffect, useId, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { hospitalizationAlarmLevel, combineAlarmLevels } from '@/lib/hospitalizationAttention';
 
 export function useHospitalizationUpdatePending() {
-  const [pending, setPending] = useState(false);
+  const [level, setLevel] = useState('none');
   const id = useId();
 
   useEffect(() => {
@@ -33,9 +37,7 @@ export function useHospitalizationUpdatePending() {
         .then((data) => {
           if (!active) return;
           const list = Array.isArray(data) ? data : [];
-          setPending(
-            list.some((h) => h.update_requested_at || h.scheduled_update_overdue || h.vitals_weight_overdue)
-          );
+          setLevel(combineAlarmLevels(list.map(hospitalizationAlarmLevel)));
         })
         .catch(() => {});
 
@@ -55,5 +57,5 @@ export function useHospitalizationUpdatePending() {
     };
   }, [id]);
 
-  return pending;
+  return level;
 }

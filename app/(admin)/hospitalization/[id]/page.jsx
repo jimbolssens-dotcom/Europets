@@ -689,6 +689,28 @@ export default function HospitalizationDetailPage() {
     loadAdmission();
   }
 
+  // Flags this case red on the blinking-cage alarm (Cage Layout, Hospital
+  // Wall, mobile list, nav badge — see lib/hospitalizationAttention.js)
+  // until a doctor actually checks it and someone clicks "Doctor Checked"
+  // below — unlike update_requested_at, nothing auto-clears this.
+  async function requestDoctorCheckup() {
+    await fetch(`/api/hospitalizations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doctor_checkup_requested: true }),
+    });
+    loadAdmission();
+  }
+
+  async function dismissDoctorCheckup() {
+    await fetch(`/api/hospitalizations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doctor_checkup_requested: false }),
+    });
+    loadAdmission();
+  }
+
   // Same fixed-height scroll box as the portal's thread — keep it pinned
   // to the latest message instead of the top.
   useEffect(() => {
@@ -835,21 +857,35 @@ export default function HospitalizationDetailPage() {
           <WeightHistoryChart data={stayWeightHistory} mini />
         </div>
         {admission.status === 'admitted' && (
-          <button
-            type="button"
-            className={`chat-toggle-pill${admission.update_requested_at ? ' chat-toggle-pending' : ''}`}
-            onClick={() => setChatOpen((v) => !v)}
-            aria-expanded={chatOpen}
-          >
-            {admission.update_requested_at ? (
-              <>
-                🔔 {admission.clients?.full_name || 'The owner'} is waiting on a reply
-              </>
-            ) : (
-              <>💬 Messages{messages.length > 0 ? ` (${messages.length})` : ''}</>
-            )}
-            <span className="chat-toggle-chev">{chatOpen ? '▾' : '▸'}</span>
-          </button>
+          <div className="hospitalization-header-actions">
+            <button
+              type="button"
+              className={`doctor-checkup-pill${admission.doctor_checkup_requested_at ? ' doctor-checkup-pending' : ''}`}
+              onClick={admission.doctor_checkup_requested_at ? dismissDoctorCheckup : requestDoctorCheckup}
+              title={
+                admission.doctor_checkup_requested_at
+                  ? `Requested ${formatDateTime(admission.doctor_checkup_requested_at)} — click once a doctor has checked this case`
+                  : 'Flag this case for a doctor to check — stays on the alarm until dismissed here'
+              }
+            >
+              {admission.doctor_checkup_requested_at ? '🩺 Doctor Checkup Requested — Mark Checked' : '🩺 Request Doctor Checkup'}
+            </button>
+            <button
+              type="button"
+              className={`chat-toggle-pill${admission.update_requested_at ? ' chat-toggle-pending' : ''}`}
+              onClick={() => setChatOpen((v) => !v)}
+              aria-expanded={chatOpen}
+            >
+              {admission.update_requested_at ? (
+                <>
+                  🔔 {admission.clients?.full_name || 'The owner'} is waiting on a reply
+                </>
+              ) : (
+                <>💬 Messages{messages.length > 0 ? ` (${messages.length})` : ''}</>
+              )}
+              <span className="chat-toggle-chev">{chatOpen ? '▾' : '▸'}</span>
+            </button>
+          </div>
         )}
       </div>
       {admission.status === 'admitted' && chatOpen && (

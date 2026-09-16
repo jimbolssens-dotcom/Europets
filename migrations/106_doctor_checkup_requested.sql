@@ -1,0 +1,22 @@
+-- Migration 106: doctor checkup requests on hospitalizations
+--
+-- Lets staff flag a hospitalized case as needing a doctor to physically
+-- check it (separate from the existing owner-update-request/scheduled-
+-- vitals alarms, which are all routine reminders) — see the "Request
+-- Doctor Checkup" button on the admission's own page
+-- (app/(admin)/hospitalization/[id]/page.jsx). Unlike those, this never
+-- auto-clears from a worksheet entry — it's a deliberate ask that only a
+-- deliberate "Doctor Checked" dismissal clears (PATCH
+-- /api/hospitalizations/:id { doctor_checkup_requested: false }), since a
+-- routine note being logged by whoever happens to be nearby doesn't mean
+-- a doctor actually looked at the case.
+--
+-- Drives its own red blinking-cage alarm, layered on top of the existing
+-- yellow one rather than replacing it — see
+-- lib/hospitalizationAttention.js for how the two combine (yellow only,
+-- red only, or alternating both) across Cage Layout, Hospital Wall, the
+-- mobile cage list, and the nav badge.
+--
+-- Run this in your Supabase SQL editor. Safe to run more than once.
+
+alter table hospitalizations add column if not exists doctor_checkup_requested_at timestamptz;

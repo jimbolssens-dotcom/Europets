@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
 import CultureReminderBanner from '../_components/CultureReminderBanner';
 import { useHospitalizationUpdatePending } from '../_components/useHospitalizationUpdatePending';
+import { navAlarmClass } from '@/lib/hospitalizationAttention';
 import { supabase } from '@/lib/supabaseClient';
 
 // Wraps every internal staff page (everything except the public client
@@ -12,7 +13,10 @@ import { supabase } from '@/lib/supabaseClient';
 // layout in app/layout.js.
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
-  const hasPendingHospitalizationUpdate = useHospitalizationUpdatePending();
+  const hospitalizationAlarmLevel = useHospitalizationUpdatePending();
+  const hospitalizationAlarmClass = navAlarmClass(hospitalizationAlarmLevel);
+  const hospitalizationAlarmIcon =
+    hospitalizationAlarmLevel === 'red' || hospitalizationAlarmLevel === 'both' ? ' 🩺' : hospitalizationAlarmLevel === 'yellow' ? ' 🔔' : '';
   const [hasPendingAppointmentRequest, setHasPendingAppointmentRequest] = useState(false);
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
   const [hasPendingReviewRequest, setHasPendingReviewRequest] = useState(false);
@@ -100,10 +104,10 @@ export default function AdminLayout({ children }) {
           <a href="/day-procedures">Day Procedures</a>
           <a
             href="/hospitalization"
-            className={hasPendingHospitalizationUpdate ? 'nav-update-requested' : ''}
-            title={hasPendingHospitalizationUpdate ? 'A hospitalization update needs attention' : undefined}
+            className={hospitalizationAlarmClass}
+            title={hospitalizationAlarmLevel !== 'none' ? 'A hospitalization needs attention' : undefined}
           >
-            Hospitalization{hasPendingHospitalizationUpdate && ' 🔔'}
+            Hospitalization{hospitalizationAlarmIcon}
           </a>
           <a href="/vaccinations">Vaccinations</a>
           <a href="/invoices">Invoices</a>

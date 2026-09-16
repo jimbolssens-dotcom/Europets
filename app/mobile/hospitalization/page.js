@@ -17,45 +17,25 @@ import { supabase } from '@/lib/supabaseClient';
 import { byGroup } from '@/app/_components/CageFloorPlan';
 import { useMobileStaff } from '@/app/_components/useMobileStaff';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
-import { formatDateTime } from '@/lib/formatTimestamp';
-import { isWithinOfficeHours } from '@/lib/officeHours';
-
-// See the matching helper in app/(admin)/hospitalization/page.jsx — same
-// tooltip content, just for the mobile cage tile.
-function updateRequestTooltip(hosp) {
-  const when = formatDateTime(hosp.update_requested_at);
-  const afterHours = !isWithinOfficeHours(new Date(hosp.update_requested_at));
-  return `${when}${afterHours ? ' (after hours)' : ''}${hosp.update_request_message ? `: "${hosp.update_request_message}"` : ''}`;
-}
-
-function scheduledUpdateLabel(period) {
-  if (period === 'morning_and_afternoon') return 'Morning and afternoon temperature checks overdue';
-  if (period === 'afternoon') return 'Afternoon temperature check overdue';
-  return 'Morning temperature check overdue';
-}
-
-function hospitalizationAttention(hosp) {
-  const reasons = [];
-  if (hosp.update_requested_at) reasons.push(`Owner requested an update ${updateRequestTooltip(hosp)}`);
-  if (hosp.scheduled_update_overdue) reasons.push(scheduledUpdateLabel(hosp.scheduled_update_overdue_period));
-  if (hosp.vitals_weight_overdue) reasons.push('Weight not checked today');
-  return reasons;
-}
+import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 
 function MobileCageTile({ cage, hosp, checkinOnly }) {
   if (hosp) {
     const href = checkinOnly ? `/mobile/hospitalization/${hosp.id}/checkin` : `/mobile/hospitalization/${hosp.id}`;
-    const attention = hospitalizationAttention(hosp);
+    const { yellow, red } = hospitalizationAttentionReasons(hosp);
+    const attention = [...yellow, ...red];
     const needsAttention = attention.length > 0;
+    const alarmClass = cageAlarmClass(hospitalizationAlarmLevel(hosp));
     return (
       <a
         href={href}
-        className={`cage-tile cage-tile-mobile-occupied${needsAttention ? ' cage-update-requested' : ''}`}
+        className={`cage-tile cage-tile-mobile-occupied${alarmClass ? ` ${alarmClass}` : ''}`}
         title={needsAttention ? attention.join(' • ') : undefined}
       >
         <div className="cage-tile-header">
           <span className="cage-name">{cage.name}</span>
-          {needsAttention && <span title={attention.join(' • ')}>🔔</span>}
+          {red.length > 0 && <span title={red.join(' • ')}>🩺</span>}
+          {yellow.length > 0 && <span title={yellow.join(' • ')}>🔔</span>}
           {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
         </div>
         <div className="cage-patient">

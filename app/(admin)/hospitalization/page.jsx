@@ -21,50 +21,27 @@ import CageFloorPlan from '@/app/_components/CageFloorPlan';
 import CagePicker from '@/app/_components/CagePicker';
 import SearchSelect from '@/app/_components/SearchSelect';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
-import { formatDateTime } from '@/lib/formatTimestamp';
-import { isWithinOfficeHours } from '@/lib/officeHours';
 import InfoHint from '@/app/_components/InfoHint';
+import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 
 const DRAG_THRESHOLD = 6;
 const emptyAdmitForm = { client_id: '', patient_id: '', cage_id: '', reason: '' };
-
-// The cage tile's tooltip when an owner is waiting on an update — names
-// when the request came in (and flags it if that was outside office
-// hours) so staff can tell a fresh request from one that's been sitting
-// since overnight.
-function updateRequestTooltip(hosp) {
-  const when = formatDateTime(hosp.update_requested_at);
-  const afterHours = !isWithinOfficeHours(new Date(hosp.update_requested_at));
-  return `${when}${afterHours ? ' (after hours)' : ''}${hosp.update_request_message ? `: "${hosp.update_request_message}"` : ''}`;
-}
-
-function scheduledUpdateLabel(period) {
-  if (period === 'morning_and_afternoon') return 'Morning and afternoon temperature checks overdue';
-  if (period === 'afternoon') return 'Afternoon temperature check overdue';
-  return 'Morning temperature check overdue';
-}
-
-function hospitalizationAttention(hosp) {
-  const reasons = [];
-  if (hosp.update_requested_at) reasons.push(`Owner requested an update ${updateRequestTooltip(hosp)}`);
-  if (hosp.scheduled_update_overdue) reasons.push(scheduledUpdateLabel(hosp.scheduled_update_overdue_period));
-  if (hosp.vitals_weight_overdue) reasons.push('Weight not checked today');
-  return reasons;
-}
 
 function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDragStart, dragSourceId, dropTargetId }) {
   const isDragSource = dragSourceId === cage.id;
   const isDropTarget = dropTargetId === cage.id;
 
   if (hosp) {
-    const attention = hospitalizationAttention(hosp);
+    const { yellow, red } = hospitalizationAttentionReasons(hosp);
+    const attention = [...yellow, ...red];
     const needsAttention = attention.length > 0;
+    const alarmClass = cageAlarmClass(hospitalizationAlarmLevel(hosp));
     return (
       <div
         className={[
           'cage-tile',
           'cage-occupied',
-          needsAttention ? 'cage-update-requested' : '',
+          alarmClass,
           isDragSource ? 'cage-drag-source' : '',
           isDropTarget ? 'cage-drop-target' : '',
         ]
@@ -92,7 +69,8 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
         </button>
         <div className="cage-tile-header">
           <span className="cage-name">{cage.name}</span>
-          {needsAttention && <span title={attention.join(' • ')}>🔔</span>}
+          {red.length > 0 && <span title={red.join(' • ')}>🩺</span>}
+          {yellow.length > 0 && <span title={yellow.join(' • ')}>🔔</span>}
           {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
         </div>
         <div className="cage-patient">
@@ -357,9 +335,7 @@ export default function HospitalizationPage() {
   const occupancy = Object.fromEntries(admitted.filter((a) => a.cage_id).map((a) => [a.cage_id, a]));
   const unassignedAdmitted = admitted.filter((a) => !a.cage_id);
   const occupiedCageIds = new Set(Object.keys(occupancy));
-  const attentionCount = admitted.filter(
-    (a) => a.update_requested_at || a.scheduled_update_overdue || a.vitals_weight_overdue
-  ).length;
+  const attentionCount = admitted.filter((a) => hospitalizationAlarmLevel(a) !== 'none').length;
 
   const tileHandlers = {
     unassignedAdmitted,

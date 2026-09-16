@@ -8,15 +8,17 @@
 'use client';
 
 import { useHospitalizationUpdatePending } from '@/app/_components/useHospitalizationUpdatePending';
+import { cageAlarmClass } from '@/lib/hospitalizationAttention';
 
 export default function MobileCleanerTabs() {
-  const updatePending = useHospitalizationUpdatePending();
+  const alarmLevel = useHospitalizationUpdatePending();
+  const alarmClass = cageAlarmClass(alarmLevel);
 
   return (
     <nav className="mobile-cleaner-tabs">
-      <a href="/mobile/hospitalization" className={`mobile-cleaner-tab${updatePending ? ' cage-update-requested' : ''}`}>
+      <a href="/mobile/hospitalization" className={`mobile-cleaner-tab${alarmClass ? ` ${alarmClass}` : ''}`}>
         <span className="mobile-cleaner-tab-icon">🏥</span>
-        <span>Hospital{updatePending && ' 🔔'}</span>
+        <span>Hospital{alarmLevel === 'red' || alarmLevel === 'both' ? ' 🩺' : alarmLevel === 'yellow' ? ' 🔔' : ''}</span>
       </a>
       <a href="/mobile/schedule" className="mobile-cleaner-tab">
         <span className="mobile-cleaner-tab-icon">📅</span>
