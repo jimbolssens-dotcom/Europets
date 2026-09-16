@@ -14,12 +14,17 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 
+const VALID_FREQUENCIES = ['once_daily', 'twice_daily', 'one_time'];
+
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { label, goods_service_id, instructions, is_surgical } = body;
+  const { label, goods_service_id, instructions, is_surgical, frequency } = body;
 
   if (!label) {
     return NextResponse.json({ error: 'label is required' }, { status: 400 });
+  }
+  if (frequency !== undefined && !VALID_FREQUENCIES.includes(frequency)) {
+    return NextResponse.json({ error: `frequency must be one of ${VALID_FREQUENCIES.join(', ')}` }, { status: 400 });
   }
 
   // Temperature/Weight (see migration 104) are system-generated and
@@ -55,6 +60,7 @@ export async function PATCH(request, { params }) {
   // would silently reset an AI- or staff-set flag back to false on every
   // unrelated edit.
   if (is_surgical !== undefined) update.is_surgical = !!is_surgical;
+  if (frequency !== undefined) update.frequency = frequency;
 
   const { data, error } = await supabaseAdmin
     .from('hospitalization_plan_items')

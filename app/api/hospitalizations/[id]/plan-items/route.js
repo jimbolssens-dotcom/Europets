@@ -23,12 +23,17 @@ export async function GET(request, { params }) {
   return NextResponse.json(data);
 }
 
+const VALID_FREQUENCIES = ['once_daily', 'twice_daily', 'one_time'];
+
 export async function POST(request, { params }) {
   const body = await request.json();
-  const { label, goods_service_id, instructions, is_surgical } = body;
+  const { label, goods_service_id, instructions, is_surgical, frequency } = body;
 
   if (!label) {
     return NextResponse.json({ error: 'label is required' }, { status: 400 });
+  }
+  if (frequency !== undefined && !VALID_FREQUENCIES.includes(frequency)) {
+    return NextResponse.json({ error: `frequency must be one of ${VALID_FREQUENCIES.join(', ')}` }, { status: 400 });
   }
 
   let resolvedMethod = null;
@@ -51,6 +56,7 @@ export async function POST(request, { params }) {
         instructions: instructions || null,
         administration_method: resolvedMethod,
         is_surgical: !!is_surgical,
+        frequency: frequency || 'once_daily',
       },
     ])
     .select('*, goods_services(name)')

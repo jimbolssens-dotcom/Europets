@@ -35,7 +35,12 @@ function todayISODate() {
 
 export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport }) {
   const [planItems, setPlanItems] = useState([]);
-  const [todayNotes, setTodayNotes] = useState([]);
+  // Every plan-tagged note for the whole stay, not just today — a
+  // 'one_time' item (see migration 105) needs to know if it was EVER
+  // logged, not just today, so it can stop asking once it's done for
+  // good. once_daily/twice_daily items still only care about today's
+  // slice, filtered out of this same list below (see `todayNotes`).
+  const [planNotes, setPlanNotes] = useState([]);
   const [authorId, setAuthorId] = useState('');
   const [loggingIds, setLoggingIds] = useState(() => new Set());
   const [vitalsInputFor, setVitalsInputFor] = useState(null);
@@ -45,17 +50,23 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
   const [showCatalogAdd, setShowCatalogAdd] = useState(false);
   const [catalogGoodsServiceId, setCatalogGoodsServiceId] = useState('');
   const [catalogInstructions, setCatalogInstructions] = useState('');
+  const [catalogFrequency, setCatalogFrequency] = useState('once_daily');
   const [showCustomAdd, setShowCustomAdd] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
+  const [customFrequency, setCustomFrequency] = useState('once_daily');
   const [error, setError] = useState(null);
   const [editingItemId, setEditingItemId] = useState(null);
   const [editGoodsServiceId, setEditGoodsServiceId] = useState('');
   const [editInstructions, setEditInstructions] = useState('');
+  const [editFrequency, setEditFrequency] = useState('once_daily');
   const [editSaving, setEditSaving] = useState(false);
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);
   const lastNoteRef = useRef(null);
   const logQueueRef = useRef(Promise.resolve());
+
+  const today = todayISODate();
+  const todayNotes = planNotes.filter((n) => n.note_date === today);
 
   function loadPlanItems() {
     fetch(`/api/hospitalizations/${hospitalizationId}/plan-items`)
@@ -63,20 +74,17 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
       .then((data) => setPlanItems(Array.isArray(data) ? data : []));
   }
 
-  function loadTodayNotes() {
+  function loadPlanNotes() {
     fetch(`/api/hospitalizations/${hospitalizationId}/notes`)
       .then((res) => res.json())
       .then((data) => {
-        const today = todayISODate();
-        setTodayNotes(
-          Array.isArray(data) ? data.filter((n) => n.plan_item_ids?.length > 0 && n.note_date === today) : []
-        );
+        setPlanNotes(Array.isArray(data) ? data.filter((n) => n.plan_item_ids?.length > 0) : []);
       });
   }
 
   useEffect(() => {
     loadPlanItems();
-    loadTodayNotes();
+    loadPlanNotes();
     lastNoteRef.current = null;
     const remembered = localStorage.getItem(MOBILE_STAFF_STORAGE_KEY);
     if (remembered) setAuthorId(remembered);
@@ -91,7 +99,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hospitalization_notes', filter: `hospitalization_id=eq.${hospitalizationId}` },
-        loadTodayNotes
+        loadPlanNotes
       )
       .subscribe();
 
@@ -106,6 +114,14 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
 
   function doneToday(planItemId) {
     return todayNotes
+      .filter((n) => n.plan_item_ids?.includes(planItemId))
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  }
+
+  // 'one_time' items (migration 105) check against the whole stay, not
+  // just today — once this has anything in it, the item is done for good.
+  function doneEver(planItemId) {
+    return planNotes
       .filter((n) => n.plan_item_ids?.includes(planItemId))
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   }
@@ -168,7 +184,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
           next.delete(item.id);
           return next;
         });
-        loadTodayNotes();
+        loadPlanNotes();
       }
     };
 
@@ -267,7 +283,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
       if (!res.ok) throw new Error(data.error || 'Failed to log reading');
       setVitalsInputFor(null);
       setVitalsValue('');
-      loadTodayNotes();
+      loadPlanNotes();
     } catch (err) {
       setError(err.message || 'Failed to log reading');
     } finally {
@@ -308,6 +324,29 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     return { overdue: morningOverdue || afternoonOverdue, label };
   }
 
+  // Quiet, per-tile scheduling hint for regular (non-vitals) tasks — unlike
+  // vitalsStatus above, this never feeds the clinic-wide blinking-cage
+  // alarm (that stays reserved for the two system vitals items); it's just
+  // a visual nudge on the tile itself. Only 'twice_daily' tasks (migration
+  // 105) get one — once_daily/one_time already say enough via the plain
+  // "Not done yet today" status text next to them.
+  function taskFrequencyStatus(item, done) {
+    if (item.frequency !== 'twice_daily' || !admittedAt) return { overdue: false, label: null };
+    const { nowMs, noonUtcMs, eveningUtcMs } = dubaiDayBoundaries();
+    const admittedMs = new Date(admittedAt).getTime();
+    const morningExpected = nowMs >= noonUtcMs && admittedMs < noonUtcMs;
+    const afternoonExpected = nowMs >= eveningUtcMs && admittedMs < eveningUtcMs;
+    const morningDone = done.some((n) => new Date(n.created_at).getTime() < noonUtcMs);
+    const afternoonDone = done.some((n) => new Date(n.created_at).getTime() >= noonUtcMs);
+    const morningOverdue = morningExpected && !morningDone;
+    const afternoonOverdue = afternoonExpected && !afternoonDone;
+    let label = null;
+    if (morningOverdue && afternoonOverdue) label = 'Morning & afternoon not done yet';
+    else if (afternoonOverdue) label = 'Afternoon not done yet';
+    else if (morningOverdue) label = 'Morning not done yet';
+    return { overdue: morningOverdue || afternoonOverdue, label };
+  }
+
   async function addPlanItem(payload) {
     setError(null);
     const res = await fetch(`/api/hospitalizations/${hospitalizationId}/plan-items`, {
@@ -329,9 +368,23 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
 
   async function addCustomTask() {
     if (!customLabel.trim()) return;
-    await addPlanItem({ label: customLabel.trim() });
+    await addPlanItem({ label: customLabel.trim(), frequency: customFrequency });
     setCustomLabel('');
+    setCustomFrequency('once_daily');
     setShowCustomAdd(false);
+  }
+
+  // Picking a lab-test catalog item defaults the frequency to one-time
+  // (it's a single order, not a recurring daily task) — staff can still
+  // override it before adding.
+  function handleCatalogGoodsServiceChange(id) {
+    setCatalogGoodsServiceId(id);
+    const item = catalog.find((c) => c.id === id);
+    if (item && checklistItemAction({ goods_service_id: item.id, label: item.name }, catalog, subcategories) === 'test') {
+      setCatalogFrequency('one_time');
+    } else {
+      setCatalogFrequency('once_daily');
+    }
   }
 
   async function addCatalogTask() {
@@ -342,6 +395,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
       label: item.name,
       goods_service_id: item.id,
       instructions: catalogInstructions.trim() || null,
+      frequency: catalogFrequency,
     });
     // A plan item that's a lab test is also ordered as a diagnostic the
     // moment it lands on the plan (not just once its "Enter Test Result"
@@ -355,6 +409,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     }
     setCatalogGoodsServiceId('');
     setCatalogInstructions('');
+    setCatalogFrequency('once_daily');
     setShowCatalogAdd(false);
   }
 
@@ -406,6 +461,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     setEditingItemId(item.id);
     setEditGoodsServiceId(item.goods_service_id || '');
     setEditInstructions(item.instructions || '');
+    setEditFrequency(item.frequency || 'once_daily');
   }
 
   function cancelEditItem() {
@@ -425,6 +481,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
         label,
         goods_service_id: editGoodsServiceId || null,
         instructions: editInstructions.trim() || null,
+        frequency: editFrequency,
       }),
     });
     setEditSaving(false);
@@ -442,8 +499,15 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
   }
 
   const vitalsItems = planItems.filter((item) => item.kind === 'vitals_temperature' || item.kind === 'vitals_weight');
-  const taskItems = planItems.filter((item) => item.kind !== 'vitals_temperature' && item.kind !== 'vitals_weight');
-  const existingLabels = new Set(taskItems.map((t) => t.label));
+  const taskItemsAll = planItems.filter((item) => item.kind !== 'vitals_temperature' && item.kind !== 'vitals_weight');
+  // A 'one_time' task that's already been logged once is done for good —
+  // it moves out of the active grid into the Completed section below
+  // instead of sitting there doing nothing every day for the rest of the
+  // stay (see doneEver).
+  const completedOneTimeItems = taskItemsAll.filter((item) => item.frequency === 'one_time' && doneEver(item.id).length > 0);
+  const completedIds = new Set(completedOneTimeItems.map((item) => item.id));
+  const taskItems = taskItemsAll.filter((item) => !completedIds.has(item.id));
+  const existingLabels = new Set(taskItemsAll.map((t) => t.label));
   const remainingQuickTasks = QUICK_TASKS.filter((q) => !existingLabels.has(q));
 
   return (
@@ -523,8 +587,9 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
           const done = doneToday(item.id);
           const last = done[done.length - 1];
           const isTest = checklistItemAction(item, catalog, subcategories) === 'test';
+          const freqStatus = taskFrequencyStatus(item, done);
           return (
-            <div key={item.id} className={`day-plan-task${done.length ? ' done' : ''}`}>
+            <div key={item.id} className={`day-plan-task${done.length ? ' done' : ''}${freqStatus.overdue ? ' overdue' : ''}`}>
               <button
                 type="button"
                 onClick={() => {
@@ -552,6 +617,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
                       ? `✓ ${done.length > 1 ? `${done.length}× today · ` : ''}last ${formatTime(last.created_at)} · ${authorName(last.author_id)}`
                       : 'Not done yet today'}
                 </span>
+                {freqStatus.label && <span className="day-plan-task-warning">⚠ {freqStatus.label}</span>}
               </button>
               {isTest && onOpenReport && (
                 <button
@@ -586,6 +652,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
                     value={editInstructions}
                     onChange={(e) => setEditInstructions(e.target.value)}
                   />
+                  <FrequencyPicker name={`edit-frequency-${item.id}`} value={editFrequency} onChange={setEditFrequency} />
                   <div className="day-plan-edit-actions">
                     <button type="button" onClick={() => saveEditItem(item.id)} disabled={editSaving}>
                       {editSaving ? 'Saving...' : 'Save'}
@@ -635,7 +702,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
             catalog={catalog}
             subcategories={subcategories}
             value={catalogGoodsServiceId}
-            onChange={setCatalogGoodsServiceId}
+            onChange={handleCatalogGoodsServiceChange}
             onItemCreated={onCatalogItemCreated}
           />
           <input
@@ -643,6 +710,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
             value={catalogInstructions}
             onChange={(e) => setCatalogInstructions(e.target.value)}
           />
+          <FrequencyPicker name="catalog-frequency" value={catalogFrequency} onChange={setCatalogFrequency} />
           <button type="button" onClick={addCatalogTask} disabled={!catalogGoodsServiceId}>
             Add to Plan
           </button>
@@ -656,12 +724,60 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
             value={customLabel}
             onChange={(e) => setCustomLabel(e.target.value)}
           />
+          <FrequencyPicker name="custom-frequency" value={customFrequency} onChange={setCustomFrequency} />
           <button type="button" onClick={addCustomTask} disabled={!customLabel.trim()}>
             Add
           </button>
         </div>
       )}
 
+      {completedOneTimeItems.length > 0 && (
+        <div className="day-plan-completed">
+          <p className="visit-meta day-plan-completed-heading">Completed (one-time)</p>
+          <div className="day-plan-completed-list">
+            {completedOneTimeItems.map((item) => {
+              const doneEntries = doneEver(item.id);
+              const last = doneEntries[doneEntries.length - 1];
+              return (
+                <div key={item.id} className="day-plan-completed-item">
+                  <span className="day-plan-task-label">{item.label}</span>
+                  <span className="day-plan-task-status">
+                    ✓ done {formatTime(last.created_at)} · {authorName(last.author_id)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+const FREQUENCY_OPTIONS = [
+  { value: 'once_daily', label: 'Once a day' },
+  { value: 'twice_daily', label: 'Morning & afternoon' },
+  { value: 'one_time', label: 'One-time only' },
+];
+
+// Shared by the catalog-add, custom-add and edit forms so the three
+// frequency choices (migration 105) always read the same way everywhere.
+function FrequencyPicker({ name, value, onChange }) {
+  return (
+    <div className="day-plan-frequency-picker">
+      {FREQUENCY_OPTIONS.map((opt) => (
+        <label key={opt.value}>
+          <input
+            type="radio"
+            name={name}
+            value={opt.value}
+            checked={value === opt.value}
+            onChange={() => onChange(opt.value)}
+          />
+          {opt.label}
+        </label>
+      ))}
     </div>
   );
 }
