@@ -139,8 +139,11 @@ export default function MobileHospitalizationListPage() {
   const [loading, setLoading] = useState(true);
   const { isCleaner } = useMobileStaff();
 
+  // kind=admission matches the desktop Cage Layout page — day procedures
+  // have their own separate mobile list (app/mobile/day-procedures), same
+  // reasoning as that page's own comment on why they don't belong here.
   const loadAdmitted = () =>
-    fetch('/api/hospitalizations?status=admitted')
+    fetch('/api/hospitalizations?status=admitted&kind=admission')
       .then((res) => res.json())
       .then((data) => setAdmitted(Array.isArray(data) ? data : []));
 

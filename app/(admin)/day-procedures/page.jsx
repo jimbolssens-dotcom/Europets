@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -90,6 +91,7 @@ export default function DayProceduresPage() {
         <table>
           <thead>
             <tr>
+              <th></th>
               <th>Patient</th>
               <th>Owner</th>
               <th>Reason</th>
@@ -98,26 +100,35 @@ export default function DayProceduresPage() {
             </tr>
           </thead>
           <tbody>
-            {inProgress.map((d) => (
-              <tr key={d.id}>
-                <td>
-                  {d.patients?.name}
-                  {d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}
-                </td>
-                <td>
-                  {d.clients?.full_name}
-                  {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
-                </td>
-                <td>{d.reason || '—'}</td>
-                <td>{new Date(d.admitted_at).toLocaleString()}</td>
-                <td>
-                  <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
-                  <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
-                    {deletingId === d.id ? 'Deleting…' : 'Delete'}
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {inProgress.map((d) => {
+              const { yellow, red } = hospitalizationAttentionReasons(d);
+              const attention = [...yellow, ...red];
+              const alarmClass = cageAlarmClass(hospitalizationAlarmLevel(d));
+              return (
+                <tr key={d.id} className={alarmClass}>
+                  <td title={attention.length > 0 ? attention.join(' • ') : undefined}>
+                    {red.length > 0 && '🩺'}
+                    {yellow.length > 0 && '🔔'}
+                  </td>
+                  <td>
+                    {d.patients?.name}
+                    {d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}
+                  </td>
+                  <td>
+                    {d.clients?.full_name}
+                    {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
+                  </td>
+                  <td>{d.reason || '—'}</td>
+                  <td>{new Date(d.admitted_at).toLocaleString()}</td>
+                  <td>
+                    <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
+                    <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
+                      {deletingId === d.id ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

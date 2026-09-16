@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
+import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 
 export default function MobileDayProceduresPage() {
   const [dayProcedures, setDayProcedures] = useState([]);
@@ -46,21 +47,32 @@ export default function MobileDayProceduresPage() {
         <p>No day procedures in progress right now.</p>
       ) : (
         <ul className="mobile-list">
-          {dayProcedures.map((d) => (
-            <li key={d.id}>
-              <a href={`/mobile/day-procedures/${d.id}`} className="mobile-list-item">
-                <span className="mobile-list-title">
-                  {d.patients?.name}
-                  {d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}
-                </span>
-                <span className="mobile-list-meta">
-                  {d.clients?.full_name}
-                  {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
-                  {d.reason ? ` · ${d.reason}` : ''}
-                </span>
-              </a>
-            </li>
-          ))}
+          {dayProcedures.map((d) => {
+            const { yellow, red } = hospitalizationAttentionReasons(d);
+            const attention = [...yellow, ...red];
+            const alarmClass = cageAlarmClass(hospitalizationAlarmLevel(d));
+            return (
+              <li key={d.id}>
+                <a
+                  href={`/mobile/day-procedures/${d.id}`}
+                  className={`mobile-list-item${alarmClass ? ` ${alarmClass}` : ''}`}
+                  title={attention.length > 0 ? attention.join(' • ') : undefined}
+                >
+                  <span className="mobile-list-title">
+                    {red.length > 0 && '🩺 '}
+                    {yellow.length > 0 && '🔔 '}
+                    {d.patients?.name}
+                    {d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}
+                  </span>
+                  <span className="mobile-list-meta">
+                    {d.clients?.full_name}
+                    {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
+                    {d.reason ? ` · ${d.reason}` : ''}
+                  </span>
+                </a>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

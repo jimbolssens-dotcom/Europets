@@ -13,10 +13,19 @@ import { supabase } from '@/lib/supabaseClient';
 // layout in app/layout.js.
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
+  // Split by kind (default 'admission' for the first) because the
+  // Hospitalization link opens the Cage Layout page, which only ever
+  // shows kind='admission' cases — day procedures have their own separate
+  // page/wall, so an alarm on one needs its own bell here rather than
+  // lighting up a link with no cage anywhere to show it on.
   const hospitalizationAlarmLevel = useHospitalizationUpdatePending();
   const hospitalizationAlarmClass = navAlarmClass(hospitalizationAlarmLevel);
   const hospitalizationAlarmIcon =
     hospitalizationAlarmLevel === 'red' || hospitalizationAlarmLevel === 'both' ? ' 🩺' : hospitalizationAlarmLevel === 'yellow' ? ' 🔔' : '';
+  const dayProcedureAlarmLevel = useHospitalizationUpdatePending({ kind: 'day_procedure' });
+  const dayProcedureAlarmClass = navAlarmClass(dayProcedureAlarmLevel);
+  const dayProcedureAlarmIcon =
+    dayProcedureAlarmLevel === 'red' || dayProcedureAlarmLevel === 'both' ? ' 🩺' : dayProcedureAlarmLevel === 'yellow' ? ' 🔔' : '';
   const [hasPendingAppointmentRequest, setHasPendingAppointmentRequest] = useState(false);
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
   const [hasPendingReviewRequest, setHasPendingReviewRequest] = useState(false);
@@ -101,7 +110,13 @@ export default function AdminLayout({ children }) {
             Appointments{hasPendingAppointmentRequest && ' 🔔'}
           </a>
           <a href="/consults">Consults</a>
-          <a href="/day-procedures">Day Procedures</a>
+          <a
+            href="/day-procedures"
+            className={dayProcedureAlarmClass}
+            title={dayProcedureAlarmLevel !== 'none' ? 'A day procedure needs attention' : undefined}
+          >
+            Day Procedures{dayProcedureAlarmIcon}
+          </a>
           <a
             href="/hospitalization"
             className={hospitalizationAlarmClass}

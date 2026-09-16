@@ -33,6 +33,8 @@ export default function MobileHomePage() {
   const [staff, setStaff] = useState([]);
   const alarmLevel = useHospitalizationUpdatePending();
   const alarmClass = cageAlarmClass(alarmLevel);
+  const dayProcedureAlarmLevel = useHospitalizationUpdatePending({ kind: 'day_procedure' });
+  const dayProcedureAlarmClass = cageAlarmClass(dayProcedureAlarmLevel);
 
   useEffect(() => {
     setStaffId(localStorage.getItem(MOBILE_STAFF_STORAGE_KEY));
@@ -111,9 +113,15 @@ export default function MobileHomePage() {
                 <span className="mobile-square-tile-icon">🏥</span>
                 <span>Hospitalization{alarmLevel === 'red' || alarmLevel === 'both' ? ' 🩺' : alarmLevel === 'yellow' ? ' 🔔' : ''}</span>
               </a>
-              <a href="/mobile/day-procedures" className="mobile-square-tile">
+              <a
+                href="/mobile/day-procedures"
+                className={`mobile-square-tile${dayProcedureAlarmClass ? ` ${dayProcedureAlarmClass}` : ''}`}
+              >
                 <span className="mobile-square-tile-icon">📋</span>
-                <span>Day Procedures</span>
+                <span>
+                  Day Procedures
+                  {dayProcedureAlarmLevel === 'red' || dayProcedureAlarmLevel === 'both' ? ' 🩺' : dayProcedureAlarmLevel === 'yellow' ? ' 🔔' : ''}
+                </span>
               </a>
               <a href="/mobile/dental" className="mobile-square-tile">
                 <span className="mobile-square-tile-icon">🦷</span>
