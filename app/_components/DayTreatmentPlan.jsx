@@ -51,6 +51,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
   const [catalogGoodsServiceId, setCatalogGoodsServiceId] = useState('');
   const [catalogInstructions, setCatalogInstructions] = useState('');
   const [catalogFrequency, setCatalogFrequency] = useState('once_daily');
+  const [catalogQuantity, setCatalogQuantity] = useState('1');
   const [showCustomAdd, setShowCustomAdd] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
   const [customFrequency, setCustomFrequency] = useState('once_daily');
@@ -59,6 +60,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
   const [editGoodsServiceId, setEditGoodsServiceId] = useState('');
   const [editInstructions, setEditInstructions] = useState('');
   const [editFrequency, setEditFrequency] = useState('once_daily');
+  const [editQuantity, setEditQuantity] = useState('1');
   const [editSaving, setEditSaving] = useState(false);
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);
@@ -204,7 +206,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
         notes: taskLine(item),
         plan_item_ids: [item.id],
         treatment_items: item.goods_service_id
-          ? [{ goods_service_id: item.goods_service_id, quantity: 1, administration_method: item.administration_method }]
+          ? [{ goods_service_id: item.goods_service_id, quantity: item.quantity || 1, administration_method: item.administration_method }]
           : [],
       }),
     });
@@ -233,7 +235,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
       body: JSON.stringify({
         hospitalization_note_id: note.id,
         goods_service_id: item.goods_service_id,
-        quantity: 1,
+        quantity: item.quantity || 1,
         administration_method: item.administration_method,
       }),
     });
@@ -436,6 +438,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
       goods_service_id: item.id,
       instructions: catalogInstructions.trim() || null,
       frequency: catalogFrequency,
+      quantity: catalogQuantity,
     });
     // A plan item that's a lab test is also ordered as a diagnostic the
     // moment it lands on the plan (not just once its "Enter Test Result"
@@ -450,6 +453,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     setCatalogGoodsServiceId('');
     setCatalogInstructions('');
     setCatalogFrequency('once_daily');
+    setCatalogQuantity('1');
     setShowCatalogAdd(false);
   }
 
@@ -502,6 +506,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     setEditGoodsServiceId(item.goods_service_id || '');
     setEditInstructions(item.instructions || '');
     setEditFrequency(item.frequency || 'once_daily');
+    setEditQuantity(String(item.quantity ?? 1));
   }
 
   function cancelEditItem() {
@@ -522,6 +527,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
         goods_service_id: editGoodsServiceId || null,
         instructions: editInstructions.trim() || null,
         frequency: editFrequency,
+        quantity: editQuantity,
       }),
     });
     setEditSaving(false);
@@ -680,18 +686,32 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
               </button>
               {editingItemId === item.id && (
                 <div className="day-plan-catalog-add day-plan-edit-task">
-                  <CatalogPicker
-                    catalog={catalog}
-                    subcategories={subcategories}
-                    value={editGoodsServiceId}
-                    onChange={setEditGoodsServiceId}
-                    onItemCreated={onCatalogItemCreated}
-                  />
-                  <input
-                    placeholder="Instructions (e.g. PO with food, twice daily)"
-                    value={editInstructions}
-                    onChange={(e) => setEditInstructions(e.target.value)}
-                  />
+                  <div className="day-plan-catalog-add-picker">
+                    <CatalogPicker
+                      catalog={catalog}
+                      subcategories={subcategories}
+                      value={editGoodsServiceId}
+                      onChange={setEditGoodsServiceId}
+                      onItemCreated={onCatalogItemCreated}
+                    />
+                  </div>
+                  <div className="day-plan-catalog-add-row">
+                    <input
+                      placeholder="Instructions (e.g. PO with food, twice daily)"
+                      value={editInstructions}
+                      onChange={(e) => setEditInstructions(e.target.value)}
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      className="day-plan-qty-input"
+                      placeholder="Qty"
+                      title="Quantity to log per tap (e.g. 0.5 for half a mL)"
+                      value={editQuantity}
+                      onChange={(e) => setEditQuantity(e.target.value)}
+                    />
+                  </div>
                   <FrequencyPicker name={`edit-frequency-${item.id}`} value={editFrequency} onChange={setEditFrequency} />
                   <div className="day-plan-edit-actions">
                     <button type="button" onClick={() => saveEditItem(item.id)} disabled={editSaving}>
@@ -738,18 +758,32 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
 
       {showCatalogAdd && (
         <div className="day-plan-catalog-add">
-          <CatalogPicker
-            catalog={catalog}
-            subcategories={subcategories}
-            value={catalogGoodsServiceId}
-            onChange={handleCatalogGoodsServiceChange}
-            onItemCreated={onCatalogItemCreated}
-          />
-          <input
-            placeholder="Instructions (e.g. PO with food, twice daily)"
-            value={catalogInstructions}
-            onChange={(e) => setCatalogInstructions(e.target.value)}
-          />
+          <div className="day-plan-catalog-add-picker">
+            <CatalogPicker
+              catalog={catalog}
+              subcategories={subcategories}
+              value={catalogGoodsServiceId}
+              onChange={handleCatalogGoodsServiceChange}
+              onItemCreated={onCatalogItemCreated}
+            />
+          </div>
+          <div className="day-plan-catalog-add-row">
+            <input
+              placeholder="Instructions (e.g. PO with food, twice daily)"
+              value={catalogInstructions}
+              onChange={(e) => setCatalogInstructions(e.target.value)}
+            />
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              className="day-plan-qty-input"
+              placeholder="Qty"
+              title="Quantity to log per tap (e.g. 0.5 for half a mL)"
+              value={catalogQuantity}
+              onChange={(e) => setCatalogQuantity(e.target.value)}
+            />
+          </div>
           <FrequencyPicker name="catalog-frequency" value={catalogFrequency} onChange={setCatalogFrequency} />
           <button type="button" onClick={addCatalogTask} disabled={!catalogGoodsServiceId}>
             Add to Plan

@@ -49,6 +49,7 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
   const [showCatalogAdd, setShowCatalogAdd] = useState(false);
   const [catalogGoodsServiceId, setCatalogGoodsServiceId] = useState('');
   const [catalogInstructions, setCatalogInstructions] = useState('');
+  const [catalogQuantity, setCatalogQuantity] = useState('1');
   const [showCustomAdd, setShowCustomAdd] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
   const [customIsSurgical, setCustomIsSurgical] = useState(false);
@@ -57,6 +58,7 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
   const [editGoodsServiceId, setEditGoodsServiceId] = useState('');
   const [editInstructions, setEditInstructions] = useState('');
   const [editIsSurgical, setEditIsSurgical] = useState(false);
+  const [editQuantity, setEditQuantity] = useState('1');
   const [editSaving, setEditSaving] = useState(false);
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);
@@ -206,7 +208,7 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
         notes: taskLine(item),
         plan_item_ids: [item.id],
         treatment_items: item.goods_service_id
-          ? [{ goods_service_id: item.goods_service_id, quantity: 1, administration_method: item.administration_method }]
+          ? [{ goods_service_id: item.goods_service_id, quantity: item.quantity || 1, administration_method: item.administration_method }]
           : [],
       }),
     });
@@ -235,7 +237,7 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
       body: JSON.stringify({
         hospitalization_note_id: note.id,
         goods_service_id: item.goods_service_id,
-        quantity: 1,
+        quantity: item.quantity || 1,
         administration_method: item.administration_method,
       }),
     });
@@ -385,9 +387,11 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
       label: item.name,
       goods_service_id: item.id,
       instructions: catalogInstructions.trim() || null,
+      quantity: catalogQuantity,
     });
     setCatalogGoodsServiceId('');
     setCatalogInstructions('');
+    setCatalogQuantity('1');
     setShowCatalogAdd(false);
   }
 
@@ -420,6 +424,7 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
     setEditGoodsServiceId(item.goods_service_id || '');
     setEditInstructions(item.instructions || '');
     setEditIsSurgical(!!item.is_surgical);
+    setEditQuantity(String(item.quantity ?? 1));
   }
 
   function cancelEditItem() {
@@ -440,6 +445,7 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
         goods_service_id: editGoodsServiceId || null,
         instructions: editInstructions.trim() || null,
         is_surgical: editIsSurgical,
+        quantity: editQuantity,
       }),
     });
     setEditSaving(false);
@@ -624,18 +630,32 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
             </button>
             {editingItemId === item.id && (
               <div className="day-plan-catalog-add day-plan-edit-task">
-                <CatalogPicker
-                  catalog={catalog}
-                  subcategories={subcategories}
-                  value={editGoodsServiceId}
-                  onChange={setEditGoodsServiceId}
-                  onItemCreated={onCatalogItemCreated}
-                />
-                <input
-                  placeholder="Instructions (e.g. PO with food, twice daily)"
-                  value={editInstructions}
-                  onChange={(e) => setEditInstructions(e.target.value)}
-                />
+                <div className="day-plan-catalog-add-picker">
+                  <CatalogPicker
+                    catalog={catalog}
+                    subcategories={subcategories}
+                    value={editGoodsServiceId}
+                    onChange={setEditGoodsServiceId}
+                    onItemCreated={onCatalogItemCreated}
+                  />
+                </div>
+                <div className="day-plan-catalog-add-row">
+                  <input
+                    placeholder="Instructions (e.g. PO with food, twice daily)"
+                    value={editInstructions}
+                    onChange={(e) => setEditInstructions(e.target.value)}
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    className="day-plan-qty-input"
+                    placeholder="Qty"
+                    title="Quantity to log per tap (e.g. 0.5 for half a mL)"
+                    value={editQuantity}
+                    onChange={(e) => setEditQuantity(e.target.value)}
+                  />
+                </div>
                 <label className="checklist-surgical-toggle">
                   <input
                     type="checkbox"
@@ -677,18 +697,32 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
 
       {showCatalogAdd && (
         <div className="day-plan-catalog-add">
-          <CatalogPicker
-            catalog={catalog}
-            subcategories={subcategories}
-            value={catalogGoodsServiceId}
-            onChange={setCatalogGoodsServiceId}
-            onItemCreated={onCatalogItemCreated}
-          />
-          <input
-            placeholder="Instructions (e.g. PO with food, twice daily)"
-            value={catalogInstructions}
-            onChange={(e) => setCatalogInstructions(e.target.value)}
-          />
+          <div className="day-plan-catalog-add-picker">
+            <CatalogPicker
+              catalog={catalog}
+              subcategories={subcategories}
+              value={catalogGoodsServiceId}
+              onChange={setCatalogGoodsServiceId}
+              onItemCreated={onCatalogItemCreated}
+            />
+          </div>
+          <div className="day-plan-catalog-add-row">
+            <input
+              placeholder="Instructions (e.g. PO with food, twice daily)"
+              value={catalogInstructions}
+              onChange={(e) => setCatalogInstructions(e.target.value)}
+            />
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              className="day-plan-qty-input"
+              placeholder="Qty"
+              title="Quantity to log per tap (e.g. 0.5 for half a mL)"
+              value={catalogQuantity}
+              onChange={(e) => setCatalogQuantity(e.target.value)}
+            />
+          </div>
           <button type="button" onClick={addCatalogTask} disabled={!catalogGoodsServiceId}>
             Add to Checklist
           </button>

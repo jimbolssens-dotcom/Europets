@@ -4840,7 +4840,30 @@ button.secondary:hover {
   color: var(--pink-dark);
 }
 
-.day-plan-catalog-add,
+/* The catalog picker (CatalogPicker) is its own multi-part widget — tabs,
+   a search box, sometimes an inline "+ New" form — so it gets its own
+   full-width row instead of trying to sit inline next to a single-line
+   input; align-items: center previously centered a short Instructions
+   box against that much taller block, reading as misaligned. Instructions/
+   Qty (and everything after) go in their own row(s) below instead. */
+.day-plan-catalog-add {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.day-plan-catalog-add-picker {
+  width: 100%;
+}
+
+.day-plan-catalog-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .day-plan-custom-add {
   display: flex;
   flex-wrap: wrap;
@@ -4867,6 +4890,15 @@ button.secondary:hover {
   border-radius: 6px;
   font-size: 0.82rem;
   font-family: inherit;
+}
+
+/* The quantity to log per tap (migration 107) — e.g. 0.5 for half a mL —
+   narrower than Instructions since it's just a number. Extra specificity
+   (two classes) over ".day-plan-catalog-add input" above, which would
+   otherwise still win and stretch it to the same width. */
+.day-plan-catalog-add-row .day-plan-qty-input {
+  flex: 0 1 80px;
+  min-width: 64px;
 }
 
 /* The once/twice/one-time scheduling choice (migration 105), shared by

@@ -110,7 +110,7 @@ export default function WallCageTile({ cage, hospitalization, details, authorId,
         notes: taskLine(item),
         plan_item_ids: [item.id],
         treatment_items: item.goods_service_id
-          ? [{ goods_service_id: item.goods_service_id, quantity: 1, administration_method: item.administration_method }]
+          ? [{ goods_service_id: item.goods_service_id, quantity: item.quantity || 1, administration_method: item.administration_method }]
           : [],
       }),
     });
@@ -139,7 +139,7 @@ export default function WallCageTile({ cage, hospitalization, details, authorId,
       body: JSON.stringify({
         hospitalization_note_id: note.id,
         goods_service_id: item.goods_service_id,
-        quantity: 1,
+        quantity: item.quantity || 1,
         administration_method: item.administration_method,
       }),
     });

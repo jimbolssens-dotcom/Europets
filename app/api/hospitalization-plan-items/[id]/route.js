@@ -18,13 +18,16 @@ const VALID_FREQUENCIES = ['once_daily', 'twice_daily', 'one_time'];
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { label, goods_service_id, instructions, is_surgical, frequency } = body;
+  const { label, goods_service_id, instructions, is_surgical, frequency, quantity } = body;
 
   if (!label) {
     return NextResponse.json({ error: 'label is required' }, { status: 400 });
   }
   if (frequency !== undefined && !VALID_FREQUENCIES.includes(frequency)) {
     return NextResponse.json({ error: `frequency must be one of ${VALID_FREQUENCIES.join(', ')}` }, { status: 400 });
+  }
+  if (quantity !== undefined && !(Number(quantity) > 0)) {
+    return NextResponse.json({ error: 'quantity must be a positive number' }, { status: 400 });
   }
 
   // Temperature/Weight (see migration 104) are system-generated and
@@ -61,6 +64,7 @@ export async function PATCH(request, { params }) {
   // unrelated edit.
   if (is_surgical !== undefined) update.is_surgical = !!is_surgical;
   if (frequency !== undefined) update.frequency = frequency;
+  if (quantity !== undefined) update.quantity = Number(quantity);
 
   const { data, error } = await supabaseAdmin
     .from('hospitalization_plan_items')
