@@ -64,13 +64,19 @@ export default function DayProceduresPage() {
   if (loading) return <p>Loading day procedures...</p>;
 
   // Day procedures are a day-by-day thing — dropped off and picked up the
-  // same day, never carried over as a running worklist. One left unfinished
-  // overnight still exists (open its own hospitalization page from the
-  // patient's file/history), it just no longer clutters today's list.
+  // same day, never carried over as a running worklist, so "In Progress"/
+  // "Completed Today" only ever show today's. One left open from an
+  // earlier day (staff forgot to discharge it) doesn't just quietly stop
+  // cluttering this list, though — it's still status='admitted', which
+  // means it still counts toward this page's own nav alarm (see
+  // useHospitalizationUpdatePending's kind: 'day_procedure') if its vitals
+  // go overdue. Surfaced in its own section below so that alarm is always
+  // resolvable from here instead of a dead end.
   const today = todayISODate();
   const todaysDayProcedures = dayProcedures.filter((d) => d.admitted_at?.slice(0, 10) === today);
   const inProgress = todaysDayProcedures.filter((d) => d.status === 'admitted');
   const completed = todaysDayProcedures.filter((d) => d.status === 'discharged');
+  const carriedOver = dayProcedures.filter((d) => d.status === 'admitted' && d.admitted_at?.slice(0, 10) !== today);
 
   return (
     <div>
@@ -83,6 +89,59 @@ export default function DayProceduresPage() {
         appointment is checked in.
       </p>
       {error && <p className="error">{error}</p>}
+
+      {carriedOver.length > 0 && (
+        <>
+          <h2>⚠️ Still Open From an Earlier Day</h2>
+          <p className="visit-meta">
+            Never discharged — likely just missed at pickup. Open and discharge it (or catch it up
+            and discharge it) to clear this.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th>Patient</th>
+                <th>Owner</th>
+                <th>Reason</th>
+                <th>Started</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {carriedOver.map((d) => {
+                const { yellow, red } = hospitalizationAttentionReasons(d);
+                const attention = [...yellow, ...red];
+                const alarmClass = cageAlarmClass(hospitalizationAlarmLevel(d));
+                return (
+                  <tr key={d.id} className={alarmClass}>
+                    <td title={attention.length > 0 ? attention.join(' • ') : undefined}>
+                      {red.length > 0 && '🩺'}
+                      {yellow.length > 0 && '🔔'}
+                    </td>
+                    <td>
+                      {d.patients?.name}
+                      {d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}
+                    </td>
+                    <td>
+                      {d.clients?.full_name}
+                      {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
+                    </td>
+                    <td>{d.reason || '—'}</td>
+                    <td>{new Date(d.admitted_at).toLocaleDateString()}</td>
+                    <td>
+                      <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
+                      <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
+                        {deletingId === d.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
 
       <h2>In Progress</h2>
       {inProgress.length === 0 ? (
