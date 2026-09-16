@@ -967,6 +967,73 @@ td select {
   cursor: pointer;
 }
 
+/* Pre-Invoice Overview (app/_components/PreInvoiceOverview.jsx) — sits at
+   the top of the hospitalization page's sidebar, where "Add Worksheet
+   Entry" used to be (now collapsed below it). Reuses .treatment-items-table
+   for the same on-blur-commit quantity editing already used elsewhere,
+   just against invoice_line_items instead of treatment_items directly. */
+.pre-invoice-overview h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Overrides .treatment-items-table's own nth-child widths, sized for its
+   6 columns — this table only has 4, laid out very differently. */
+.pre-invoice-table th:nth-child(1),
+.pre-invoice-table td:nth-child(1) {
+  width: auto;
+}
+
+.pre-invoice-table th:nth-child(2),
+.pre-invoice-table td:nth-child(2) {
+  width: 4.5rem;
+}
+
+.pre-invoice-table th:nth-child(3),
+.pre-invoice-table td:nth-child(3) {
+  width: 5.5rem;
+  white-space: nowrap;
+}
+
+.pre-invoice-table th:nth-child(4),
+.pre-invoice-table td:nth-child(4) {
+  width: 1.8rem;
+}
+
+.pre-invoice-table td:nth-child(2) input {
+  width: 4rem;
+}
+
+.pre-invoice-dog-size {
+  background: var(--pink-tint);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.7rem;
+  font-size: 0.85rem;
+}
+
+.pre-invoice-dog-size p {
+  margin: 0 0 0.5rem;
+}
+
+.pre-invoice-dog-size-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pre-invoice-add {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pre-invoice-open-link {
+  margin-top: 0.6rem;
+  margin-bottom: 0;
+}
+
 th {
   background: var(--pink-tint);
   color: var(--pink-dark);

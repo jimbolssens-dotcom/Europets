@@ -14,10 +14,13 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { gatherInvoiceTreatmentItems, syncInvoiceTreatmentItems } from '@/lib/invoicing';
+import { ensureHospitalizationCharges } from '@/lib/hospitalizationCharges';
 import { NextResponse } from 'next/server';
 
 export async function POST(request, { params }) {
   const hospitalizationId = params.id;
+  const body = await request.json().catch(() => ({}));
+  const dogSize = body?.dog_size === 'small' || body?.dog_size === 'large' ? body.dog_size : undefined;
 
   const { data: admission, error: admissionError } = await supabase
     .from('hospitalizations')
@@ -27,6 +30,17 @@ export async function POST(request, { params }) {
 
   if (admissionError || !admission) {
     return NextResponse.json({ error: 'admission not found' }, { status: 404 });
+  }
+
+  // Backfill any missed day(s) of the automatic species/size hospitalization
+  // charge before gathering treatment items, so it's always included in the
+  // same sync rather than needing its own separate step. needsDogSize means
+  // a dog's weight isn't on file yet — the charge is skipped (not guessed,
+  // and everything else below still syncs normally) until the caller
+  // re-POSTs with dog_size.
+  const chargeResult = await ensureHospitalizationCharges(supabase, hospitalizationId, { dogSize });
+  if (chargeResult.error) {
+    return NextResponse.json({ error: chargeResult.error.message || String(chargeResult.error) }, { status: 500 });
   }
 
   let { data: existing } = await supabase
@@ -82,5 +96,8 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: syncError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ id: invoiceId, existing: Boolean(existing) }, { status: existing ? 200 : 201 });
+  return NextResponse.json(
+    { id: invoiceId, existing: Boolean(existing), needs_dog_size: Boolean(chargeResult.needsDogSize) },
+    { status: existing ? 200 : 201 }
+  );
 }

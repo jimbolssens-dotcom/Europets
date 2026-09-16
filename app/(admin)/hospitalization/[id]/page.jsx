@@ -28,6 +28,7 @@ import InfoHint from '@/app/_components/InfoHint';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import ProcedureChecklist from '@/app/_components/ProcedureChecklist';
 import DayProcedureTreatmentPlan from '@/app/_components/DayProcedureTreatmentPlan';
+import PreInvoiceOverview from '@/app/_components/PreInvoiceOverview';
 import DayProcedureNotes from '@/app/_components/DayProcedureNotes';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import HospitalizationReportsSection from '@/app/_components/HospitalizationReportsSection';
@@ -1532,9 +1533,16 @@ export default function HospitalizationDetailPage() {
         <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} />
       </details>
 
-      <form className="card" onSubmit={addNote}>
-        <h3>
-          Add Worksheet Entry{' '}
+      <PreInvoiceOverview
+        hospitalizationId={id}
+        catalog={catalog}
+        subcategories={subcategories}
+        onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+      />
+
+      <details className="case-files">
+        <summary>
+          📝 Add Worksheet Entry{' '}
           <InfoHint>
             Record an observation and Claude will break it down and fill in Notes below — anything
             already filled in is kept. Medications or tests you mention are matched against the
@@ -1542,7 +1550,8 @@ export default function HospitalizationDetailPage() {
             Weight and Temperature are logged from their own boxes on the Day Treatment Plan above,
             not here.
           </InfoHint>
-        </h3>
+        </summary>
+      <form className="card" onSubmit={addNote}>
         <AudioRecorder entityType="hospitalization" entityId={id} onExtractedFields={applyExtractedFields} />
         <input
           type="date"
@@ -1619,6 +1628,7 @@ export default function HospitalizationDetailPage() {
           {submitting ? 'Saving...' : 'Add'}
         </button>
       </form>
+      </details>
       </div>
       </div>
         </>
