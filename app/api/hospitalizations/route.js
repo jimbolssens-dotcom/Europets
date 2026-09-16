@@ -82,8 +82,16 @@ async function attachScheduledUpdateStatus(rows) {
 
     const morningExpected = nowMs >= noonUtcMs && admittedMs < noonUtcMs;
     const afternoonExpected = nowMs >= eveningUtcMs && admittedMs < eveningUtcMs;
-    const morningDone = notes.some((n) => n.temperature_c != null && new Date(n.created_at).getTime() < noonUtcMs);
-    const afternoonDone = notes.some((n) => n.temperature_c != null && new Date(n.created_at).getTime() >= noonUtcMs);
+    // "Done" counts today's temperature readings cumulatively rather than
+    // checking each one's own timestamp against noon — a reading logged a
+    // few minutes after the noon deadline still satisfies the morning
+    // check that was due by then; requiring it to have landed strictly
+    // before noon left it permanently stuck "overdue" for the rest of the
+    // day no matter how many readings came in afterward. The 1st reading
+    // of the day satisfies morning, a 2nd satisfies afternoon too.
+    const tempReadingsToday = notes.filter((n) => n.temperature_c != null).length;
+    const morningDone = tempReadingsToday >= 1;
+    const afternoonDone = tempReadingsToday >= 2;
 
     const morningOverdue = morningExpected && !morningDone;
     const afternoonOverdue = afternoonExpected && !afternoonDone;

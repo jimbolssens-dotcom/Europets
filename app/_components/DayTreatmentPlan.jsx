@@ -313,8 +313,11 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
 
     const morningExpected = nowMs >= noonUtcMs && admittedMs < noonUtcMs;
     const afternoonExpected = nowMs >= eveningUtcMs && admittedMs < eveningUtcMs;
-    const morningDone = done.some((n) => new Date(n.created_at).getTime() < noonUtcMs);
-    const afternoonDone = done.some((n) => new Date(n.created_at).getTime() >= noonUtcMs);
+    // Counts today's readings cumulatively rather than checking each one's
+    // own timestamp against noon — see the matching fix (and its full
+    // explanation) in attachScheduledUpdateStatus, app/api/hospitalizations/route.js.
+    const morningDone = done.length >= 1;
+    const afternoonDone = done.length >= 2;
     const morningOverdue = morningExpected && !morningDone;
     const afternoonOverdue = afternoonExpected && !afternoonDone;
     let label = null;
@@ -336,8 +339,11 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     const admittedMs = new Date(admittedAt).getTime();
     const morningExpected = nowMs >= noonUtcMs && admittedMs < noonUtcMs;
     const afternoonExpected = nowMs >= eveningUtcMs && admittedMs < eveningUtcMs;
-    const morningDone = done.some((n) => new Date(n.created_at).getTime() < noonUtcMs);
-    const afternoonDone = done.some((n) => new Date(n.created_at).getTime() >= noonUtcMs);
+    // Counts today's readings cumulatively rather than checking each one's
+    // own timestamp against noon — see the matching fix (and its full
+    // explanation) in attachScheduledUpdateStatus, app/api/hospitalizations/route.js.
+    const morningDone = done.length >= 1;
+    const afternoonDone = done.length >= 2;
     const morningOverdue = morningExpected && !morningDone;
     const afternoonOverdue = afternoonExpected && !afternoonDone;
     let label = null;
