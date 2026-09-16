@@ -58,27 +58,30 @@ slack at all, so `object-position` does nothing until the image is overscaled.
 Portraits are placeholders: initials on a plum gradient. Swapping in a real
 photo is one line per doctor — replace `<span class="doc-ph">` with an `<img>`.
 
-### The logo on a dark ground
+### The logo
 
-The logo stays in its normal stacked arrangement — mark over wordmark, no
-relocking and no box — sitting straight on the black ground in both the nav and
-the footer. The navigation bar is sized around it rather than the other way
-round: a stacked logo squeezed into a short bar leaves the type a few pixels
-tall, so the bar runs `clamp(4.6rem, 6vw, 5.7rem)` and the logo
+The page uses `public/logo.png` as drawn, unmodified, in both the nav and the
+footer. The navigation bar is sized around it rather than the other way round:
+a stacked mark-over-wordmark logo squeezed into a short bar leaves the type a
+few pixels tall, so the bar runs `clamp(4.6rem, 6vw, 5.7rem)` and the logo
 `clamp(3.4rem, 4.6vw, 4.3rem)`.
 
-`make-dark-logo.js` builds the dark-ground files into `public/`:
+Known tradeoff, chosen deliberately: the artwork sets EUROPETS in near-black
+and CLINIC plus the Arabic line in slate, so on this ground that type is close
+to invisible. The mark itself reads fine — the cross is pink and the dog
+carries a white keyline.
 
-- `logo-on-dark.png` — what both the nav and footer use. The artwork sets its
-  wordmark in near-black with a slate sub-line, which vanishes on this ground,
-  so that type is recoloured to chalk and soft grey. Nothing else is touched:
-  the cross, dog and cat are exactly as drawn, and alpha is preserved so the
-  type keeps its antialiasing over any background.
-- `logo-lockup-dark.png` — the same two elements relocked side by side. Built
-  and kept for anywhere the layout is wide and short, but the page does not
-  use it.
+`make-dark-logo.js` still builds two dark-ground alternatives into `public/`
+should that tradeoff stop being acceptable:
 
-Re-run the script after any logo change.
+- `logo-on-dark.png` — the same stacked logo with *only* the wordmark
+  recoloured to chalk and soft grey. The cross, dog and cat are untouched, and
+  alpha is preserved so the type keeps its antialiasing.
+- `logo-lockup-dark.png` — the mark and wordmark relocked side by side, for
+  placements that are wide and short.
+
+The other way to keep the file unmodified is to stop the surface behind it
+being black — a light plate or band behind the logo, as earlier versions had.
 
 ### The veterinary layer
 
