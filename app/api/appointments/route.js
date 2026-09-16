@@ -37,7 +37,7 @@ export async function GET(request) {
   let query = supabase
     .from('appointments')
     .select(
-      '*, patients(name, species), clients(full_name, phone), rooms(name), staff(full_name)'
+      '*, patients(name, species), clients(full_name, phone, client_number), rooms(name), staff(full_name)'
     )
     .order('start_time', { ascending: true });
 
