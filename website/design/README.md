@@ -85,6 +85,91 @@ being black — a light plate or band behind the logo, as earlier versions had.
 
 ### The veterinary layer
 
+The hexagon is doing three jobs at once — honeycomb, the cells of a lab slide,
+the pads of a paw — which is what lets the veterinary content sit inside the
+geometry rather than on top of it.
+
+**An ECG leads the page.** A resting trace with a travelling QRS complex runs
+full width directly under the hero, above the numbers — the first thing below
+the fold and the page's clearest medical signal.
+
+**The logo artwork carries the strays band.** `public/logo-mark.png` is the
+mark cropped out of the production logo (no wordmark), sitting beside the
+stray-community copy.
+
+**The glyphs encode which kind of section they mark.** A hex-built paw for
+animal-facing sections, the chamfered brand cross for clinical ones, a plain
+hexagon for everything else. The service plates carry proper veterinary line
+icons: syringe, tooth, microscope, scalpel, IV drip, paw.
+
+An earlier pass rebuilt the logo's dog, cat and cross as honeycomb mosaics and
+used them here. That work is kept — `build-marks.js`, `marks.json`, the ASCII
+proofs and `mark-study.html` compare three cell resolutions — but the page no
+longer renders any of it, so the mosaic renderer and its embedded cell maps
+have come out of `hexfield.html`.
+
+### The hero: the team as honeycomb
+
+The hero's right-hand side carries the five vets as hexagonal portraits, and
+the headline steps down a size to give them the room. They appear here and
+nowhere else on the page — the section further down covers the reception,
+nursing and admin team instead.
+
+Two arrangements ship in the same file, switched by the `data-layout` attribute
+on `.docs` (a floating control in the page toggles it, and dials the spacing —
+that control is a preview affordance, not part of the design):
+
+- **comb** — three cells over two. Pointy-top, 1.4846 aspect. The chosen one.
+- **column** — flat-top cells stacked into a vertical ribbon. 0.6736, tall.
+
+The cells do not touch. Each one is positioned by its *centre* and sized
+`calc(pitch - var(--gap))`, so it shrinks about its own centre while the comb
+keeps its shape. That gives an even gap in every direction for free: in a
+honeycomb each neighbour — sideways and diagonal alike — sits exactly one pitch
+from centre to centre, so one shrink opens all six gaps equally. `--gap` is a
+share of the container width; 3.5% is the default.
+
+Each container's aspect ratio is derived from its packing, so a layout stays a
+true comb at any width. Cells are `container-type: inline-size`, so the name,
+role and placeholder initial are sized in `cqi` and scale with the cell rather
+than the viewport.
+
+Two things are easy to get wrong here. A pointy-top hexagon ends in a point, so
+a caption pinned to its bottom edge lands where the cell has no width left —
+those labels need lifting into the full-width band between 25% and 75% of the
+height. And a square portrait covering a taller-than-wide cell has no vertical
+slack at all, so `object-position` does nothing until the image is overscaled.
+
+Portraits are placeholders: initials on a plum gradient. Swapping in a real
+photo is one line per doctor — replace `<span class="doc-ph">` with an `<img>`.
+
+### The logo
+
+The page uses `public/logo.png` as drawn, unmodified, in both the nav and the
+footer. The navigation bar is sized around it rather than the other way round:
+a stacked mark-over-wordmark logo squeezed into a short bar leaves the type a
+few pixels tall, so the bar runs `clamp(4.6rem, 6vw, 5.7rem)` and the logo
+`clamp(3.4rem, 4.6vw, 4.3rem)`.
+
+Known tradeoff, chosen deliberately: the artwork sets EUROPETS in near-black
+and CLINIC plus the Arabic line in slate, so on this ground that type is close
+to invisible. The mark itself reads fine — the cross is pink and the dog
+carries a white keyline.
+
+`make-dark-logo.js` still builds two dark-ground alternatives into `public/`
+should that tradeoff stop being acceptable:
+
+- `logo-on-dark.png` — the same stacked logo with *only* the wordmark
+  recoloured to chalk and soft grey. The cross, dog and cat are untouched, and
+  alpha is preserved so the type keeps its antialiasing.
+- `logo-lockup-dark.png` — the mark and wordmark relocked side by side, for
+  placements that are wide and short.
+
+The other way to keep the file unmodified is to stop the surface behind it
+being black — a light plate or band behind the logo, as earlier versions had.
+
+### The veterinary layer
+
 The honeycomb isn't decoration borrowed from a wallpaper — it's doing three
 jobs at once, which is what lets the medical content sit inside the geometry
 rather than on top of it.
