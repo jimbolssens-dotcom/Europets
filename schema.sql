@@ -9,6 +9,8 @@ create table staff (
     email text unique,
     color text,                      -- chosen appointment-schedule color (hex);
                                       -- null falls back to the auto palette (migration 035)
+    active boolean not null default true,  -- deactivate instead of delete once
+                                            -- they've got any history (migration 108)
     created_at timestamptz default now()
 );
 

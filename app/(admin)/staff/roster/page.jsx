@@ -127,11 +127,16 @@ export default function StaffRosterPage() {
       const i = ROLE_ORDER.indexOf(role);
       return i === -1 ? ROLE_ORDER.length : i;
     };
-    return [...staff].sort((a, b) => {
-      const roleDiff = roleRank(a.role) - roleRank(b.role);
-      return roleDiff !== 0 ? roleDiff : a.full_name.localeCompare(b.full_name);
-    });
-  }, [staff]);
+    // Deactivated staff drop off the grid — unless they're already on it
+    // somewhere in the visible week, so an old shift doesn't go orphaned.
+    const scheduledIds = new Set(entries.map((e) => e.staff_id));
+    return staff
+      .filter((s) => s.active !== false || scheduledIds.has(s.id))
+      .sort((a, b) => {
+        const roleDiff = roleRank(a.role) - roleRank(b.role);
+        return roleDiff !== 0 ? roleDiff : a.full_name.localeCompare(b.full_name);
+      });
+  }, [staff, entries]);
 
   // Same color a staff member reads as on the Appointments schedule — see
   // lib/staffColors.js: their own chosen color (Staff page) if they have

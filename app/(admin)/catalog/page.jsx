@@ -155,6 +155,16 @@ export default function CatalogPage() {
     loadItems();
   }
 
+  async function toggleItemActive(item) {
+    setDeleteError(null);
+    await fetch(`/api/goods-services/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: !item.active }),
+    });
+    loadItems();
+  }
+
   async function deleteItem(item) {
     if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
     setDeleteError(null);
@@ -603,9 +613,13 @@ export default function CatalogPage() {
               <tr
                 key={item.id}
                 id={`catalog-item-${item.id}`}
-                className={
-                  item.id === highlightedItemId ? 'catalog-row catalog-row-highlight' : 'catalog-row'
-                }
+                className={[
+                  'catalog-row',
+                  item.id === highlightedItemId ? 'catalog-row-highlight' : '',
+                  item.active ? '' : 'appointments-row-inactive',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 onClick={() => startEdit(item)}
               >
                 <td>{item.name}</td>
@@ -638,6 +652,15 @@ export default function CatalogPage() {
                     }}
                   >
                     Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleItemActive(item);
+                    }}
+                  >
+                    {item.active ? 'Deactivate' : 'Activate'}
                   </button>
                   <button
                     type="button"

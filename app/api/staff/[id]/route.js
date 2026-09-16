@@ -1,6 +1,7 @@
 // app/api/staff/[id]/route.js
 // GET    /api/staff/:id  -> a single staff member
-// PATCH  /api/staff/:id  -> edit a staff member
+// PATCH  /api/staff/:id  -> edit a staff member (including active, to
+//                           deactivate instead of delete — see migration 108)
 // DELETE /api/staff/:id  -> remove a staff member (blocked if referenced elsewhere)
 
 import { supabase } from '@/lib/supabaseClient';
@@ -20,7 +21,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { full_name, role, email, color } = body;
+  const { full_name, role, email, color, active } = body;
 
   if (role && !VALID_ROLES.includes(role)) {
     return NextResponse.json(
@@ -34,6 +35,7 @@ export async function PATCH(request, { params }) {
   if (role !== undefined) update.role = role;
   if (email !== undefined) update.email = email;
   if (color !== undefined) update.color = color || null;
+  if (active !== undefined) update.active = Boolean(active);
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });

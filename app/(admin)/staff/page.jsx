@@ -96,6 +96,25 @@ export default function StaffPage() {
     }
   }
 
+  // The usual path for someone who's left — deleting is blocked once they
+  // have any history (an appointment, a roster shift, a note), which is
+  // most staff. Deactivating keeps that history intact but drops them off
+  // the vet/roster pickers going forward.
+  async function toggleActive(member) {
+    setRowError(null);
+    const res = await fetch(`/api/staff/${member.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: !member.active }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setRowError(data.error || 'Failed to update staff member');
+    } else {
+      loadStaff();
+    }
+  }
+
   if (loading) return <p>Loading staff...</p>;
 
   return (
@@ -114,6 +133,7 @@ export default function StaffPage() {
             <th>Role</th>
             <th>Email</th>
             <th>Color</th>
+            <th>Status</th>
             <th></th>
           </tr>
         </thead>
@@ -154,6 +174,7 @@ export default function StaffPage() {
                     onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
                   />
                 </td>
+                <td>{s.active ? 'active' : 'inactive'}</td>
                 <td>
                   <button type="button" onClick={() => saveEdit(s.id)}>
                     Save
@@ -164,7 +185,7 @@ export default function StaffPage() {
                 </td>
               </tr>
             ) : (
-              <tr key={s.id}>
+              <tr key={s.id} className={s.active ? '' : 'appointments-row-inactive'}>
                 <td>{s.full_name}</td>
                 <td>{s.role}</td>
                 <td>{s.email}</td>
@@ -177,9 +198,13 @@ export default function StaffPage() {
                     />
                   )}
                 </td>
+                <td>{s.active ? 'active' : 'inactive'}</td>
                 <td>
                   <button type="button" onClick={() => startEdit(s)}>
                     Edit
+                  </button>
+                  <button type="button" onClick={() => toggleActive(s)}>
+                    {s.active ? 'Deactivate' : 'Activate'}
                   </button>
                   <button type="button" onClick={() => deleteStaff(s)}>
                     Delete

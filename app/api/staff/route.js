@@ -1,7 +1,10 @@
 // app/api/staff/route.js
-// GET  /api/staff             -> list all staff
-// GET  /api/staff?role=vet    -> list staff with a given role
-// POST /api/staff             -> create a new staff member
+// GET  /api/staff                -> list all staff
+// GET  /api/staff?role=vet       -> list staff with a given role
+// GET  /api/staff?active=true    -> list only active staff (for a
+//                                    booking/assignment picker — see
+//                                    staff.active, migration 108)
+// POST /api/staff                -> create a new staff member
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -10,10 +13,14 @@ import { NextResponse } from 'next/server';
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const role = searchParams.get('role');
+  const active = searchParams.get('active');
 
   let query = supabase.from('staff').select('*').order('full_name', { ascending: true });
   if (role) {
     query = query.eq('role', role);
+  }
+  if (active === 'true') {
+    query = query.eq('active', true);
   }
 
   const { data, error } = await query;

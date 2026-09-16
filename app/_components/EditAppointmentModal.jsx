@@ -30,6 +30,10 @@ export default function EditAppointmentModal({ appointment, rooms, vets, onClose
   const [patientId, setPatientId] = useState(appointment.patient_id);
   const [roomId, setRoomId] = useState(appointment.room_id || '');
   const [vetId, setVetId] = useState(appointment.vet_id || '');
+  // A vet deactivated since this appointment was booked still needs to show
+  // up here (as the already-selected option) or the field would silently
+  // blank out on open — just not offered for a fresh assignment.
+  const selectableVets = vets.filter((v) => v.active !== false || v.id === appointment.vet_id);
   const [type, setType] = useState(appointment.type);
   const [duration, setDuration] = useState(String(appointment.duration_minutes));
   const [dateStr, setDateStr] = useState(toISODateLocal(startDate));
@@ -144,7 +148,7 @@ export default function EditAppointmentModal({ appointment, rooms, vets, onClose
           Vet
           <select value={vetId} onChange={(e) => setVetId(e.target.value)}>
             <option value="">Unassigned</option>
-            {vets.map((v) => (
+            {selectableVets.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.full_name}
               </option>
