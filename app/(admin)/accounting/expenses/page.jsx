@@ -68,6 +68,7 @@ export default function ExpensesPage() {
   const [error, setError] = useState(null);
   const [possibleDuplicates, setPossibleDuplicates] = useState(null);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [noteDrafts, setNoteDrafts] = useState({}); // expense id -> description while typing, before it's saved on blur
 
   const loadExpenses = () =>
     fetch(`/api/expenses${showAllMonths ? '' : `?month=${month}`}`)
@@ -181,6 +182,20 @@ export default function ExpensesPage() {
     setSubmitting(false);
   }
 
+  function commitNote(expense, value) {
+    setNoteDrafts((prev) => {
+      const next = { ...prev };
+      delete next[expense.id];
+      return next;
+    });
+    if (value === (expense.description || '')) return;
+    fetch(`/api/expenses/${expense.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: value }),
+    }).then(loadExpenses);
+  }
+
   async function deleteExpense(id) {
     if (!confirm('Delete this expense? This cannot be undone.')) return;
     await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
@@ -238,6 +253,7 @@ export default function ExpensesPage() {
                   <th>VAT</th>
                   <th>Total</th>
                   <th>Paid Via</th>
+                  <th>Notes</th>
                   <th></th>
                 </tr>
               </thead>
@@ -252,6 +268,14 @@ export default function ExpensesPage() {
                     <td>AED {money(ex.vat_amount)}</td>
                     <td>AED {money(ex.total)}</td>
                     <td>{ex.payment_method ? ex.payment_method.replace('_', ' ') : '—'}</td>
+                    <td>
+                      <input
+                        placeholder="Add a note..."
+                        value={noteDrafts[ex.id] ?? ex.description ?? ''}
+                        onChange={(e) => setNoteDrafts({ ...noteDrafts, [ex.id]: e.target.value })}
+                        onBlur={(e) => commitNote(ex, e.target.value)}
+                      />
+                    </td>
                     <td>
                       <button type="button" onClick={() => deleteExpense(ex.id)}>
                         Delete
