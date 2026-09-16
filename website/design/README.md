@@ -1,8 +1,16 @@
 # Design concepts
 
 Static, self-contained design explorations for the public website. Nothing
-here is wired into the Next.js app — open the files directly in a browser.
-They live outside `public/` on purpose so they aren't served in production.
+here is wired into the Next.js app's routing or components.
+
+**The live concept is served at `/design/hexfield.html`** — the file itself
+lives at `website/public/design/hexfield.html` so it deploys with the site and
+can be viewed on a real URL. It is reachable by anyone who knows that path
+(nothing links to it), so move it back out of `public/` once it has served its
+purpose.
+
+Everything else in this folder is tooling and stays unserved: open those files
+directly in a browser.
 
 ## `hexfield.html`
 
