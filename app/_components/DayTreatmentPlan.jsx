@@ -132,22 +132,25 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
 
   // A tap within CONSOLIDATE_WINDOW_MS of the same author's most recent
   // plan-tap entry merges into it instead of creating a new worksheet row —
-  // several meds/checks logged one after another during rounds land as one
-  // entry with one timestamp, not a scattered row per tap. Tracked in a ref
-  // (updated synchronously right after each successful log) rather than
-  // read back from todayNotes, so a second tap fired before the first
-  // one's reload finishes still finds the note to merge into.
-  function findMergeableNote() {
+  // several meds/checks/vitals readings logged one after another during
+  // rounds land as one entry with one timestamp, not a scattered row per
+  // tap. Tracked in a ref (updated synchronously right after each
+  // successful log) rather than read back from todayNotes, so a second tap
+  // fired before the first one's reload finishes still finds the note to
+  // merge into.
+  //
+  // vitalsField (null for a regular task tap, 'weight_kg'/'temperature_c'
+  // for a vitals reading) is the one thing that still blocks a merge: two
+  // readings of the SAME field within the window can't share a row — the
+  // second would silently overwrite the first's value — so that case still
+  // gets its own row. Everything else merges freely: a task's text next to
+  // an already-set vitals value, or a vitals value folded onto a note that
+  // hasn't logged that field yet, all on one row.
+  function findMergeableNote(vitalsField = null) {
     const now = Date.now();
     const isValid = (n) =>
       n?.plan_item_ids?.length > 0 &&
-      // A vitals reading (weight_kg/temperature_c set) is never a merge
-      // target — its numeric value is the whole point of the entry, and
-      // folding an unrelated task tap's text into that same row would
-      // muddy an otherwise-precise reading. Every vitals note is its own
-      // row for exactly this reason (see logVitalsReading).
-      n.weight_kg == null &&
-      n.temperature_c == null &&
+      (vitalsField == null || n[vitalsField] == null) &&
       (n.author_id || null) === (authorId || null) &&
       now - new Date(n.created_at).getTime() < CONSOLIDATE_WINDOW_MS;
 
@@ -242,10 +245,11 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
 
   // Temperature/Weight (see migration 104) log differently from every
   // other plan item: tapping opens a small number input instead of
-  // logging immediately, and submitting always creates its own new
-  // worksheet row — never merged into a recent one (see the merge
-  // exclusion in findMergeableNote above) and never logged without a
-  // real value typed in.
+  // logging immediately, and a real value has to be typed in before it
+  // logs anything. Submitting still goes through the same merge/queue
+  // machinery as a task tap (see findMergeableNote/logTask above) — a
+  // reading folds into a nearby note from the same round unless that note
+  // already carries a value for this same field.
   function startVitalsInput(item) {
     setError(null);
     setVitalsInputFor(item.id);
@@ -257,7 +261,37 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     setVitalsValue('');
   }
 
-  async function submitVitalsReading(item) {
+  async function createVitalsNote(item, vitalsField, value) {
+    const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        author_id: authorId || null,
+        note_date: todayISODate(),
+        plan_item_ids: [item.id],
+        [vitalsField]: value,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to log reading');
+    lastNoteRef.current = data;
+  }
+
+  async function mergeVitalsIntoNote(note, item, vitalsField, value) {
+    const patchRes = await fetch(`/api/hospitalizations/${hospitalizationId}/notes/${note.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        plan_item_ids: [...note.plan_item_ids, item.id],
+        [vitalsField]: value,
+      }),
+    });
+    const patched = await patchRes.json();
+    if (!patchRes.ok) throw new Error(patched.error || 'Failed to log reading');
+    lastNoteRef.current = patched;
+  }
+
+  function submitVitalsReading(item) {
     const value = parseFloat(vitalsValue);
     if (!Number.isFinite(value) || value <= 0) {
       setError(`Enter a valid ${item.kind === 'vitals_weight' ? 'weight' : 'temperature'}`);
@@ -265,34 +299,34 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     }
     setError(null);
     setLoggingIds((prev) => new Set(prev).add(item.id));
-    try {
-      const body = {
-        author_id: authorId || null,
-        note_date: todayISODate(),
-        plan_item_ids: [item.id],
-      };
-      if (item.kind === 'vitals_weight') body.weight_kg = value;
-      if (item.kind === 'vitals_temperature') body.temperature_c = value;
+    const vitalsField = item.kind === 'vitals_weight' ? 'weight_kg' : 'temperature_c';
 
-      const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to log reading');
-      setVitalsInputFor(null);
-      setVitalsValue('');
-      loadPlanNotes();
-    } catch (err) {
-      setError(err.message || 'Failed to log reading');
-    } finally {
-      setLoggingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(item.id);
-        return next;
-      });
-    }
+    // Queued onto the same shared queue as logTask (see its comment above)
+    // so a vitals reading and a task tap fired close together still see
+    // each other's result instead of both racing to create their own row.
+    const run = async () => {
+      try {
+        const mergeInto = findMergeableNote(vitalsField);
+        if (mergeInto) {
+          await mergeVitalsIntoNote(mergeInto, item, vitalsField, value);
+        } else {
+          await createVitalsNote(item, vitalsField, value);
+        }
+        setVitalsInputFor(null);
+        setVitalsValue('');
+      } catch (err) {
+        setError(err.message || 'Failed to log reading');
+      } finally {
+        setLoggingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
+        loadPlanNotes();
+      }
+    };
+
+    logQueueRef.current = logQueueRef.current.then(run, run);
   }
 
   // Live "is this overdue yet" hint shown right on the tile — the

@@ -127,15 +127,16 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
   // A tap within CONSOLIDATE_WINDOW_MS of the same author's most recent
   // plan-tap entry merges into it instead of creating a new worksheet row —
   // same consolidation as DayTreatmentPlan, since several checklist items
-  // are typically ticked off in one pass.
-  function findMergeableNote() {
+  // are typically ticked off in one pass. See the identical, more detailed
+  // comment in DayTreatmentPlan.jsx for why vitalsField is the one thing
+  // that still blocks a merge (two readings of the same field can't share
+  // a row) while everything else — including a vitals reading folding onto
+  // a task note, or vice versa — now merges freely.
+  function findMergeableNote(vitalsField = null) {
     const now = Date.now();
     const isValid = (n) =>
       n?.plan_item_ids?.length > 0 &&
-      // A vitals reading (weight_kg/temperature_c set) is never a merge
-      // target — see the identical note in DayTreatmentPlan.jsx.
-      n.weight_kg == null &&
-      n.temperature_c == null &&
+      (vitalsField == null || n[vitalsField] == null) &&
       (n.author_id || null) === (authorId || null) &&
       now - new Date(n.created_at).getTime() < CONSOLIDATE_WINDOW_MS;
 
@@ -245,7 +246,9 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
   }
 
   // Temperature/Weight (see migration 104) — same tap-opens-a-number-input
-  // behavior as DayTreatmentPlan.jsx, always its own new worksheet row.
+  // behavior as DayTreatmentPlan.jsx, and the same merge/queue handling as
+  // logTask above: a reading folds into a nearby note from the same round
+  // unless that note already carries a value for this same field.
   function startVitalsInput(item) {
     setError(null);
     setVitalsInputFor(item.id);
@@ -257,7 +260,37 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
     setVitalsValue('');
   }
 
-  async function submitVitalsReading(item) {
+  async function createVitalsNote(item, vitalsField, value) {
+    const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        author_id: authorId || null,
+        note_date: todayISODate(),
+        plan_item_ids: [item.id],
+        [vitalsField]: value,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to log reading');
+    lastNoteRef.current = data;
+  }
+
+  async function mergeVitalsIntoNote(note, item, vitalsField, value) {
+    const patchRes = await fetch(`/api/hospitalizations/${hospitalizationId}/notes/${note.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        plan_item_ids: [...note.plan_item_ids, item.id],
+        [vitalsField]: value,
+      }),
+    });
+    const patched = await patchRes.json();
+    if (!patchRes.ok) throw new Error(patched.error || 'Failed to log reading');
+    lastNoteRef.current = patched;
+  }
+
+  function submitVitalsReading(item) {
     const value = parseFloat(vitalsValue);
     if (!Number.isFinite(value) || value <= 0) {
       setError(`Enter a valid ${item.kind === 'vitals_weight' ? 'weight' : 'temperature'}`);
@@ -265,34 +298,31 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
     }
     setError(null);
     setLoggingIds((prev) => new Set(prev).add(item.id));
-    try {
-      const body = {
-        author_id: authorId || null,
-        note_date: todayISODate(),
-        plan_item_ids: [item.id],
-      };
-      if (item.kind === 'vitals_weight') body.weight_kg = value;
-      if (item.kind === 'vitals_temperature') body.temperature_c = value;
+    const vitalsField = item.kind === 'vitals_weight' ? 'weight_kg' : 'temperature_c';
 
-      const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to log reading');
-      setVitalsInputFor(null);
-      setVitalsValue('');
-      loadLoggedNotes();
-    } catch (err) {
-      setError(err.message || 'Failed to log reading');
-    } finally {
-      setLoggingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(item.id);
-        return next;
-      });
-    }
+    const run = async () => {
+      try {
+        const mergeInto = findMergeableNote(vitalsField);
+        if (mergeInto) {
+          await mergeVitalsIntoNote(mergeInto, item, vitalsField, value);
+        } else {
+          await createVitalsNote(item, vitalsField, value);
+        }
+        setVitalsInputFor(null);
+        setVitalsValue('');
+      } catch (err) {
+        setError(err.message || 'Failed to log reading');
+      } finally {
+        setLoggingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
+        loadLoggedNotes();
+      }
+    };
+
+    logQueueRef.current = logQueueRef.current.then(run, run);
   }
 
   // Same live overdue hint as DayTreatmentPlan.jsx — the authoritative
