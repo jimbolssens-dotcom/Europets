@@ -19,6 +19,7 @@ import DentalChart from '@/app/_components/DentalChart';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
+import TemperatureHistoryChart from '@/app/_components/TemperatureHistoryChart';
 import SpeciesField from '@/app/_components/SpeciesField';
 import PetAttributeField from '@/app/_components/PetAttributeField';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
@@ -49,6 +50,7 @@ export default function PatientDetailPage() {
   const [statusOverview, setStatusOverview] = useState(null);
   const [quotes, setQuotes] = useState([]);
   const [weightHistory, setWeightHistory] = useState([]);
+  const [temperatureHistory, setTemperatureHistory] = useState([]);
 
   const load = () =>
     fetch(`/api/patients/${id}`)
@@ -73,11 +75,17 @@ export default function PatientDetailPage() {
       .then((res) => res.json())
       .then((data) => setWeightHistory(Array.isArray(data) ? data : []));
 
+  const loadTemperatureHistory = () =>
+    fetch(`/api/patients/${id}/temperature-history`)
+      .then((res) => res.json())
+      .then((data) => setTemperatureHistory(Array.isArray(data) ? data : []));
+
   useEffect(() => {
     load();
     loadStatusOverview();
     loadQuotes();
     loadWeightHistory();
+    loadTemperatureHistory();
     fetch('/api/staff')
       .then((res) => res.json())
       .then((data) => setStaff(Array.isArray(data) ? data : []));
@@ -100,6 +108,7 @@ export default function PatientDetailPage() {
         () => {
           loadStatusOverview();
           loadWeightHistory();
+          loadTemperatureHistory();
         }
       )
       .on(
@@ -111,9 +120,10 @@ export default function PatientDetailPage() {
       // hospitalization_notes isn't filterable by patient_id directly (only
       // hospitalization_id) — same loose-filter tradeoff as invoices above,
       // re-checking on any change rather than trying to filter server-side.
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, () =>
-        loadWeightHistory()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, () => {
+        loadWeightHistory();
+        loadTemperatureHistory();
+      })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'proforma_invoices', filter: `patient_id=eq.${id}` },
@@ -498,6 +508,9 @@ export default function PatientDetailPage() {
           )}
           <h2>Weight History</h2>
           <WeightHistoryChart data={weightHistory} />
+
+          <h2>Temperature History</h2>
+          <TemperatureHistoryChart data={temperatureHistory} />
         </div>
 
         <div className="split-aside">

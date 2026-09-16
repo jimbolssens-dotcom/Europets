@@ -35,6 +35,7 @@ import HospitalizationReportsSection from '@/app/_components/HospitalizationRepo
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
+import TemperatureHistoryChart from '@/app/_components/TemperatureHistoryChart';
 import { useVaccinations } from '@/app/_components/useVaccinations';
 import VaccinationForm from '@/app/_components/VaccinationForm';
 import VaccinationHistory from '@/app/_components/VaccinationHistory';
@@ -844,6 +845,9 @@ export default function HospitalizationDetailPage() {
   const stayWeightHistory = notes
     .filter((n) => n.weight_kg != null)
     .map((n) => ({ date: n.note_date, weight_kg: n.weight_kg }));
+  const stayTemperatureHistory = notes
+    .filter((n) => n.temperature_c != null)
+    .map((n) => ({ date: n.note_date, temperature_c: n.temperature_c }));
 
   return (
     <div>
@@ -856,6 +860,7 @@ export default function HospitalizationDetailPage() {
             {admission.kind === 'day_procedure' && <span className="day-procedure-badge">📋 Day Procedure</span>}
           </h1>
           <WeightHistoryChart data={stayWeightHistory} mini />
+          <TemperatureHistoryChart data={stayTemperatureHistory} mini />
         </div>
         {admission.status === 'admitted' && (
           <div className="hospitalization-header-actions">

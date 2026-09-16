@@ -6257,6 +6257,67 @@ form.card.admit-patient-form {
   color: #ccc;
 }
 
+/* TemperatureHistoryChart — same structure as WeightHistoryChart, but each
+   dot/segment/tooltip value is colored by its own medical zone (see the
+   component) instead of one brand color, and the axis is a fixed span
+   instead of scaling to the data. */
+.temp-chart {
+  position: relative;
+  display: inline-block;
+}
+
+.temp-chart-mini {
+  vertical-align: middle;
+}
+
+.temp-chart-line-segment {
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.temp-chart-dot {
+  stroke: white;
+  stroke-width: 2;
+}
+
+.temp-chart-axis-label {
+  fill: #8a8378;
+  font-size: 10px;
+}
+
+.temp-chart-crosshair {
+  stroke: #e4e0da;
+  stroke-width: 1;
+}
+
+.temp-chart-tooltip {
+  position: absolute;
+  top: -2.6rem;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: white;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.temp-chart-tooltip strong {
+  font-size: 0.85rem;
+}
+
+.temp-chart-tooltip span {
+  color: #ccc;
+}
+
 .mobile-app .culture-reminder {
   padding: 0.6rem 1rem;
   font-size: 0.85rem;
