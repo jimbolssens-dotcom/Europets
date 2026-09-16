@@ -10,7 +10,12 @@ function formatTime(iso) {
 // a same-day case's checklist is the same underlying plan-items/notes
 // data, just without a physical cage to key off of.
 export default function DayProcedureWallCard({ dayProcedure, details, interactive, loggingKey, onLogTask }) {
-  const planItems = details?.planItems || [];
+  // Temperature/Weight (see migration 104) need a typed number, not a tap
+  // — kept off this wall grid same as the Hospital Wall's cage tiles; log
+  // them from the main hospitalization page or mobile app instead.
+  const planItems = (details?.planItems || []).filter(
+    (item) => item.kind !== 'vitals_temperature' && item.kind !== 'vitals_weight'
+  );
   const todayNotes = details?.todayNotes || [];
   const patientName = dayProcedure.patients?.name || 'Unnamed patient';
   const doneCount = planItems.filter((item) => todayNotes.some((n) => n.plan_item_ids?.includes(item.id))).length;

@@ -20,49 +20,41 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { attachCages } from '@/lib/attachCages';
+import { dubaiDayBoundaries } from '@/lib/dubaiTime';
 import { NextResponse } from 'next/server';
 
-// Europets operates in Dubai (UTC+4, no daylight-saving time). These
-// boundaries let the app enforce one morning update by 12:00 and one
-// afternoon update by 18:00 without storing a separate alarm row.
-const DUBAI_OFFSET_MS = 4 * 60 * 60 * 1000;
-const HOUR_MS = 60 * 60 * 1000;
-
-function dubaiDayBoundaries(now = new Date()) {
-  const shifted = new Date(now.getTime() + DUBAI_OFFSET_MS);
-  const startUtcMs =
-    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) - DUBAI_OFFSET_MS;
-
-  return {
-    nowMs: now.getTime(),
-    startUtcMs,
-    noonUtcMs: startUtcMs + 12 * HOUR_MS,
-    eveningUtcMs: startUtcMs + 18 * HOUR_MS,
-  };
-}
-
+// The existing twice-daily "morning by 12:00, afternoon by 18:00" alarm —
+// originally satisfied by any worksheet entry at all — now specifically
+// means "was temperature checked" (see migration 104's Temperature Day
+// Treatment Plan item): a morning/afternoon slot is only "done" once a
+// note carrying an actual temperature_c reading lands in it, not just any
+// note. Weight rides the same query but has its own, simpler rule (one
+// reading anywhere today, flagged once the 18:00 cutoff passes with none
+// logged) since it isn't a twice-a-day thing. Applies to every open
+// hospitalization — admission or day procedure — not just ones with a
+// cage assigned, since a day procedure still needs its vitals checked.
 async function attachScheduledUpdateStatus(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return rows;
 
-  const admittedWithCages = rows.filter((h) => h.status === 'admitted' && h.cage_id);
-  if (admittedWithCages.length === 0) {
+  const admitted = rows.filter((h) => h.status === 'admitted');
+  if (admitted.length === 0) {
     return rows.map((h) => ({
       ...h,
       scheduled_update_overdue: false,
       scheduled_update_overdue_period: null,
       scheduled_updates_expected: 0,
       scheduled_updates_done: 0,
+      vitals_weight_overdue: false,
     }));
   }
 
   const { nowMs, startUtcMs, noonUtcMs, eveningUtcMs } = dubaiDayBoundaries();
-  const ids = admittedWithCages.map((h) => h.id);
+  const ids = admitted.map((h) => h.id);
   const { data: todayNotes, error } = await supabase
     .from('hospitalization_notes')
-    .select('hospitalization_id, created_at')
+    .select('hospitalization_id, created_at, weight_kg, temperature_c')
     .in('hospitalization_id', ids)
-    .gte('created_at', new Date(startUtcMs).toISOString())
-    .order('created_at', { ascending: true });
+    .gte('created_at', new Date(startUtcMs).toISOString());
 
   // Don't break the hospitalization screen if the reminder query itself
   // ever fails; the normal admission data is more important than an alarm.
@@ -74,37 +66,24 @@ async function attachScheduledUpdateStatus(rows) {
   }, {});
 
   return rows.map((h) => {
-    if (h.status !== 'admitted' || !h.cage_id) {
+    if (h.status !== 'admitted') {
       return {
         ...h,
         scheduled_update_overdue: false,
         scheduled_update_overdue_period: null,
         scheduled_updates_expected: 0,
         scheduled_updates_done: 0,
+        vitals_weight_overdue: false,
       };
     }
 
+    const notes = notesByHospitalization[h.id] || [];
     const admittedMs = new Date(h.admitted_at).getTime();
+
     const morningExpected = nowMs >= noonUtcMs && admittedMs < noonUtcMs;
     const afternoonExpected = nowMs >= eveningUtcMs && admittedMs < eveningUtcMs;
-    const notes = notesByHospitalization[h.id] || [];
-
-    // Assign notes to slots chronologically. A missed morning may be made up
-    // later in the day, but a note entered before noon can never satisfy the
-    // afternoon slot. This prevents two morning entries from accidentally
-    // counting as both required daily updates.
-    let morningDone = false;
-    let afternoonDone = false;
-    for (const note of notes) {
-      const noteMs = new Date(note.created_at).getTime();
-      if (morningExpected && !morningDone) {
-        morningDone = true;
-        continue;
-      }
-      if (afternoonExpected && !afternoonDone && noteMs >= noonUtcMs) {
-        afternoonDone = true;
-      }
-    }
+    const morningDone = notes.some((n) => n.temperature_c != null && new Date(n.created_at).getTime() < noonUtcMs);
+    const afternoonDone = notes.some((n) => n.temperature_c != null && new Date(n.created_at).getTime() >= noonUtcMs);
 
     const morningOverdue = morningExpected && !morningDone;
     const afternoonOverdue = afternoonExpected && !afternoonDone;
@@ -116,12 +95,16 @@ async function attachScheduledUpdateStatus(rows) {
     else if (afternoonOverdue) overduePeriod = 'afternoon';
     else if (morningOverdue) overduePeriod = 'morning';
 
+    const weightExpected = nowMs >= eveningUtcMs && admittedMs < eveningUtcMs;
+    const weightOverdue = weightExpected && !notes.some((n) => n.weight_kg != null);
+
     return {
       ...h,
       scheduled_update_overdue: morningOverdue || afternoonOverdue,
       scheduled_update_overdue_period: overduePeriod,
       scheduled_updates_expected: expected,
       scheduled_updates_done: done,
+      vitals_weight_overdue: weightOverdue,
     };
   });
 }
@@ -289,6 +272,16 @@ export async function POST(request) {
   if (appointment_id) {
     await supabaseAdmin.from('appointments').update({ status: 'checked_in' }).eq('id', appointment_id);
   }
+
+  // Every hospitalization — admission or day procedure — gets these two
+  // Day Treatment Plan boxes automatically, same as migration 104's
+  // backfill for admissions already open when that migration ran. Unlike
+  // a normal plan item, DayTreatmentPlan.jsx requires an actual typed
+  // reading to log either one, not just a tap.
+  await supabaseAdmin.from('hospitalization_plan_items').insert([
+    { hospitalization_id: data.id, label: 'Temperature', kind: 'vitals_temperature' },
+    { hospitalization_id: data.id, label: 'Weight', kind: 'vitals_weight' },
+  ]);
 
   return NextResponse.json(await attachCages(data), { status: 201 });
 }

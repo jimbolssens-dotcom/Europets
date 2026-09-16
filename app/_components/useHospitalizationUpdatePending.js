@@ -33,7 +33,9 @@ export function useHospitalizationUpdatePending() {
         .then((data) => {
           if (!active) return;
           const list = Array.isArray(data) ? data : [];
-          setPending(list.some((h) => h.update_requested_at || h.scheduled_update_overdue));
+          setPending(
+            list.some((h) => h.update_requested_at || h.scheduled_update_overdue || h.vitals_weight_overdue)
+          );
         })
         .catch(() => {});
 

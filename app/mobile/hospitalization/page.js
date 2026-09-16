@@ -29,15 +29,16 @@ function updateRequestTooltip(hosp) {
 }
 
 function scheduledUpdateLabel(period) {
-  if (period === 'morning_and_afternoon') return 'Morning and afternoon updates overdue';
-  if (period === 'afternoon') return 'Afternoon update overdue';
-  return 'Morning update overdue';
+  if (period === 'morning_and_afternoon') return 'Morning and afternoon temperature checks overdue';
+  if (period === 'afternoon') return 'Afternoon temperature check overdue';
+  return 'Morning temperature check overdue';
 }
 
 function hospitalizationAttention(hosp) {
   const reasons = [];
   if (hosp.update_requested_at) reasons.push(`Owner requested an update ${updateRequestTooltip(hosp)}`);
   if (hosp.scheduled_update_overdue) reasons.push(scheduledUpdateLabel(hosp.scheduled_update_overdue_period));
+  if (hosp.vitals_weight_overdue) reasons.push('Weight not checked today');
   return reasons;
 }
 

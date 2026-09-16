@@ -22,6 +22,18 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'label is required' }, { status: 400 });
   }
 
+  // Temperature/Weight (see migration 104) are system-generated and
+  // always present — DayTreatmentPlan.jsx never offers an edit dialog for
+  // them, and this is the server-side backstop for that.
+  const { data: existing } = await supabase
+    .from('hospitalization_plan_items')
+    .select('kind')
+    .eq('id', params.id)
+    .single();
+  if (existing && existing.kind !== 'task') {
+    return NextResponse.json({ error: 'this is a system item and cannot be edited' }, { status: 400 });
+  }
+
   let resolvedMethod = null;
   if (goods_service_id) {
     const { data: catalogItem } = await supabase
@@ -58,6 +70,15 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+  const { data: existing } = await supabase
+    .from('hospitalization_plan_items')
+    .select('kind')
+    .eq('id', params.id)
+    .single();
+  if (existing && existing.kind !== 'task') {
+    return NextResponse.json({ error: 'this is a system item and cannot be removed' }, { status: 400 });
+  }
+
   const { error } = await supabaseAdmin.from('hospitalization_plan_items').delete().eq('id', params.id);
 
   if (error) {

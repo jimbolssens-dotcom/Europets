@@ -20,9 +20,22 @@ function formatTime(iso) {
 }
 
 export default function WallCageTile({ cage, hospitalization, details, authorId, onLogged }) {
-  const planItems = details?.planItems || [];
+  // Temperature/Weight (see migration 104) need an actual number typed
+  // in, not a tap — this tile's tiny grid squares aren't a reasonable
+  // place to type one, so those two stay off the wall grid entirely.
+  // They're logged from the main hospitalization page or the mobile app
+  // instead (see DayTreatmentPlan.jsx); this tile's own "Needs attention"
+  // flag still lights up from vitals_weight_overdue, and from
+  // scheduled_update_overdue once that's driven by a missed temperature
+  // check (see attachScheduledUpdateStatus).
+  const planItems = (details?.planItems || []).filter(
+    (item) => item.kind !== 'vitals_temperature' && item.kind !== 'vitals_weight'
+  );
   const todayNotes = details?.todayNotes || [];
-  const needsAttention = hospitalization?.update_requested_at || hospitalization?.scheduled_update_overdue;
+  const needsAttention =
+    hospitalization?.update_requested_at ||
+    hospitalization?.scheduled_update_overdue ||
+    hospitalization?.vitals_weight_overdue;
   const patientName = hospitalization?.patients?.name || 'Unnamed patient';
 
   const [loggingIds, setLoggingIds] = useState(() => new Set());

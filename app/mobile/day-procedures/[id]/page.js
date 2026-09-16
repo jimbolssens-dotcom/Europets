@@ -65,10 +65,20 @@ export default function MobileDayProcedurePage() {
       .then((res) => res.json())
       .then((data) => setNotes(Array.isArray(data) ? data.filter((n) => n.plan_item_ids?.length > 0) : []));
 
+  // Temperature/Weight (see migration 104) need a typed number, not a
+  // plain tap — every other item here marks done on a single tap (see
+  // ACTION_HINTS/checklistItemAction above), which would let one get
+  // logged with no real reading at all. Kept off this tap-tile screen;
+  // log them from the desktop Procedure Checklist or the main
+  // hospitalization page instead.
   const loadPlanItems = () =>
     fetch(`/api/hospitalizations/${id}/plan-items`)
       .then((res) => res.json())
-      .then((data) => setPlanItems(Array.isArray(data) ? data : []));
+      .then((data) =>
+        setPlanItems(
+          Array.isArray(data) ? data.filter((item) => item.kind !== 'vitals_temperature' && item.kind !== 'vitals_weight') : []
+        )
+      );
 
   useEffect(() => {
     fetch(`/api/hospitalizations/${id}`).then((res) => res.json()).then(setAdmission);

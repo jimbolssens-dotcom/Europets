@@ -46,8 +46,6 @@ function todayISODate() {
 const emptyNoteForm = {
   note_date: todayISODate(),
   author_id: '',
-  temperature_c: '',
-  weight_kg: '',
   notes: '',
 };
 
@@ -306,17 +304,18 @@ export default function HospitalizationDetailPage() {
   }
 
   // Applies a recording's extracted fields to the still-unsaved "Add
-  // Worksheet Entry" draft — weight/temperature only fill in if still
-  // empty (there's no sensible way to "append" to a number). appetite/
-  // condition/notes all fold into the one Notes field (no separate
-  // appetite/condition inputs anymore), appending the same way a
-  // consult's text fields do. Matched catalog items are added to the
-  // pending list exactly as if "+ Add Item" had been clicked for each.
+  // Worksheet Entry" draft. Weight/temperature are deliberately never
+  // pulled from dictation here — Weight and Temperature now live on the
+  // Day Treatment Plan as their own tap-and-type entries (see
+  // DayTreatmentPlan.jsx), specifically so a real number always gets
+  // typed in, not transcribed. appetite/condition/notes all fold into the
+  // one Notes field (no separate appetite/condition inputs anymore),
+  // appending the same way a consult's text fields do. Matched catalog
+  // items are added to the pending list exactly as if "+ Add Item" had
+  // been clicked for each.
   function applyExtractedFields(fields) {
     setNoteForm((prev) => {
       const next = { ...prev };
-      if (fields.weight_kg != null && !next.weight_kg) next.weight_kg = fields.weight_kg;
-      if (fields.temperature_c != null && !next.temperature_c) next.temperature_c = fields.temperature_c;
       const extraNotes = [fields.appetite ? `Appetite: ${fields.appetite}` : null, fields.condition, fields.notes]
         .filter(Boolean)
         .join('\n');
@@ -989,6 +988,7 @@ export default function HospitalizationDetailPage() {
               <ProcedureChecklist
                 key={`${id}-${noteDeleteVersion}`}
                 hospitalizationId={id}
+                admittedAt={admission.admitted_at}
                 staff={staff}
                 catalog={catalog}
                 subcategories={subcategories}
@@ -1123,6 +1123,7 @@ export default function HospitalizationDetailPage() {
       <DayTreatmentPlan
         key={`${id}-${noteDeleteVersion}`}
         hospitalizationId={id}
+        admittedAt={admission.admitted_at}
         staff={staff}
         catalog={catalog}
         subcategories={subcategories}
@@ -1499,10 +1500,11 @@ export default function HospitalizationDetailPage() {
         <h3>
           Add Worksheet Entry{' '}
           <InfoHint>
-            Record an observation and Claude will break it down and fill in Weight, Temperature,
-            and Notes below — anything already filled in is kept. Medications or tests you mention
-            are matched against the catalog and added to the list below automatically when a
-            confident match is found.
+            Record an observation and Claude will break it down and fill in Notes below — anything
+            already filled in is kept. Medications or tests you mention are matched against the
+            catalog and added to the list below automatically when a confident match is found.
+            Weight and Temperature are logged from their own boxes on the Day Treatment Plan above,
+            not here.
           </InfoHint>
         </h3>
         <AudioRecorder entityType="hospitalization" entityId={id} onExtractedFields={applyExtractedFields} />
@@ -1523,20 +1525,6 @@ export default function HospitalizationDetailPage() {
             </option>
           ))}
         </select>
-        <input
-          type="number"
-          step="0.01"
-          placeholder="Weight (kg)"
-          value={noteForm.weight_kg}
-          onChange={(e) => setNoteForm({ ...noteForm, weight_kg: e.target.value })}
-        />
-        <input
-          type="number"
-          step="0.1"
-          placeholder="Temperature (°C)"
-          value={noteForm.temperature_c}
-          onChange={(e) => setNoteForm({ ...noteForm, temperature_c: e.target.value })}
-        />
         <label>
           <span className="field-label-row">
             Notes

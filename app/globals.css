@@ -4410,6 +4410,64 @@ button.secondary:hover {
   font-style: italic;
 }
 
+/* Temperature/Weight (migration 104) — always-present, tap-to-type-a-
+   number boxes shown above the regular Day Treatment Plan/Procedure
+   Checklist grid, never mixed into it (no remove button, no long-press
+   edit — they're system items). .overdue is the live client-side hint;
+   the authoritative alarm is the blinking-cage flag elsewhere. */
+.day-plan-vitals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.day-plan-vitals-tile {
+  flex: 1 1 220px;
+  border: 1.5px solid #ddd;
+  border-radius: 10px;
+  background: white;
+  padding: 0.65rem 0.8rem;
+}
+
+.day-plan-vitals-tile.done {
+  border-color: #3f8f5f;
+  background: #eaf6ee;
+}
+
+.day-plan-vitals-tile.overdue {
+  border-color: #d9534f;
+  background: #fdecea;
+}
+
+.day-plan-vitals-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.day-plan-vitals-warning {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #d9534f;
+}
+
+.day-plan-vitals-input {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.day-plan-vitals-input input {
+  flex: 1 1 120px;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
 .day-plan-task {
   position: relative;
 }

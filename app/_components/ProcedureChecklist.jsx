@@ -17,6 +17,7 @@ import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { checklistItemAction } from '@/lib/checklistItemAction';
+import { dubaiDayBoundaries } from '@/lib/dubaiTime';
 import { ensureSurgicalReport } from '@/lib/surgicalReportAuto';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -37,11 +38,13 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function ProcedureChecklist({ hospitalizationId, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport, onHasVaccineItem }) {
+export default function ProcedureChecklist({ hospitalizationId, admittedAt, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport, onHasVaccineItem }) {
   const [planItems, setPlanItems] = useState([]);
   const [loggedNotes, setLoggedNotes] = useState([]);
   const [authorId, setAuthorId] = useState('');
   const [loggingIds, setLoggingIds] = useState(() => new Set());
+  const [vitalsInputFor, setVitalsInputFor] = useState(null);
+  const [vitalsValue, setVitalsValue] = useState('');
   const [deletingId, setDeletingId] = useState(null);
   const [showCatalogAdd, setShowCatalogAdd] = useState(false);
   const [catalogGoodsServiceId, setCatalogGoodsServiceId] = useState('');
@@ -129,6 +132,10 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
     const now = Date.now();
     const isValid = (n) =>
       n?.plan_item_ids?.length > 0 &&
+      // A vitals reading (weight_kg/temperature_c set) is never a merge
+      // target — see the identical note in DayTreatmentPlan.jsx.
+      n.weight_kg == null &&
+      n.temperature_c == null &&
       (n.author_id || null) === (authorId || null) &&
       now - new Date(n.created_at).getTime() < CONSOLIDATE_WINDOW_MS;
 
@@ -235,6 +242,83 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
       const data = await itemRes.json().catch(() => ({}));
       throw new Error(data.error || 'Failed to log task');
     }
+  }
+
+  // Temperature/Weight (see migration 104) — same tap-opens-a-number-input
+  // behavior as DayTreatmentPlan.jsx, always its own new worksheet row.
+  function startVitalsInput(item) {
+    setError(null);
+    setVitalsInputFor(item.id);
+    setVitalsValue('');
+  }
+
+  function cancelVitalsInput() {
+    setVitalsInputFor(null);
+    setVitalsValue('');
+  }
+
+  async function submitVitalsReading(item) {
+    const value = parseFloat(vitalsValue);
+    if (!Number.isFinite(value) || value <= 0) {
+      setError(`Enter a valid ${item.kind === 'vitals_weight' ? 'weight' : 'temperature'}`);
+      return;
+    }
+    setError(null);
+    setLoggingIds((prev) => new Set(prev).add(item.id));
+    try {
+      const body = {
+        author_id: authorId || null,
+        note_date: todayISODate(),
+        plan_item_ids: [item.id],
+      };
+      if (item.kind === 'vitals_weight') body.weight_kg = value;
+      if (item.kind === 'vitals_temperature') body.temperature_c = value;
+
+      const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to log reading');
+      setVitalsInputFor(null);
+      setVitalsValue('');
+      loadLoggedNotes();
+    } catch (err) {
+      setError(err.message || 'Failed to log reading');
+    } finally {
+      setLoggingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  }
+
+  // Same live overdue hint as DayTreatmentPlan.jsx — the authoritative
+  // version is GET /api/hospitalizations's attachScheduledUpdateStatus.
+  function vitalsStatus(item, done) {
+    if (!admittedAt) return { overdue: false, label: null };
+    const { nowMs, noonUtcMs, eveningUtcMs } = dubaiDayBoundaries();
+    const admittedMs = new Date(admittedAt).getTime();
+
+    if (item.kind === 'vitals_weight') {
+      const expected = nowMs >= eveningUtcMs && admittedMs < eveningUtcMs;
+      const overdue = expected && done.length === 0;
+      return { overdue, label: overdue ? 'Not checked today' : null };
+    }
+
+    const morningExpected = nowMs >= noonUtcMs && admittedMs < noonUtcMs;
+    const afternoonExpected = nowMs >= eveningUtcMs && admittedMs < eveningUtcMs;
+    const morningDone = done.some((n) => new Date(n.created_at).getTime() < noonUtcMs);
+    const afternoonDone = done.some((n) => new Date(n.created_at).getTime() >= noonUtcMs);
+    const morningOverdue = morningExpected && !morningDone;
+    const afternoonOverdue = afternoonExpected && !afternoonDone;
+    let label = null;
+    if (morningOverdue && afternoonOverdue) label = 'Morning & afternoon checks overdue';
+    else if (afternoonOverdue) label = 'Afternoon check overdue';
+    else if (morningOverdue) label = 'Morning check overdue';
+    return { overdue: morningOverdue || afternoonOverdue, label };
   }
 
   async function addPlanItem(payload) {
@@ -361,6 +445,9 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
     if (href) document.querySelector(href)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  const vitalsItems = planItems.filter((item) => item.kind === 'vitals_temperature' || item.kind === 'vitals_weight');
+  const taskItems = planItems.filter((item) => item.kind !== 'vitals_temperature' && item.kind !== 'vitals_weight');
+
   return (
     <div>
       {/* A bare heading above the card, same as the consult page's own
@@ -386,9 +473,62 @@ export default function ProcedureChecklist({ hospitalizationId, staff = [], cata
         ))}
       </select>
 
-      {planItems.length === 0 && <p className="visit-meta">Nothing on the checklist yet — dictate it or add items below.</p>}
+      {vitalsItems.length > 0 && (
+        <div className="day-plan-vitals">
+          {vitalsItems.map((item) => {
+            const done = doneEntries(item.id);
+            const last = done[done.length - 1];
+            const status = vitalsStatus(item, done);
+            const unit = item.kind === 'vitals_weight' ? 'kg' : '°C';
+            const isEntering = vitalsInputFor === item.id;
+            return (
+              <div
+                key={item.id}
+                className={`day-plan-vitals-tile${done.length ? ' done' : ''}${status.overdue ? ' overdue' : ''}`}
+              >
+                <div className="day-plan-vitals-top">
+                  <span className="day-plan-task-label">{item.label}</span>
+                  <span className="day-plan-task-status">
+                    {done.length
+                      ? `✓ ${done.length > 1 ? `${done.length}× today · ` : ''}last ${
+                          item.kind === 'vitals_weight' ? last.weight_kg : last.temperature_c
+                        }${unit} at ${formatTime(last.created_at)} · ${authorName(last.author_id)}`
+                      : 'Not logged yet today'}
+                  </span>
+                  {status.label && <span className="day-plan-vitals-warning">⚠ {status.label}</span>}
+                </div>
+                {isEntering ? (
+                  <div className="day-plan-vitals-input">
+                    <input
+                      type="number"
+                      step={item.kind === 'vitals_weight' ? '0.01' : '0.1'}
+                      autoFocus
+                      placeholder={item.kind === 'vitals_weight' ? 'Weight (kg)' : 'Temperature (°C)'}
+                      value={vitalsValue}
+                      onChange={(e) => setVitalsValue(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && submitVitalsReading(item)}
+                    />
+                    <button type="button" onClick={() => submitVitalsReading(item)} disabled={loggingIds.has(item.id)}>
+                      {loggingIds.has(item.id) ? 'Logging...' : 'Log'}
+                    </button>
+                    <button type="button" onClick={cancelVitalsInput} disabled={loggingIds.has(item.id)}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" className="pill-btn" onClick={() => startVitalsInput(item)}>
+                    + Log {item.label}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-      {planItems.map((item) => {
+      {taskItems.length === 0 && <p className="visit-meta">Nothing on the checklist yet — dictate it or add items below.</p>}
+
+      {taskItems.map((item) => {
         const done = doneEntries(item.id);
         const isDone = done.length > 0;
         const last = done[done.length - 1];
