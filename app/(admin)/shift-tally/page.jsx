@@ -8,11 +8,18 @@
 // doesn't have the accounting password (see middleware.js), so this page
 // and its API route (/api/shift-summary) stay unauthenticated, same as
 // every other staff page in the app.
+//
+// Every past shift is already permanently on record here (the data is
+// invoice_payments, never deleted) and reachable just by picking a date —
+// the Prev/Today/Next buttons below are a quick way to browse that
+// history without hand-typing dates in the picker every time.
 
 'use client';
 
 import { useEffect, useState } from 'react';
 import InfoHint from '@/app/_components/InfoHint';
+import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
+import { printPdfUrl } from '@/lib/printPdf';
 
 const PAYMENT_LABELS = {
   cash: 'Cash',
@@ -31,6 +38,12 @@ function todayLocalDate() {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
+function shiftDate(dateStr, deltaDays) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + deltaDays);
+  return d.toISOString().slice(0, 10);
+}
+
 function currentShift(cutoff) {
   const now = new Date();
   const [h, m] = cutoff.split(':').map(Number);
@@ -45,6 +58,7 @@ export default function ShiftTallyPage() {
   const [shift, setShift] = useState(() => currentShift('14:00'));
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -55,6 +69,11 @@ export default function ShiftTallyPage() {
         setLoading(false);
       });
   }, [date, shift, cutoff]);
+
+  function printTally() {
+    const url = `/api/shift-summary/pdf?date=${date}&shift=${shift}&cutoff=${cutoff}&t=${Date.now()}`;
+    printPdfUrl(url, { onFallback: () => setPreviewPdfUrl(url) });
+  }
 
   return (
     <div>
@@ -67,10 +86,23 @@ export default function ShiftTallyPage() {
       </h1>
 
       <div className="action-row">
-        <label>
-          Date:{' '}
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </label>
+        <div className="shift-tally-day-nav">
+          <button type="button" onClick={() => setDate((d) => shiftDate(d, -1))} title="Previous day">
+            ← Prev
+          </button>
+          <label>
+            Date:{' '}
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+          <button type="button" onClick={() => setDate((d) => shiftDate(d, 1))} title="Next day">
+            Next →
+          </button>
+          {date !== todayLocalDate() && (
+            <button type="button" onClick={() => setDate(todayLocalDate())}>
+              Today
+            </button>
+          )}
+        </div>
         <label>
           Shift:{' '}
           <select value={shift} onChange={(e) => setShift(e.target.value)}>
@@ -82,6 +114,9 @@ export default function ShiftTallyPage() {
           Cutoff:{' '}
           <input type="time" value={cutoff} onChange={(e) => setCutoff(e.target.value)} />
         </label>
+        <button type="button" className="button-link" onClick={printTally} disabled={loading || !summary}>
+          🖨️ Print
+        </button>
       </div>
 
       {loading || !summary ? (
@@ -112,13 +147,16 @@ export default function ShiftTallyPage() {
             <p>No payments logged in this window.</p>
           ) : (
             <div className="table-wrap">
-              <table>
+              <table className="shift-tally-table">
                 <thead>
                   <tr>
                     <th>Time</th>
                     <th>Invoice</th>
+                    <th>Client #</th>
                     <th>Client</th>
-                    <th>Amount</th>
+                    <th>Excl. VAT</th>
+                    <th>VAT</th>
+                    <th>Total</th>
                     <th>Method</th>
                     <th>Received By</th>
                   </tr>
@@ -136,18 +174,32 @@ export default function ShiftTallyPage() {
                           '—'
                         )}
                       </td>
+                      <td>{p.invoices?.clients?.client_number ?? '—'}</td>
                       <td>{p.invoices?.clients?.full_name || '—'}</td>
+                      <td>{money(p.excl_vat)}</td>
+                      <td>{money(p.vat_amount)}</td>
                       <td>AED {money(p.amount)}</td>
                       <td>{PAYMENT_LABELS[p.payment_method] || p.payment_method}</td>
                       <td>{p.staff?.full_name || 'unassigned'}</td>
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={4}>Total</td>
+                    <td>{money(summary.vat.excl_vat)}</td>
+                    <td>{money(summary.vat.vat_amount)}</td>
+                    <td>AED {money(summary.total)}</td>
+                    <td colSpan={2}></td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}
         </>
       )}
+
+      <PdfPreviewModal url={previewPdfUrl} onClose={() => setPreviewPdfUrl(null)} />
     </div>
   );
 }

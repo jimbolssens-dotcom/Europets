@@ -1954,6 +1954,34 @@ button.secondary:hover {
   margin: 0.75rem 0;
 }
 
+/* Prev/date/Next/Today grouped as one unit inside .action-row on the
+   Shift Tally page, so browsing to a past shift doesn't require
+   hand-typing a date every time — every past shift is already
+   permanently on record (invoice_payments never disappear), this is
+   just quick access to it. */
+.shift-tally-day-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Nine columns (time/invoice/client #/client/excl-VAT/VAT/total/method/
+   received-by) is a lot for the default table sizing — shrink font and
+   padding so it fits one desktop-width screen without wrapping or a
+   horizontal scrollbar. */
+.shift-tally-table th,
+.shift-tally-table td {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.shift-tally-table tfoot td {
+  font-weight: 700;
+  border-top: 2px solid #ddd;
+  border-bottom: none;
+}
+
 /* Workflow-stage tabs on the consult page (Exam & Notes / Treatment /
    Procedures / Consent & Admission) — same look as .catalog-tabs, kept as
    its own class since the two aren't the same concern. */
