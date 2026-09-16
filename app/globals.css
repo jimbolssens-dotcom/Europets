@@ -4414,20 +4414,24 @@ button.secondary:hover {
    number boxes shown above the regular Day Treatment Plan/Procedure
    Checklist grid, never mixed into it (no remove button, no long-press
    edit — they're system items). .overdue is the live client-side hint;
-   the authoritative alarm is the blinking-cage flag elsewhere. */
+   the authoritative alarm is the blinking-cage flag elsewhere. Sized to
+   match the regular task tiles below rather than stretching wide, and
+   tinted pink while outstanding so the two are easy to spot at a glance
+   even before either one is filled in. */
 .day-plan-vitals {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
 .day-plan-vitals-tile {
-  flex: 1 1 220px;
-  border: 1.5px solid #ddd;
+  flex: 1 1 190px;
+  max-width: 240px;
+  border: 1.5px solid var(--pink-tint);
   border-radius: 10px;
-  background: white;
-  padding: 0.65rem 0.8rem;
+  background: var(--pink-tint);
+  padding: 0.5rem 0.65rem;
 }
 
 .day-plan-vitals-tile.done {
@@ -4443,29 +4447,63 @@ button.secondary:hover {
 .day-plan-vitals-top {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  margin-bottom: 0.5rem;
+  gap: 0.2rem;
+  margin-bottom: 0.4rem;
 }
 
 .day-plan-vitals-warning {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   color: #d9534f;
 }
 
 .day-plan-vitals-input {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.35rem;
   flex-wrap: wrap;
 }
 
 .day-plan-vitals-input input {
-  flex: 1 1 120px;
+  flex: 1 1 90px;
   min-width: 0;
-  padding: 0.4rem 0.5rem;
+  padding: 0.35rem 0.45rem;
   border: 1px solid #ddd;
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+}
+
+/* The "+ Log ..."/"Log"/"Cancel" buttons here reuse .pill-btn's markup
+   but not its sizing (that variant is tuned for the wider "+ From
+   Catalog"/"+ Custom Task" row) — scoped smaller so a vitals tile stays
+   compact instead of ballooning around an oversized action button. */
+.day-plan-vitals-tile .pill-btn,
+.day-plan-vitals-input button {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--pink-dark);
+  background: white;
+  color: var(--pink-dark);
+  font-weight: 700;
+  font-size: 0.7rem;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.day-plan-vitals-tile .pill-btn:hover,
+.day-plan-vitals-input button:hover {
+  background: var(--pink-dark);
+  color: white;
+}
+
+.day-plan-vitals-tile.done .pill-btn {
+  border-color: #3f8f5f;
+  color: #3f8f5f;
+}
+
+.day-plan-vitals-tile.done .pill-btn:hover {
+  background: #3f8f5f;
+  color: white;
 }
 
 .day-plan-task {
