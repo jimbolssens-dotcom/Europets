@@ -158,7 +158,7 @@ function FieldSearch() {
           // letter matching far more rows than what's typed now) resolving
           // after a newer, more specific one and clobbering its results.
           if (requestId !== clientRequestIdRef.current) return;
-          setClientResults(Array.isArray(data) ? data.slice(0, 8) : []);
+          setClientResults(Array.isArray(data) ? data.slice(0, 30) : []);
           setClientLoading(false);
         });
     }, 300);
@@ -182,7 +182,7 @@ function FieldSearch() {
         .then((res) => res.json())
         .then((data) => {
           if (requestId !== patientRequestIdRef.current) return;
-          setPatientResults(Array.isArray(data) ? data.slice(0, 8) : []);
+          setPatientResults(Array.isArray(data) ? data.slice(0, 30) : []);
           setPatientLoading(false);
         });
     }, 300);

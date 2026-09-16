@@ -20,7 +20,7 @@ function sanitize(q) {
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const q = sanitize(searchParams.get('q') || '');
-  const limit = Math.min(Number(searchParams.get('limit')) || 8, 50);
+  const limit = Math.min(Number(searchParams.get('limit')) || 30, 50);
   const type = searchParams.get('type'); // 'client' | 'patient' | null (both)
   const wantClients = type !== 'patient';
   const wantPatients = type !== 'client';
