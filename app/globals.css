@@ -584,6 +584,11 @@ td select {
 
 .expenses-table th:nth-child(9),
 .expenses-table td:nth-child(9) {
+  width: 7rem;
+}
+
+.expenses-table th:nth-child(10),
+.expenses-table td:nth-child(10) {
   width: auto;
 }
 
@@ -1122,6 +1127,39 @@ form.card {
   padding: 1.25rem;
   margin-top: 1rem;
   max-width: 480px;
+}
+
+/* Accounting > Staff Expenses — wider than the default .card max-width
+   since each one holds a row of quick-log inputs plus a table, not a
+   single-column form. */
+.staff-expense-card {
+  max-width: 900px;
+}
+
+.staff-expense-card-inactive {
+  opacity: 0.65;
+}
+
+.staff-expense-quick-forms {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+}
+
+.staff-expense-quick-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.staff-expense-quick-form input,
+.staff-expense-quick-form select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 form.card {

@@ -69,6 +69,7 @@ export default function ExpensesPage() {
   const [possibleDuplicates, setPossibleDuplicates] = useState(null);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [drafts, setDrafts] = useState({}); // `${expenseId}:${field}` -> value while typing, before it's saved on blur
+  const [staffList, setStaffList] = useState([]);
 
   const loadExpenses = () =>
     fetch(`/api/expenses${showAllMonths ? '' : `?month=${month}`}`)
@@ -83,6 +84,12 @@ export default function ExpensesPage() {
     loadExpenses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month, showAllMonths]);
+
+  useEffect(() => {
+    fetch('/api/staff')
+      .then((res) => res.json())
+      .then((data) => setStaffList(Array.isArray(data) ? data : []));
+  }, []);
 
   useEffect(() => {
     const channel = supabase
@@ -273,6 +280,7 @@ export default function ExpensesPage() {
                   <th>VAT</th>
                   <th>Total</th>
                   <th>Paid Via</th>
+                  <th>Staff</th>
                   <th>Notes</th>
                   <th></th>
                 </tr>
@@ -347,6 +355,19 @@ export default function ExpensesPage() {
                         <option value="card">Card</option>
                         <option value="bank_transfer">Bank Transfer</option>
                         <option value="payment_link">Payment Link</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        value={ex.staff_id || ''}
+                        onChange={(e) => commitField(ex, 'staff_id', e.target.value || null)}
+                      >
+                        <option value="">—</option>
+                        {staffList.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.full_name}
+                          </option>
+                        ))}
                       </select>
                     </td>
                     <td>

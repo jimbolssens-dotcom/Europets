@@ -1140,9 +1140,13 @@ create table expenses (
     vat_amount numeric(10,2) not null default 0,   -- input VAT paid on this purchase (reclaimable)
     total numeric(10,2) not null,                  -- amount + vat_amount
     payment_method text check (payment_method in ('cash', 'card', 'bank_transfer', 'payment_link')),
+    staff_id uuid references staff(id) on delete set null,  -- who this expense is
+                                                              -- for, e.g. a salary
+                                                              -- payment (migration 110)
     created_at timestamptz default now()
 );
 create index idx_expenses_date on expenses(expense_date);
+create index idx_expenses_staff on expenses(staff_id);
 
 -- ============ VAT CONSTANT ============
 -- Kept simple as an app-level constant for now: UAE standard VAT = 5%

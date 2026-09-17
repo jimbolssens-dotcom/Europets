@@ -20,7 +20,7 @@ const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'payment_link'];
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { expense_date, vendor_name, invoice_number, description, category, amount, vat_amount, payment_method } = body;
+  const { expense_date, vendor_name, invoice_number, description, category, amount, vat_amount, payment_method, staff_id } = body;
 
   if (category !== undefined && category !== null && !CATEGORIES.includes(category)) {
     return NextResponse.json({ error: `category must be one of ${CATEGORIES.join(', ')}` }, { status: 400 });
@@ -39,6 +39,7 @@ export async function PATCH(request, { params }) {
   if (description !== undefined) update.description = description;
   if (category !== undefined) update.category = category;
   if (payment_method !== undefined) update.payment_method = payment_method;
+  if (staff_id !== undefined) update.staff_id = staff_id || null;
 
   // amount/vat_amount need to be re-derived together so `total` stays
   // consistent even when only one of the two is being edited.

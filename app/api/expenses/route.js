@@ -1,6 +1,6 @@
 // app/api/expenses/route.js
-// GET  /api/expenses?month=YYYY-MM&category=X  -> list expenses
-// POST /api/expenses                           -> log a new expense
+// GET  /api/expenses?month=YYYY-MM&category=X&staff_id=Y  -> list expenses
+// POST /api/expenses                                      -> log a new expense
 //
 // amount is pre-VAT; total is computed server-side as amount + vat_amount
 // (kept explicit/stored, same convention as invoices, rather than derived
@@ -26,6 +26,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const month = searchParams.get('month');
   const category = searchParams.get('category');
+  const staffId = searchParams.get('staff_id');
 
   let query = supabase.from('expenses').select('*').order('expense_date', { ascending: false });
 
@@ -39,6 +40,9 @@ export async function GET(request) {
   if (category) {
     query = query.eq('category', category);
   }
+  if (staffId) {
+    query = query.eq('staff_id', staffId);
+  }
 
   const { data, error } = await query;
 
@@ -50,7 +54,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { expense_date, vendor_name, invoice_number, description, category, amount, vat_amount, payment_method } = body;
+  const { expense_date, vendor_name, invoice_number, description, category, amount, vat_amount, payment_method, staff_id } = body;
 
   if (amount === undefined || amount === null || Number.isNaN(Number(amount))) {
     return NextResponse.json({ error: 'amount is required' }, { status: 400 });
@@ -81,6 +85,7 @@ export async function POST(request) {
         vat_amount: vatNum,
         total: amountNum + vatNum,
         payment_method: payment_method || null,
+        staff_id: staff_id || null,
       },
     ])
     .select()
