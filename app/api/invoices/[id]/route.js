@@ -13,6 +13,13 @@ import { NextResponse } from 'next/server';
 
 const VALID_STATUSES = ['void'];
 
+// Next.js can otherwise cache this GET route handler's response (same
+// gotcha as app/api/hospitalizations/[id]/route.js) — the invoice detail
+// page reloads this after every action (removing a line item, voiding),
+// and a cached response would keep showing whatever was true the first
+// time this URL was ever hit, no matter how many times it's refetched.
+export const dynamic = 'force-dynamic';
+
 export async function GET(request, { params }) {
   const { data: invoice, error } = await supabase
     .from('invoices')

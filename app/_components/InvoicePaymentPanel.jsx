@@ -91,12 +91,18 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
   async function voidInvoice() {
     if (!confirm('Void this invoice? This cannot be undone.')) return;
     setVoiding(true);
-    await fetch(`/api/invoices/${invoice.id}`, {
+    setError(null);
+    const res = await fetch(`/api/invoices/${invoice.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'void' }),
     });
     setVoiding(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || 'Failed to void invoice');
+      return;
+    }
     onChanged();
   }
 
