@@ -595,6 +595,17 @@ export default function HospitalizationDetailPage() {
     return `${window.location.origin}/portal/hospitalization/${id}`;
   }
 
+  // Fire-and-forget — just records that the link has now actually been
+  // sent at least once, so the "Consent Signed — Send Portal Link" prompt
+  // below stops showing. Never worth blocking the share/copy action on.
+  function markPortalLinkShared() {
+    fetch(`/api/hospitalizations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ portal_link_shared: true }),
+    }).catch(() => {});
+  }
+
   function shareViaWhatsApp() {
     const clientLabel = `${admission.clients?.full_name || 'there'}${
       admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''
@@ -604,12 +615,14 @@ export default function HospitalizationDetailPage() {
     }`;
     const message = `Hi ${clientLabel}, here's the live care update page for ${patientLabel} during their stay with us: ${portalUrl()}`;
     openWhatsApp(admission.clients?.phone, message);
+    markPortalLinkShared();
   }
 
   async function copyPortalLink() {
     await navigator.clipboard.writeText(portalUrl());
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
+    markPortalLinkShared();
   }
 
   function startEditReason() {
@@ -1123,6 +1136,23 @@ export default function HospitalizationDetailPage() {
         <button type="button" className="button-link" onClick={copyPortalLink} title="Copy the live care-update link">
           {linkCopied ? 'Copied!' : 'Copy'}
         </button>
+        {/* A consent came back signed but nobody's ever actually sent this
+            client the portal link yet (see portal_link_shared_at) — a
+            WhatsApp send always needs a staff click somewhere (see
+            shareViaWhatsApp), so this is that one click, front and center
+            right when it's most likely to be needed. Disappears for good
+            once the link's been shared any way (this, or the plain
+            Share/Copy buttons above). */}
+        {consentForms.length > 0 && !admission.portal_link_shared_at && (
+          <button
+            type="button"
+            className="doctor-checkup-pill"
+            onClick={shareViaWhatsApp}
+            title="A consent form came back signed — send the client their live care-update link"
+          >
+            🔗 Consent Signed — Send Portal Link
+          </button>
+        )}
         <button type="button" className="button-link report-overview-pill" onClick={() => setReportsOpen((v) => !v)}>
           📑 {reportsOpen ? 'Hide Reports' : 'Reports'}
         </button>

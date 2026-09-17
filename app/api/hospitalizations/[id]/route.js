@@ -46,7 +46,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { status, room_id, cage_id, reason, update_requested_at, doctor_checkup_requested, ai_summary, kind, originating_visit_id } = body;
+  const { status, room_id, cage_id, reason, update_requested_at, doctor_checkup_requested, portal_link_shared, ai_summary, kind, originating_visit_id } = body;
 
   const update = {};
   if (status !== undefined) {
@@ -86,6 +86,13 @@ export async function PATCH(request, { params }) {
     update.doctor_checkup_requested_at = new Date().toISOString();
   } else if (doctor_checkup_requested === false) {
     update.doctor_checkup_requested_at = null;
+  }
+  // Set once, the first time staff actually sends the portal link (Share/
+  // Copy buttons, or the one-click prompt after a consent form comes back
+  // signed) — never cleared, since the point is only "has this ever been
+  // sent" so that prompt stops nagging once it has.
+  if (portal_link_shared === true) {
+    update.portal_link_shared_at = new Date().toISOString();
   }
 
   if (Object.keys(update).length === 0) {
