@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from 'react';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import TempDial from '@/app/_components/TempDial';
+import WeightDial from '@/app/_components/WeightDial';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { checklistItemAction } from '@/lib/checklistItemAction';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
@@ -34,7 +35,7 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport }) {
+export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport, onFileWeightKg }) {
   const [planItems, setPlanItems] = useState([]);
   // Every plan-tagged note for the whole stay, not just today — a
   // 'one_time' item (see migration 105) needs to know if it was EVER
@@ -340,10 +341,25 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     logQueueRef.current = logQueueRef.current.then(run, run);
   }
 
+  // The temperature dial always starts from a fixed "normal" reading (see
+  // TempDial's own default) since a stale reading from hours ago is no
+  // better a starting point than that — but weight barely changes day to
+  // day, so dragging from scratch every time would be needless work. The
+  // weight dial instead always opens on the last known weight: whatever was
+  // logged most recently THIS stay if anything has been, otherwise the
+  // patient's weight on file (see onFileWeightKg, sourced from
+  // patients.current_weight_kg) — only falling through to WeightDial's own
+  // generic default if neither exists.
   function startVitalsDial(item) {
     setError(null);
-    const last = doneToday(item.id).slice(-1)[0];
-    setDialValue(last ? last.temperature_c : 38.5);
+    if (item.kind === 'vitals_weight') {
+      const last = doneEver(item.id).slice(-1)[0];
+      const lastWeight = last ? last.weight_kg : onFileWeightKg;
+      setDialValue(lastWeight != null ? Number(lastWeight) : 10.0);
+    } else {
+      const last = doneToday(item.id).slice(-1)[0];
+      setDialValue(last ? last.temperature_c : 38.5);
+    }
     setVitalsInputFor(null);
     setDialInputFor(item.id);
   }
@@ -607,7 +623,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
             const unit = item.kind === 'vitals_weight' ? 'kg' : '°C';
             const isEntering = vitalsInputFor === item.id;
             const isDialing = dialInputFor === item.id;
-            const isTemperature = item.kind === 'vitals_temperature';
+            const isWeight = item.kind === 'vitals_weight';
             return (
               <div
                 key={item.id}
@@ -644,7 +660,11 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
                   </div>
                 ) : isDialing ? (
                   <div className="day-plan-vitals-dial">
-                    <TempDial value={dialValue} onChange={setDialValue} />
+                    {isWeight ? (
+                      <WeightDial value={dialValue} onChange={setDialValue} />
+                    ) : (
+                      <TempDial value={dialValue} onChange={setDialValue} />
+                    )}
                     <div className="day-plan-vitals-dial-actions">
                       <button type="button" onClick={() => submitVitalsReading(item, dialValue)} disabled={loggingIds.has(item.id)}>
                         {loggingIds.has(item.id) ? 'Logging...' : 'Log'}
@@ -665,13 +685,13 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
                       }
                       startVitalsInput(item);
                     }}
-                    onPointerDown={() => isTemperature && startLongPress(() => startVitalsDial(item))}
+                    onPointerDown={() => startLongPress(() => startVitalsDial(item))}
                     onPointerUp={cancelLongPress}
                     onPointerLeave={cancelLongPress}
                     onContextMenu={(e) => e.preventDefault()}
                   >
                     + Log {item.label}
-                    {isTemperature && <span className="day-plan-vitals-dial-hint"> (hold to drag)</span>}
+                    <span className="day-plan-vitals-dial-hint"> (hold to drag)</span>
                   </button>
                 )}
               </div>

@@ -5585,9 +5585,10 @@ form.card.admit-patient-form {
   box-shadow: 0 0 0 1px var(--pink-dark);
 }
 
-/* TempDial — press-and-hold, drag-up-for-warmer temperature picker. See
-   app/_components/TempDial.jsx for the two places it's used. */
-.temp-dial {
+/* DragDial — press-and-hold, drag-up-to-increase numeric picker. Shared by
+   TempDial (0.1°C steps) and WeightDial (0.1kg steps) — see
+   app/_components/DragDial.jsx for where each is used. */
+.drag-dial {
   position: relative;
   border-radius: 14px;
   background: #f1e8ea;
@@ -5597,9 +5598,9 @@ form.card.admit-patient-form {
   user-select: none;
   -webkit-user-select: none;
 }
-.temp-dial.temp-dial-dragging { cursor: grabbing; }
+.drag-dial.drag-dial-dragging { cursor: grabbing; }
 
-.temp-dial-fade {
+.drag-dial-fade {
   position: absolute;
   left: 0;
   right: 0;
@@ -5607,16 +5608,16 @@ form.card.admit-patient-form {
   pointer-events: none;
   z-index: 3;
 }
-.temp-dial-fade-top {
+.drag-dial-fade-top {
   top: 0;
   background: linear-gradient(to bottom, #f1e8ea 10%, transparent);
 }
-.temp-dial-fade-bottom {
+.drag-dial-fade-bottom {
   bottom: 0;
   background: linear-gradient(to top, #f1e8ea 10%, transparent);
 }
 
-.temp-dial-marker {
+.drag-dial-marker {
   position: absolute;
   left: 10px;
   right: 10px;
@@ -5625,11 +5626,11 @@ form.card.admit-patient-form {
   height: 40px;
   border-radius: 10px;
   background: var(--pink-tint);
-  border: 1.5px solid var(--temp-dial-color, var(--pink));
+  border: 1.5px solid var(--drag-dial-color, var(--pink));
   z-index: 1;
 }
 
-.temp-dial-readout {
+.drag-dial-readout {
   position: absolute;
   left: 0;
   right: 0;
@@ -5641,12 +5642,13 @@ form.card.admit-patient-form {
   font-variant-numeric: tabular-nums;
   font-size: 1.4rem;
   font-weight: 600;
-  color: var(--temp-dial-color, var(--pink-dark));
+  color: var(--drag-dial-color, var(--pink-dark));
   pointer-events: none;
 }
-.temp-dial-degree { font-size: 0.85rem; vertical-align: super; }
+.drag-dial-unit { font-size: 0.85rem; margin-left: 0.15em; }
+.drag-dial-unit.drag-dial-unit-superscript { margin-left: 0; vertical-align: super; }
 
-.temp-dial-tape {
+.drag-dial-tape {
   position: absolute;
   left: 0;
   right: 0;
@@ -5654,7 +5656,7 @@ form.card.admit-patient-form {
   will-change: transform;
 }
 
-.temp-dial-tick {
+.drag-dial-tick {
   position: absolute;
   left: 0;
   right: 0;
@@ -5666,15 +5668,15 @@ form.card.admit-patient-form {
   color: #8a7b80;
   z-index: 2;
 }
-.temp-dial-mark {
+.drag-dial-mark {
   position: absolute;
   left: 16px;
   width: 10px;
   height: 1.5px;
   background: #d8cbcf;
 }
-.temp-dial-tick.major .temp-dial-mark { width: 15px; background: #a3939a; }
-.temp-dial-tick-label {
+.drag-dial-tick.major .drag-dial-mark { width: 15px; background: #a3939a; }
+.drag-dial-tick-label {
   position: absolute;
   left: 34px;
   font-size: 0.72rem;

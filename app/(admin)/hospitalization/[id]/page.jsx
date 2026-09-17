@@ -1223,6 +1223,7 @@ export default function HospitalizationDetailPage() {
         subcategories={subcategories}
         onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
         onOpenReport={openReportFromChecklist}
+        onFileWeightKg={admission.patients?.current_weight_kg}
       />
       <div className="split">
       <div className="split-main">
