@@ -30,6 +30,9 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
   const [receivedBy, setReceivedBy] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [voiding, setVoiding] = useState(false);
+  const [confirmingVoid, setConfirmingVoid] = useState(false);
+  const [removingPaymentId, setRemovingPaymentId] = useState(null);
+  const [confirmingRemovePaymentId, setConfirmingRemovePaymentId] = useState(null);
   const [error, setError] = useState(null);
 
   const balanceDue = Math.max(
@@ -77,19 +80,27 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
     submitPayment(balanceDue);
   }
 
+  // Same inline-confirm reasoning as voidInvoice — no window.confirm()/alert().
   async function removePayment(paymentId) {
-    if (!confirm('Remove this payment? This cannot be undone.')) return;
+    setRemovingPaymentId(paymentId);
+    setError(null);
     const res = await fetch(`/api/invoices/${invoice.id}/payments/${paymentId}`, { method: 'DELETE' });
+    setRemovingPaymentId(null);
+    setConfirmingRemovePaymentId(null);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      alert(data.error || 'Failed to remove payment');
+      setError(data.error || 'Failed to remove payment');
       return;
     }
     onChanged();
   }
 
+  // An inline confirm step instead of window.confirm() — a native confirm()
+  // dialog can behave inconsistently across mobile browsers (silently
+  // dismissed, or never shown at all in some embedded/webview contexts),
+  // which looked exactly like "I press Void and nothing happens" with no
+  // way to tell whether the click even registered.
   async function voidInvoice() {
-    if (!confirm('Void this invoice? This cannot be undone.')) return;
     setVoiding(true);
     setError(null);
     const res = await fetch(`/api/invoices/${invoice.id}`, {
@@ -98,6 +109,7 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
       body: JSON.stringify({ status: 'void' }),
     });
     setVoiding(false);
+    setConfirmingVoid(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error || 'Failed to void invoice');
@@ -132,11 +144,22 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
                   ? `Donation #${p.donations.donation_number}`
                   : p.staff?.full_name || (p.payment_method === 'payment_link' ? 'Online (Nomod)' : 'unassigned')}
               </span>
-              {canTakePayment && (
-                <button type="button" onClick={() => removePayment(p.id)}>
-                  Remove
-                </button>
-              )}
+              {canTakePayment &&
+                (confirmingRemovePaymentId === p.id ? (
+                  <span className="invoice-payment-remove-confirm">
+                    Remove this payment?{' '}
+                    <button type="button" onClick={() => removePayment(p.id)} disabled={removingPaymentId === p.id}>
+                      {removingPaymentId === p.id ? 'Removing...' : 'Yes'}
+                    </button>{' '}
+                    <button type="button" onClick={() => setConfirmingRemovePaymentId(null)} disabled={removingPaymentId === p.id}>
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <button type="button" onClick={() => setConfirmingRemovePaymentId(p.id)}>
+                    Remove
+                  </button>
+                ))}
             </li>
           ))}
         </ul>
@@ -181,9 +204,21 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
               {submitting ? 'Logging...' : `Pay in Full (AED ${money(balanceDue)})`}
             </button>
           </form>
-          <button type="button" onClick={voidInvoice} disabled={voiding}>
-            Void
-          </button>
+          {confirmingVoid ? (
+            <p className="invoice-void-confirm">
+              Void this invoice? This cannot be undone.{' '}
+              <button type="button" onClick={voidInvoice} disabled={voiding}>
+                {voiding ? 'Voiding...' : 'Yes, void it'}
+              </button>{' '}
+              <button type="button" onClick={() => setConfirmingVoid(false)} disabled={voiding}>
+                Cancel
+              </button>
+            </p>
+          ) : (
+            <button type="button" onClick={() => setConfirmingVoid(true)}>
+              Void
+            </button>
+          )}
         </>
       )}
     </div>

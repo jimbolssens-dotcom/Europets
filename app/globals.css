@@ -2935,6 +2935,24 @@ button.secondary:hover {
   font-size: 0.95rem;
 }
 
+.invoice-void-confirm {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: #fdecec;
+  border: 1px solid #e6a6a6;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.invoice-void-confirm button {
+  margin-top: 0.35rem;
+}
+
+.invoice-payment-remove-confirm {
+  font-size: 0.8rem;
+  color: #a33;
+}
+
 .invoice-payments-list {
   list-style: none;
   margin: 0.5rem 0;
