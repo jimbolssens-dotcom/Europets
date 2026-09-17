@@ -14,9 +14,9 @@
 //        lib/appointmentScheduling.js and app/api/appointments/route.js),
 //        excluding the appointment from its own conflict check.
 //        duration_minutes is only meaningful for a surgery or meeting
-//        appointment — consult is a fixed 15 minutes, same rule as booking
-//        one; switching type to surgery/meeting without a duration
-//        defaults to one increment / 30 minutes respectively.
+//        appointment — consult and video are both a fixed 15 minutes, same
+//        rule as booking one; switching type to surgery/meeting without a
+//        duration defaults to one increment / 30 minutes respectively.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -94,7 +94,7 @@ export async function PATCH(request, { params }) {
 
   const nextRoomId = room_id || current.room_id;
   const nextVetId = vet_id !== undefined ? vet_id || null : current.vet_id;
-  const nextType = ['surgery', 'consult', 'meeting'].includes(type) ? type : current.type;
+  const nextType = ['surgery', 'consult', 'meeting', 'video'].includes(type) ? type : current.type;
   const nextReason = reason !== undefined ? reason || null : current.reason;
 
   let nextPatientId = current.patient_id;
@@ -119,7 +119,7 @@ export async function PATCH(request, { params }) {
   }
 
   let nextDuration = current.duration_minutes;
-  if (nextType === 'consult') {
+  if (nextType === 'consult' || nextType === 'video') {
     nextDuration = CONSULT_DURATION_MINUTES;
   } else if (nextType === 'surgery') {
     if (duration_minutes !== undefined) {

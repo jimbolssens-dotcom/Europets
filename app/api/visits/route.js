@@ -85,6 +85,11 @@ export async function POST(request) {
     client_id = client_id || appointment.client_id;
     room_id = room_id || appointment.room_id;
     attending_vet_id = attending_vet_id || appointment.vet_id;
+    // A 'video' appointment (see app/api/appointments/route.js) never had a
+    // room to begin with — check-in from it is a video consult automatically,
+    // without whatever screen calls this (the Appointments page's own
+    // Checkin button, unchanged) needing to know or pass that itself.
+    is_video = is_video || appointment.type === 'video';
   }
 
   // A video consult has no physical room — it's the one case room_id is

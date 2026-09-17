@@ -55,8 +55,8 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if ((type !== 'meeting' && !patientId) || !roomId) {
-      setError(type === 'meeting' ? 'Select a room' : 'Select a patient and room');
+    if ((type !== 'meeting' && !patientId) || (!roomId && type !== 'video')) {
+      setError(type === 'meeting' ? 'Select a room' : type === 'video' ? 'Select a patient' : 'Select a patient and room');
       return;
     }
     setSubmitting(true);
@@ -67,7 +67,7 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
 
     const result = await onSave({
       patient_id: type === 'meeting' ? null : patientId,
-      room_id: roomId,
+      room_id: roomId || null,
       vet_id: vetId || null,
       type,
       duration_minutes: type === 'surgery' || type === 'meeting' ? Number(duration) : undefined,
@@ -135,17 +135,21 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
           />
         )}
 
-        <label>
-          Room
-          <select value={roomId} onChange={(e) => setRoomId(e.target.value)} required>
-            <option value="">Select room...</option>
-            {rooms.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {type === 'video' ? (
+          <p className="visit-meta">🎥 No room needed — video consult</p>
+        ) : (
+          <label>
+            Room
+            <select value={roomId} onChange={(e) => setRoomId(e.target.value)} required>
+              <option value="">Select room...</option>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label>
           {type === 'meeting' ? 'Staff' : 'Vet'}
@@ -163,6 +167,7 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
           Type
           <select value={type} onChange={(e) => setType(e.target.value)}>
             <option value="consult">Consult (15 min)</option>
+            <option value="video">Video Consult (15 min)</option>
             <option value="surgery">Surgery (10-min increments)</option>
             <option value="meeting">Staff Meeting / Other</option>
           </select>

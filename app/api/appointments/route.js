@@ -5,6 +5,10 @@
 //
 // Booking rules:
 //   - consult appointments are fixed at 15 minutes
+//   - video consult appointments are also fixed at 15 minutes, and have no
+//     room at all — see migration 115's visits.is_video for the actual
+//     call, created at check-in (see POST /api/visits deriving is_video
+//     from this appointment's type)
 //   - surgery appointments run in 10-minute increments (10, 20, 30, ...)
 //   - a room (and a vet) can't be double-booked for an overlapping slot
 //   - booking a vet for a date+shift the staff roster (staff_roster_entries
@@ -83,11 +87,17 @@ export async function POST(request) {
     shift,
   } = body;
 
-  if (!room_id || !start_time) {
-    return NextResponse.json({ error: 'room_id and start_time are required' }, { status: 400 });
+  if (!start_time) {
+    return NextResponse.json({ error: 'start_time is required' }, { status: 400 });
   }
 
-  const appointmentType = type === 'surgery' ? 'surgery' : type === 'meeting' ? 'meeting' : 'consult';
+  const appointmentType =
+    type === 'surgery' ? 'surgery' : type === 'meeting' ? 'meeting' : type === 'video' ? 'video' : 'consult';
+
+  // A video consult has no physical room — everything else still needs one.
+  if (appointmentType !== 'video' && !room_id) {
+    return NextResponse.json({ error: 'room_id is required' }, { status: 400 });
+  }
 
   // A staff meeting has no patient/client — everything else still needs one.
   if (appointmentType !== 'meeting' && !patient_id) {
@@ -95,7 +105,7 @@ export async function POST(request) {
   }
 
   let duration;
-  if (appointmentType === 'consult') {
+  if (appointmentType === 'consult' || appointmentType === 'video') {
     duration = CONSULT_DURATION_MINUTES;
   } else if (appointmentType === 'surgery') {
     duration = Number(duration_minutes) || SURGERY_INCREMENT_MINUTES;
@@ -186,7 +196,7 @@ export async function POST(request) {
       {
         patient_id: patient_id || null,
         client_id: clientId,
-        room_id,
+        room_id: room_id || null,
         vet_id: vet_id || null,
         type: appointmentType,
         start_time: startTime.toISOString(),
