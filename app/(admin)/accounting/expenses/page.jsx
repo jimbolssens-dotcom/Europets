@@ -262,7 +262,7 @@ export default function ExpensesPage() {
           ) : expenses.length === 0 ? (
             <p>No expenses logged for this month.</p>
           ) : (
-            <table>
+            <table className="expenses-table">
               <thead>
                 <tr>
                   <th>Date</th>

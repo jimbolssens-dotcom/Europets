@@ -538,6 +538,76 @@ td select {
   border-radius: 4px;
 }
 
+/* Expenses list (accounting/expenses) — every column is directly editable
+   (see commitField), so without fixed widths the Amount/VAT number inputs
+   and the Category/Paid Via selects each default to a much wider box than
+   the few characters they actually hold, pushing the row past a normal
+   desktop width. Notes is the one column left unconstrained — it soaks up
+   whatever width the fixed columns don't use. */
+.expenses-table th:nth-child(1),
+.expenses-table td:nth-child(1) {
+  width: 8.5rem;
+}
+
+.expenses-table th:nth-child(2),
+.expenses-table td:nth-child(2) {
+  width: 8rem;
+}
+
+.expenses-table th:nth-child(3),
+.expenses-table td:nth-child(3) {
+  width: 7.5rem;
+}
+
+.expenses-table th:nth-child(4),
+.expenses-table td:nth-child(4) {
+  width: 6.5rem;
+}
+
+.expenses-table th:nth-child(5),
+.expenses-table td:nth-child(5),
+.expenses-table th:nth-child(6),
+.expenses-table td:nth-child(6) {
+  width: 4.8rem;
+}
+
+.expenses-table th:nth-child(7),
+.expenses-table td:nth-child(7) {
+  width: 6rem;
+  white-space: nowrap;
+}
+
+.expenses-table th:nth-child(8),
+.expenses-table td:nth-child(8) {
+  width: 7rem;
+}
+
+.expenses-table th:nth-child(9),
+.expenses-table td:nth-child(9) {
+  width: auto;
+}
+
+.expenses-table td input,
+.expenses-table td select {
+  width: 100%;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.4rem;
+}
+
+/* Reclaims the space Chrome/Safari reserve for the up/down stepper on a
+   number input — at this column's width that stepper alone was clipping
+   a plain amount like "142.86" down to "142.8". Typed entry still works
+   exactly the same; only the stepper arrows disappear. */
+.expenses-table input[type='number']::-webkit-inner-spin-button,
+.expenses-table input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.expenses-table input[type='number'] {
+  -moz-appearance: textfield;
+}
+
 /* Category subheader row splitting an invoice's line items into Products /
    Tests / Services sections — deliberately muted (not the pink used by the
    table's own th) so it reads as a divider between sections, not a second
