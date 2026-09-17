@@ -4,7 +4,9 @@
 //         room the first time; safe to call again, returns the existing one)
 // PATCH -> { status: 'active' | 'ended' } — set from the consult page when
 //          staff actually starts/ends the call, since there's no webhook
-//          wired up from Daily back into this app yet.
+//          wired up from Daily back into this app yet. Ending a call
+//          deletes the Daily room outright, not just this app's own record
+//          of it — see deleteDailyRoom.
 //
 // Used by both the staff consult page (app/(admin)/consults/[id]/page.jsx)
 // and the client-facing join page (app/portal/video-consult/[id]/page.jsx)
@@ -13,7 +15,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { createDailyRoom } from '@/lib/dailyVideo';
+import { createDailyRoom, deleteDailyRoom } from '@/lib/dailyVideo';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -105,6 +107,28 @@ export async function PATCH(request, { params }) {
   }
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'nothing to update' }, { status: 400 });
+  }
+
+  // Ending a call actually deletes the Daily room — otherwise the link
+  // staff already sent the client stays silently joinable (Daily has no
+  // idea the app considers this call "over") until it hits its own exp,
+  // hours later. Do this before the DB update so a failure here surfaces
+  // as an error rather than marking the call ended while the room is
+  // still live.
+  if (status === 'ended') {
+    const { data: videoConsult, error: fetchError } = await supabase
+      .from('video_consults')
+      .select('room_name')
+      .eq('visit_id', params.id)
+      .single();
+    if (fetchError) {
+      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+    try {
+      await deleteDailyRoom(videoConsult.room_name);
+    } catch (err) {
+      return NextResponse.json({ error: err.message }, { status: 500 });
+    }
   }
 
   const { data, error } = await supabaseAdmin

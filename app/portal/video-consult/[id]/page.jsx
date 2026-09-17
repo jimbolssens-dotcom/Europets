@@ -72,6 +72,8 @@ export default function VideoConsultPortalPage() {
 
         {!videoConsult ? (
           <p>Your vet hasn&apos;t started the call room yet — try this link again in a moment.</p>
+        ) : videoConsult.status === 'ended' ? (
+          <p>This call has ended. If you still need to speak with us, please contact the clinic for a new link.</p>
         ) : !joined ? (
           <>
             <p>When you&apos;re ready, tap below to join. Your browser will ask to use your camera and microphone.</p>

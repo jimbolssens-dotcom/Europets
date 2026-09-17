@@ -60,6 +60,7 @@ export default function ConsultDetailPage() {
   const [videoConsult, setVideoConsult] = useState(null);
   const [videoConsultError, setVideoConsultError] = useState(null);
   const [creatingVideoRoom, setCreatingVideoRoom] = useState(false);
+  const [endingVideoCall, setEndingVideoCall] = useState(false);
 
   const [record, setRecord] = useState(null);
   const lastServerRecordRef = useRef(null); // last record snapshot fetched from the server, to tell an untouched field from an unsaved edit on the next refresh
@@ -256,6 +257,26 @@ export default function ConsultDetailPage() {
       body: JSON.stringify({ invited: true }),
     });
     loadVideoConsult();
+  }
+
+  // Deletes the actual Daily room (see the route) — the client's join link
+  // stops working, rather than just closing this browser's own view of it.
+  async function endVideoCall() {
+    if (!confirm('End this video call? The client\'s link will stop working.')) return;
+    setEndingVideoCall(true);
+    setVideoConsultError(null);
+    const res = await fetch(`/api/visits/${id}/video-consult`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'ended' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setEndingVideoCall(false);
+    if (!res.ok) {
+      setVideoConsultError(data.error || 'Failed to end the call');
+      return;
+    }
+    setVideoConsult(data);
   }
 
   useEffect(() => {
@@ -805,7 +826,12 @@ export default function ConsultDetailPage() {
       {consult.is_video && (
         <div className="video-consult-panel">
           {videoConsultError && <p className="error">{videoConsultError}</p>}
-          {videoConsult ? (
+          {videoConsult?.status === 'ended' ? (
+            <p className="visit-meta">
+              🔴 Call ended {videoConsult.ended_at && new Date(videoConsult.ended_at).toLocaleString()} — the client's
+              link no longer works.
+            </p>
+          ) : videoConsult ? (
             <>
               <div className="action-row">
                 <button type="button" className="button-link" onClick={inviteToVideoConsult}>
@@ -814,6 +840,9 @@ export default function ConsultDetailPage() {
                 {videoConsult.invited_at && (
                   <span className="visit-meta">Invited {new Date(videoConsult.invited_at).toLocaleString()}</span>
                 )}
+                <button type="button" className="button-link" onClick={endVideoCall} disabled={endingVideoCall}>
+                  {endingVideoCall ? 'Ending…' : '🔴 End Call'}
+                </button>
               </div>
               <iframe
                 src={videoConsult.room_url}
