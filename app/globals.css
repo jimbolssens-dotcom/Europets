@@ -628,6 +628,23 @@ td select {
   border-top: 2px solid #eee;
 }
 
+/* Section subheader row splitting a merged invoice's line items by which
+   case they came from (see migration 114) — bolder than the muted category
+   row above it since this is the higher-level grouping the categories then
+   nest inside; absent entirely on an ordinary, non-merged invoice. */
+.invoice-section-row td {
+  background: var(--pink-tint);
+  color: var(--pink-dark);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.45rem 0.75rem;
+  border-top: 2px solid var(--pink);
+}
+
+.pre-invoice-merge {
+  margin-top: 0.7rem;
+}
+
 .catalog-row {
   cursor: pointer;
 }

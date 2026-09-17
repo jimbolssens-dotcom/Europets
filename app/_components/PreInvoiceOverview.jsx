@@ -15,9 +15,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import { supabase } from '@/lib/supabaseClient';
+import { groupLineItemsBySection } from '@/lib/catalogGrouping';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -26,7 +27,16 @@ function money(n) {
 const STATUS_LABELS = { unpaid: 'unpaid', partially_paid: 'partially paid', paid: 'paid', void: 'void' };
 const STATUS_DOT_CLASS = { unpaid: 'unpaid', partially_paid: 'partial', paid: 'paid', void: 'void' };
 
-export default function PreInvoiceOverview({ hospitalizationId, catalog, subcategories, onCatalogItemCreated, heading = '💰 Pre-Invoice Overview', recordHref }) {
+export default function PreInvoiceOverview({
+  hospitalizationId,
+  catalog,
+  subcategories,
+  onCatalogItemCreated,
+  heading = '💰 Pre-Invoice Overview',
+  recordHref,
+  mergeTarget, // { id, label } — offers "Merge into {label}'s invoice" when set (see migration 114)
+  onMerged,
+}) {
   const [invoice, setInvoice] = useState(null);
   const [lineItems, setLineItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +48,8 @@ export default function PreInvoiceOverview({ hospitalizationId, catalog, subcate
   const [showAdd, setShowAdd] = useState(false);
   const [addGoodsServiceId, setAddGoodsServiceId] = useState('');
   const [adding, setAdding] = useState(false);
+  const [confirmingMerge, setConfirmingMerge] = useState(false);
+  const [merging, setMerging] = useState(false);
 
   async function syncAndLoad(dogSize) {
     setError(null);
@@ -178,6 +190,27 @@ export default function PreInvoiceOverview({ hospitalizationId, catalog, subcate
     syncAndLoad();
   }
 
+  async function mergeIntoTarget() {
+    if (!mergeTarget) return;
+    setMerging(true);
+    setError(null);
+    const res = await fetch(`/api/hospitalizations/${hospitalizationId}/merge-invoice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ into: mergeTarget.id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setMerging(false);
+    setConfirmingMerge(false);
+    if (!res.ok) {
+      setError(data.error || 'Failed to merge invoices');
+      return;
+    }
+    onMerged?.();
+  }
+
+  const lineItemSections = groupLineItemsBySection(lineItems);
+
   return (
     <div className="card pre-invoice-overview">
       <h3>
@@ -237,32 +270,41 @@ export default function PreInvoiceOverview({ hospitalizationId, catalog, subcate
                   <td colSpan={4}>Nothing billable logged yet.</td>
                 </tr>
               )}
-              {lineItems.map((li) => (
-                <tr key={li.id}>
-                  <td>{li.description}</td>
-                  <td>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={drafts[li.id] ?? li.quantity}
-                      onChange={(e) => setDrafts({ ...drafts, [li.id]: e.target.value })}
-                      onBlur={(e) => commitQuantity(li, e.target.value)}
-                    />
-                  </td>
-                  <td>AED {money(li.line_total)}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="day-plan-remove"
-                      style={{ position: 'static' }}
-                      onClick={() => removeLine(li)}
-                      disabled={removingId === li.id}
-                      title="Remove from invoice"
-                    >
-                      &times;
-                    </button>
-                  </td>
-                </tr>
+              {lineItemSections.map((section) => (
+                <Fragment key={section.sectionLabel || 'primary'}>
+                  {section.sectionLabel && (
+                    <tr className="invoice-section-row">
+                      <td colSpan={4}>{section.sectionLabel}</td>
+                    </tr>
+                  )}
+                  {section.items.map((li) => (
+                    <tr key={li.id}>
+                      <td>{li.description}</td>
+                      <td>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={drafts[li.id] ?? li.quantity}
+                          onChange={(e) => setDrafts({ ...drafts, [li.id]: e.target.value })}
+                          onBlur={(e) => commitQuantity(li, e.target.value)}
+                        />
+                      </td>
+                      <td>AED {money(li.line_total)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="day-plan-remove"
+                          style={{ position: 'static' }}
+                          onClick={() => removeLine(li)}
+                          disabled={removingId === li.id}
+                          title="Remove from invoice"
+                        >
+                          &times;
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
             </tbody>
             {invoice && (
@@ -299,6 +341,26 @@ export default function PreInvoiceOverview({ hospitalizationId, catalog, subcate
                 + Add Item
               </button>
             ))}
+
+          {invoice && mergeTarget && (
+            <div className="pre-invoice-merge">
+              {confirmingMerge ? (
+                <p className="invoice-void-confirm">
+                  Consolidate this onto {mergeTarget.label}&rsquo;s invoice? This can&rsquo;t be undone.{' '}
+                  <button type="button" onClick={mergeIntoTarget} disabled={merging}>
+                    {merging ? 'Merging...' : 'Yes, merge it'}
+                  </button>{' '}
+                  <button type="button" onClick={() => setConfirmingMerge(false)} disabled={merging}>
+                    Cancel
+                  </button>
+                </p>
+              ) : (
+                <button type="button" className="pill-btn" onClick={() => setConfirmingMerge(true)}>
+                  Merge into {mergeTarget.label}&rsquo;s invoice
+                </button>
+              )}
+            </div>
+          )}
 
           {invoice && (
             <p className="visit-meta pre-invoice-open-link">

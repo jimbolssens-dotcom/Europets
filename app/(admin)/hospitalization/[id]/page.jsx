@@ -1603,17 +1603,21 @@ export default function HospitalizationDetailPage() {
           see it to double-check both invoices before the patient leaves,
           without hunting it down separately. One panel per linked day
           procedure, however many were booked during this stay. */}
-      {linkedDayProcedures.map((dp) => (
-        <PreInvoiceOverview
-          key={dp.id}
-          hospitalizationId={dp.id}
-          catalog={catalog}
-          subcategories={subcategories}
-          onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
-          heading={`💰 Day Procedure Invoice — ${new Date(dp.admitted_at).toLocaleDateString()}${dp.reason ? `: ${dp.reason}` : ''}`}
-          recordHref={`/hospitalization/${dp.id}`}
-        />
-      ))}
+      {linkedDayProcedures
+        .filter((dp) => !dp.invoice_merged_with)
+        .map((dp) => (
+          <PreInvoiceOverview
+            key={dp.id}
+            hospitalizationId={dp.id}
+            catalog={catalog}
+            subcategories={subcategories}
+            onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+            heading={`💰 Day Procedure Invoice — ${new Date(dp.admitted_at).toLocaleDateString()}${dp.reason ? `: ${dp.reason}` : ''}`}
+            recordHref={`/hospitalization/${dp.id}`}
+            mergeTarget={{ id: admission.id, label: 'the hospitalization' }}
+            onMerged={loadLinkedDayProcedures}
+          />
+        ))}
 
       <details className="case-files">
         <summary>

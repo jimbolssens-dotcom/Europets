@@ -12,7 +12,7 @@ import CatalogPicker from '@/app/_components/CatalogPicker';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import VoiceNoteBox from '@/app/_components/VoiceNoteBox';
-import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
+import { groupLineItemsByCategory, groupLineItemsBySection, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { printPdfUrl } from '@/lib/printPdf';
@@ -406,7 +406,7 @@ export default function InvoiceDetailPage() {
 
   const selected = catalog.find((c) => c.id === goodsServiceId);
   const patientName = invoice.visits?.patients?.name || invoice.hospitalizations?.patients?.name;
-  const lineItemGroups = groupLineItemsByCategory(invoice.line_items);
+  const invoiceSections = groupLineItemsBySection(invoice.line_items);
   const editable = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
   const columnCount = editable ? 7 : 6;
   // Only the medications actually dispensed to go home get a printable
@@ -501,61 +501,70 @@ export default function InvoiceDetailPage() {
           </tr>
         </thead>
         <tbody>
-          {lineItemGroups.map((group) => (
-            <Fragment key={group.mainCategory || 'other'}>
-              <tr className="invoice-category-row">
-                <td colSpan={columnCount}>{group.label}</td>
-              </tr>
-              {group.items.map((li) => {
-                const draft = lineItemDrafts[li.id];
-                return (
-                  <tr key={li.id}>
-                    <td>{li.description}</td>
-                    <td>
-                      {editable ? (
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="qty-input"
-                          value={draft?.quantity ?? li.quantity}
-                          onChange={(e) =>
-                            setLineItemDrafts({ ...lineItemDrafts, [li.id]: { ...draft, quantity: e.target.value } })
-                          }
-                          onBlur={(e) => commitLineItemQuantity(li, e.target.value)}
-                        />
-                      ) : (
-                        <>
-                          {li.quantity} {li.goods_services?.unit || ''}
-                        </>
-                      )}
-                    </td>
-                    <td>{li.administration_method ? ADMINISTRATION_METHOD_LABELS[li.administration_method] : '—'}</td>
-                    <td>
-                      {editable ? (
-                        <input
-                          placeholder="Instructions"
-                          value={draft?.instructions ?? (li.instructions || '')}
-                          onChange={(e) =>
-                            setLineItemDrafts({ ...lineItemDrafts, [li.id]: { ...draft, instructions: e.target.value } })
-                          }
-                          onBlur={(e) => commitLineItemInstructions(li, e.target.value)}
-                        />
-                      ) : (
-                        li.instructions || '—'
-                      )}
-                    </td>
-                    <td>{money(li.unit_price)}</td>
-                    <td>{money(li.line_total)}</td>
-                    {editable && (
-                      <td>
-                        <button type="button" onClick={() => removeLineItem(li.id)}>
-                          Remove
-                        </button>
-                      </td>
-                    )}
+          {invoiceSections.map((section) => (
+            <Fragment key={section.sectionLabel || 'primary'}>
+              {section.sectionLabel && (
+                <tr className="invoice-section-row">
+                  <td colSpan={columnCount}>{section.sectionLabel}</td>
+                </tr>
+              )}
+              {groupLineItemsByCategory(section.items).map((group) => (
+                <Fragment key={`${section.sectionLabel || 'primary'}-${group.mainCategory || 'other'}`}>
+                  <tr className="invoice-category-row">
+                    <td colSpan={columnCount}>{group.label}</td>
                   </tr>
-                );
-              })}
+                  {group.items.map((li) => {
+                    const draft = lineItemDrafts[li.id];
+                    return (
+                      <tr key={li.id}>
+                        <td>{li.description}</td>
+                        <td>
+                          {editable ? (
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="qty-input"
+                              value={draft?.quantity ?? li.quantity}
+                              onChange={(e) =>
+                                setLineItemDrafts({ ...lineItemDrafts, [li.id]: { ...draft, quantity: e.target.value } })
+                              }
+                              onBlur={(e) => commitLineItemQuantity(li, e.target.value)}
+                            />
+                          ) : (
+                            <>
+                              {li.quantity} {li.goods_services?.unit || ''}
+                            </>
+                          )}
+                        </td>
+                        <td>{li.administration_method ? ADMINISTRATION_METHOD_LABELS[li.administration_method] : '—'}</td>
+                        <td>
+                          {editable ? (
+                            <input
+                              placeholder="Instructions"
+                              value={draft?.instructions ?? (li.instructions || '')}
+                              onChange={(e) =>
+                                setLineItemDrafts({ ...lineItemDrafts, [li.id]: { ...draft, instructions: e.target.value } })
+                              }
+                              onBlur={(e) => commitLineItemInstructions(li, e.target.value)}
+                            />
+                          ) : (
+                            li.instructions || '—'
+                          )}
+                        </td>
+                        <td>{money(li.unit_price)}</td>
+                        <td>{money(li.line_total)}</td>
+                        {editable && (
+                          <td>
+                            <button type="button" onClick={() => removeLineItem(li.id)}>
+                              Remove
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </Fragment>
+              ))}
             </Fragment>
           ))}
           {invoice.line_items.length === 0 && (
