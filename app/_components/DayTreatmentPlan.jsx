@@ -19,6 +19,7 @@
 import { useEffect, useRef, useState } from 'react';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import TempDial from '@/app/_components/TempDial';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { checklistItemAction } from '@/lib/checklistItemAction';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
@@ -45,6 +46,10 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
   const [loggingIds, setLoggingIds] = useState(() => new Set());
   const [vitalsInputFor, setVitalsInputFor] = useState(null);
   const [vitalsValue, setVitalsValue] = useState('');
+  // A long-press on the Temperature tile's +Log button opens this instead
+  // of the plain typed input above — see startLongPress/startVitalsDial.
+  const [dialInputFor, setDialInputFor] = useState(null);
+  const [dialValue, setDialValue] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [openingTestId, setOpeningTestId] = useState(null);
   const [showCatalogAdd, setShowCatalogAdd] = useState(false);
@@ -293,8 +298,10 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     lastNoteRef.current = patched;
   }
 
-  function submitVitalsReading(item) {
-    const value = parseFloat(vitalsValue);
+  // explicitValue lets the dial (which already has a real number, not text
+  // to parse) submit through this exact same path as the typed input.
+  function submitVitalsReading(item, explicitValue) {
+    const value = explicitValue != null ? explicitValue : parseFloat(vitalsValue);
     if (!Number.isFinite(value) || value <= 0) {
       setError(`Enter a valid ${item.kind === 'vitals_weight' ? 'weight' : 'temperature'}`);
       return;
@@ -316,6 +323,8 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
         }
         setVitalsInputFor(null);
         setVitalsValue('');
+        setDialInputFor(null);
+        setDialValue(null);
       } catch (err) {
         setError(err.message || 'Failed to log reading');
       } finally {
@@ -329,6 +338,19 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     };
 
     logQueueRef.current = logQueueRef.current.then(run, run);
+  }
+
+  function startVitalsDial(item) {
+    setError(null);
+    const last = doneToday(item.id).slice(-1)[0];
+    setDialValue(last ? last.temperature_c : 38.5);
+    setVitalsInputFor(null);
+    setDialInputFor(item.id);
+  }
+
+  function cancelVitalsDial() {
+    setDialInputFor(null);
+    setDialValue(null);
   }
 
   // Live "is this overdue yet" hint shown right on the tile — the
@@ -485,11 +507,15 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     }
   }
 
-  function startLongPress(item) {
+  // Shared by task tiles (long-press -> edit its catalog item) and the
+  // Temperature vitals tile (long-press -> the drag dial) — only one tile
+  // is ever being pressed at a time, so the same timer/fired refs work for
+  // both without any cross-talk.
+  function startLongPress(onFire) {
     longPressFired.current = false;
     longPressTimer.current = setTimeout(() => {
       longPressFired.current = true;
-      openEditItem(item);
+      onFire();
     }, LONG_PRESS_MS);
   }
 
@@ -580,6 +606,8 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
             const status = vitalsStatus(item, done);
             const unit = item.kind === 'vitals_weight' ? 'kg' : '°C';
             const isEntering = vitalsInputFor === item.id;
+            const isDialing = dialInputFor === item.id;
+            const isTemperature = item.kind === 'vitals_temperature';
             return (
               <div
                 key={item.id}
@@ -614,9 +642,36 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
                       Cancel
                     </button>
                   </div>
+                ) : isDialing ? (
+                  <div className="day-plan-vitals-dial">
+                    <TempDial value={dialValue} onChange={setDialValue} />
+                    <div className="day-plan-vitals-dial-actions">
+                      <button type="button" onClick={() => submitVitalsReading(item, dialValue)} disabled={loggingIds.has(item.id)}>
+                        {loggingIds.has(item.id) ? 'Logging...' : 'Log'}
+                      </button>
+                      <button type="button" onClick={cancelVitalsDial} disabled={loggingIds.has(item.id)}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <button type="button" className="pill-btn" onClick={() => startVitalsInput(item)}>
+                  <button
+                    type="button"
+                    className="pill-btn"
+                    onClick={() => {
+                      if (longPressFired.current) {
+                        longPressFired.current = false;
+                        return;
+                      }
+                      startVitalsInput(item);
+                    }}
+                    onPointerDown={() => isTemperature && startLongPress(() => startVitalsDial(item))}
+                    onPointerUp={cancelLongPress}
+                    onPointerLeave={cancelLongPress}
+                    onContextMenu={(e) => e.preventDefault()}
+                  >
                     + Log {item.label}
+                    {isTemperature && <span className="day-plan-vitals-dial-hint"> (hold to drag)</span>}
                   </button>
                 )}
               </div>
@@ -645,7 +700,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
                   }
                   logTask(item);
                 }}
-                onPointerDown={() => startLongPress(item)}
+                onPointerDown={() => startLongPress(() => openEditItem(item))}
                 onPointerUp={cancelLongPress}
                 onPointerLeave={cancelLongPress}
                 onContextMenu={(e) => e.preventDefault()}

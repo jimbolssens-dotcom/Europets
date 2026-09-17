@@ -4834,6 +4834,41 @@ button.secondary:hover {
   color: white;
 }
 
+.day-plan-vitals-dial {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.day-plan-vitals-dial-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.day-plan-vitals-dial-actions button {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--pink-dark);
+  background: white;
+  color: var(--pink-dark);
+  font-weight: 700;
+  font-size: 0.7rem;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.day-plan-vitals-dial-actions button:hover {
+  background: var(--pink-dark);
+  color: white;
+}
+
+.day-plan-vitals-dial-hint {
+  font-weight: 400;
+  font-size: 0.62rem;
+  opacity: 0.75;
+}
+
 .day-plan-task {
   position: relative;
 }
@@ -5515,6 +5550,102 @@ form.card.admit-patient-form {
   box-shadow: 0 0 0 1px var(--pink-dark);
 }
 
+/* TempDial — press-and-hold, drag-up-for-warmer temperature picker. See
+   app/_components/TempDial.jsx for the two places it's used. */
+.temp-dial {
+  position: relative;
+  border-radius: 14px;
+  background: #f1e8ea;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.temp-dial.temp-dial-dragging { cursor: grabbing; }
+
+.temp-dial-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 40px;
+  pointer-events: none;
+  z-index: 3;
+}
+.temp-dial-fade-top {
+  top: 0;
+  background: linear-gradient(to bottom, #f1e8ea 10%, transparent);
+}
+.temp-dial-fade-bottom {
+  bottom: 0;
+  background: linear-gradient(to top, #f1e8ea 10%, transparent);
+}
+
+.temp-dial-marker {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 40px;
+  border-radius: 10px;
+  background: var(--pink-tint);
+  border: 1.5px solid var(--temp-dial-color, var(--pink));
+  z-index: 1;
+}
+
+.temp-dial-readout {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  text-align: center;
+  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--temp-dial-color, var(--pink-dark));
+  pointer-events: none;
+}
+.temp-dial-degree { font-size: 0.85rem; vertical-align: super; }
+
+.temp-dial-tape {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.temp-dial-tick {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  color: #8a7b80;
+  z-index: 2;
+}
+.temp-dial-mark {
+  position: absolute;
+  left: 16px;
+  width: 10px;
+  height: 1.5px;
+  background: #d8cbcf;
+}
+.temp-dial-tick.major .temp-dial-mark { width: 15px; background: #a3939a; }
+.temp-dial-tick-label {
+  position: absolute;
+  left: 34px;
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
 /* ============ MOBILE RECORDING APP (app/mobile/) ============
    Phone-first: single column, large tap targets, minimal chrome. */
 
@@ -5870,25 +6001,28 @@ form.card.admit-patient-form {
   color: var(--pink-dark);
 }
 
-/* Optional exact-number field under the Temperature tiles — a cleaner
-   with a thermometer reading can log the actual number alongside (or
-   instead of) the quick "feels warm/cold" tap. */
-.checkin-number-field {
-  display: block;
-  margin-top: 0.75rem;
+.checkin-temp-badge {
+  margin-left: 0.5rem;
+  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
   font-size: 0.85rem;
-  font-weight: 600;
-  color: #555;
+  font-weight: 700;
+  color: var(--pink-dark);
 }
 
-.checkin-number-field input {
+.checkin-temp-hint {
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  color: #888;
+}
+
+.checkin-temp-clear {
   display: block;
-  width: 100%;
-  margin-top: 0.35rem;
-  padding: 0.6rem 0.75rem;
-  font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 8px;
+  margin: 0.6rem auto 0;
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.8rem;
+  text-decoration: underline;
 }
 
 .mobile-desktop-link {

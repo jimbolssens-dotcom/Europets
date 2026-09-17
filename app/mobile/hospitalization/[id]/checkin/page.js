@@ -21,9 +21,27 @@ import { useParams, useRouter } from 'next/navigation';
 import { CHECKIN_CATEGORIES } from '@/lib/hospitalizationCheckin';
 import { MOBILE_STAFF_STORAGE_KEY } from '@/app/_components/useMobileStaff';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
+import TempDial from '@/app/_components/TempDial';
 import { uploadAttachment } from '@/lib/attachments';
 
-const emptySelection = Object.fromEntries(CHECKIN_CATEGORIES.map((c) => [c.key, '']));
+// The dial gives an exact reading, which buildEmpathicCheckinText already
+// prefers over the qualitative feel whenever both are present — but
+// temperature_feel is still derived and sent alongside it so nothing that
+// reads that field (hasCheckinData, the staff worksheet's icon chips, older
+// entries) needs to change just because this page stopped offering it as a
+// direct tap.
+function feelFromTemp(tempC) {
+  if (tempC === '' || tempC == null) return '';
+  const n = Number(tempC);
+  if (n > 39) return 'warm';
+  if (n < 37.5) return 'cold';
+  return 'normal';
+}
+
+const TEMPERATURE_CATEGORY_KEY = 'temperature_feel';
+const emptySelection = Object.fromEntries(
+  CHECKIN_CATEGORIES.filter((c) => c.key !== TEMPERATURE_CATEGORY_KEY).map((c) => [c.key, ''])
+);
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -36,6 +54,7 @@ export default function MobileHospitalizationCheckinPage() {
   const [authorId, setAuthorId] = useState('');
   const [selection, setSelection] = useState(emptySelection);
   const [temperatureC, setTemperatureC] = useState('');
+  const [dialResetKey, setDialResetKey] = useState(0);
   const [stagedPhotos, setStagedPhotos] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -82,6 +101,7 @@ export default function MobileHospitalizationCheckinPage() {
         author_id: authorId || null,
         note_date: todayISODate(),
         temperature_c: temperatureC !== '' ? temperatureC : undefined,
+        temperature_feel: feelFromTemp(temperatureC),
         ...selection,
       }),
     });
@@ -120,6 +140,7 @@ export default function MobileHospitalizationCheckinPage() {
     setSaved(true);
     setSelection(emptySelection);
     setTemperatureC('');
+    setDialResetKey((k) => k + 1);
     setStagedPhotos(failedPhotos);
   }
 
@@ -141,7 +162,36 @@ export default function MobileHospitalizationCheckinPage() {
           {saved && <p className="mobile-saved">✅ Check-in logged.</p>}
           {uploadError && <p className="error">{uploadError}</p>}
 
-          {CHECKIN_CATEGORIES.map((category) => (
+          <div className="checkin-section">
+            <h2 className="checkin-section-label">
+              Temperature
+              {temperatureC !== '' && <span className="checkin-temp-badge">{Number(temperatureC).toFixed(1)}°C</span>}
+            </h2>
+            <p className="checkin-temp-hint">Press and hold, then drag up (warmer) or down (cooler) — optional.</p>
+            <TempDial
+              key={dialResetKey}
+              value={temperatureC !== '' ? Number(temperatureC) : null}
+              onChange={(v) => {
+                setSaved(false);
+                setTemperatureC(v.toFixed(1));
+              }}
+            />
+            {temperatureC !== '' && (
+              <button
+                type="button"
+                className="checkin-temp-clear"
+                onClick={() => {
+                  setSaved(false);
+                  setTemperatureC('');
+                  setDialResetKey((k) => k + 1);
+                }}
+              >
+                ✕ Clear reading
+              </button>
+            )}
+          </div>
+
+          {CHECKIN_CATEGORIES.filter((c) => c.key !== TEMPERATURE_CATEGORY_KEY).map((category) => (
             <div key={category.key} className="checkin-section">
               <h2 className="checkin-section-label">{category.label}</h2>
               <div className="checkin-tile-grid">
@@ -160,22 +210,6 @@ export default function MobileHospitalizationCheckinPage() {
                   );
                 })}
               </div>
-              {category.key === 'temperature_feel' && (
-                <label className="checkin-number-field">
-                  Actual reading (optional)
-                  <input
-                    type="number"
-                    step="0.1"
-                    inputMode="decimal"
-                    placeholder="°C"
-                    value={temperatureC}
-                    onChange={(e) => {
-                      setSaved(false);
-                      setTemperatureC(e.target.value);
-                    }}
-                  />
-                </label>
-              )}
             </div>
           ))}
 

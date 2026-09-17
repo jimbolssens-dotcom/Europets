@@ -22,20 +22,13 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-
-const ZONE_MIN = 34;
-const ZONE_MAX = 42;
-const ZONE_BOUNDARIES = [36, 37.5, 39, 39.5, 40];
-const ZONE_BAND_COLORS = ['#1e3a8a', '#38bdf8', '#22c55e', '#eab308', '#ef4444', '#8b5cf6'];
-
-function zoneColor(temp) {
-  if (temp > 40) return '#8b5cf6';
-  if (temp >= 39.5) return '#ef4444';
-  if (temp >= 39) return '#eab308';
-  if (temp >= 37.5) return '#22c55e';
-  if (temp >= 36) return '#38bdf8';
-  return '#1e3a8a';
-}
+import {
+  TEMPERATURE_ZONE_MIN as ZONE_MIN,
+  TEMPERATURE_ZONE_MAX as ZONE_MAX,
+  TEMPERATURE_ZONE_BOUNDARIES as ZONE_BOUNDARIES,
+  TEMPERATURE_ZONE_BAND_COLORS as ZONE_BAND_COLORS,
+  temperatureZoneColor as zoneColor,
+} from '@/lib/temperatureZones';
 
 export default function TemperatureHistoryChart({ data, mini = false, unit = '°C' }) {
   const points = useMemo(
