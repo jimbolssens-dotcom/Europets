@@ -842,12 +842,15 @@ export default function HospitalizationDetailPage() {
   // Just this stay's own weigh-ins (including any linked day procedure's,
   // already merged into `notes` above) — not the patient's lifetime
   // history, which lives on the patient page instead.
+  // Dated by created_at, not note_date — note_date is a bare date with no
+  // time-of-day, so a morning and an afternoon reading on the same day
+  // would otherwise land on the same x-position and look like one.
   const stayWeightHistory = notes
     .filter((n) => n.weight_kg != null)
-    .map((n) => ({ date: n.note_date, weight_kg: n.weight_kg }));
+    .map((n) => ({ date: n.created_at, weight_kg: n.weight_kg }));
   const stayTemperatureHistory = notes
     .filter((n) => n.temperature_c != null)
-    .map((n) => ({ date: n.note_date, temperature_c: n.temperature_c }));
+    .map((n) => ({ date: n.created_at, temperature_c: n.temperature_c }));
 
   return (
     <div>
