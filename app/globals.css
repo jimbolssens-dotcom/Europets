@@ -6188,6 +6188,575 @@ form.card.admit-patient-form {
   align-items: flex-end;
 }
 
+/* ============ CLIENT APP (app/client-app) — "Hexfield" theme ============
+   Matches the epc.vet website's "Hexfield" design concept: a single dark
+   world built around the hexagon (the honeycomb, the paw pad, the
+   chamfered brand cross), magenta gradients, Fraunces/Karla/Azeret Mono
+   type. Everything below is scoped under .client-app so it never touches
+   the light-themed staff app sharing the mobile-* class names.
+   See: https://claude.ai/artifact/JSM55ZjtL3ZUsBRHi9gswR (design reference). */
+
+.client-app {
+  /* Dark "Hexfield" tokens — the default. See
+     .client-app[data-theme="light"] below for the original plain-light
+     alternative (clinic_settings.client_app_theme, migration 118, picked
+     on the Settings page — not something each client chooses). */
+  --void: #07060a;
+  --void-2: #0b0910;
+  --carbon: #121017;
+  --carbon-hi: #1a1620;
+  --magenta: #e6186d;
+  --hot: #ff3d8c;
+  --blush: #ffc5dd;
+  --deep: #78083b;
+  --gold: #e0932f;
+  --chalk: #f6eef2;
+  --ash: #a79ba3;
+  --ash-dim: #6f6570;
+  --hair: rgba(255, 168, 205, 0.14);
+  --hair-hot: rgba(255, 61, 140, 0.42);
+  --display: var(--font-display), Georgia, 'Times New Roman', serif;
+  --body: var(--font-body), system-ui, -apple-system, sans-serif;
+  --mono: var(--font-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+  --hex: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+
+  min-height: 100vh;
+  background-color: var(--void);
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc0MicgaGVpZ2h0PSc3Mic+PGcgZmlsbD0nbm9uZScgc3Ryb2tlPSdyZ2JhKDI1NSwxMjAsMTc4LDAuMTQpJyBzdHJva2Utd2lkdGg9JzEnPjxwYXRoIGQ9J00yMSAwIEw0MiAxMiBMNDIgMzYgTDIxIDQ4IEwwIDM2IEwwIDEyIFonLz48cGF0aCBkPSdNMCAzNiBMMjEgNDggTDIxIDcyJy8+PHBhdGggZD0nTTQyIDM2IEw0MiA2MCcvPjwvZz48L3N2Zz4K");
+  background-size: 42px 72px;
+  color: var(--chalk);
+  font-family: var(--body);
+  padding: 1.25rem 1rem 5.5rem; /* extra bottom padding clears the fixed nav bar */
+}
+
+/* The original plain-light theme — same layout/typography, brand pink
+   instead of magenta-on-black, no hex-shaped chrome (no icon plates, no
+   chamfered card corners, no hero terrain/pulse divider — those are
+   swapped out or simply not rendered in page.js/HexIcon.jsx when this
+   theme is active, see useClientAppTheme). Reuses the app's existing
+   --pink/--pink-dark/--ink/--bg tokens so it matches the rest of the app
+   exactly rather than inventing a second brand palette. */
+.client-app[data-theme='light'] {
+  --void: var(--bg);
+  --void-2: #ffffff;
+  --carbon: #ffffff;
+  --carbon-hi: #ffffff;
+  --magenta: var(--pink);
+  --hot: var(--pink);
+  --blush: var(--pink-dark);
+  --deep: var(--pink-dark);
+  --gold: #b8860b;
+  --chalk: var(--ink);
+  --ash: #666666;
+  --ash-dim: #999999;
+  --hair: #eeeeee;
+  --hair-hot: var(--pink-tint);
+
+  background-image: none;
+}
+
+.client-app h1 {
+  font-family: var(--display);
+  font-weight: 600;
+  color: var(--chalk);
+  letter-spacing: -0.01em;
+}
+
+.client-app .mobile-subtitle {
+  color: var(--ash);
+}
+
+/* "Eyebrow" section labels (mono, uppercase, hex bullet) — same device the
+   website uses above every section heading. */
+.client-app .mobile-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--hot);
+}
+
+.client-app[data-theme='dark'] .mobile-section-header::before {
+  content: '';
+  width: 8px;
+  height: 9px;
+  flex: none;
+  background: var(--hot);
+  clip-path: var(--hex);
+  box-shadow: 0 0 10px rgba(255, 61, 140, 0.85);
+}
+
+.client-app .mobile-greeting {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 600;
+  color: transparent;
+  background: linear-gradient(96deg, var(--blush) 0%, var(--hot) 55%, var(--magenta) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.client-app .mobile-link-btn {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--hot);
+  border-bottom: 1px solid var(--hair-hot);
+  padding-bottom: 0.15rem;
+}
+
+.client-app .mobile-link-btn:hover {
+  color: var(--blush);
+}
+
+.client-app .mobile-hint {
+  background: linear-gradient(165deg, var(--carbon-hi), var(--void-2));
+  border: 1px solid var(--hair);
+  color: var(--ash);
+}
+
+/* Chamfered card, replacing the light theme's rounded-corner white card —
+   same clipped-corner device as the website's .panel/.plaque. The light
+   theme deliberately does NOT override this: it falls through to the
+   plain .mobile-list-item rule (white, rounded) defined earlier in this
+   file for the staff mobile app. */
+.client-app[data-theme='dark'] .mobile-list-item {
+  background: linear-gradient(165deg, var(--carbon-hi), var(--void-2));
+  border: 1px solid var(--hair);
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+  color: var(--chalk);
+}
+
+.client-app .mobile-list-title {
+  color: var(--chalk);
+}
+
+.client-app .mobile-list-meta {
+  color: var(--ash);
+}
+
+/* ---- login screen ---- */
+
+.client-app-login {
+  text-align: center;
+  padding-top: 1.5rem;
+}
+
+/* The site's own "Hexfield" hero (see HexfieldCanvas.jsx) — bled to the
+   screen edges (negative margin undoes .client-app's own padding), the
+   canvas absolutely filling it behind the logo/eyebrow/form, faded into
+   the page's flat void background at the bottom so it doesn't cut off
+   abruptly. */
+.client-app-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: min(60vh, 27rem);
+  display: flex;
+  align-items: flex-end;
+  margin: -1.25rem -1rem 1.5rem;
+}
+
+.client-app-hexfield {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.client-app-hero::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 40%;
+  background: linear-gradient(to bottom, transparent, var(--void));
+  pointer-events: none;
+}
+
+/* A dark gradient scrim behind the copy/form, rather than trying to shape
+   one around just the bright/dark parts of the terrain underneath (which
+   varies with the render and left text unreadable in places).
+   Bottom-anchored and full-width so the top of the terrain (and its light
+   glow) still shows above the logo. No backdrop-filter blur here — it
+   drew a hard, visible seam where the blurred rectangle met the sharp
+   terrain above it. */
+.client-app-hero-content {
+  position: relative;
+  width: 100%;
+  padding: 1.5rem 1.5rem 2rem;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(5, 4, 9, 0.2), rgba(5, 4, 9, 0.82) 35%, rgba(5, 4, 9, 0.9));
+}
+
+/* The "pulse" divider (see EcgLine.jsx) — a heartbeat trace sweeping over
+   a faint base line, the site's own transition out of its hero. */
+.client-app-ecg {
+  position: relative;
+  height: clamp(46px, 12vw, 64px);
+  overflow: hidden;
+  margin: 0 -1rem 1.25rem;
+  background: linear-gradient(180deg, var(--void) 0%, var(--void-2) 100%);
+}
+
+.client-app-ecg svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.client-app-ecg-base {
+  fill: none;
+  stroke: var(--hair-hot);
+  stroke-width: 1.4;
+}
+
+.client-app-ecg-live {
+  fill: none;
+  stroke: var(--blush);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 78 1130;
+  filter: drop-shadow(0 0 7px rgba(255, 90, 165, 0.95));
+  animation: client-app-ecg-sweep 5.2s linear infinite;
+}
+
+@keyframes client-app-ecg-sweep {
+  from {
+    stroke-dashoffset: 1208;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-app-ecg-live {
+    animation: none;
+    stroke-dasharray: none;
+  }
+}
+
+.client-app-login-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--hot);
+  margin-top: 1.1rem;
+}
+
+.client-app-login-eyebrow::before {
+  content: '';
+  width: 8px;
+  height: 9px;
+  flex: none;
+  background: var(--hot);
+  clip-path: var(--hex);
+  box-shadow: 0 0 10px rgba(255, 61, 140, 0.85);
+}
+
+.client-app-login-intro {
+  margin-top: 0.6rem;
+}
+
+.client-app-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-width: 320px;
+  margin: 1.25rem auto 0;
+}
+
+.client-app-login-input {
+  padding: 0.85rem 1rem;
+  font-size: 1.1rem;
+  font-family: var(--body);
+  background: var(--carbon);
+  border: 1px solid var(--hair);
+  color: var(--chalk);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.client-app-login-input::placeholder {
+  color: var(--ash-dim);
+}
+
+.client-app-login-input:focus {
+  outline: 2px solid var(--hot);
+  outline-offset: 2px;
+}
+
+.client-app-login-error {
+  color: var(--hot);
+  margin-top: 0.9rem;
+}
+
+/* gradient pill button — the site's .btn-primary, applied to every plain
+   <button type="submit"> in the client app (there's exactly one style of
+   primary action here, so no separate class needed). The light theme
+   doesn't override this: it falls through to the app's plain global
+   <button> style (solid pink pill, see the top of this file). */
+.client-app[data-theme='dark'] button[type='submit'] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.85rem 1.5rem;
+  border-radius: 999px;
+  border: none;
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fff;
+  background: linear-gradient(140deg, #ff4f97 0%, var(--magenta) 52%, #c20f57 100%);
+  box-shadow: 0 14px 34px -14px rgba(255, 61, 140, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.client-app[data-theme='dark'] button[type='submit']:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.client-app[data-theme='dark'] button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---- admission alert + hex icon plates ----
+   Shared "hex plate" device: a small gradient-bordered hexagon with a dark
+   face behind an emoji, used for the admission banner and the dashboard
+   tiles/nav icons below. */
+
+.client-app-hex-plate {
+  display: grid;
+  flex: none;
+  clip-path: var(--hex);
+  padding: 2px;
+  background: linear-gradient(155deg, var(--hot), var(--magenta) 55%, var(--deep));
+  box-shadow: 0 10px 24px -14px rgba(255, 61, 140, 0.75);
+}
+
+.client-app-hex-face {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  clip-path: var(--hex);
+  background: var(--void);
+}
+
+.client-app-admission-alert {
+  margin: 1rem 0;
+}
+
+.client-app-admission-alert-link {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1.1rem;
+  color: var(--chalk);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.client-app[data-theme='dark'] .client-app-admission-alert-link {
+  background: linear-gradient(165deg, var(--carbon-hi), var(--void-2));
+  border: 1px solid var(--hair-hot);
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+}
+
+.client-app[data-theme='light'] .client-app-admission-alert-link {
+  background: #fff4f4;
+  border: 1px solid #f3c9c9;
+  border-radius: 10px;
+}
+
+.client-app-admission-alert-link .client-app-hex-plate {
+  width: 2.6rem;
+  height: 3rem;
+}
+
+.client-app-admission-alert-link .client-app-hex-face {
+  font-size: 1.15rem;
+}
+
+.client-app-pet-card {
+  cursor: default;
+}
+
+.client-app-pet-admitted-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+  font-weight: 600;
+  color: var(--blush);
+  text-decoration: none;
+}
+
+.client-app-pet-admitted-link .client-app-hex-plate {
+  width: 1.8rem;
+  height: 2.1rem;
+}
+
+.client-app-pet-admitted-link .client-app-hex-face {
+  font-size: 0.85rem;
+}
+
+.client-app-status-pill {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  vertical-align: middle;
+}
+
+.client-app-status-unpaid {
+  background: rgba(255, 61, 140, 0.16);
+  color: var(--hot);
+}
+
+.client-app-status-partially_paid {
+  background: rgba(224, 147, 47, 0.18);
+  color: var(--gold);
+}
+
+.client-app-status-paid {
+  background: rgba(90, 200, 140, 0.16);
+  color: #6fd9a2;
+}
+
+/* ---- dashboard tiles ----
+   Overrides the light theme's white rounded-square tile with a hex icon
+   plate over a plain label, matching the website's service tiles. The
+   light theme doesn't override this: it falls through to the plain
+   .mobile-square-tile rule (white card, pink top border, aspect-ratio 1)
+   already defined for the staff mobile app. */
+.client-app[data-theme='dark'] .mobile-square-tile {
+  background: none;
+  border: none;
+  border-top: none;
+  box-shadow: none;
+  aspect-ratio: auto;
+  padding: 0.5rem 0.25rem;
+  gap: 0.75rem;
+}
+
+.client-app[data-theme='dark'] .mobile-square-tile .client-app-hex-plate {
+  width: 4rem;
+  height: 4.6rem;
+}
+
+.client-app[data-theme='dark'] .mobile-square-tile .client-app-hex-face {
+  font-size: 1.7rem;
+}
+
+.client-app[data-theme='dark'] .mobile-square-tile > span:last-child {
+  font-family: var(--body);
+  font-weight: 700;
+  color: var(--chalk);
+}
+
+/* Light theme's plain-emoji icon (see HexIcon.jsx) sized per context to
+   match what each spot looked like before the hex plate existed. */
+.client-app-plain-icon {
+  display: inline-block;
+  line-height: 1;
+  flex: none;
+}
+
+.client-app[data-theme='light'] .mobile-square-tile .client-app-plain-icon {
+  font-size: 3rem;
+}
+
+.client-app-admission-alert-link .client-app-plain-icon {
+  font-size: 1.4rem;
+}
+
+.client-app-pet-admitted-link .client-app-plain-icon {
+  font-size: 1rem;
+}
+
+.client-app-nav-item .client-app-plain-icon {
+  font-size: 1.3rem;
+}
+
+/* Fixed bottom tab bar (see ClientAppNav.jsx), hidden until logged in. */
+.client-app-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  backdrop-filter: blur(14px) saturate(140%);
+  border-top: 1px solid var(--hair);
+}
+
+.client-app[data-theme='dark'] .client-app-nav {
+  background: rgba(7, 6, 10, 0.92);
+}
+
+.client-app[data-theme='light'] .client-app-nav {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.client-app-nav-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.6rem 0.1rem 0.7rem;
+  color: var(--ash);
+  text-decoration: none;
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.client-app-nav-item .client-app-hex-plate {
+  width: 1.7rem;
+  height: 2rem;
+  background: linear-gradient(155deg, var(--ash-dim), var(--carbon-hi));
+  box-shadow: none;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.client-app-nav-item .client-app-hex-face {
+  font-size: 0.85rem;
+}
+
+.client-app-nav-item-active {
+  color: var(--blush);
+}
+
+.client-app-nav-item-active .client-app-hex-plate {
+  background: linear-gradient(155deg, var(--hot), var(--magenta) 60%, var(--deep));
+  box-shadow: 0 8px 18px -10px rgba(255, 61, 140, 0.75);
+}
+
 .mobile-app .cage-cluster {
   grid-template-columns: repeat(var(--cols), 58px);
   gap: 0.35rem;

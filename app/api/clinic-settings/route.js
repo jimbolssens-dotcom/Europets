@@ -7,7 +7,8 @@
 //                                 sc_injection_fee, im_injection_fee,
 //                                 surgical_postop_baseline, dental_postop_baseline,
 //                                 booking_morning_start, booking_morning_end,
-//                                 booking_afternoon_start, booking_afternoon_end)
+//                                 booking_afternoon_start, booking_afternoon_end,
+//                                 client_app_theme)
 //
 // Singleton row (id is always `true`) — there's only ever one clinic. Both
 // handlers create the row on the fly if it's missing (e.g. the migration's
@@ -57,6 +58,7 @@ export async function PATCH(request) {
     booking_morning_end,
     booking_afternoon_start,
     booking_afternoon_end,
+    client_app_theme,
   } = body;
 
   const update = { id: true, updated_at: new Date().toISOString() };
@@ -75,6 +77,12 @@ export async function PATCH(request) {
   if (booking_morning_end !== undefined) update.booking_morning_end = booking_morning_end;
   if (booking_afternoon_start !== undefined) update.booking_afternoon_start = booking_afternoon_start;
   if (booking_afternoon_end !== undefined) update.booking_afternoon_end = booking_afternoon_end;
+  if (client_app_theme !== undefined) {
+    if (!['dark', 'light'].includes(client_app_theme)) {
+      return NextResponse.json({ error: "client_app_theme must be 'dark' or 'light'" }, { status: 400 });
+    }
+    update.client_app_theme = client_app_theme;
+  }
 
   const { data, error } = await supabaseAdmin
     .from('clinic_settings')

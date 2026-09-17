@@ -1,6 +1,8 @@
 // app/api/appointments/route.js
 // GET  /api/appointments?date=YYYY-MM-DD&room_id=X&vet_id=X  -> list appointments for a day
 // GET  /api/appointments?month=YYYY-MM&room_id=X&vet_id=X    -> list appointments for a month
+// GET  /api/appointments?client_id=X                         -> one client's appointments, any date
+//                                                                (the client app's own Appointments tab)
 // POST /api/appointments                                     -> book a new appointment
 //
 // Booking rules:
@@ -39,6 +41,7 @@ export async function GET(request) {
   const month = searchParams.get('month');
   const roomId = searchParams.get('room_id');
   const vetId = searchParams.get('vet_id');
+  const clientId = searchParams.get('client_id');
 
   let query = supabase
     .from('appointments')
@@ -47,6 +50,7 @@ export async function GET(request) {
     )
     .order('start_time', { ascending: true });
 
+  if (clientId) query = query.eq('client_id', clientId);
   if (date) {
     const dayStart = new Date(`${date}T00:00:00.000Z`);
     const dayEnd = new Date(`${date}T00:00:00.000Z`);

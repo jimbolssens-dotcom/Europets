@@ -1,0 +1,18 @@
+{
+  "name": "Europets Clinic — My Pets",
+  "short_name": "Europets",
+  "description": "View your pets, invoices, and appointments with Europets Clinic",
+  "start_url": "/client-app",
+  "scope": "/client-app",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07060a",
+  "theme_color": "#07060a",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    }
+  ]
+}

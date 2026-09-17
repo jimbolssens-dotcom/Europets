@@ -69,6 +69,13 @@ const nextConfig = {
         source: '/mobile/:path*',
         headers: NO_STORE_HEADERS,
       },
+      {
+        // Same installed-icon caching risk as /mobile above — the client
+        // app is meant to be added to a client's home screen too (see
+        // public/client-app-manifest.json).
+        source: '/client-app/:path*',
+        headers: NO_STORE_HEADERS,
+      },
     ];
   },
 };

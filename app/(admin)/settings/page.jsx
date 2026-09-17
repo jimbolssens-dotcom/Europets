@@ -23,6 +23,7 @@ const emptyForm = {
   booking_morning_end: '13:00',
   booking_afternoon_start: '16:30',
   booking_afternoon_end: '19:00',
+  client_app_theme: 'dark',
 };
 
 export default function SettingsPage() {
@@ -54,6 +55,7 @@ export default function SettingsPage() {
           booking_morning_end: (data.booking_morning_end || '13:00').slice(0, 5),
           booking_afternoon_start: (data.booking_afternoon_start || '16:30').slice(0, 5),
           booking_afternoon_end: (data.booking_afternoon_end || '19:00').slice(0, 5),
+          client_app_theme: data.client_app_theme || 'dark',
         });
         setLoading(false);
       });
@@ -297,6 +299,25 @@ export default function SettingsPage() {
             value={form.booking_afternoon_end}
             onChange={(e) => setForm({ ...form, booking_afternoon_end: e.target.value })}
           />
+        </label>
+
+        <h3>
+          Client App Appearance{' '}
+          <InfoHint>
+            Which look the client-facing app (app/client-app — pets, invoices, appointments, reports)
+            renders for every client. This is a clinic-wide choice, not something each client picks
+            for themselves.
+          </InfoHint>
+        </h3>
+        <label>
+          Theme
+          <select
+            value={form.client_app_theme}
+            onChange={(e) => setForm({ ...form, client_app_theme: e.target.value })}
+          >
+            <option value="dark">Dark (Hexfield)</option>
+            <option value="light">Light (original)</option>
+          </select>
         </label>
 
         <button type="submit" disabled={saving}>
