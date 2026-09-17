@@ -441,12 +441,34 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
       appointment_id: appointmentId,
     })
     .eq('id', id)
-    .select('*, clients(id, full_name)')
+    .select('*, clients(id, full_name, phone)')
     .single();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data);
+
+  // The confirmed slot (and the pet's actual name, whether it's the one
+  // they already had or the one just created above) — handed back so
+  // staff can fire off a one-click WhatsApp confirmation right away,
+  // without a second round trip. Only present when this request actually
+  // booked something.
+  let patient_name = null;
+  if (bookingPatientId) {
+    const { data: bookingPatient } = await supabase.from('patients').select('name').eq('id', bookingPatientId).single();
+    patient_name = bookingPatient?.name || null;
+  }
+
+  return NextResponse.json({
+    ...data,
+    patient_name,
+    appointment: appointmentId
+      ? {
+          id: appointmentId,
+          start_time: appointmentStart.toISOString(),
+          duration_minutes: Math.round((appointmentEnd.getTime() - appointmentStart.getTime()) / 60000),
+        }
+      : null,
+  });
 }
 
 export async function PATCH(request, { params }) {
