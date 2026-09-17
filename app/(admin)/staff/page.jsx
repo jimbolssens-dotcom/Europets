@@ -4,6 +4,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { dubaiLocalDateString } from '@/lib/dubaiTime';
 
 const emptyForm = { full_name: '', role: 'vet', email: '', color: '' };
 
@@ -16,6 +17,11 @@ export default function StaffPage() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [rowError, setRowError] = useState(null);
+  const [logOpenId, setLogOpenId] = useState(null);
+  const [logDate, setLogDate] = useState(dubaiLocalDateString());
+  const [logLoading, setLogLoading] = useState(false);
+  const [logError, setLogError] = useState(null);
+  const [logResult, setLogResult] = useState(null);
 
   const loadStaff = () =>
     fetch('/api/staff')
@@ -115,6 +121,34 @@ export default function StaffPage() {
     }
   }
 
+  // On-demand only — nothing is precomputed or shown until a manager asks
+  // for it. Opening the panel just picks a date; the actual cross-table
+  // query (see lib/dailyLog.js) only runs once Generate is clicked.
+  function toggleDailyLog(member) {
+    if (logOpenId === member.id) {
+      setLogOpenId(null);
+      return;
+    }
+    setLogOpenId(member.id);
+    setLogDate(dubaiLocalDateString());
+    setLogError(null);
+    setLogResult(null);
+  }
+
+  async function generateDailyLog(memberId) {
+    setLogLoading(true);
+    setLogError(null);
+    setLogResult(null);
+    const res = await fetch(`/api/staff/${memberId}/daily-log?date=${logDate}`);
+    const data = await res.json().catch(() => ({}));
+    setLogLoading(false);
+    if (!res.ok) {
+      setLogError(data.error || 'Failed to generate daily log');
+      return;
+    }
+    setLogResult(data);
+  }
+
   if (loading) return <p>Loading staff...</p>;
 
   return (
@@ -185,32 +219,81 @@ export default function StaffPage() {
                 </td>
               </tr>
             ) : (
-              <tr key={s.id} className={s.active ? '' : 'appointments-row-inactive'}>
-                <td>{s.full_name}</td>
-                <td>{s.role}</td>
-                <td>{s.email}</td>
-                <td>
-                  {s.color && (
-                    <span
-                      className="staff-color-swatch"
-                      style={{ background: s.color }}
-                      title={s.color}
-                    />
-                  )}
-                </td>
-                <td>{s.active ? 'active' : 'inactive'}</td>
-                <td>
-                  <button type="button" onClick={() => startEdit(s)}>
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => toggleActive(s)}>
-                    {s.active ? 'Deactivate' : 'Activate'}
-                  </button>
-                  <button type="button" onClick={() => deleteStaff(s)}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
+              <>
+                <tr key={s.id} className={s.active ? '' : 'appointments-row-inactive'}>
+                  <td>{s.full_name}</td>
+                  <td>{s.role}</td>
+                  <td>{s.email}</td>
+                  <td>
+                    {s.color && (
+                      <span
+                        className="staff-color-swatch"
+                        style={{ background: s.color }}
+                        title={s.color}
+                      />
+                    )}
+                  </td>
+                  <td>{s.active ? 'active' : 'inactive'}</td>
+                  <td>
+                    <button type="button" onClick={() => startEdit(s)}>
+                      Edit
+                    </button>
+                    <button type="button" onClick={() => toggleActive(s)}>
+                      {s.active ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button type="button" onClick={() => deleteStaff(s)}>
+                      Delete
+                    </button>
+                    <button type="button" onClick={() => toggleDailyLog(s)}>
+                      {logOpenId === s.id ? 'Close Log' : '📋 Daily Log'}
+                    </button>
+                  </td>
+                </tr>
+                {logOpenId === s.id && (
+                  <tr>
+                    <td colSpan={6}>
+                      <div className="staff-daily-log">
+                        <div className="staff-daily-log-controls">
+                          <input
+                            type="date"
+                            value={logDate}
+                            onChange={(e) => {
+                              setLogDate(e.target.value);
+                              setLogResult(null);
+                            }}
+                          />
+                          <button type="button" onClick={() => generateDailyLog(s.id)} disabled={logLoading}>
+                            {logLoading ? 'Generating...' : 'Generate'}
+                          </button>
+                        </div>
+                        {logError && <p className="error">{logError}</p>}
+                        {logResult && (
+                          <>
+                            <p className="visit-meta">
+                              <strong>{logResult.count}</strong> item{logResult.count === 1 ? '' : 's'} logged by{' '}
+                              {s.full_name} on {logResult.date}
+                            </p>
+                            {logResult.count === 0 ? (
+                              <p className="visit-meta">Nothing logged under their name that day.</p>
+                            ) : (
+                              <ul className="staff-daily-log-list">
+                                {logResult.entries.map((entry, i) => (
+                                  <li key={i}>
+                                    <span className="staff-daily-log-time">
+                                      {new Date(entry.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                    </span>
+                                    {entry.description}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
             )
           )}
         </tbody>
