@@ -865,6 +865,7 @@ export default function HospitalizationDetailPage() {
           </h1>
           <WeightHistoryChart data={stayWeightHistory} mini />
           <TemperatureHistoryChart data={stayTemperatureHistory} mini />
+          <MiniCageStrip currentHospitalizationId={id} />
         </div>
         {admission.status === 'admitted' && (
           <div className="hospitalization-header-actions">
@@ -898,7 +899,6 @@ export default function HospitalizationDetailPage() {
           </div>
         )}
       </div>
-      <MiniCageStrip currentHospitalizationId={id} />
       {admission.status === 'admitted' && chatOpen && (
         <div className="case-files hospitalization-chat">
           {admission.update_requested_at && (

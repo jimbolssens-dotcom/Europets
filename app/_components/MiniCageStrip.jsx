@@ -1,11 +1,12 @@
 // app/_components/MiniCageStrip.jsx
-// A compact, read-only echo of the real Cage Layout (app/(admin)/hospitalization/
-// page.jsx) — just the Hospitalization Cages block and its flanking LT
-// cages, in the exact same left/middle/right arrangement (same byGroup
-// helper, same LT-reversed split), so staff looking at one patient's file
-// can jump straight to the next one's without going back to the full cage
-// board. No drag-to-move, no assign dropdown, no oxygen-room/alarm icons —
-// just "who's where," click to open.
+// An icon-sized, text-free echo of the real Cage Layout (app/(admin)/
+// hospitalization/page.jsx) — just the Hospitalization Cages block and its
+// flanking LT cages, one tiny dot per cage in the exact same left/middle/
+// right arrangement (same byGroup helper, same LT-reversed split). Sits
+// inline next to the patient's name/vitals sparklines in the page header —
+// small enough to add nothing to that row's height — so staff can jump
+// straight to the next occupied cage's patient without leaving to the full
+// cage board. Hover a dot for who's in it; click an occupied one to open it.
 
 'use client';
 
@@ -13,23 +14,16 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { byGroup } from './CageFloorPlan';
 
-function MiniTile({ cage, hosp, isCurrent }) {
-  if (!hosp) {
-    return (
-      <div className="mini-cage-tile mini-cage-empty">
-        <span className="mini-cage-name">{cage.name}</span>
-      </div>
-    );
-  }
-  return (
-    <a href={`/hospitalization/${hosp.id}`} className={`mini-cage-tile mini-cage-occupied${isCurrent ? ' mini-cage-current' : ''}`}>
-      <span className="mini-cage-name">{cage.name}</span>
-      <span className="mini-cage-patient">
-        {hosp.patients?.name}
-        {hosp.patients?.patient_number ? ` (#${hosp.patients.patient_number})` : ''}
-      </span>
-    </a>
-  );
+function dotTitle(cage, hosp) {
+  if (!hosp) return `${cage.name}: empty`;
+  const patientLabel = hosp.patients?.patient_number ? `${hosp.patients?.name} (#${hosp.patients.patient_number})` : hosp.patients?.name;
+  return `${cage.name}: ${patientLabel}`;
+}
+
+function Dot({ cage, hosp, isCurrent }) {
+  const className = `mini-cage-icon-dot${hosp ? ' occ' : ''}${isCurrent ? ' current' : ''}`;
+  if (!hosp) return <div className={className} title={dotTitle(cage, hosp)} />;
+  return <a href={`/hospitalization/${hosp.id}`} className={className} title={dotTitle(cage, hosp)} />;
 }
 
 export default function MiniCageStrip({ currentHospitalizationId }) {
@@ -69,20 +63,20 @@ export default function MiniCageStrip({ currentHospitalizationId }) {
   const standardCages = byGroup(cages, 'standard');
 
   return (
-    <div className="mini-cage-strip">
-      <div className="mini-cage-col">
+    <div className="mini-cage-icon" title="Cage layout">
+      <div className="mini-cage-icon-col">
         {ltLeft.map((cage) => (
-          <MiniTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} isCurrent={occupancy[cage.id]?.id === currentHospitalizationId} />
+          <Dot key={cage.id} cage={cage} hosp={occupancy[cage.id]} isCurrent={occupancy[cage.id]?.id === currentHospitalizationId} />
         ))}
       </div>
-      <div className="mini-cage-grid">
+      <div className="mini-cage-icon-grid">
         {standardCages.map((cage) => (
-          <MiniTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} isCurrent={occupancy[cage.id]?.id === currentHospitalizationId} />
+          <Dot key={cage.id} cage={cage} hosp={occupancy[cage.id]} isCurrent={occupancy[cage.id]?.id === currentHospitalizationId} />
         ))}
       </div>
-      <div className="mini-cage-col">
+      <div className="mini-cage-icon-col">
         {ltRight.map((cage) => (
-          <MiniTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} isCurrent={occupancy[cage.id]?.id === currentHospitalizationId} />
+          <Dot key={cage.id} cage={cage} hosp={occupancy[cage.id]} isCurrent={occupancy[cage.id]?.id === currentHospitalizationId} />
         ))}
       </div>
     </div>
