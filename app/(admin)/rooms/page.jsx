@@ -124,6 +124,7 @@ export default function RoomsPage() {
                   >
                     <option value="consult">Consult</option>
                     <option value="surgery">Surgery</option>
+                    <option value="staff">Staff (meetings/other)</option>
                   </select>
                 </td>
                 <td>
@@ -170,6 +171,7 @@ export default function RoomsPage() {
         >
           <option value="consult">Consult</option>
           <option value="surgery">Surgery</option>
+          <option value="staff">Staff (meetings/other)</option>
         </select>
         <button type="submit" disabled={submitting}>
           {submitting ? 'Saving...' : 'Add'}

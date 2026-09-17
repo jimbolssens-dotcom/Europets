@@ -13,9 +13,10 @@
 //        + staff roster checks as booking a new appointment (see
 //        lib/appointmentScheduling.js and app/api/appointments/route.js),
 //        excluding the appointment from its own conflict check.
-//        duration_minutes is only meaningful for a surgery appointment —
-//        consult is a fixed 15 minutes, same rule as booking one; switching
-//        type to surgery without a duration defaults to one increment.
+//        duration_minutes is only meaningful for a surgery or meeting
+//        appointment — consult is a fixed 15 minutes, same rule as booking
+//        one; switching type to surgery/meeting without a duration
+//        defaults to one increment / 30 minutes respectively.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -23,6 +24,8 @@ import { NextResponse } from 'next/server';
 import {
   CONSULT_DURATION_MINUTES,
   SURGERY_INCREMENT_MINUTES,
+  MEETING_DEFAULT_DURATION_MINUTES,
+  MEETING_MIN_DURATION_MINUTES,
   findAppointmentConflict,
   checkStaffRoster,
 } from '@/lib/appointmentScheduling';
@@ -91,28 +94,34 @@ export async function PATCH(request, { params }) {
 
   const nextRoomId = room_id || current.room_id;
   const nextVetId = vet_id !== undefined ? vet_id || null : current.vet_id;
-  const nextType = type === 'surgery' || type === 'consult' ? type : current.type;
+  const nextType = ['surgery', 'consult', 'meeting'].includes(type) ? type : current.type;
   const nextReason = reason !== undefined ? reason || null : current.reason;
 
   let nextPatientId = current.patient_id;
   let nextClientId = current.client_id;
   if (patient_id !== undefined && patient_id !== current.patient_id) {
-    const { data: patient, error: patientError } = await supabase
-      .from('patients')
-      .select('client_id')
-      .eq('id', patient_id)
-      .single();
-    if (patientError || !patient) {
-      return NextResponse.json({ error: 'patient not found' }, { status: 400 });
+    if (patient_id) {
+      const { data: patient, error: patientError } = await supabase
+        .from('patients')
+        .select('client_id')
+        .eq('id', patient_id)
+        .single();
+      if (patientError || !patient) {
+        return NextResponse.json({ error: 'patient not found' }, { status: 400 });
+      }
+      nextPatientId = patient_id;
+      nextClientId = patient.client_id;
+    } else {
+      // Explicitly cleared — a staff meeting has no patient/client.
+      nextPatientId = null;
+      nextClientId = null;
     }
-    nextPatientId = patient_id;
-    nextClientId = patient.client_id;
   }
 
   let nextDuration = current.duration_minutes;
   if (nextType === 'consult') {
     nextDuration = CONSULT_DURATION_MINUTES;
-  } else {
+  } else if (nextType === 'surgery') {
     if (duration_minutes !== undefined) {
       nextDuration = Number(duration_minutes);
     } else if (current.type !== 'surgery') {
@@ -125,6 +134,18 @@ export async function PATCH(request, { params }) {
     ) {
       return NextResponse.json(
         { error: `surgery duration_minutes must be a multiple of ${SURGERY_INCREMENT_MINUTES}` },
+        { status: 400 }
+      );
+    }
+  } else {
+    if (duration_minutes !== undefined) {
+      nextDuration = Number(duration_minutes);
+    } else if (current.type !== 'meeting') {
+      nextDuration = MEETING_DEFAULT_DURATION_MINUTES;
+    }
+    if (!Number.isInteger(nextDuration) || nextDuration < MEETING_MIN_DURATION_MINUTES) {
+      return NextResponse.json(
+        { error: `duration_minutes must be at least ${MEETING_MIN_DURATION_MINUTES} minutes` },
         { status: 400 }
       );
     }

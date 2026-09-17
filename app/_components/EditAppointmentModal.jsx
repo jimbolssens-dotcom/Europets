@@ -20,7 +20,7 @@ function toHHMMLocal(d) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export default function EditAppointmentModal({ appointment, rooms, vets, onClose, onSave }) {
+export default function EditAppointmentModal({ appointment, rooms, vets, staffList = [], onClose, onSave }) {
   const startDate = new Date(appointment.start_time);
 
   const [ownerId, setOwnerId] = useState(appointment.client_id);
@@ -34,6 +34,7 @@ export default function EditAppointmentModal({ appointment, rooms, vets, onClose
   // up here (as the already-selected option) or the field would silently
   // blank out on open — just not offered for a fresh assignment.
   const selectableVets = vets.filter((v) => v.active !== false || v.id === appointment.vet_id);
+  const selectableStaff = staffList.filter((s) => s.active !== false || s.id === appointment.vet_id);
   const [type, setType] = useState(appointment.type);
   const [duration, setDuration] = useState(String(appointment.duration_minutes));
   const [dateStr, setDateStr] = useState(toISODateLocal(startDate));
@@ -54,8 +55,8 @@ export default function EditAppointmentModal({ appointment, rooms, vets, onClose
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!patientId || !roomId) {
-      setError('Select a patient and room');
+    if ((type !== 'meeting' && !patientId) || !roomId) {
+      setError(type === 'meeting' ? 'Select a room' : 'Select a patient and room');
       return;
     }
     setSubmitting(true);
@@ -65,11 +66,11 @@ export default function EditAppointmentModal({ appointment, rooms, vets, onClose
     const shift = startTime.getHours() < 12 ? 'morning' : 'afternoon';
 
     const result = await onSave({
-      patient_id: patientId,
+      patient_id: type === 'meeting' ? null : patientId,
       room_id: roomId,
       vet_id: vetId || null,
       type,
-      duration_minutes: type === 'surgery' ? Number(duration) : undefined,
+      duration_minutes: type === 'surgery' || type === 'meeting' ? Number(duration) : undefined,
       reason,
       start_time: startTime.toISOString(),
       date: dateStr,
@@ -97,7 +98,7 @@ export default function EditAppointmentModal({ appointment, rooms, vets, onClose
         <h3>Edit Appointment</h3>
         {error && <p className="error">{error}</p>}
 
-        {changingOwner ? (
+        {type !== 'meeting' && (changingOwner ? (
           <ClientOrPatientSearch
             placeholder="Search clients or patients..."
             onPickClient={(c) => {
@@ -120,17 +121,19 @@ export default function EditAppointmentModal({ appointment, rooms, vets, onClose
               Change
             </button>
           </p>
-        )}
+        ))}
 
-        <SearchSelect
-          items={clientPatients}
-          value={patientId}
-          onChange={(id) => setPatientId(id)}
-          getLabel={(p) => p.name}
-          getSubLabel={(p) => p.species}
-          placeholder="Select patient..."
-          disabled={!ownerId}
-        />
+        {type !== 'meeting' && (
+          <SearchSelect
+            items={clientPatients}
+            value={patientId}
+            onChange={(id) => setPatientId(id)}
+            getLabel={(p) => p.name}
+            getSubLabel={(p) => p.species}
+            placeholder="Select patient..."
+            disabled={!ownerId}
+          />
+        )}
 
         <label>
           Room
@@ -145,10 +148,10 @@ export default function EditAppointmentModal({ appointment, rooms, vets, onClose
         </label>
 
         <label>
-          Vet
+          {type === 'meeting' ? 'Staff' : 'Vet'}
           <select value={vetId} onChange={(e) => setVetId(e.target.value)}>
             <option value="">Unassigned</option>
-            {selectableVets.map((v) => (
+            {(type === 'meeting' ? selectableStaff : selectableVets).map((v) => (
               <option key={v.id} value={v.id}>
                 {v.full_name}
               </option>
@@ -161,16 +164,17 @@ export default function EditAppointmentModal({ appointment, rooms, vets, onClose
           <select value={type} onChange={(e) => setType(e.target.value)}>
             <option value="consult">Consult (15 min)</option>
             <option value="surgery">Surgery (10-min increments)</option>
+            <option value="meeting">Staff Meeting / Other</option>
           </select>
         </label>
 
-        {type === 'surgery' && (
+        {(type === 'surgery' || type === 'meeting') && (
           <label>
             Duration (minutes)
             <input
               type="number"
-              min="10"
-              step="10"
+              min={type === 'meeting' ? 5 : 10}
+              step={type === 'meeting' ? 5 : 10}
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
             />
@@ -188,11 +192,11 @@ export default function EditAppointmentModal({ appointment, rooms, vets, onClose
         </label>
 
         <label>
-          Reason
+          {type === 'meeting' ? 'Note' : 'Reason'}
           <input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Reason for visit (optional)"
+            placeholder={type === 'meeting' ? 'Meeting note / details (optional)' : 'Reason for visit (optional)'}
           />
         </label>
 

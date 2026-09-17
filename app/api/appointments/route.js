@@ -23,6 +23,8 @@ import { NextResponse } from 'next/server';
 import {
   CONSULT_DURATION_MINUTES,
   SURGERY_INCREMENT_MINUTES,
+  MEETING_DEFAULT_DURATION_MINUTES,
+  MEETING_MIN_DURATION_MINUTES,
   findAppointmentConflict,
   checkStaffRoster,
 } from '@/lib/appointmentScheduling';
@@ -81,22 +83,33 @@ export async function POST(request) {
     shift,
   } = body;
 
-  if (!patient_id || !room_id || !start_time) {
-    return NextResponse.json(
-      { error: 'patient_id, room_id, and start_time are required' },
-      { status: 400 }
-    );
+  if (!room_id || !start_time) {
+    return NextResponse.json({ error: 'room_id and start_time are required' }, { status: 400 });
   }
 
-  const appointmentType = type === 'surgery' ? 'surgery' : 'consult';
+  const appointmentType = type === 'surgery' ? 'surgery' : type === 'meeting' ? 'meeting' : 'consult';
+
+  // A staff meeting has no patient/client — everything else still needs one.
+  if (appointmentType !== 'meeting' && !patient_id) {
+    return NextResponse.json({ error: 'patient_id is required' }, { status: 400 });
+  }
+
   let duration;
   if (appointmentType === 'consult') {
     duration = CONSULT_DURATION_MINUTES;
-  } else {
+  } else if (appointmentType === 'surgery') {
     duration = Number(duration_minutes) || SURGERY_INCREMENT_MINUTES;
     if (duration < SURGERY_INCREMENT_MINUTES || duration % SURGERY_INCREMENT_MINUTES !== 0) {
       return NextResponse.json(
         { error: `surgery duration_minutes must be a multiple of ${SURGERY_INCREMENT_MINUTES}` },
+        { status: 400 }
+      );
+    }
+  } else {
+    duration = Number(duration_minutes) || MEETING_DEFAULT_DURATION_MINUTES;
+    if (!Number.isInteger(duration) || duration < MEETING_MIN_DURATION_MINUTES) {
+      return NextResponse.json(
+        { error: `duration_minutes must be at least ${MEETING_MIN_DURATION_MINUTES} minutes` },
         { status: 400 }
       );
     }
@@ -108,15 +121,20 @@ export async function POST(request) {
   }
   const endTime = new Date(startTime.getTime() + duration * 60000);
 
-  // look up the owning client from the patient record
-  const { data: patient, error: patientError } = await supabase
-    .from('patients')
-    .select('client_id')
-    .eq('id', patient_id)
-    .single();
+  // look up the owning client from the patient record — skipped for a
+  // patient-less staff meeting
+  let clientId = null;
+  if (patient_id) {
+    const { data: patient, error: patientError } = await supabase
+      .from('patients')
+      .select('client_id')
+      .eq('id', patient_id)
+      .single();
 
-  if (patientError || !patient) {
-    return NextResponse.json({ error: 'patient not found' }, { status: 400 });
+    if (patientError || !patient) {
+      return NextResponse.json({ error: 'patient not found' }, { status: 400 });
+    }
+    clientId = patient.client_id;
   }
 
   // conflict check: room and vet can't overlap with an existing booked slot
@@ -166,8 +184,8 @@ export async function POST(request) {
     .from('appointments')
     .insert([
       {
-        patient_id,
-        client_id: patient.client_id,
+        patient_id: patient_id || null,
+        client_id: clientId,
         room_id,
         vet_id: vet_id || null,
         type: appointmentType,

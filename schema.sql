@@ -128,7 +128,11 @@ create trigger patients_first_number
 create table rooms (
     id uuid primary key default gen_random_uuid(),
     name text not null,              -- 'Room 1', 'Room 2', 'Surgery'
-    type text not null default 'consult'  -- 'consult' or 'surgery'
+    type text not null default 'consult'  -- 'consult', 'surgery', or 'staff'
+                                           -- (the auto-seeded "Staff Room" —
+                                           -- see migration 109 — that staff
+                                           -- meeting/other bookings always
+                                           -- land in)
 );
 
 -- ============ CAGES ============
