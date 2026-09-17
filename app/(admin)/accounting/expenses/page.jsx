@@ -370,8 +370,9 @@ export default function ExpensesPage() {
         </div>
 
         <div className="split-aside">
-          <form className="card" onSubmit={handleSubmit}>
-            <h2>Log Expense</h2>
+          <details className="case-files">
+            <summary>💰 Log Expense</summary>
+            <form className="card" onSubmit={handleSubmit}>
             {error && <p className="error">{error}</p>}
 
             <ScanReceiptButton onScanned={handleScanned} />
@@ -456,7 +457,8 @@ export default function ExpensesPage() {
                     ? 'Log Anyway'
                     : 'Log Expense'}
             </button>
-          </form>
+            </form>
+          </details>
         </div>
       </div>
     </div>
