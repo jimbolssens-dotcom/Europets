@@ -15,7 +15,7 @@
 
 'use client';
 
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import { supabase } from '@/lib/supabaseClient';
 import { groupLineItemsBySection } from '@/lib/catalogGrouping';
@@ -62,6 +62,12 @@ export default function PreInvoiceOverview({
   const [savingRateOverride, setSavingRateOverride] = useState(false);
   const [confirmingReplace, setConfirmingReplace] = useState(false);
   const [replacingCharges, setReplacingCharges] = useState(false);
+  // The "also replace" pill only shows while the rate dropdown is actually
+  // open, to save space the rest of the time — a plain onBlur would hide it
+  // before a click on the pill itself ever registers (blur fires first), so
+  // hiding is delayed just long enough for that click to land.
+  const [rateSelectOpen, setRateSelectOpen] = useState(false);
+  const rateBlurTimeoutRef = useRef(null);
 
   async function syncAndLoad(dogSize) {
     setError(null);
@@ -138,6 +144,17 @@ export default function PreInvoiceOverview({
       .then((res) => res.json())
       .then((data) => setRateOptions(Array.isArray(data) ? data : []));
   }, [showRateOverride]);
+
+  useEffect(() => () => clearTimeout(rateBlurTimeoutRef.current), []);
+
+  function handleRateSelectFocus() {
+    clearTimeout(rateBlurTimeoutRef.current);
+    setRateSelectOpen(true);
+  }
+
+  function handleRateSelectBlur() {
+    rateBlurTimeoutRef.current = setTimeout(() => setRateSelectOpen(false), 200);
+  }
 
   async function resolveDogSize(size) {
     setResolvingSize(true);
@@ -304,6 +321,8 @@ export default function PreInvoiceOverview({
             <select
               value={hospitalizationRateOverrideId || ''}
               onChange={(e) => changeRateOverride(e.target.value)}
+              onFocus={handleRateSelectFocus}
+              onBlur={handleRateSelectBlur}
               disabled={savingRateOverride}
             >
               <option value="">Auto (species/weight)</option>
@@ -314,7 +333,8 @@ export default function PreInvoiceOverview({
               ))}
             </select>
           </label>
-          {hospitalizationRateOverrideId &&
+          {(rateSelectOpen || confirmingReplace) &&
+            hospitalizationRateOverrideId &&
             invoice &&
             (confirmingReplace ? (
               <p className="invoice-void-confirm">
