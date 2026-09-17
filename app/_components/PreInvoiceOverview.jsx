@@ -26,7 +26,7 @@ function money(n) {
 const STATUS_LABELS = { unpaid: 'unpaid', partially_paid: 'partially paid', paid: 'paid', void: 'void' };
 const STATUS_DOT_CLASS = { unpaid: 'unpaid', partially_paid: 'partial', paid: 'paid', void: 'void' };
 
-export default function PreInvoiceOverview({ hospitalizationId, catalog, subcategories, onCatalogItemCreated }) {
+export default function PreInvoiceOverview({ hospitalizationId, catalog, subcategories, onCatalogItemCreated, heading = '💰 Pre-Invoice Overview', recordHref }) {
   const [invoice, setInvoice] = useState(null);
   const [lineItems, setLineItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -181,7 +181,7 @@ export default function PreInvoiceOverview({ hospitalizationId, catalog, subcate
   return (
     <div className="card pre-invoice-overview">
       <h3>
-        💰 Pre-Invoice Overview
+        {heading}
         {invoice?.status && (
           <span className={`status-pill ${STATUS_DOT_CLASS[invoice.status] || 'unpaid'}`}>
             {STATUS_LABELS[invoice.status] || invoice.status}
@@ -191,6 +191,12 @@ export default function PreInvoiceOverview({ hospitalizationId, catalog, subcate
       <p className="visit-meta">
         Every billable item logged on this stay — kept in sync automatically. Adjust the quantity or
         remove anything below; changes save immediately, no separate step needed.
+        {recordHref && (
+          <>
+            {' '}
+            <a href={recordHref}>Open the record →</a>
+          </>
+        )}
       </p>
 
       {error && <p className="error">{error}</p>}

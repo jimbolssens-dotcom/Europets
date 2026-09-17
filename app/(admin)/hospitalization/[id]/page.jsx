@@ -1567,6 +1567,24 @@ export default function HospitalizationDetailPage() {
         onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
       />
 
+      {/* A day procedure booked off this admission (see "Book Day
+          Procedure" above) gets its own, separate invoice by design — but
+          staff reviewing this admission at discharge time still need to
+          see it to double-check both invoices before the patient leaves,
+          without hunting it down separately. One panel per linked day
+          procedure, however many were booked during this stay. */}
+      {linkedDayProcedures.map((dp) => (
+        <PreInvoiceOverview
+          key={dp.id}
+          hospitalizationId={dp.id}
+          catalog={catalog}
+          subcategories={subcategories}
+          onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+          heading={`💰 Day Procedure Invoice — ${new Date(dp.admitted_at).toLocaleDateString()}${dp.reason ? `: ${dp.reason}` : ''}`}
+          recordHref={`/hospitalization/${dp.id}`}
+        />
+      ))}
+
       <details className="case-files">
         <summary>
           📝 Add Worksheet Entry{' '}
