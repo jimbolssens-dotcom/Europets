@@ -65,6 +65,23 @@ export async function POST(request, { params }) {
     .single();
 
   if (error) {
+    // 23505 = unique_violation on video_consults_visit_id_key — another
+    // request for this same visit won the race and inserted first (e.g. a
+    // double-click on "Create Video Room" before the button had disabled
+    // itself, or the patient-page flow and a manual retry overlapping).
+    // The room that request created is exactly what this one wanted too,
+    // so just hand that back instead of erroring.
+    if (error.code === '23505') {
+      const { data: raceWinner, error: refetchError } = await supabase
+        .from('video_consults')
+        .select('*')
+        .eq('visit_id', visitId)
+        .single();
+      if (refetchError) {
+        return NextResponse.json({ error: refetchError.message }, { status: 500 });
+      }
+      return NextResponse.json(raceWinner);
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json(data, { status: 201 });
