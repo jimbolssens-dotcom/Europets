@@ -26,6 +26,7 @@ import InfoHint from '@/app/_components/InfoHint';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
 // catalog link — kept only to label those old rows.
@@ -55,6 +56,10 @@ export default function ConsultDetailPage() {
   const [rooms, setRooms] = useState([]);
   const [catalog, setCatalog] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
+
+  const [videoConsult, setVideoConsult] = useState(null);
+  const [videoConsultError, setVideoConsultError] = useState(null);
+  const [creatingVideoRoom, setCreatingVideoRoom] = useState(false);
 
   const [record, setRecord] = useState(null);
   const lastServerRecordRef = useRef(null); // last record snapshot fetched from the server, to tell an untouched field from an unsaved edit on the next refresh
@@ -209,8 +214,53 @@ export default function ConsultDetailPage() {
         setInvoiceInfo(list.find((inv) => inv.status !== 'void') || null);
       });
 
+  const loadVideoConsult = () =>
+    fetch(`/api/visits/${id}/video-consult`)
+      .then((res) => res.json())
+      .then((data) => setVideoConsult(data));
+
+  // The video room is normally already created by the time this page loads
+  // (see startVideoConsult on the patient page) — this only matters as a
+  // retry when that first attempt failed (e.g. DAILY_API_KEY wasn't set
+  // yet at the time).
+  async function createVideoRoom() {
+    setCreatingVideoRoom(true);
+    setVideoConsultError(null);
+    const res = await fetch(`/api/visits/${id}/video-consult`, { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    setCreatingVideoRoom(false);
+    if (!res.ok) {
+      setVideoConsultError(data.error || 'Failed to create the video room');
+      return;
+    }
+    setVideoConsult(data);
+  }
+
+  function videoPortalUrl() {
+    return `${window.location.origin}/portal/video-consult/${id}`;
+  }
+
+  // Same whatsapp:// deep-link pattern as the hospitalization page's own
+  // "Share Client Portal Link" — opens WhatsApp Desktop with the join link
+  // pre-filled rather than the wa.me web landing page.
+  async function inviteToVideoConsult() {
+    const clientLabel = `${consult.clients?.full_name || 'there'}${
+      consult.clients?.client_number ? ` (Client #${consult.clients.client_number})` : ''
+    }`;
+    const patientLabel = consult.patients?.name || 'your pet';
+    const message = `Hi ${clientLabel}, here's your video consult link for ${patientLabel}: ${videoPortalUrl()}`;
+    if (!openWhatsApp(consult.clients?.phone, message)) return;
+    await fetch(`/api/visits/${id}/video-consult`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invited: true }),
+    });
+    loadVideoConsult();
+  }
+
   useEffect(() => {
     loadConsult();
+    loadVideoConsult();
     loadDiagnostics();
     loadTreatmentItems();
     loadSurgicalReports();
@@ -734,7 +784,7 @@ export default function ConsultDetailPage() {
           {consult.clients?.client_number ? ` (Client #${consult.clients.client_number})` : ''}
         </a>{' '}
         · Patient: <a href={`/patients/${consult.patients?.id}`}>record</a>{' '}
-        · Room: {consult.rooms?.name}{' '}
+        · {consult.is_video ? '🎥 Video Consult' : `Room: ${consult.rooms?.name || ''}`}{' '}
         · Vet:{' '}
         <select
           className="consult-vet-select"
@@ -751,6 +801,34 @@ export default function ConsultDetailPage() {
             ))}
         </select>
       </p>
+
+      {consult.is_video && (
+        <div className="video-consult-panel">
+          {videoConsultError && <p className="error">{videoConsultError}</p>}
+          {videoConsult ? (
+            <>
+              <div className="action-row">
+                <button type="button" className="button-link" onClick={inviteToVideoConsult}>
+                  {videoConsult.invited_at ? '💬 Re-send Invite' : '💬 Send Invite via WhatsApp'}
+                </button>
+                {videoConsult.invited_at && (
+                  <span className="visit-meta">Invited {new Date(videoConsult.invited_at).toLocaleString()}</span>
+                )}
+              </div>
+              <iframe
+                src={videoConsult.room_url}
+                allow="camera; microphone; fullscreen; display-capture; autoplay"
+                className="video-consult-frame"
+                title="Video consult"
+              />
+            </>
+          ) : (
+            <button type="button" className="button-link" onClick={createVideoRoom} disabled={creatingVideoRoom}>
+              {creatingVideoRoom ? 'Creating…' : '🎥 Create Video Room'}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="action-row">
         {consult.status === 'in_progress' && (

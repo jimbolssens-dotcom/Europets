@@ -16,6 +16,12 @@ import { NextResponse } from 'next/server';
 
 export const maxDuration = 60;
 
+// Same caching gotcha as the hospitalizations route — the video-consult
+// flow polls this route from both the staff consult page and the client's
+// portal join page, so a stale cached response would show "no call yet"
+// long after one was actually created.
+export const dynamic = 'force-dynamic';
+
 const VALID_STATUSES = ['in_progress', 'complete'];
 const RECORD_FIELDS = [
   'weight_kg',

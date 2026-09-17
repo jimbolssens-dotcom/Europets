@@ -2389,6 +2389,22 @@ button.secondary:hover {
   font-family: inherit;
 }
 
+/* Video consult panel (app/(admin)/consults/[id]/page.jsx and
+   app/portal/video-consult/[id]/page.jsx) — a Daily.co "Prebuilt" call
+   embedded as a plain iframe, no video SDK needed on either side. */
+.video-consult-panel {
+  margin: 1rem 0;
+}
+
+.video-consult-frame {
+  width: 100%;
+  height: 520px;
+  border: 0;
+  border-radius: 12px;
+  margin-top: 0.5rem;
+  background: #1a1a1a;
+}
+
 /* Pairs the patient page's <h1> with its Long-Term Patient Notes toggle,
    top-right next to the patient name instead of stacked in its own
    full-width line below — like .page-header, but flex-start aligned since

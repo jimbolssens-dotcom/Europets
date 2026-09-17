@@ -16,6 +16,13 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
+// The video-consult flow polls this route (both the staff consult page and
+// the client's portal join page waiting on the same room) — same caching
+// gotcha documented on the hospitalizations route: force-dynamic alone
+// stops Next's own cache, the matching header in next.config.js is what
+// stops a CDN/edge layer from serving a stale response on top of that.
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
@@ -60,7 +67,8 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  let { appointment_id, patient_id, client_id, room_id, attending_vet_id } = body;
+  let { appointment_id, patient_id, client_id, room_id, attending_vet_id, is_video } = body;
+  is_video = Boolean(is_video);
 
   if (appointment_id) {
     const { data: appointment, error: apptError } = await supabase
@@ -79,9 +87,11 @@ export async function POST(request) {
     attending_vet_id = attending_vet_id || appointment.vet_id;
   }
 
-  if (!patient_id || !room_id) {
+  // A video consult has no physical room — it's the one case room_id is
+  // allowed to stay empty (see migration 115).
+  if (!patient_id || (!room_id && !is_video)) {
     return NextResponse.json(
-      { error: 'patient_id and room_id are required (directly, or via appointment_id)' },
+      { error: 'patient_id and room_id are required (directly, or via appointment_id), unless is_video is set' },
       { status: 400 }
     );
   }
@@ -125,9 +135,10 @@ export async function POST(request) {
         appointment_id: appointment_id || null,
         patient_id,
         client_id,
-        room_id,
+        room_id: room_id || null,
         attending_vet_id: attending_vet_id || null,
         status: 'in_progress',
+        is_video,
       },
     ])
     .select()

@@ -50,6 +50,14 @@ const nextConfig = {
         headers: NO_STORE_HEADERS,
       },
       {
+        // Same gap as invoices above — the video-consult route is polled
+        // by both the staff consult page and the client's portal join page
+        // waiting on the same room, so a stale cached response here would
+        // show "no call yet" long after one was actually created.
+        source: '/api/visits/:path*',
+        headers: NO_STORE_HEADERS,
+      },
+      {
         // The mobile app is launched from a home-screen icon (see
         // public/mobile-manifest.json) straight into this document, with
         // no browser chrome and thus no pull-to-refresh — a phone that

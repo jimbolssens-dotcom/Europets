@@ -44,6 +44,8 @@ export default function PatientDetailPage() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState(null);
   const [startingDayProcedure, setStartingDayProcedure] = useState(false);
+  const [startingVideoConsult, setStartingVideoConsult] = useState(false);
+  const [videoConsultError, setVideoConsultError] = useState(null);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
   const [creatingQuote, setCreatingQuote] = useState(false);
   const [quoteError, setQuoteError] = useState(null);
@@ -152,6 +154,43 @@ export default function PatientDetailPage() {
       if (res.ok) router.push(`/hospitalization/${data.id}`);
     } finally {
       setStartingDayProcedure(false);
+    }
+  }
+
+  // A video consult is a real visits row, same as a walk-in check-in,
+  // just without a physical room (see migration 115) — the video call
+  // room itself is created right away too, so it's already waiting by the
+  // time the vet lands on the consult page and wants to send the client
+  // its join link.
+  async function startVideoConsult() {
+    setStartingVideoConsult(true);
+    setVideoConsultError(null);
+    try {
+      const res = await fetch('/api/visits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patient_id: id, client_id: patient.client_id, is_video: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.existingVisitId) {
+          router.push(`/consults/${data.existingVisitId}`);
+          return;
+        }
+        setVideoConsultError(data.error || 'Failed to start video consult');
+        return;
+      }
+      const roomRes = await fetch(`/api/visits/${data.id}/video-consult`, { method: 'POST' });
+      if (!roomRes.ok) {
+        const roomData = await roomRes.json().catch(() => ({}));
+        // The consult itself was created fine — don't strand it half-open,
+        // just land there without a room; the video panel offers its own
+        // retry once DAILY_API_KEY is actually configured.
+        setVideoConsultError(roomData.error || 'Consult started, but the video room could not be created yet');
+      }
+      router.push(`/consults/${data.id}`);
+    } finally {
+      setStartingVideoConsult(false);
     }
   }
 
@@ -288,6 +327,8 @@ export default function PatientDetailPage() {
         </details>
       </div>
 
+      {videoConsultError && <p className="error">{videoConsultError}</p>}
+
       <div className="action-row">
         <a href={`/appointments?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
           Book Appointment
@@ -323,9 +364,15 @@ export default function PatientDetailPage() {
               Consult
             </a>
           ) : (
-            <a href={`/consults?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
-              New Consult
-            </a>
+            <>
+              <a href={`/consults?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
+                New Consult
+              </a>
+              <button type="button" className="button-link" onClick={startVideoConsult} disabled={startingVideoConsult}
+                title="Start a consult with no physical room, and send the client a video call link instead">
+                {startingVideoConsult ? 'Starting…' : '🎥 Video Consult'}
+              </button>
+            </>
           )}
           {statusOverview?.hospitalization ? (
             <a
