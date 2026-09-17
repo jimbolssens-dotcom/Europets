@@ -20,6 +20,7 @@ import RecordReports from './RecordReports';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import { isXrayTest } from '@/lib/xrayProduct';
 import { ensureSurgicalReport } from '@/lib/surgicalReportAuto';
+import { resolveCaseScope, loadCaseReports } from '@/lib/caseReportScope';
 
 const LEGACY_DIAGNOSTIC_TYPE_LABELS = {
   blood: 'Blood test',
@@ -91,39 +92,42 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [autoRecordDentalId, autoRecordSurgicalId, autoRecordUltrasoundId, autoRecordXrayId, photoRecordDentalId, photoRecordSurgicalId]);
 
+  // A "case" can be more than just this one hospitalizations row — the
+  // consult it started from (originating_visit_id), and/or a parallel
+  // admission/day-procedure it's linked to (originating_hospitalization_id,
+  // see migration 090) — see lib/caseReportScope.js. Every report type
+  // below is loaded across that whole family and merged into one list, not
+  // just this row's own hospitalization_id, so nothing dictated on a linked
+  // record goes missing here. Read-only merge — a report still only ever
+  // gets written to whichever single record it was actually created on.
+  const [caseScope, setCaseScope] = useState(() => ({ hospitalizationIds: [hospitalizationId], visitIds: [] }));
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveCaseScope(admission || { id: hospitalizationId }).then((scope) => {
+      if (!cancelled) setCaseScope(scope);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hospitalizationId, admission?.originating_visit_id, admission?.originating_hospitalization_id]);
+
   async function loadReportList(path, setter) {
     try {
-      const res = await fetch(`/api/${path}?hospitalization_id=${hospitalizationId}`);
-      const data = await res.json();
-      if (!res.ok || !Array.isArray(data)) throw new Error();
-      setter(data);
+      setter(await loadCaseReports(path, caseScope));
       setReportsError((prev) => ({ ...prev, [path]: null }));
     } catch {
       setReportsError((prev) => ({ ...prev, [path]: `Could not refresh ${path.replaceAll('-', ' ')}. Reload to try again.` }));
     }
   }
-  // Tests ordered during the consult that led to this admission
-  // (originating_visit_id) are still tied to that visit_id, not this
-  // hospitalization — without this they'd only show up in the separate,
-  // truncated "Earlier reports for this patient" preview instead of here,
-  // in the same fully-editable worklist as tests ordered after admission.
-  async function loadDiagnostics() {
-    const originatingVisitId = admission?.originating_visit_id;
-    try {
-      const urls = [`/api/diagnostics?hospitalization_id=${hospitalizationId}`];
-      if (originatingVisitId) urls.push(`/api/diagnostics?visit_id=${originatingVisitId}`);
-      const results = await Promise.all(urls.map((url) => fetch(url).then((res) => res.json())));
-      if (results.some((data) => !Array.isArray(data))) throw new Error();
-      setDiagnostics(results.flat().sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
-      setReportsError((prev) => ({ ...prev, diagnostics: null }));
-    } catch {
-      setReportsError((prev) => ({ ...prev, diagnostics: 'Could not refresh diagnostics. Reload to try again.' }));
-    }
-  }
+  const loadDiagnostics = () => loadReportList('diagnostics', setDiagnostics);
   const loadSurgicalReports = () => loadReportList('surgical-reports', setSurgicalReports);
   const loadDentalReports = () => loadReportList('dental-reports', setDentalReports);
   const loadUltrasoundReports = () => loadReportList('ultrasound-reports', setUltrasoundReports);
   const loadXrayReports = () => loadReportList('xray-reports', setXrayReports);
+
+  const scopeKey = `${caseScope.hospitalizationIds.join(',')}|${caseScope.visitIds.join(',')}`;
 
   useEffect(() => {
     loadDiagnostics();
@@ -132,28 +136,27 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
     loadUltrasoundReports();
     loadXrayReports();
 
-    let channel = supabase
-      .channel(`hospitalization-reports-${hospitalizationId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'diagnostics', filter: `hospitalization_id=eq.${hospitalizationId}` }, loadDiagnostics);
-    // Also live-update when a test on the originating consult changes —
-    // its diagnostics rows are merged into this same list above.
-    if (admission?.originating_visit_id) {
-      channel = channel.on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'diagnostics', filter: `visit_id=eq.${admission.originating_visit_id}` },
-        loadDiagnostics
-      );
+    let channel = supabase.channel(`hospitalization-reports-${hospitalizationId}`);
+    const tableLoaders = [
+      ['diagnostics', loadDiagnostics],
+      ['surgical_reports', loadSurgicalReports],
+      ['dental_reports', loadDentalReports],
+      ['ultrasound_reports', loadUltrasoundReports],
+      ['xray_reports', loadXrayReports],
+    ];
+    for (const [table, reload] of tableLoaders) {
+      for (const id of caseScope.hospitalizationIds) {
+        channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `hospitalization_id=eq.${id}` }, reload);
+      }
+      for (const id of caseScope.visitIds) {
+        channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `visit_id=eq.${id}` }, reload);
+      }
     }
-    channel = channel
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'surgical_reports', filter: `hospitalization_id=eq.${hospitalizationId}` }, loadSurgicalReports)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dental_reports', filter: `hospitalization_id=eq.${hospitalizationId}` }, loadDentalReports)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ultrasound_reports', filter: `hospitalization_id=eq.${hospitalizationId}` }, loadUltrasoundReports)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'xray_reports', filter: `hospitalization_id=eq.${hospitalizationId}` }, loadXrayReports)
-      .subscribe();
+    channel.subscribe();
 
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hospitalizationId, admission?.originating_visit_id]);
+  }, [scopeKey]);
 
   async function addDiagnostic(e) {
     e.preventDefault();
