@@ -7,6 +7,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { mirrorVitalsToLinkedHospitalizations } from '@/lib/hospitalizationVitalsSync';
 
 const EDITABLE_FIELDS = [
   'note_date',
@@ -81,5 +82,18 @@ export async function PATCH(request, { params }) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Only the merge-a-fresh-reading-into-a-nearby-note path (see
+  // mergeVitalsIntoNote in DayTreatmentPlan.jsx) needs this — a plain typo
+  // fix elsewhere on the note isn't a new reading to mirror.
+  if (('weight_kg' in update && update.weight_kg != null) || ('temperature_c' in update && update.temperature_c != null)) {
+    await mirrorVitalsToLinkedHospitalizations(params.id, {
+      weight_kg: 'weight_kg' in update ? update.weight_kg : null,
+      temperature_c: 'temperature_c' in update ? update.temperature_c : null,
+      note_date: data.note_date,
+      author_id: data.author_id,
+    });
+  }
+
   return NextResponse.json(data);
 }

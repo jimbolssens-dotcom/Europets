@@ -18,6 +18,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
+import { mirrorVitalsToLinkedHospitalizations } from '@/lib/hospitalizationVitalsSync';
 
 // See app/api/hospitalizations/[id]/route.js — same caching gotcha, and
 // this is the route the client portal's Temp/Weight/Appetite fields
@@ -141,6 +142,15 @@ export async function POST(request, { params }) {
     .from('hospitalizations')
     .update({ update_requested_at: null, update_request_message: null })
     .eq('id', params.id);
+
+  if (note.weight_kg != null || note.temperature_c != null) {
+    await mirrorVitalsToLinkedHospitalizations(params.id, {
+      weight_kg: note.weight_kg,
+      temperature_c: note.temperature_c,
+      note_date: note.note_date,
+      author_id: note.author_id,
+    });
+  }
 
   let insertedItems = [];
   const pendingItems = (Array.isArray(treatment_items) ? treatment_items : []).filter((t) => t.goods_service_id);

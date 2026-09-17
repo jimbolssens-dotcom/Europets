@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { attachCages } from '@/lib/attachCages';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
+import { seedVitalsFromOrigin } from '@/lib/hospitalizationVitalsSync';
 import { NextResponse } from 'next/server';
 
 // The existing twice-daily "morning by 12:00, afternoon by 18:00" alarm —
@@ -290,6 +291,14 @@ export async function POST(request) {
     { hospitalization_id: data.id, label: 'Temperature', kind: 'vitals_temperature' },
     { hospitalization_id: data.id, label: 'Weight', kind: 'vitals_weight' },
   ]);
+
+  // A day procedure spun off an open admission (see the comment above)
+  // starts its own worksheet from scratch — carry across whatever
+  // weight/temperature the admission already logged today so staff aren't
+  // asked for a reading that was already taken an hour ago.
+  if (originating_hospitalization_id) {
+    await seedVitalsFromOrigin(data.id, originating_hospitalization_id);
+  }
 
   return NextResponse.json(await attachCages(data), { status: 201 });
 }
