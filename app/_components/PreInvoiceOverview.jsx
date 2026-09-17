@@ -60,6 +60,8 @@ export default function PreInvoiceOverview({
   const [merging, setMerging] = useState(false);
   const [rateOptions, setRateOptions] = useState([]);
   const [savingRateOverride, setSavingRateOverride] = useState(false);
+  const [confirmingReplace, setConfirmingReplace] = useState(false);
+  const [replacingCharges, setReplacingCharges] = useState(false);
 
   async function syncAndLoad(dogSize) {
     setError(null);
@@ -163,6 +165,29 @@ export default function PreInvoiceOverview({
       return;
     }
     onRateOverrideChanged?.();
+    syncAndLoad();
+  }
+
+  // The deliberate, explicit "fix an older invoice" action — see
+  // lib/invoicing.js#replaceHospitalizationRateCharges for why a plain
+  // delete of an already-charged day doesn't stick (the next auto-sync
+  // just recreates it) and what this does instead.
+  async function replaceExistingCharges() {
+    if (!hospitalizationRateOverrideId || !invoice) return;
+    setReplacingCharges(true);
+    setError(null);
+    const res = await fetch(`/api/hospitalizations/${hospitalizationId}/replace-rate-charges`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoice_id: invoice.id, goods_service_id: hospitalizationRateOverrideId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setReplacingCharges(false);
+    setConfirmingReplace(false);
+    if (!res.ok) {
+      setError(data.error || 'Failed to replace existing charges');
+      return;
+    }
     syncAndLoad();
   }
 
@@ -273,7 +298,7 @@ export default function PreInvoiceOverview({
       </p>
 
       {showRateOverride && (
-        <p className="pre-invoice-rate-override">
+        <div className="pre-invoice-rate-override">
           <label>
             Hospitalization rate:{' '}
             <select
@@ -289,7 +314,24 @@ export default function PreInvoiceOverview({
               ))}
             </select>
           </label>
-        </p>
+          {hospitalizationRateOverrideId &&
+            invoice &&
+            (confirmingReplace ? (
+              <p className="invoice-void-confirm">
+                Also replace every already-charged day on this stay with this rate? This can&rsquo;t be undone.{' '}
+                <button type="button" onClick={replaceExistingCharges} disabled={replacingCharges}>
+                  {replacingCharges ? 'Replacing...' : 'Yes, replace them'}
+                </button>{' '}
+                <button type="button" onClick={() => setConfirmingReplace(false)} disabled={replacingCharges}>
+                  Cancel
+                </button>
+              </p>
+            ) : (
+              <button type="button" className="pill-btn" onClick={() => setConfirmingReplace(true)}>
+                🔁 Also replace already-charged days
+              </button>
+            ))}
+        </div>
       )}
 
       {error && <p className="error">{error}</p>}
