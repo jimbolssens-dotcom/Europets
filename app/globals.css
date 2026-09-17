@@ -645,6 +645,15 @@ td select {
   margin-top: 0.7rem;
 }
 
+.pre-invoice-rate-override {
+  margin: 0.5rem 0 0.75rem;
+}
+
+.pre-invoice-rate-override select {
+  width: auto;
+  display: inline-block;
+}
+
 .catalog-row {
   cursor: pointer;
 }

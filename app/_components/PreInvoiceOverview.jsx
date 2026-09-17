@@ -36,6 +36,14 @@ export default function PreInvoiceOverview({
   recordHref,
   mergeTarget, // { id, label } — offers "Merge into {label}'s invoice" when set (see migration 114)
   onMerged,
+  // The category dropdown (see migration 117) only makes sense on the
+  // admission itself, not a linked day procedure's own panel (day
+  // procedures never get the daily charge this overrides in the first
+  // place) — the hospitalization page only passes these three for its own
+  // primary panel.
+  showRateOverride = false,
+  hospitalizationRateOverrideId = null,
+  onRateOverrideChanged,
 }) {
   const [invoice, setInvoice] = useState(null);
   const [lineItems, setLineItems] = useState([]);
@@ -50,6 +58,8 @@ export default function PreInvoiceOverview({
   const [adding, setAdding] = useState(false);
   const [confirmingMerge, setConfirmingMerge] = useState(false);
   const [merging, setMerging] = useState(false);
+  const [rateOptions, setRateOptions] = useState([]);
+  const [savingRateOverride, setSavingRateOverride] = useState(false);
 
   async function syncAndLoad(dogSize) {
     setError(null);
@@ -120,10 +130,40 @@ export default function PreInvoiceOverview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoice?.id]);
 
+  useEffect(() => {
+    if (!showRateOverride) return;
+    fetch('/api/hospitalizations/rate-options')
+      .then((res) => res.json())
+      .then((data) => setRateOptions(Array.isArray(data) ? data : []));
+  }, [showRateOverride]);
+
   async function resolveDogSize(size) {
     setResolvingSize(true);
     await syncAndLoad(size);
     setResolvingSize(false);
+  }
+
+  // Switching the dropdown pins the daily charge to that exact catalog item
+  // from here on — see hospitalization_rate_override_id (migration 117) and
+  // lib/hospitalizationCharges.js for how it always wins over the auto
+  // species/weight detection for any day not yet charged. Past days already
+  // invoiced keep whatever they were actually charged.
+  async function changeRateOverride(value) {
+    setSavingRateOverride(true);
+    setError(null);
+    const res = await fetch(`/api/hospitalizations/${hospitalizationId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hospitalization_rate_override_id: value || null }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSavingRateOverride(false);
+    if (!res.ok) {
+      setError(data.error || 'Failed to change the hospitalization rate');
+      return;
+    }
+    onRateOverrideChanged?.();
+    syncAndLoad();
   }
 
   function commitQuantity(item, value) {
@@ -231,6 +271,26 @@ export default function PreInvoiceOverview({
           </>
         )}
       </p>
+
+      {showRateOverride && (
+        <p className="pre-invoice-rate-override">
+          <label>
+            Hospitalization rate:{' '}
+            <select
+              value={hospitalizationRateOverrideId || ''}
+              onChange={(e) => changeRateOverride(e.target.value)}
+              disabled={savingRateOverride}
+            >
+              <option value="">Auto (species/weight)</option>
+              {rateOptions.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name} — AED {money(item.base_price)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </p>
+      )}
 
       {error && <p className="error">{error}</p>}
 

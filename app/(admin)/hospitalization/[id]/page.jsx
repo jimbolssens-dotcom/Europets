@@ -1596,6 +1596,9 @@ export default function HospitalizationDetailPage() {
         catalog={catalog}
         subcategories={subcategories}
         onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+        showRateOverride
+        hospitalizationRateOverrideId={admission.hospitalization_rate_override_id}
+        onRateOverrideChanged={loadAdmission}
       />
 
       {/* A day procedure booked off this admission (see "Book Day

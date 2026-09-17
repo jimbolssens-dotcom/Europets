@@ -3,9 +3,11 @@
 // PATCH  /api/hospitalizations/:id  -> update status/room/reason; discharging sets discharged_at.
 //        Also: kind ('day_procedure' -> 'admission' — a day procedure that
 //        needs to stay longer, promoted in place rather than re-created),
-//        and originating_visit_id (linking a consult added afterward to a
+//        originating_visit_id (linking a consult added afterward to a
 //        day procedure that didn't start with one — see the "Add Consult"
-//        button on the hospitalization page).
+//        button on the hospitalization page), and
+//        hospitalization_rate_override_id (the Pre-Invoice Overview
+//        panel's category dropdown — see lib/hospitalizationCharges.js).
 // DELETE /api/hospitalizations/:id  -> remove an admission or day procedure
 //        (e.g. it was started by mistake). Diagnostics/treatment items/
 //        surgical & dental reports cascade automatically; their file
@@ -46,7 +48,19 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { status, room_id, cage_id, reason, update_requested_at, doctor_checkup_requested, portal_link_shared, ai_summary, kind, originating_visit_id } = body;
+  const {
+    status,
+    room_id,
+    cage_id,
+    reason,
+    update_requested_at,
+    doctor_checkup_requested,
+    portal_link_shared,
+    ai_summary,
+    kind,
+    originating_visit_id,
+    hospitalization_rate_override_id,
+  } = body;
 
   const update = {};
   if (status !== undefined) {
@@ -70,6 +84,12 @@ export async function PATCH(request, { params }) {
     update.kind = kind;
   }
   if (originating_visit_id !== undefined) update.originating_visit_id = originating_visit_id || null;
+  // The Pre-Invoice Overview panel's category dropdown — see migration 117
+  // and lib/hospitalizationCharges.js for how this overrides the daily
+  // rate going forward, without touching any day already charged.
+  if (hospitalization_rate_override_id !== undefined) {
+    update.hospitalization_rate_override_id = hospitalization_rate_override_id || null;
+  }
   // Only ever set to null here (dismissing the "owner is waiting" flag from
   // staff's side) — the client portal sets the timestamp itself, via
   // POST /api/hospitalizations/:id/request-update.
