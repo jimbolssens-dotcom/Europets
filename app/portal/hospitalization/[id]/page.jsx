@@ -11,6 +11,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
+import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
+import TemperatureHistoryChart from '@/app/_components/TemperatureHistoryChart';
 import { formatTime, formatDateTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 import { isWithinOfficeHours, OFFICE_HOURS_LABEL } from '@/lib/officeHours';
@@ -102,6 +104,16 @@ export default function HospitalizationPortalPage() {
     loadAdmission();
   }
 
+  // Same created_at-based (not note_date) derivation as the staff
+  // hospitalization page's own mini sparklines — using note_date would
+  // collapse several same-day readings into one point on the chart.
+  const stayWeightHistory = notes
+    .filter((n) => n.weight_kg != null)
+    .map((n) => ({ date: n.created_at, weight_kg: n.weight_kg }));
+  const stayTemperatureHistory = notes
+    .filter((n) => n.temperature_c != null)
+    .map((n) => ({ date: n.created_at, temperature_c: n.temperature_c }));
+
   if (loading) return <p className="portal-loading">Loading...</p>;
   if (!admission || admission.error) return <p className="portal-loading">We couldn&apos;t find that page.</p>;
 
@@ -118,6 +130,8 @@ export default function HospitalizationPortalPage() {
           <span className={`portal-status portal-status-${admission.status}`}>
             {admission.status === 'admitted' ? 'Currently admitted' : 'Discharged'}
           </span>
+          <WeightHistoryChart data={stayWeightHistory} mini />
+          <TemperatureHistoryChart data={stayTemperatureHistory} mini />
         </h1>
         <p className="visit-meta">
           Admitted {new Date(admission.admitted_at).toLocaleString()}
