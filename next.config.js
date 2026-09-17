@@ -41,6 +41,15 @@ const nextConfig = {
         headers: NO_STORE_HEADERS,
       },
       {
+        // Same gap existed here — voiding an invoice (or removing a line
+        // item) updated the database fine, but reloading it afterward
+        // could still be served a cached pre-change snapshot from an edge/
+        // CDN layer even with the route handler itself set to
+        // force-dynamic, making the action look like it silently failed.
+        source: '/api/invoices/:path*',
+        headers: NO_STORE_HEADERS,
+      },
+      {
         // The mobile app is launched from a home-screen icon (see
         // public/mobile-manifest.json) straight into this document, with
         // no browser chrome and thus no pull-to-refresh — a phone that
