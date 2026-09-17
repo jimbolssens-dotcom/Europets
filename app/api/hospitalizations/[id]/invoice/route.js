@@ -69,6 +69,20 @@ export async function POST(request, { params }) {
     }
   }
 
+  const treatmentItems = await gatherInvoiceTreatmentItems(supabase, {
+    visitId: admission.originating_visit_id,
+    hospitalizationIds: [hospitalizationId],
+  });
+
+  // Nothing billed yet and no invoice already exists for this case — don't
+  // create an empty one just because this ran (the Pre-Invoice Overview
+  // panel calls this on every page load, not just on a real click). An
+  // invoice, even an empty one, blocks the case from being deleted, so a
+  // case nobody has actually billed anything on yet should stay deletable.
+  if (!existing && treatmentItems.length === 0) {
+    return NextResponse.json({ id: null, existing: false, needs_dog_size: Boolean(chargeResult.needsDogSize) });
+  }
+
   let invoiceId = existing?.id;
 
   if (!invoiceId) {
@@ -87,10 +101,6 @@ export async function POST(request, { params }) {
     invoiceId = invoice.id;
   }
 
-  const treatmentItems = await gatherInvoiceTreatmentItems(supabase, {
-    visitId: admission.originating_visit_id,
-    hospitalizationIds: [hospitalizationId],
-  });
   const { error: syncError } = await syncInvoiceTreatmentItems(supabase, invoiceId, treatmentItems);
   if (syncError) {
     return NextResponse.json({ error: syncError.message }, { status: 500 });

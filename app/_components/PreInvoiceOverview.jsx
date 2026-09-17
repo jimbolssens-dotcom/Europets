@@ -54,6 +54,16 @@ export default function PreInvoiceOverview({ hospitalizationId, catalog, subcate
     }
     setNeedsDogSize(Boolean(syncData.needs_dog_size));
 
+    // Nothing billable logged yet — no invoice exists for this case at all
+    // (see the route: it deliberately doesn't create an empty one just from
+    // this panel loading), so there's nothing to fetch.
+    if (!syncData.id) {
+      setInvoice(null);
+      setLineItems([]);
+      setLoading(false);
+      return;
+    }
+
     const invRes = await fetch(`/api/invoices/${syncData.id}`);
     const invData = await invRes.json();
     if (!invRes.ok) {
@@ -259,29 +269,30 @@ export default function PreInvoiceOverview({ hospitalizationId, catalog, subcate
             )}
           </table>
 
-          {showAdd ? (
-            <div className="pre-invoice-add">
-              <CatalogPicker
-                catalog={catalog}
-                subcategories={subcategories}
-                value={addGoodsServiceId}
-                onChange={setAddGoodsServiceId}
-                onItemCreated={onCatalogItemCreated}
-              />
-              <div className="day-plan-edit-actions">
-                <button type="button" onClick={addItem} disabled={!addGoodsServiceId || adding}>
-                  {adding ? 'Adding...' : 'Add'}
-                </button>
-                <button type="button" onClick={() => setShowAdd(false)} disabled={adding}>
-                  Cancel
-                </button>
+          {invoice &&
+            (showAdd ? (
+              <div className="pre-invoice-add">
+                <CatalogPicker
+                  catalog={catalog}
+                  subcategories={subcategories}
+                  value={addGoodsServiceId}
+                  onChange={setAddGoodsServiceId}
+                  onItemCreated={onCatalogItemCreated}
+                />
+                <div className="day-plan-edit-actions">
+                  <button type="button" onClick={addItem} disabled={!addGoodsServiceId || adding}>
+                    {adding ? 'Adding...' : 'Add'}
+                  </button>
+                  <button type="button" onClick={() => setShowAdd(false)} disabled={adding}>
+                    Cancel
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <button type="button" className="pill-btn" onClick={() => setShowAdd(true)} style={{ marginTop: '0.7rem' }}>
-              + Add Item
-            </button>
-          )}
+            ) : (
+              <button type="button" className="pill-btn" onClick={() => setShowAdd(true)} style={{ marginTop: '0.7rem' }}>
+                + Add Item
+              </button>
+            ))}
 
           {invoice && (
             <p className="visit-meta pre-invoice-open-link">

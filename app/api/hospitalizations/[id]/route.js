@@ -153,6 +153,27 @@ export async function DELETE(request, { params }) {
     await supabaseAdmin.from('recordings').delete().in('id', recordings.map((r) => r.id));
   }
 
+  // An invoice can exist for this case with nothing actually billed on it
+  // yet — e.g. the Pre-Invoice Overview panel syncs (and, until recently,
+  // could create) an invoice just from the page being opened, before any
+  // real charge landed on it. invoices.hospitalization_id has no "on
+  // delete" clause (unlike everything else here), and invoices are never
+  // hard-deleted through the app once they carry real activity — so an
+  // invoice with actual line items or a payment on it must keep blocking
+  // this delete for the accounting record. One with neither never became a
+  // real record; clean it up here rather than leaving it as a permanent,
+  // silent reason this case can never be removed.
+  const { data: linkedInvoices } = await supabase
+    .from('invoices')
+    .select('id, invoice_line_items(id), invoice_payments(id)')
+    .eq('hospitalization_id', hospitalizationId);
+  const emptyInvoiceIds = (linkedInvoices || [])
+    .filter((inv) => !inv.invoice_line_items?.length && !inv.invoice_payments?.length)
+    .map((inv) => inv.id);
+  if (emptyInvoiceIds.length > 0) {
+    await supabaseAdmin.from('invoices').delete().in('id', emptyInvoiceIds);
+  }
+
   const { error } = await supabaseAdmin.from('hospitalizations').delete().eq('id', hospitalizationId);
 
   if (error) {
@@ -160,7 +181,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json(
         {
           error:
-            'cannot delete this case — it has a linked invoice, or another day procedure/admission depends on it. Void the invoice / resolve that link first.',
+            'cannot delete this case — it has an invoice with real line items or a payment on it (kept for the accounting record), or another day procedure/admission is linked to it. Remove those first if this was a mistake.',
         },
         { status: 409 }
       );

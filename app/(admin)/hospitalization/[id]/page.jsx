@@ -570,7 +570,11 @@ export default function HospitalizationDetailPage() {
       const res = await fetch(`/api/hospitalizations/${id}/invoice`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        router.push(`/invoices/${data.id}`);
+        if (data.id) {
+          router.push(`/invoices/${data.id}`);
+        } else {
+          setInvoiceError('Nothing billable logged on this case yet — log something first.');
+        }
       } else {
         setInvoiceError(data.error || 'Failed to create invoice');
       }
