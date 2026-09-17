@@ -5467,6 +5467,89 @@ form.card.admit-patient-form {
   outline-offset: 1px;
 }
 
+/* MiniCageStrip — a compact, read-only echo of the real Cage Layout (just
+   the LT + Hospitalization Cages block), shown at the top of a patient's
+   hospitalization page so staff can click straight to the next patient's
+   cage without leaving to the full board. See
+   app/_components/MiniCageStrip.jsx. */
+.mini-cage-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0 0 1.2rem;
+  padding: 0.6rem;
+  background: #fbfbfb;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.mini-cage-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.mini-cage-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(58px, 1fr));
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.mini-cage-tile {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.1rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 0.3rem 0.2rem;
+  min-height: 44px;
+  font-size: 0.65rem;
+  line-height: 1.15;
+  text-decoration: none;
+  color: inherit;
+}
+
+.mini-cage-empty {
+  background: #fafafa;
+  color: #bbb;
+}
+
+.mini-cage-occupied {
+  background: var(--pink-tint);
+  border-color: var(--pink);
+  color: var(--pink-dark);
+  cursor: pointer;
+}
+
+.mini-cage-occupied:hover {
+  filter: brightness(0.97);
+}
+
+.mini-cage-current {
+  background: var(--pink-dark);
+  border-color: var(--pink-dark);
+  color: white;
+}
+
+.mini-cage-name {
+  font-weight: 700;
+}
+
+.mini-cage-patient {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
 /* ============ MOBILE RECORDING APP (app/mobile/) ============
    Phone-first: single column, large tap targets, minimal chrome. */
 

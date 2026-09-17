@@ -31,6 +31,7 @@ import DayProcedureTreatmentPlan from '@/app/_components/DayProcedureTreatmentPl
 import PreInvoiceOverview from '@/app/_components/PreInvoiceOverview';
 import DayProcedureNotes from '@/app/_components/DayProcedureNotes';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
+import MiniCageStrip from '@/app/_components/MiniCageStrip';
 import HospitalizationReportsSection from '@/app/_components/HospitalizationReportsSection';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
@@ -897,6 +898,7 @@ export default function HospitalizationDetailPage() {
           </div>
         )}
       </div>
+      <MiniCageStrip currentHospitalizationId={id} />
       {admission.status === 'admitted' && chatOpen && (
         <div className="case-files hospitalization-chat">
           {admission.update_requested_at && (
@@ -1083,12 +1085,25 @@ export default function HospitalizationDetailPage() {
               </details>
             </section>
 
-            <DayProcedureTreatmentPlan
-              hospitalizationId={id}
-              catalog={catalog}
-              subcategories={subcategories}
-              onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
-            />
+            <div>
+              <DayProcedureTreatmentPlan
+                hospitalizationId={id}
+                catalog={catalog}
+                subcategories={subcategories}
+                onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+              />
+              {/* Same live, editable running-invoice preview the admission
+                  view shows in its own sidebar — a day procedure gets its
+                  own standalone invoice (see createInvoice/CrossRecordLinks
+                  above), so it deserves the same at-a-glance running total
+                  instead of only finding out via the "Invoice" button. */}
+              <PreInvoiceOverview
+                hospitalizationId={id}
+                catalog={catalog}
+                subcategories={subcategories}
+                onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+              />
+            </div>
           </div>
 
           {patientHistorySection}
