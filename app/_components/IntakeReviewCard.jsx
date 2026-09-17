@@ -207,7 +207,10 @@ export default function IntakeReviewCard({
             (Boolean(r.appointment_type) &&
               (!approvalRoom[r.id] ||
                 (r.appointment_type === 'other_surgery' &&
-                  (!customBooking[r.id]?.vetId || !customBooking[r.id]?.date || !customBooking[r.id]?.time || !customBooking[r.id]?.duration))))
+                  (!customBooking[r.id]?.vetId ||
+                    !(customBooking[r.id]?.date || r.preferred_date) ||
+                    !customBooking[r.id]?.time ||
+                    !customBooking[r.id]?.duration))))
           }
         >
           {reviewing?.id === r.id && reviewing.action === 'approve'
