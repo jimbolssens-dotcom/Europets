@@ -122,7 +122,10 @@ export async function middleware(request) {
   const isUnderPath = (base) => pathname === base || pathname.startsWith(`${base}/`);
   const needsAccountingPassword =
     !isOpenExpenseWrite &&
-    (isUnderPath('/accounting') || isUnderPath('/api/accounting') || isUnderPath('/api/expenses'));
+    (isUnderPath('/accounting') ||
+      isUnderPath('/api/accounting') ||
+      isUnderPath('/api/expenses') ||
+      isUnderPath('/api/donations'));
 
   if (needsAccountingPassword) {
     const accountingPassword = process.env.ACCOUNTING_PASSWORD;

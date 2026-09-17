@@ -1076,6 +1076,24 @@ create table invoice_line_items (
     voice_note_path text
 );
 
+-- ============ DONATIONS ============
+-- Money received for ongoing cases in general (never through the front
+-- desk) that funds part of one invoice, several invoices, or is spread
+-- across invoices over time — see migration 111 for the full reasoning.
+-- Defined here (ahead of its usual place) since invoice_payments
+-- references it — Postgres needs the referenced table to already exist.
+create table donations (
+    id uuid primary key default gen_random_uuid(),
+    donation_number text not null unique,  -- YY-MM-NN, resets every month
+    donor_name text,
+    donor_contact text,
+    amount numeric(10,2) not null check (amount > 0),
+    source text not null check (source in ('nomod', 'paymob', 'paypal', 'bank_transfer')),
+    received_at date not null default current_date,
+    notes text,
+    created_at timestamptz default now()
+);
+
 -- A log of every individual payment received against an invoice — lets a
 -- bill be paid in installments, possibly by different methods, without
 -- losing the trail. invoices.amount_paid/status are derived from this
@@ -1084,17 +1102,23 @@ create table invoice_payments (
     id uuid primary key default gen_random_uuid(),
     invoice_id uuid references invoices(id) on delete cascade not null,
     amount numeric(10,2) not null check (amount > 0),
-    payment_method text not null check (payment_method in ('cash', 'card', 'bank_transfer', 'payment_link')),
+    payment_method text not null check (payment_method in ('cash', 'card', 'bank_transfer', 'payment_link', 'nomod', 'paymob', 'paypal')),
     -- Null for an online Nomod payment recorded automatically by its
-    -- webhook (see nomod_payment_links below, migration 058) — every
+    -- webhook (see nomod_payment_links below, migration 058), or a
+    -- donation-sourced payment (see donation_id, migration 111) — every
     -- other payment method is taken by a staff member in person and must
     -- still name one.
     received_by uuid references staff(id),
+    -- Set when this slice of the payment came from a donation rather than
+    -- the client's own pocket (migration 111) — the donation's own
+    -- remaining balance is amount minus the sum of rows tagged with it.
+    donation_id uuid references donations(id),
     paid_at timestamptz not null default now(),
     created_at timestamptz default now()
 );
 
 create index invoice_payments_invoice_id_idx on invoice_payments(invoice_id);
+create index idx_invoice_payments_donation on invoice_payments(donation_id);
 
 -- ============ NOMOD PAYMENT LINKS ============
 -- Created lazily when a client opens their own "Settle Your Bill" page on

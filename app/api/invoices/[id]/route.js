@@ -53,7 +53,7 @@ export async function GET(request, { params }) {
 
   const { data: payments, error: paymentsError } = await supabase
     .from('invoice_payments')
-    .select('*, staff(full_name)')
+    .select('*, staff(full_name), donations(donation_number, source)')
     .eq('invoice_id', params.id)
     .order('paid_at', { ascending: false });
 

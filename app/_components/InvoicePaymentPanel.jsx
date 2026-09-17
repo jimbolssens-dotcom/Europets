@@ -15,6 +15,9 @@ const PAYMENT_METHOD_LABELS = {
   card: 'Card',
   bank_transfer: 'Bank Transfer',
   payment_link: 'Payment Link',
+  nomod: 'Nomod',
+  paymob: 'PayMob',
+  paypal: 'PayPal',
 };
 
 function money(n) {
@@ -76,7 +79,12 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
 
   async function removePayment(paymentId) {
     if (!confirm('Remove this payment? This cannot be undone.')) return;
-    await fetch(`/api/invoices/${invoice.id}/payments/${paymentId}`, { method: 'DELETE' });
+    const res = await fetch(`/api/invoices/${invoice.id}/payments/${paymentId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Failed to remove payment');
+      return;
+    }
     onChanged();
   }
 
@@ -114,7 +122,9 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
               <span className="invoice-payment-amount">AED {money(p.amount)}</span>
               <span>{PAYMENT_METHOD_LABELS[p.payment_method] || p.payment_method}</span>
               <span className="invoice-payment-by">
-                {p.staff?.full_name || (p.payment_method === 'payment_link' ? 'Online (Nomod)' : 'unassigned')}
+                {p.donations
+                  ? `Donation #${p.donations.donation_number}`
+                  : p.staff?.full_name || (p.payment_method === 'payment_link' ? 'Online (Nomod)' : 'unassigned')}
               </span>
               {canTakePayment && (
                 <button type="button" onClick={() => removePayment(p.id)}>
