@@ -70,6 +70,16 @@ const HOSPITALIZATION_READ_PATTERNS = [
   /^\/api\/hospitalizations\/[^/]+\/messages$/,
 ];
 
+// Same GET-only carve-out as hospitalizations above, for the video-consult
+// portal page (app/portal/video-consult/[id]/page.jsx) — it fetches these
+// two with no login, same as every other portal page. Missing this exactly
+// reproduced the hospitalization/report-pdf gaps noted above: staff, whose
+// browser already carries a valid login cookie, never noticed, while every
+// client hit a silent 401 that the page could only show as "Link not
+// found". Staying GET-only means a client link still can't create or end a
+// call (POST/PATCH stay staff-only).
+const VISIT_READ_PATTERNS = [/^\/api\/visits\/[^/]+$/, /^\/api\/visits\/[^/]+\/video-consult$/];
+
 function isPublicPath(pathname, method) {
   if (pathname === '/api/staff' && method === 'GET') return true; // vet picker on the booking form
   if (pathname === '/api/vaccine-protocols' && method === 'GET') return true; // last-vaccination-type picker on the intake form
@@ -81,6 +91,7 @@ function isPublicPath(pathname, method) {
   // gallery for every client while staff, already logged in, saw it fine).
   if (pathname === '/api/attachments' && method === 'GET') return true;
   if (method === 'GET' && HOSPITALIZATION_READ_PATTERNS.some((re) => re.test(pathname))) return true;
+  if (method === 'GET' && VISIT_READ_PATTERNS.some((re) => re.test(pathname))) return true;
   return PUBLIC_PATTERNS.some((re) => re.test(pathname));
 }
 
