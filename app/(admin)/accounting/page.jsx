@@ -66,7 +66,7 @@ export default function AccountingOverviewPage() {
             👤 Staff Expenses
           </a>
           <a href="/accounting/donations" className="button-link">
-            🎁 Donations
+            💳 Online Payments
           </a>
         </div>
       </div>

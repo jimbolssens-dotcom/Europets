@@ -182,7 +182,7 @@ export default function DonationsPage() {
   return (
     <div>
       <div className="page-header">
-        <h1>Donations</h1>
+        <h1>Online Payments</h1>
         <a href="/accounting" className="button-link">
           &larr; Accounting
         </a>
