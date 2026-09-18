@@ -14,6 +14,23 @@ import { useClientAppTheme } from '@/app/_components/ClientAppThemeContext';
 import HexIcon from '@/app/_components/HexIcon';
 import HexfieldCanvas from '@/app/_components/HexfieldCanvas';
 import EcgLine from '@/app/_components/EcgLine';
+import { dueStatus, formatDate } from '@/lib/vaccinationDueStatus';
+
+const APPOINTMENT_TYPE_LABEL = {
+  consult: 'Consult',
+  video: 'Video consult',
+  surgery: 'Surgery',
+};
+
+function formatApptWhen(iso) {
+  return new Date(iso).toLocaleString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
 
 export default function ClientAppHomePage() {
   const { clientId, ready, login, logout } = useClientAppSession();
@@ -25,6 +42,7 @@ export default function ClientAppHomePage() {
 
   const [client, setClient] = useState(null);
   const [openAdmissions, setOpenAdmissions] = useState([]);
+  const [reminders, setReminders] = useState([]);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
 
   useEffect(() => {
@@ -36,8 +54,10 @@ export default function ClientAppHomePage() {
       fetch(`/api/hospitalizations?client_id=${clientId}&status=admitted`).then((res) =>
         res.ok ? res.json() : []
       ),
+      fetch(`/api/patients?client_id=${clientId}`).then((res) => (res.ok ? res.json() : [])),
+      fetch(`/api/appointments?client_id=${clientId}`).then((res) => (res.ok ? res.json() : [])),
     ])
-      .then(([clientData, admissions]) => {
+      .then(async ([clientData, admissions, pets, appointments]) => {
         if (cancelled) return;
         if (!clientData) {
           // Stale/deleted id on this phone — send them back to the login screen.
@@ -46,6 +66,59 @@ export default function ClientAppHomePage() {
         }
         setClient(clientData);
         setOpenAdmissions(Array.isArray(admissions) ? admissions : []);
+
+        // Reminders banner: vaccines due (or overdue) across every pet
+        // within the same 30-day "due soon" window dueStatus already
+        // uses, plus the next appointment if it's within a week — the
+        // same underlying data the Vaccinations Due section and
+        // Appointments tab already show, just surfaced here as one
+        // combined "things to act on" list.
+        const petList = Array.isArray(pets) ? pets : [];
+        const dueByPet = await Promise.all(
+          petList.map((pet) =>
+            fetch(`/api/vaccinations?patient_id=${pet.id}&due=true&within_days=30`)
+              .then((res) => (res.ok ? res.json() : []))
+              .then((rows) => rows.map((r) => ({ ...r, petName: pet.name, petId: pet.id })))
+          )
+        );
+        if (cancelled) return;
+        const dueVaccines = dueByPet
+          .flat()
+          .sort((a, b) => new Date(a.next_due_date) - new Date(b.next_due_date));
+
+        const now = Date.now();
+        const weekOut = now + 7 * 24 * 60 * 60 * 1000;
+        const upcomingAppt = (Array.isArray(appointments) ? appointments : [])
+          .filter(
+            (a) =>
+              a.status !== 'cancelled' &&
+              new Date(a.start_time).getTime() >= now &&
+              new Date(a.start_time).getTime() <= weekOut
+          )
+          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0];
+
+        const items = dueVaccines.map((v) => {
+          const status = dueStatus(v.next_due_date);
+          return {
+            key: `vax-${v.id}`,
+            icon: '💉',
+            text: `${v.vaccine_name} ${
+              status?.className === 'error' ? 'is overdue' : `due ${formatDate(v.next_due_date)}`
+            } for ${v.petName}`,
+            href: `/client-app/pets/${v.petId}`,
+          };
+        });
+        if (upcomingAppt) {
+          items.push({
+            key: `appt-${upcomingAppt.id}`,
+            icon: '📅',
+            text: `${APPOINTMENT_TYPE_LABEL[upcomingAppt.type] || 'Appointment'} ${formatApptWhen(
+              upcomingAppt.start_time
+            )} for ${upcomingAppt.patients?.name || 'your pet'}`,
+            href: '/client-app/appointments',
+          });
+        }
+        setReminders(items);
       })
       .finally(() => !cancelled && setLoadingDashboard(false));
     return () => {
@@ -181,6 +254,23 @@ export default function ClientAppHomePage() {
             </a>
           ))}
         </div>
+      )}
+
+      {!loadingDashboard && reminders.length > 0 && (
+        <>
+          <p className="mobile-section-header">Reminders</p>
+          <ul className="mobile-list">
+            {reminders.map((item) => (
+              <li key={item.key}>
+                <a href={item.href} className="mobile-list-item">
+                  <span className="mobile-list-title">
+                    {item.icon} {item.text}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       <div className="mobile-square-tiles">
