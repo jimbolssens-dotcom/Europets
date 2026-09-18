@@ -3,7 +3,10 @@
 //        Treatment Plan tasks (the tap-to-log buttons)
 // POST /api/hospitalizations/:id/plan-items  -> add a task to the plan —
 //        goods_service_id set for a catalog-linked task (meds/services),
-//        left out for routine care (cage cleaning, feeding, checks, ...)
+//        left out for routine care (cage cleaning, feeding, checks, ...).
+//        bill_once (see migration 127) marks a catalog-linked task that
+//        should only ever charge the invoice once for the whole stay no
+//        matter how many times it's logged — see lib/planItemBilling.js.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -27,7 +30,7 @@ const VALID_FREQUENCIES = ['once_daily', 'twice_daily', 'one_time'];
 
 export async function POST(request, { params }) {
   const body = await request.json();
-  const { label, goods_service_id, instructions, is_surgical, frequency, quantity } = body;
+  const { label, goods_service_id, instructions, is_surgical, frequency, quantity, bill_once } = body;
 
   if (!label) {
     return NextResponse.json({ error: 'label is required' }, { status: 400 });
@@ -61,6 +64,7 @@ export async function POST(request, { params }) {
         is_surgical: !!is_surgical,
         frequency: frequency || 'once_daily',
         quantity: quantity ? Number(quantity) : 1,
+        bill_once: !!bill_once,
       },
     ])
     .select('*, goods_services(name)')

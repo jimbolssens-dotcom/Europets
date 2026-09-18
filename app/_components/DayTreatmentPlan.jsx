@@ -58,6 +58,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
   const [catalogInstructions, setCatalogInstructions] = useState('');
   const [catalogFrequency, setCatalogFrequency] = useState('once_daily');
   const [catalogQuantity, setCatalogQuantity] = useState('1');
+  const [catalogBillOnce, setCatalogBillOnce] = useState(false);
   const [showCustomAdd, setShowCustomAdd] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
   const [customFrequency, setCustomFrequency] = useState('once_daily');
@@ -212,7 +213,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
         notes: taskLine(item),
         plan_item_ids: [item.id],
         treatment_items: item.goods_service_id
-          ? [{ goods_service_id: item.goods_service_id, quantity: item.quantity || 1, administration_method: item.administration_method }]
+          ? [{ goods_service_id: item.goods_service_id, quantity: item.quantity || 1, administration_method: item.administration_method, plan_item_id: item.id }]
           : [],
       }),
     });
@@ -243,6 +244,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
         goods_service_id: item.goods_service_id,
         quantity: item.quantity || 1,
         administration_method: item.administration_method,
+        plan_item_id: item.id,
       }),
     });
     if (!itemRes.ok) {
@@ -477,6 +479,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
       instructions: catalogInstructions.trim() || null,
       frequency: catalogFrequency,
       quantity: catalogQuantity,
+      bill_once: catalogBillOnce,
     });
     // A plan item that's a lab test is also ordered as a diagnostic the
     // moment it lands on the plan (not just once its "Enter Test Result"
@@ -492,6 +495,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     setCatalogInstructions('');
     setCatalogFrequency('once_daily');
     setCatalogQuantity('1');
+    setCatalogBillOnce(false);
     setShowCatalogAdd(false);
   }
 
@@ -860,6 +864,10 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
             />
           </div>
           <FrequencyPicker name="catalog-frequency" value={catalogFrequency} onChange={setCatalogFrequency} />
+          <label className="day-plan-bill-once">
+            <input type="checkbox" checked={catalogBillOnce} onChange={(e) => setCatalogBillOnce(e.target.checked)} />
+            Charge once — log every application, but only bill the first one
+          </label>
           <button type="button" onClick={addCatalogTask} disabled={!catalogGoodsServiceId}>
             Add to Plan
           </button>

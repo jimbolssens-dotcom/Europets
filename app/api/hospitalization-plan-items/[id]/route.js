@@ -18,7 +18,7 @@ const VALID_FREQUENCIES = ['once_daily', 'twice_daily', 'one_time'];
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { label, goods_service_id, instructions, is_surgical, frequency, quantity } = body;
+  const { label, goods_service_id, instructions, is_surgical, frequency, quantity, bill_once } = body;
 
   if (!label) {
     return NextResponse.json({ error: 'label is required' }, { status: 400 });
@@ -65,6 +65,7 @@ export async function PATCH(request, { params }) {
   if (is_surgical !== undefined) update.is_surgical = !!is_surgical;
   if (frequency !== undefined) update.frequency = frequency;
   if (quantity !== undefined) update.quantity = Number(quantity);
+  if (bill_once !== undefined) update.bill_once = !!bill_once;
 
   const { data, error } = await supabaseAdmin
     .from('hospitalization_plan_items')

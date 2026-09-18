@@ -208,7 +208,7 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
         notes: taskLine(item),
         plan_item_ids: [item.id],
         treatment_items: item.goods_service_id
-          ? [{ goods_service_id: item.goods_service_id, quantity: item.quantity || 1, administration_method: item.administration_method }]
+          ? [{ goods_service_id: item.goods_service_id, quantity: item.quantity || 1, administration_method: item.administration_method, plan_item_id: item.id }]
           : [],
       }),
     });
@@ -239,6 +239,7 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
         goods_service_id: item.goods_service_id,
         quantity: item.quantity || 1,
         administration_method: item.administration_method,
+        plan_item_id: item.id,
       }),
     });
     if (!itemRes.ok) {

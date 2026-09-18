@@ -5236,6 +5236,14 @@ button.secondary:hover {
   min-width: 64px;
 }
 
+.day-plan-bill-once {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
 /* The once/twice/one-time scheduling choice (migration 105), shared by
    the catalog-add, custom-add and long-press edit forms. */
 .day-plan-frequency-picker {

@@ -27,12 +27,20 @@
 //                                                           consult notes/report) and appends a
 //                                                           short line if not — best-effort, never
 //                                                           blocks the item being added.
+//                                                           plan_item_id, when passed, identifies
+//                                                           which Day Treatment Plan button this
+//                                                           tap came from — used only to enforce a
+//                                                           bill_once plan item's "only the first
+//                                                           tap charges" rule (see
+//                                                           lib/planItemBilling.js); never stored
+//                                                           on the row itself.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { checkTreatmentNoteCoverage } from '@/lib/anthropicClient';
+import { resolvePlanItemBillable } from '@/lib/planItemBilling';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -62,7 +70,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { visit_id, hospitalization_note_id, goods_service_id, instructions, quantity, billable } = body;
+  const { visit_id, hospitalization_note_id, goods_service_id, instructions, quantity, billable, plan_item_id } = body;
 
   if (!goods_service_id) {
     return NextResponse.json({ error: 'goods_service_id is required' }, { status: 400 });
@@ -92,6 +100,21 @@ export async function POST(request) {
 
   const resolved = resolveAdministrationMethod(catalogItem.administration_method);
 
+  let resolvedBillable = billable === false ? false : true;
+  // A bill_once plan item (see migration 127) still logs every tap as a
+  // normal worksheet entry, but only the first one should ever reach the
+  // invoice — see lib/planItemBilling.js.
+  if (resolvedBillable && plan_item_id && hospitalization_note_id) {
+    const { data: note } = await supabase
+      .from('hospitalization_notes')
+      .select('hospitalization_id')
+      .eq('id', hospitalization_note_id)
+      .maybeSingle();
+    if (note?.hospitalization_id) {
+      resolvedBillable = await resolvePlanItemBillable(plan_item_id, note.hospitalization_id);
+    }
+  }
+
   const { data, error } = await supabaseAdmin
     .from('treatment_items')
     .insert([
@@ -102,7 +125,7 @@ export async function POST(request) {
         instructions: instructions || null,
         quantity: quantity !== undefined && quantity !== '' ? Number(quantity) : 1,
         administration_method: resolved.administration_method,
-        billable: billable === false ? false : true,
+        billable: resolvedBillable,
       },
     ])
     .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price)')

@@ -19,6 +19,7 @@ import { NextResponse } from 'next/server';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { mirrorVitalsToLinkedHospitalizations } from '@/lib/hospitalizationVitalsSync';
+import { resolvePlanItemBillable } from '@/lib/planItemBilling';
 
 // See app/api/hospitalizations/[id]/route.js — same caching gotcha, and
 // this is the route the client portal's Temp/Weight/Appetite fields
@@ -168,14 +169,26 @@ export async function POST(request, { params }) {
 
   const resolvedMethods = pendingItems.map((t) => resolveAdministrationMethod(methodByGoodsServiceId[t.goods_service_id]));
 
-  const itemRows = pendingItems.map((t, i) => ({
-    hospitalization_note_id: note.id,
-    goods_service_id: t.goods_service_id,
-    instructions: t.instructions || null,
-    quantity: t.quantity !== undefined && t.quantity !== '' ? Number(t.quantity) : 1,
-    administration_method: resolvedMethods[i].administration_method,
-    billable: t.billable === false ? false : true,
-  }));
+  const itemRows = await Promise.all(
+    pendingItems.map(async (t, i) => {
+      let billable = t.billable === false ? false : true;
+      // A bill_once plan item (see migration 127) still logs every tap as a
+      // normal worksheet entry, but only the first one should ever reach
+      // the invoice — later taps land as billable: false, the same flag
+      // already used for a deliberately non-billable item.
+      if (billable && t.plan_item_id) {
+        billable = await resolvePlanItemBillable(t.plan_item_id, params.id);
+      }
+      return {
+        hospitalization_note_id: note.id,
+        goods_service_id: t.goods_service_id,
+        instructions: t.instructions || null,
+        quantity: t.quantity !== undefined && t.quantity !== '' ? Number(t.quantity) : 1,
+        administration_method: resolvedMethods[i].administration_method,
+        billable,
+      };
+    })
+  );
 
   if (itemRows.length > 0) {
     const { data: items, error: itemsError } = await supabaseAdmin
