@@ -292,7 +292,15 @@ export default function HospitalizationDetailPage() {
     if (!id) return;
     fetch(`/api/hospitalizations/${id}/plan-items`)
       .then((res) => res.json())
-      .then((data) => setConsentPlanItems(Array.isArray(data) ? data : []));
+      .then((data) => {
+        // Exclude the two system vitals items (Temperature/Weight) from
+        // the consent form preview — routine monitoring, not something
+        // the owner is consenting to have "done" as a procedure. Mirrors
+        // the same filter in lib/consentForms.js used when the form is
+        // actually signed, so this preview matches what gets sent.
+        const items = Array.isArray(data) ? data : [];
+        setConsentPlanItems(items.filter((item) => item.kind !== 'vitals_temperature' && item.kind !== 'vitals_weight'));
+      });
   }, [id]);
 
   // Day procedures get their own Vaccination card in the Day Procedure
