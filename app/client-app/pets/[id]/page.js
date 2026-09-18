@@ -89,26 +89,25 @@ export default function ClientAppPetHistoryPage() {
   // from the Clients page) rather than rebuilding the slot-picker/roster/
   // duration rules a second time — this just opens a fresh link already
   // scoped to this client, with this pet pre-selected (see the ?pet=
-  // handling added to that page).
+  // handling added to that page). Navigates the current tab rather than
+  // pre-opening a blank one to fill in later — that pattern is unreliable
+  // on mobile browsers (popup blockers can silently drop it, or focus can
+  // shift to the blank tab before an error has a chance to render
+  // anywhere visible).
   async function startBooking() {
     setBookingError(null);
     setBookingLoading(true);
-    const newTab = typeof window !== 'undefined' ? window.open('', '_blank') : null;
     try {
       const res = await fetch('/api/intake-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ client_id: clientId }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Could not start booking — please try again.');
-      const url = `/portal/intake/${data.id}?pet=${id}`;
-      if (newTab) newTab.location.href = url;
-      else window.location.href = url;
+      window.location.href = `/portal/intake/${data.id}?pet=${id}`;
     } catch (err) {
-      if (newTab) newTab.close();
       setBookingError(err.message);
-    } finally {
       setBookingLoading(false);
     }
   }
