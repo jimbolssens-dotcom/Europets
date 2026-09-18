@@ -1274,6 +1274,29 @@ export default function HospitalizationDetailPage() {
           .flatMap((n) => n.treatment_items || [])
           .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
         const dayExpanded = expandedDay === group.date;
+        // A linked day procedure's checklist ticks each create their own
+        // hospitalization_notes row on ITS OWN worksheet — surfaced here
+        // read-only (see loadNotes), but shown as separate cards one per
+        // tick, they read as a wall of near-duplicate entries instead of
+        // "here's what happened during the procedure". Collapse every note
+        // sharing the same _dayProcedureId (already sorted newest-first)
+        // into one combined card instead, without touching how this
+        // admission's own entries render below.
+        const renderEntries = [];
+        const dayProcedureGroupsById = {};
+        for (const n of group.entries) {
+          if (!n._dayProcedureId) {
+            renderEntries.push(n);
+            continue;
+          }
+          let dpGroup = dayProcedureGroupsById[n._dayProcedureId];
+          if (!dpGroup) {
+            dpGroup = { id: `dp-${n._dayProcedureId}`, _dayProcedureId: n._dayProcedureId, _dayProcedureLabel: n._dayProcedureLabel, _mergedNotes: [] };
+            dayProcedureGroupsById[n._dayProcedureId] = dpGroup;
+            renderEntries.push(dpGroup);
+          }
+          dpGroup._mergedNotes.push(n);
+        }
         return (
         <div key={group.date} className="worksheet-day">
           <h3 className="worksheet-day-header">
@@ -1369,31 +1392,39 @@ export default function HospitalizationDetailPage() {
             </div>
           )}
 
-          {group.entries.map((n) => n._dayProcedureId ? (
+          {renderEntries.map((n) => n._dayProcedureId ? (
             // Merged in from a day procedure booked off this stay (see
             // loadNotes) — read-only here on purpose: editing/deleting it
             // or its treatment_items belongs on that record, where its own
-            // invoice is built from them.
+            // invoice is built from them. Every checklist tick logged that
+            // day is combined into this one card (see renderEntries above)
+            // instead of one card each.
             <div key={n.id} className="visit-card visit-card-from-day-procedure">
               <div className="visit-header">
-                <strong>{formatTime(n.created_at)}</strong>
-                <span>{n.staff?.full_name || 'unassigned'}</span>
+                <strong>
+                  {formatTime(n._mergedNotes[n._mergedNotes.length - 1].created_at)}
+                  {n._mergedNotes.length > 1 && `–${formatTime(n._mergedNotes[0].created_at)}`}
+                </strong>
                 <a className="button-link button-link-day-procedure visit-card-source-link" href={`/hospitalization/${n._dayProcedureId}`}>
                   🩺 {n._dayProcedureLabel}
                 </a>
               </div>
-              {n.notes && <p>{n.notes}</p>}
-              {n.treatment_items?.length > 0 && (
-                <ul className="worksheet-entry-items">
-                  {n.treatment_items.map((t) => (
+              <ul className="worksheet-entry-items">
+                {n._mergedNotes.slice().reverse().flatMap((note) => [
+                  note.notes && (
+                    <li key={`${note.id}-note`}>
+                      <span className="visit-meta">{formatTime(note.created_at)}</span> {note.notes}
+                    </li>
+                  ),
+                  ...(note.treatment_items || []).map((t) => (
                     <li key={t.id}>
                       {t.goods_services?.name}
                       {t.quantity > 1 ? ` ×${t.quantity}` : ''}
                       {t.instructions && ` — ${t.instructions}`}
                     </li>
-                  ))}
-                </ul>
-              )}
+                  )),
+                ].filter(Boolean))}
+              </ul>
             </div>
           ) : (
             <div key={n.id} className="visit-card">
