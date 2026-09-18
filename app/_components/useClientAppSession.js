@@ -21,6 +21,15 @@ export function useClientAppSession() {
     setReady(true);
   }, []);
 
+  // Fire-and-forget "still using the app" signal — every client-app page
+  // mounts this hook, so this fires once per page view. Lets staff tell,
+  // e.g. when deciding how to send a consent form, whether this client
+  // actually has the app rather than just having it in their history once.
+  useEffect(() => {
+    if (!ready || !clientId) return;
+    fetch(`/api/clients/${clientId}/app-seen`, { method: 'POST' }).catch(() => {});
+  }, [ready, clientId]);
+
   const login = useCallback((id) => {
     localStorage.setItem(CLIENT_APP_STORAGE_KEY, id);
     setClientId(id);

@@ -6526,6 +6526,17 @@ form.card.admit-patient-form {
   margin-top: 0.9rem;
 }
 
+/* Also used by the consent-signing form (app/client-app/consent/[id]) —
+   its labels wrap a .client-app-login-input, same as the phone field. */
+.client-app-login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--ash);
+}
+
 /* gradient pill button — the site's .btn-primary, applied to every plain
    <button type="submit"> in the client app (there's exactly one style of
    primary action here, so no separate class needed). The light theme
@@ -6636,6 +6647,26 @@ form.card.admit-patient-form {
 
 .client-app-pet-admitted-link .client-app-hex-face {
   font-size: 0.85rem;
+}
+
+/* A standalone confirmation icon sitting above a heading (the consent
+   sign flow's "already signed"/"thank you" states) — same hex-plate
+   device, sized down to an icon rather than the bare .client-app-hex-plate
+   block default of stretching to its container's full width. */
+.client-app-confirm-icon.client-app-hex-plate {
+  width: 3rem;
+  height: 3.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.client-app-confirm-icon .client-app-hex-face {
+  font-size: 1.4rem;
+}
+
+.client-app-confirm-icon.client-app-plain-icon {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
 }
 
 .client-app-status-pill {

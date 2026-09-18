@@ -16,6 +16,24 @@ import HexfieldCanvas from '@/app/_components/HexfieldCanvas';
 import EcgLine from '@/app/_components/EcgLine';
 import { dueStatus, formatDate } from '@/lib/vaccinationDueStatus';
 
+// Every phone number in the system is stored as +971<local number>, with
+// no leading 0 on the local part (see migrations/071_normalize_phone_
+// country_code.sql) — so a plain substring match against the stored text
+// only works once the digits sent here are in that exact shape. Handles
+// the same input variants that migration already normalizes for: a bare
+// local number with its leading 0 ("0501234567"), one without ("501234567"),
+// a country code typed with an international dialing prefix ("00971..."),
+// or an accidental extra 0 right after typing the +971 prefix.
+function normalizePhoneDigits(input) {
+  let digits = input.replace(/\D/g, '');
+  if (digits.startsWith('00971')) digits = digits.slice(2);
+  if (digits.startsWith('971')) {
+    const rest = digits.slice(3).replace(/^0/, '');
+    return `971${rest}`;
+  }
+  return `971${digits.replace(/^0/, '')}`;
+}
+
 const APPOINTMENT_TYPE_LABEL = {
   consult: 'Consult',
   video: 'Video consult',
@@ -35,7 +53,7 @@ function formatApptWhen(iso) {
 export default function ClientAppHomePage() {
   const { clientId, ready, login, logout } = useClientAppSession();
   const theme = useClientAppTheme();
-  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneInput, setPhoneInput] = useState('+971 ');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [matches, setMatches] = useState(null);
@@ -43,6 +61,7 @@ export default function ClientAppHomePage() {
   const [client, setClient] = useState(null);
   const [openAdmissions, setOpenAdmissions] = useState([]);
   const [reminders, setReminders] = useState([]);
+  const [consentRequests, setConsentRequests] = useState([]);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
 
   useEffect(() => {
@@ -56,8 +75,9 @@ export default function ClientAppHomePage() {
       ),
       fetch(`/api/patients?client_id=${clientId}`).then((res) => (res.ok ? res.json() : [])),
       fetch(`/api/appointments?client_id=${clientId}`).then((res) => (res.ok ? res.json() : [])),
+      fetch(`/api/consent-form-requests?client_id=${clientId}`).then((res) => (res.ok ? res.json() : [])),
     ])
-      .then(async ([clientData, admissions, pets, appointments]) => {
+      .then(async ([clientData, admissions, pets, appointments, pendingConsentForms]) => {
         if (cancelled) return;
         if (!clientData) {
           // Stale/deleted id on this phone — send them back to the login screen.
@@ -66,6 +86,7 @@ export default function ClientAppHomePage() {
         }
         setClient(clientData);
         setOpenAdmissions(Array.isArray(admissions) ? admissions : []);
+        setConsentRequests(Array.isArray(pendingConsentForms) ? pendingConsentForms : []);
 
         // Reminders banner: vaccines due (or overdue) across every pet
         // within the same 30-day "due soon" window dueStatus already
@@ -128,8 +149,8 @@ export default function ClientAppHomePage() {
 
   async function handlePhoneSubmit(e) {
     e.preventDefault();
-    const digits = phoneInput.replace(/\D/g, '');
-    if (digits.length < 7) {
+    const digits = normalizePhoneDigits(phoneInput);
+    if (digits.length < 12) {
       setError('Enter a valid phone number.');
       return;
     }
@@ -162,7 +183,7 @@ export default function ClientAppHomePage() {
         <input
           type="tel"
           inputMode="tel"
-          placeholder="e.g. 050 123 4567"
+          placeholder="+971 50 123 4567"
           value={phoneInput}
           onChange={(e) => setPhoneInput(e.target.value)}
           className="client-app-login-input"
@@ -254,6 +275,25 @@ export default function ClientAppHomePage() {
             </a>
           ))}
         </div>
+      )}
+
+      {!loadingDashboard && consentRequests.length > 0 && (
+        <>
+          <p className="mobile-section-header">Consent Forms to Sign</p>
+          <ul className="mobile-list">
+            {consentRequests.map((req) => (
+              <li key={req.id}>
+                <a href={`/client-app/consent/${req.id}`} className="mobile-list-item">
+                  <span className="mobile-list-title">
+                    📝 {req.form_label}
+                    {req.patient_name ? ` for ${req.patient_name}` : ''}
+                  </span>
+                  <span className="mobile-list-meta">Tap to review and sign</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       {!loadingDashboard && reminders.length > 0 && (

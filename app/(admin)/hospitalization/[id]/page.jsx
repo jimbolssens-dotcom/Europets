@@ -770,6 +770,17 @@ export default function HospitalizationDetailPage() {
   if (admission.error) return <p>Admission not found.</p>;
 
   const consentFormType = admission.kind === 'day_procedure' ? 'day_procedure' : 'hospitalization';
+
+  // Lets staff choose app vs. WhatsApp when sending a consent form to sign
+  // — "recently" is generous (60 days) since this is just a nudge, not a
+  // hard gate; the WhatsApp button below still always works regardless.
+  const clientAppLastSeenAt = admission.clients?.client_app_last_seen_at;
+  const usesClientApp =
+    !!clientAppLastSeenAt && Date.now() - new Date(clientAppLastSeenAt).getTime() < 60 * 24 * 60 * 60 * 1000;
+  const clientAppLastSeenLabel = clientAppLastSeenAt
+    ? new Date(clientAppLastSeenAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+    : null;
+
   const consentPreviewPlan = {
     treatmentNotes: originVisitPlan.treatmentNotes,
     treatmentItems: [...originVisitPlan.treatmentItems, ...consentPlanItems],
@@ -811,6 +822,12 @@ export default function HospitalizationDetailPage() {
           {admission.clients?.full_name}
           {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''}
         </p>
+        {usesClientApp && (
+          <p className="visit-meta">
+            📱 Uses the Europets app{clientAppLastSeenLabel ? ` (last open ${clientAppLastSeenLabel})` : ''} — a
+            form sent below also shows up there under Consent Forms, so WhatsApp may not be necessary.
+          </p>
+        )}
         <div className="consent-text-box">
           {buildConsentFormText(consentFormType, { name: admission.patients?.name }, consentPreviewPlan)}
         </div>
@@ -841,7 +858,7 @@ export default function HospitalizationDetailPage() {
             {consentSubmitting ? 'Saving...' : 'Sign'}
           </button>
           <button type="button" onClick={sendConsentLink} disabled={sendingConsentLink}>
-            {sendingConsentLink ? 'Sending...' : 'WhatsApp'}
+            {sendingConsentLink ? 'Sending...' : usesClientApp ? 'Send Link (App + WhatsApp)' : 'WhatsApp'}
           </button>
         </div>
       </form>

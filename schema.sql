@@ -58,6 +58,7 @@ create table clients (
                                -- distinct from emirates_id above
     legacy_outstanding_balance numeric(10,2),  -- carried over from the old clinic software at import,
                                                 -- reference only; not linked to any invoice here (migration 069)
+    client_app_last_seen_at timestamptz,  -- last time this client used app/client-app/* (migration 119)
     created_at timestamptz default now()
 );
 
