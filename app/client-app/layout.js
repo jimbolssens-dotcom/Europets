@@ -5,16 +5,20 @@
 // magic-link app/portal pages (no login, one record per link) and from
 // the internal app/mobile staff app (no login at all).
 //
-// SECURITY NOTE — read before opening this to the public: logging in here
-// is currently just "type a phone number on file" (see page.js), with no
-// verification that the person typing it is that client. That's fine
-// while this stays reachable only by staff (still behind the general PIN
-// gate in middleware.js — this route is deliberately NOT in
-// PUBLIC_PATTERNS yet) for review/demo purposes, but it must NOT be
-// opened to real clients until real verification (e.g. an OTP sent to
-// that phone over WhatsApp/SMS) sits in front of it — otherwise anyone
-// who knows or guesses a client's phone number could see their invoices,
-// pets, and appointment history.
+// SECURITY NOTE — read before opening this to the public: logging in now
+// requires a real WhatsApp-delivered one-time code (see page.js,
+// lib/clientAppAuth.js, app/api/client-app/auth/*) backing a signed,
+// httpOnly session cookie — not just "type a phone number on file"
+// anymore. That closes the login itself, but this still must NOT be
+// opened to the public yet: every client-app-facing API route
+// (/api/patients, /api/appointments, /api/clients/:id, etc.) currently
+// trusts whatever client_id it's handed in a query param rather than
+// checking it against the session cookie, so anyone with a valid session
+// for their own account could still edit a URL/localStorage value to read
+// another client's data. That authorization pass across those routes is
+// the remaining piece before this route can move into PUBLIC_PATTERNS in
+// middleware.js — until then it stays reachable only by staff (behind the
+// general PIN gate) for testing.
 //
 // The manifest/appleWebApp metadata below is what makes "Add to Home
 // Screen" (iOS) / "Install app" (Android Chrome) produce a proper app
