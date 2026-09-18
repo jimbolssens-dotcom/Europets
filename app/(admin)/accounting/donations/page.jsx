@@ -11,7 +11,7 @@
 'use client';
 
 import { Fragment, useEffect, useState } from 'react';
-import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
+import ClientPatientNumberSearch from '@/app/_components/ClientPatientNumberSearch';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -366,11 +366,7 @@ export default function DonationsPage() {
                               <p className="visit-meta">
                                 AED {money(detail.remaining)} of this payment is not yet applied.
                               </p>
-                              <ClientOrPatientSearch
-                                onPickClient={pickApplyClient}
-                                onPickPatient={pickApplyPatient}
-                                placeholder="Find the client or patient to apply this payment to..."
-                              />
+                              <ClientPatientNumberSearch onPickClient={pickApplyClient} onPickPatient={pickApplyPatient} />
                               {applyClient && (
                                 <div className="note-form">
                                   <p className="visit-meta">
