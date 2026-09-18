@@ -60,13 +60,13 @@ export default function EmptyReportsPage() {
         <h1>Empty Reports</h1>
       </div>
       <p className="visit-meta">
-        Reports and tests that were started but never filled in — no dictation ever saved, or no result ever
-        logged. Open one to trace it back and either complete it or write it off.
+        Reports and tests that were started but never filled in — no dictation ever saved, no result ever logged,
+        and no photo or PDF attached either. Open one to trace it back and either complete it or write it off.
       </p>
       {loading ? (
         <p>Loading...</p>
       ) : reports.length === 0 ? (
-        <p>Nothing outstanding — every report and test on file has been filled in.</p>
+        <p>Nothing outstanding — every report and test on file has been filled in or has a file attached.</p>
       ) : (
         <table>
           <thead>
