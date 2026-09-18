@@ -539,36 +539,44 @@ td select {
 }
 
 /* Expenses list (accounting/expenses) — every column is directly editable
-   (see commitField), so without fixed widths the Amount/VAT number inputs
-   and the Category/Paid Via selects each default to a much wider box than
-   the few characters they actually hold, pushing the row past a normal
-   desktop width. Notes is the one column left unconstrained — it soaks up
-   whatever width the fixed columns don't use. */
+   (see commitField). table-layout:fixed makes these widths exact instead
+   of the browser's auto layout squeezing them down to fit the .split-main
+   column (which is what made Vendor/VAT/Paid Via unreadable) — the table
+   is free to run wider than that column now, scrolling horizontally inside
+   the .table-wrap wrapper below rather than compressing every column to
+   fit (same pattern as .treatment-items-table/.catalog-table-wrap). */
+.expenses-table {
+  table-layout: fixed;
+}
+
 .expenses-table th:nth-child(1),
 .expenses-table td:nth-child(1) {
-  width: 8.5rem;
+  width: 8rem;
 }
 
 .expenses-table th:nth-child(2),
 .expenses-table td:nth-child(2) {
-  width: 8rem;
+  width: 9.5rem;
 }
 
 .expenses-table th:nth-child(3),
 .expenses-table td:nth-child(3) {
-  width: 7.5rem;
+  width: 6.5rem;
 }
 
 .expenses-table th:nth-child(4),
 .expenses-table td:nth-child(4) {
-  width: 6.5rem;
+  width: 6rem;
 }
 
 .expenses-table th:nth-child(5),
-.expenses-table td:nth-child(5),
+.expenses-table td:nth-child(5) {
+  width: 5.5rem;
+}
+
 .expenses-table th:nth-child(6),
 .expenses-table td:nth-child(6) {
-  width: 4.8rem;
+  width: 5.5rem;
 }
 
 .expenses-table th:nth-child(7),
@@ -579,17 +587,35 @@ td select {
 
 .expenses-table th:nth-child(8),
 .expenses-table td:nth-child(8) {
-  width: 7rem;
+  width: 8.5rem;
 }
 
 .expenses-table th:nth-child(9),
 .expenses-table td:nth-child(9) {
-  width: 7rem;
+  width: 6.5rem;
 }
 
 .expenses-table th:nth-child(10),
 .expenses-table td:nth-child(10) {
-  width: auto;
+  width: 9rem;
+}
+
+/* Delete is the last, action-only column — a small icon button instead of
+   a full-size "Delete" button, so it doesn't compete for width with the
+   columns above that actually need reading (Vendor/VAT/Paid Via). */
+.expenses-table th:nth-child(11),
+.expenses-table td:nth-child(11) {
+  width: 2.5rem;
+  text-align: center;
+}
+
+.expense-delete-btn {
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  line-height: 1;
+  font-size: 0.85rem;
+  border-radius: 50%;
 }
 
 .expenses-table td input,

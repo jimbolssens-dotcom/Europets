@@ -103,6 +103,13 @@ export default function AccountingOverviewPage() {
               <span className="accounting-stat-value">AED {money(summary.net_profit_cash_basis)}</span>
               <span className="accounting-stat-hint">Cash basis: collected minus spent this month</span>
             </div>
+            <div className="accounting-stat">
+              <span className="accounting-stat-label">Discounts Given</span>
+              <span className="accounting-stat-value">AED {money(summary.discounts.total)}</span>
+              <span className="accounting-stat-hint">
+                {summary.discounts.count} invoice{summary.discounts.count === 1 ? '' : 's'} discounted this month
+              </span>
+            </div>
           </div>
 
           <h3>VAT (5%)</h3>

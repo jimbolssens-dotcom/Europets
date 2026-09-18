@@ -1062,7 +1062,8 @@ create table invoices (
     hospitalization_id uuid references hospitalizations(id),
     client_id uuid references clients(id) not null,
     subtotal numeric(10,2) not null default 0,
-    vat_amount numeric(10,2) not null default 0,   -- 5% UAE VAT
+    discount_amount numeric(10,2) not null default 0,  -- sum of invoice_discounts, see lib/invoicing.js (migration 123)
+    vat_amount numeric(10,2) not null default 0,   -- 5% UAE VAT, charged on (subtotal - discount_amount)
     total numeric(10,2) not null default 0,
     status text not null default 'unpaid',  -- unpaid, partially_paid, paid, void
     payment_method text check (payment_method in ('cash', 'card', 'bank_transfer', 'payment_link')),
@@ -1137,6 +1138,23 @@ create table invoice_payments (
 
 create index invoice_payments_invoice_id_idx on invoice_payments(invoice_id);
 create index idx_invoice_payments_donation on invoice_payments(donation_id);
+
+-- A discount applied to an invoice — logged as its own append-only entry
+-- rather than a single editable number, so changing/removing one doesn't
+-- lose the trail (same shape as invoice_payments above). invoices.
+-- discount_amount is the summary total, kept in sync by
+-- recomputeInvoiceTotals (migration 123).
+create table invoice_discounts (
+    id uuid primary key default gen_random_uuid(),
+    invoice_id uuid references invoices(id) on delete cascade not null,
+    amount numeric(10,2) not null check (amount > 0),
+    reason text,
+    applied_by uuid references staff(id),
+    applied_at timestamptz not null default now(),
+    created_at timestamptz default now()
+);
+
+create index idx_invoice_discounts_invoice on invoice_discounts(invoice_id);
 
 -- ============ NOMOD PAYMENT LINKS ============
 -- Created lazily when a client opens their own "Settle Your Bill" page on
@@ -1242,7 +1260,7 @@ alter publication supabase_realtime add table
     diagnostics, treatment_items, surgical_reports, dental_reports, ultrasound_reports, xray_reports,
     hospitalizations, hospitalization_notes, hospitalization_plan_items, attachments, recordings, clinic_settings,
     vaccine_protocols, vaccinations, intake_requests, expenses, staff_roster_entries, review_requests,
-    nomod_payment_links, policy_categories, policies, client_messages;
+    nomod_payment_links, policy_categories, policies, client_messages, invoice_discounts;
 
 -- ============ ROW LEVEL SECURITY ============
 -- RLS is intentionally left disabled on every table below except
@@ -1291,6 +1309,7 @@ alter table consent_forms disable row level security;
 alter table consent_form_requests disable row level security;
 alter table patient_alerts disable row level security;
 alter table invoice_payments disable row level security;
+alter table invoice_discounts disable row level security;
 alter table policy_categories disable row level security;
 alter table policies disable row level security;
 

@@ -10,6 +10,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
+import InvoiceDiscountPanel from '@/app/_components/InvoiceDiscountPanel';
 import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import VoiceNoteBox from '@/app/_components/VoiceNoteBox';
 import { groupLineItemsByCategory, groupLineItemsBySection, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
@@ -405,7 +406,8 @@ export default function InvoiceDetailPage() {
   if (invoice.error) return <p>Invoice not found.</p>;
 
   const selected = catalog.find((c) => c.id === goodsServiceId);
-  const patientName = invoice.visits?.patients?.name || invoice.hospitalizations?.patients?.name;
+  const patient = invoice.visits?.patients || invoice.hospitalizations?.patients;
+  const patientName = patient?.name;
   const invoiceSections = groupLineItemsBySection(invoice.line_items);
   const editable = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
   const columnCount = editable ? 7 : 6;
@@ -421,9 +423,24 @@ export default function InvoiceDetailPage() {
       </p>
       <h1>
         Invoice {invoice.invoice_number ? `#INV-${String(invoice.invoice_number).padStart(6, '0')}` : ''} —{' '}
-        {invoice.clients?.full_name}
-        {patientName ? ` — ${patientName}` : ''} <span>({STATUS_LABELS[invoice.status] || invoice.status})</span>
+        {invoice.clients?.id ? <a href={`/clients/${invoice.clients.id}`}>{invoice.clients?.full_name}</a> : invoice.clients?.full_name}
+        {patientName ? (
+          <>
+            {' — '}
+            {patient?.id ? <a href={`/patients/${patient.id}`}>{patientName}</a> : patientName}
+          </>
+        ) : ''}{' '}
+        <span>({STATUS_LABELS[invoice.status] || invoice.status})</span>
       </h1>
+      <p className="visit-meta">
+        {invoice.clients?.id && (
+          <>
+            <a href={`/clients/${invoice.clients.id}`}>Client #{invoice.clients.client_number}</a>
+            {patient?.id && ' · '}
+          </>
+        )}
+        {patient?.id && <a href={`/patients/${patient.id}`}>Patient #{patient.patient_number}</a>}
+      </p>
       <p className="visit-meta">
         {invoice.clients?.phone} · {invoice.clients?.email}
       </p>
@@ -576,7 +593,9 @@ export default function InvoiceDetailPage() {
       </table>
 
       <p>
-        Subtotal: {money(invoice.subtotal)} · VAT (5%): {money(invoice.vat_amount)} ·{' '}
+        Subtotal: {money(invoice.subtotal)}
+        {Number(invoice.discount_amount) > 0 && <> · Discount: -{money(invoice.discount_amount)}</>}
+        {' '}· VAT (5%): {money(invoice.vat_amount)} ·{' '}
         <strong>Total: {money(invoice.total)}</strong>
       </p>
 
@@ -647,6 +666,9 @@ export default function InvoiceDetailPage() {
           </ul>
         </div>
       )}
+
+      <h3>Discounts</h3>
+      <InvoiceDiscountPanel invoice={invoice} staff={staff} onChanged={loadInvoice} />
 
       <h3>Payments</h3>
       <InvoicePaymentPanel invoice={invoice} staff={staff} onChanged={loadInvoice} />

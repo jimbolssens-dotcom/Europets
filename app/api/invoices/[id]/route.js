@@ -1,5 +1,5 @@
 // app/api/invoices/[id]/route.js
-// GET   /api/invoices/:id  -> invoice with line items and its payment log
+// GET   /api/invoices/:id  -> invoice with line items, its payment log, and its discount log
 // PATCH /api/invoices/:id  -> void an invoice. Marking one paid isn't a
 //                             directly settable status anymore — it's
 //                             derived automatically once logged payments
@@ -23,7 +23,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request, { params }) {
   const { data: invoice, error } = await supabase
     .from('invoices')
-    .select('*, clients(full_name, phone, email)')
+    .select('*, clients(id, full_name, phone, email, client_number)')
     .eq('id', params.id)
     .single();
 
@@ -38,12 +38,16 @@ export async function GET(request, { params }) {
   // invoice.hospitalizations are still set below so callers reading them
   // (the invoice detail page) don't need to change.
   if (invoice.visit_id) {
-    const { data: visit } = await supabase.from('visits').select('patients(id, name)').eq('id', invoice.visit_id).single();
+    const { data: visit } = await supabase
+      .from('visits')
+      .select('patients(id, name, patient_number)')
+      .eq('id', invoice.visit_id)
+      .single();
     invoice.visits = visit || null;
   } else if (invoice.hospitalization_id) {
     const { data: hospitalization } = await supabase
       .from('hospitalizations')
-      .select('patients(id, name), kind')
+      .select('patients(id, name, patient_number), kind')
       .eq('id', invoice.hospitalization_id)
       .single();
     invoice.hospitalizations = hospitalization || null;
@@ -68,7 +72,17 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: paymentsError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ...invoice, line_items: lineItems, payments });
+  const { data: discounts, error: discountsError } = await supabase
+    .from('invoice_discounts')
+    .select('*, staff(full_name)')
+    .eq('invoice_id', params.id)
+    .order('applied_at', { ascending: false });
+
+  if (discountsError) {
+    return NextResponse.json({ error: discountsError.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ...invoice, line_items: lineItems, payments, discounts });
 }
 
 export async function PATCH(request, { params }) {

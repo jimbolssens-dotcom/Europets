@@ -269,6 +269,7 @@ export default function ExpensesPage() {
           ) : expenses.length === 0 ? (
             <p>No expenses logged for this month.</p>
           ) : (
+            <div className="table-wrap">
             <table className="expenses-table">
               <thead>
                 <tr>
@@ -379,14 +380,21 @@ export default function ExpensesPage() {
                       />
                     </td>
                     <td>
-                      <button type="button" onClick={() => deleteExpense(ex.id)}>
-                        Delete
+                      <button
+                        type="button"
+                        className="expense-delete-btn"
+                        title="Delete expense"
+                        aria-label="Delete expense"
+                        onClick={() => deleteExpense(ex.id)}
+                      >
+                        ✕
                       </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 

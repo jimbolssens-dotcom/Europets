@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
+import InvoiceDiscountPanel from '@/app/_components/InvoiceDiscountPanel';
 import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 
 function money(n) {
@@ -226,7 +227,9 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
               </table>
 
               <p>
-                Subtotal: {money(invoice.subtotal)} · VAT (5%): {money(invoice.vat_amount)} · <strong>Total: {money(invoice.total)}</strong>
+                Subtotal: {money(invoice.subtotal)}
+                {Number(invoice.discount_amount) > 0 && <> · Discount: -{money(invoice.discount_amount)}</>}
+                {' '}· VAT (5%): {money(invoice.vat_amount)} · <strong>Total: {money(invoice.total)}</strong>
               </p>
 
               {editable && (
@@ -255,6 +258,15 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
                   </div>
                 </form>
               )}
+
+              <InvoiceDiscountPanel
+                invoice={invoice}
+                staff={staff}
+                onChanged={() => {
+                  loadInvoice();
+                  onChanged();
+                }}
+              />
 
               <InvoicePaymentPanel
                 invoice={invoice}

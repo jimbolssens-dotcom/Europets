@@ -51,7 +51,7 @@ export async function GET(request) {
   const [invoicedRes, paymentsRes, expensesRes, outstandingRes] = await Promise.all([
     supabase
       .from('invoices')
-      .select('subtotal, vat_amount, total')
+      .select('subtotal, discount_amount, vat_amount, total')
       .neq('status', 'void')
       .gte('created_at', start)
       .lt('created_at', end),
@@ -89,6 +89,8 @@ export async function GET(request) {
   const revenueCollected = Math.round((revenueCollectedInclVat / (1 + VAT_RATE)) * 100) / 100;
   const vatCollected = Math.round((revenueCollectedInclVat - revenueCollected) * 100) / 100;
   const expensesTotal = sum(expenses, 'amount');
+  const discountsTotal = sum(invoiced, 'discount_amount');
+  const discountedInvoiceCount = invoiced.filter((inv) => Number(inv.discount_amount) > 0).length;
   const unpaidTotal = outstanding.reduce(
     (total, inv) => total + (Number(inv.total || 0) - Number(inv.amount_paid || 0)),
     0
@@ -96,7 +98,7 @@ export async function GET(request) {
 
   return NextResponse.json({
     month,
-    revenue: { invoiced: sum(invoiced, 'subtotal'), collected: revenueCollected },
+    revenue: { invoiced: sum(invoiced, 'subtotal') - discountsTotal, collected: revenueCollected },
     vat: {
       output_invoiced: outputVatInvoiced,
       output_collected: vatCollected,
@@ -104,6 +106,7 @@ export async function GET(request) {
       net_due: outputVatInvoiced - inputVat,
     },
     expenses: { total: expensesTotal, count: expenses.length },
+    discounts: { total: discountsTotal, count: discountedInvoiceCount },
     net_profit_cash_basis: revenueCollected - expensesTotal,
     payments_by_method: paymentsByMethod,
     unpaid: { total: unpaidTotal, count: outstanding.length },
