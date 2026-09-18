@@ -81,6 +81,47 @@ export async function PATCH(request, { params }) {
     if (!['admission', 'day_procedure'].includes(kind)) {
       return NextResponse.json({ error: "kind must be 'admission' or 'day_procedure'" }, { status: 400 });
     }
+    // "Move to Hospital" promotes a day procedure to an admission IN PLACE
+    // — the same row, not a new one. That's only correct when this patient
+    // has nowhere else to be admitted to. A day procedure booked without
+    // going through "Book Day Procedure" from an open admission's own page
+    // (e.g. from the patient file, a consult, or an auto-checked-in
+    // appointment) never gets originating_hospitalization_id set, so this
+    // promotion would otherwise silently create a second, parallel
+    // admission for a patient who already has one open — splitting both
+    // the record and the billing. Block it here and point staff at the
+    // real fix: complete this day procedure and use "Merge into invoice"
+    // on the existing admission instead.
+    if (kind === 'admission') {
+      const { data: current, error: currentError } = await supabase
+        .from('hospitalizations')
+        .select('patient_id, kind, originating_hospitalization_id')
+        .eq('id', params.id)
+        .single();
+      if (currentError || !current) {
+        return NextResponse.json({ error: 'hospitalization not found' }, { status: 404 });
+      }
+      if (current.kind === 'day_procedure' && !current.originating_hospitalization_id) {
+        const { data: openAdmission } = await supabase
+          .from('hospitalizations')
+          .select('id, reason')
+          .eq('patient_id', current.patient_id)
+          .eq('kind', 'admission')
+          .eq('status', 'admitted')
+          .neq('id', params.id)
+          .limit(1)
+          .maybeSingle();
+        if (openAdmission) {
+          return NextResponse.json(
+            {
+              error: `This patient already has an open hospitalization${openAdmission.reason ? ` (${openAdmission.reason})` : ''} — complete this day procedure and use "Merge into invoice" on that admission instead of starting a second one.`,
+              existing_hospitalization_id: openAdmission.id,
+            },
+            { status: 409 }
+          );
+        }
+      }
+    }
     update.kind = kind;
   }
   if (originating_visit_id !== undefined) update.originating_visit_id = originating_visit_id || null;

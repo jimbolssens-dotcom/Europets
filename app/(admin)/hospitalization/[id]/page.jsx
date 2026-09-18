@@ -91,6 +91,7 @@ export default function HospitalizationDetailPage() {
   const [linkedDayProcedures, setLinkedDayProcedures] = useState([]);
   const [bookingDayProcedure, setBookingDayProcedure] = useState(false);
   const [bookDayProcedureError, setBookDayProcedureError] = useState(null);
+  const [moveToHospitalError, setMoveToHospitalError] = useState(null);
   const reportsSectionRef = useRef(null);
   const [pendingChecklistAction, setPendingChecklistAction] = useState(null);
 
@@ -659,11 +660,17 @@ export default function HospitalizationDetailPage() {
 
   async function moveToHospital() {
     if (!confirm('Move this day procedure to a full hospital admission?')) return;
-    await fetch(`/api/hospitalizations/${id}`, {
+    setMoveToHospitalError(null);
+    const res = await fetch(`/api/hospitalizations/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ kind: 'admission' }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMoveToHospitalError(data.error || 'Failed to move to hospital');
+      return;
+    }
     loadAdmission();
   }
 
@@ -1061,6 +1068,7 @@ export default function HospitalizationDetailPage() {
             </CrossRecordLinks>
           </div>
           {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
+          {moveToHospitalError && <p className="error" role="alert">{moveToHospitalError}</p>}
 
           <details className="case-files">
             <summary>📎 Case Photos &amp; Files</summary>

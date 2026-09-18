@@ -251,6 +251,31 @@ export async function POST(request) {
     );
   }
 
+  const resolvedKind = kind || (originating_hospitalization_id ? 'day_procedure' : 'admission');
+
+  // A day procedure can also start from the patient file, a consult, or an
+  // auto-checked-in appointment — none of which go through "Book Day
+  // Procedure" on an open admission's own page, so none of them would
+  // otherwise set originating_hospitalization_id. Left unlinked, a later
+  // "Move to Hospital" on this record has no way to know the patient
+  // already has an open stay, and would promote this row into a second,
+  // parallel admission instead (see the PATCH route's own guard for that
+  // case). Catch it here instead, at the source: if this patient already
+  // has an open admission, link this day procedure to it automatically.
+  if (resolvedKind === 'day_procedure' && !originating_hospitalization_id) {
+    const { data: openAdmission } = await supabase
+      .from('hospitalizations')
+      .select('id')
+      .eq('patient_id', patient_id)
+      .eq('kind', 'admission')
+      .eq('status', 'admitted')
+      .limit(1)
+      .maybeSingle();
+    if (openAdmission) {
+      originating_hospitalization_id = openAdmission.id;
+    }
+  }
+
   const { data, error } = await supabaseAdmin
     .from('hospitalizations')
     .insert([
@@ -263,7 +288,7 @@ export async function POST(request) {
         room_id: room_id || null,
         cage_id: cage_id || null,
         reason: reason || null,
-        kind: kind || (originating_hospitalization_id ? 'day_procedure' : 'admission'),
+        kind: resolvedKind,
       },
     ])
     .select('*, patients(name, species, patient_number, current_weight_kg), clients(full_name, phone, client_number), rooms(name)')

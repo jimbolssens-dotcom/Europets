@@ -13,6 +13,7 @@
 import ClientReportEditor from './ClientReportEditor';
 import ReportShareActions from './ReportShareActions';
 import AttachmentSection from './AttachmentSection';
+import AudioRecorder from './AudioRecorder';
 import { useState } from 'react';
 import { isImagingDiagnostic } from '@/lib/diagnosticReportPolicy';
 import { isBloodTest } from '@/lib/bloodTestProduct';
@@ -98,6 +99,7 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
         {group.hasClientSummary && report.client_summary && <ClientReportEditor reportId={report.id} apiBase={group.apiBase}
           savedReport={report.client_summary} onSaved={group.reload} field="client_summary" title="Client Summary" />}
         <ReportShareActions reportId={report.id} apiBase={group.apiBase} client={record.clients} patient={record.patients} reportLabel={group.label.toLowerCase()} />
+        <AudioRecorder entityType={group.entityType} entityId={report.id} onRefresh={group.reload} />
         <AttachmentSection entityType={group.entityType} entityId={report.id} />
       </details>)}
     </section>)}
