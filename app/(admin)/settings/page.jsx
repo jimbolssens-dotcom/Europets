@@ -128,6 +128,7 @@ export default function SettingsPage() {
         <a href="/catalog">Catalog</a>
         <a href="/policies">Policies</a>
         <a href="/accounting">Accounting</a>
+        <a href="/empty-reports">Empty Reports</a>
       </div>
 
       <div className="settings-cleanup">
