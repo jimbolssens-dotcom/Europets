@@ -45,6 +45,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
   const [planNotes, setPlanNotes] = useState([]);
   const [authorId, setAuthorId] = useState('');
   const [loggingIds, setLoggingIds] = useState(() => new Set());
+  const [loggingQuickLabel, setLoggingQuickLabel] = useState(null);
   const [vitalsInputFor, setVitalsInputFor] = useState(null);
   const [vitalsValue, setVitalsValue] = useState('');
   // A long-press on the Temperature tile's +Log button opens this instead
@@ -68,6 +69,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
   const [editInstructions, setEditInstructions] = useState('');
   const [editFrequency, setEditFrequency] = useState('once_daily');
   const [editQuantity, setEditQuantity] = useState('1');
+  const [editBillOnce, setEditBillOnce] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);
@@ -444,8 +446,35 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     loadPlanItems();
   }
 
-  async function addQuickTask(label) {
-    await addPlanItem({ label });
+  // A quick-log chip (Cage Cleaned, Water Changed, ...) is a plain,
+  // one-off worksheet note — never a Day Treatment Plan item. Unlike a
+  // catalog/custom task, logging one (or not) never needs re-doing daily,
+  // shows no overdue warning, and can't feed the hospitalization's
+  // attention/alarm indicators (see lib/hospitalizationAttention.js, which
+  // only ever looks at owner update requests, scheduled vitals checks and
+  // doctor-checkup requests — never at Day Treatment Plan tasks). It used
+  // to create a permanent recurring plan item on first tap instead, which
+  // meant one click on a routine chore silently turned it into an ongoing
+  // daily obligation.
+  async function logQuickAction(label) {
+    setError(null);
+    setLoggingQuickLabel(label);
+    try {
+      const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author_id: authorId || null, note_date: todayISODate(), notes: label }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to log');
+      }
+      loadPlanNotes();
+    } catch (err) {
+      setError(err.message || 'Failed to log');
+    } finally {
+      setLoggingQuickLabel(null);
+    }
   }
 
   async function addCustomTask() {
@@ -553,6 +582,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     setEditInstructions(item.instructions || '');
     setEditFrequency(item.frequency || 'once_daily');
     setEditQuantity(String(item.quantity ?? 1));
+    setEditBillOnce(!!item.bill_once);
   }
 
   function cancelEditItem() {
@@ -574,6 +604,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
         instructions: editInstructions.trim() || null,
         frequency: editFrequency,
         quantity: editQuantity,
+        bill_once: editBillOnce,
       }),
     });
     setEditSaving(false);
@@ -791,7 +822,14 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
                       onChange={(e) => setEditQuantity(e.target.value)}
                     />
                   </div>
-                  <FrequencyPicker name={`edit-frequency-${item.id}`} value={editFrequency} onChange={setEditFrequency} />
+                  <ScheduleControl
+                    name={`edit-schedule-${item.id}`}
+                    frequency={editFrequency}
+                    onFrequencyChange={setEditFrequency}
+                    billOnce={editBillOnce}
+                    onBillOnceChange={setEditBillOnce}
+                    showBillOnce={!!editGoodsServiceId}
+                  />
                   <div className="day-plan-edit-actions">
                     <button type="button" onClick={() => saveEditItem(item.id)} disabled={editSaving}>
                       {editSaving ? 'Saving...' : 'Save'}
@@ -815,6 +853,22 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
         })}
       </div>
 
+      {remainingQuickTasks.length > 0 && (
+        <div className="day-plan-chips">
+          {remainingQuickTasks.map((q) => (
+            <button
+              type="button"
+              key={q}
+              className="chip"
+              onClick={() => logQuickAction(q)}
+              disabled={loggingQuickLabel === q}
+            >
+              {loggingQuickLabel === q ? 'Logging...' : `✓ ${q}`}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="day-plan-add-row">
         <AudioRecorder entityType="hospitalization_plan" entityId={hospitalizationId} onExtractedFields={loadPlanItems} />
         <button type="button" className="pill-btn" onClick={() => setShowCatalogAdd((v) => !v)}>
@@ -824,16 +878,6 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
           + Custom Task
         </button>
       </div>
-
-      {remainingQuickTasks.length > 0 && (
-        <div className="day-plan-chips">
-          {remainingQuickTasks.map((q) => (
-            <button type="button" key={q} className="chip" onClick={() => addQuickTask(q)}>
-              + {q}
-            </button>
-          ))}
-        </div>
-      )}
 
       {showCatalogAdd && (
         <div className="day-plan-catalog-add">
@@ -863,11 +907,14 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
               onChange={(e) => setCatalogQuantity(e.target.value)}
             />
           </div>
-          <FrequencyPicker name="catalog-frequency" value={catalogFrequency} onChange={setCatalogFrequency} />
-          <label className="day-plan-bill-once">
-            <input type="checkbox" checked={catalogBillOnce} onChange={(e) => setCatalogBillOnce(e.target.checked)} />
-            Charge once — log every application, but only bill the first one
-          </label>
+          <ScheduleControl
+            name="catalog-schedule"
+            frequency={catalogFrequency}
+            onFrequencyChange={setCatalogFrequency}
+            billOnce={catalogBillOnce}
+            onBillOnceChange={setCatalogBillOnce}
+            showBillOnce
+          />
           <button type="button" onClick={addCatalogTask} disabled={!catalogGoodsServiceId}>
             Add to Plan
           </button>
@@ -881,7 +928,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
             value={customLabel}
             onChange={(e) => setCustomLabel(e.target.value)}
           />
-          <FrequencyPicker name="custom-frequency" value={customFrequency} onChange={setCustomFrequency} />
+          <ScheduleControl name="custom-schedule" frequency={customFrequency} onFrequencyChange={setCustomFrequency} />
           <button type="button" onClick={addCustomTask} disabled={!customLabel.trim()}>
             Add
           </button>
@@ -918,23 +965,52 @@ const FREQUENCY_OPTIONS = [
   { value: 'one_time', label: 'One-time only' },
 ];
 
-// Shared by the catalog-add, custom-add and edit forms so the three
-// frequency choices (migration 105) always read the same way everywhere.
-function FrequencyPicker({ name, value, onChange }) {
+// Shared by the catalog-add, custom-add and edit forms: the three
+// frequency choices (migration 105) as a connected segmented control, plus
+// — for a catalog-linked item — the "Charge once" toggle (migration 127,
+// see lib/planItemBilling.js) grouped in the same panel so both read as one
+// "how this task bills and schedules" decision instead of two disconnected
+// controls.
+function ScheduleControl({ name, frequency, onFrequencyChange, billOnce, onBillOnceChange, showBillOnce = false }) {
   return (
-    <div className="day-plan-frequency-picker">
-      {FREQUENCY_OPTIONS.map((opt) => (
-        <label key={opt.value}>
-          <input
-            type="radio"
-            name={name}
-            value={opt.value}
-            checked={value === opt.value}
-            onChange={() => onChange(opt.value)}
-          />
-          {opt.label}
-        </label>
-      ))}
+    <div className="day-plan-schedule">
+      <div className="day-plan-schedule-heading">Schedule</div>
+      <div className="day-plan-segmented" role="radiogroup" aria-label={`${name} schedule`}>
+        {FREQUENCY_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={frequency === opt.value}
+            className={`day-plan-segment${frequency === opt.value ? ' active' : ''}`}
+            onClick={() => onFrequencyChange(opt.value)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      {showBillOnce && (
+        <>
+          <div className="day-plan-schedule-divider" />
+          <div className="day-plan-bill-once-row">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={billOnce}
+              className={`day-plan-toggle${billOnce ? ' on' : ''}`}
+              onClick={() => onBillOnceChange(!billOnce)}
+            >
+              <span className="day-plan-toggle-knob" />
+            </button>
+            <div>
+              <div className="day-plan-bill-once-title">Charge once</div>
+              <div className="day-plan-bill-once-help">
+                Log every application on the worksheet as usual — only the first one is billed to the invoice.
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
