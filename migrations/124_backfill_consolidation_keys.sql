@@ -27,6 +27,11 @@
 -- Run this once, in the Supabase SQL editor. Safe to re-run: once every key
 -- is in the 3-segment form, there's nothing left for it to do. The final
 -- SELECT lists everything it changed, for review.
+--
+-- NOTE: an earlier run of this migration formatted the merged dose-count
+-- tag as e.g. "×5.00" instead of "×5" (trim_scale() below fixes that), which
+-- the app's own tag-stripping regex couldn't recognize -- see migration 125,
+-- which repairs any description that bug already doubled up.
 
 create temporary table _key_backfill_report (
   action text,
@@ -100,7 +105,7 @@ begin
       else
         new_description := base_description || ' (' ||
           (case row_.administration_method when 'dispense' then 'DIS' when 'sc' then 'SC' when 'im' then 'IM' end) ||
-          (case when effective_count > 1 then ' ×' || effective_count::text else '' end) || ')';
+          (case when effective_count > 1 then ' ×' || trim_scale(effective_count)::text else '' end) || ')';
         new_total := round((row_.unit_price * new_quantity + fee_per_admin * effective_count)::numeric, 2);
       end if;
 
