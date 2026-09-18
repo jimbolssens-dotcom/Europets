@@ -15,6 +15,7 @@ import ReportShareActions from './ReportShareActions';
 import AttachmentSection from './AttachmentSection';
 import { useState } from 'react';
 import { isImagingDiagnostic } from '@/lib/diagnosticReportPolicy';
+import { isBloodTest } from '@/lib/bloodTestProduct';
 
 export default function RecordReports({ record, recordApiBase, showOverallReport, diagnostics, catalog, groups, onRecordSaved,
   onGenerate, generatingId, generationError, generationErrorId,
@@ -120,7 +121,7 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
             {deletingId === diagnostic.id ? 'Deleting…' : 'Delete'}
           </button>}
           {resultError?.id === diagnostic.id && <p className="error" role="alert">{resultError.message}</p>}
-          {!isImagingDiagnostic(diagnostic, name) && <>
+          {!isImagingDiagnostic(diagnostic, name) && !isBloodTest(name) && <>
             <p className="visit-meta">Save pasted laboratory results first, then create a factual list of abnormalities. No clinical interpretation is added.</p>
             <button type="button" onClick={() => summarize(diagnostic)}
               disabled={summarizing[diagnostic.id] || !diagnostic.result || (resultDrafts[diagnostic.id] !== undefined && resultDrafts[diagnostic.id] !== diagnostic.result)}>

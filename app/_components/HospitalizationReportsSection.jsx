@@ -19,6 +19,7 @@ import DentalChart from './DentalChart';
 import RecordReports from './RecordReports';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import { isXrayTest } from '@/lib/xrayProduct';
+import { isBloodTest } from '@/lib/bloodTestProduct';
 import { ensureSurgicalReport } from '@/lib/surgicalReportAuto';
 import { resolveCaseScope, loadCaseReports } from '@/lib/caseReportScope';
 
@@ -197,7 +198,7 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
 
   async function handleDiagnosticPhotoUploaded(diagId, testName, file, attachment) {
     setDiagPhotoVersion((prev) => ({ ...prev, [diagId]: (prev[diagId] || 0) + 1 }));
-    if (isUltrasoundTest(testName) || isXrayTest(testName)) return;
+    if (isUltrasoundTest(testName) || isXrayTest(testName) || isBloodTest(testName)) return;
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') return;
     setExtractingResultId(diagId);
     setExtractResultError((prev) => ({ ...prev, [diagId]: null }));

@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { extractDiagnosticResult } from '@/lib/anthropicClient';
 import { isImagingDiagnostic } from '@/lib/diagnosticReportPolicy';
+import { isBloodTest } from '@/lib/bloodTestProduct';
 import { NextResponse } from 'next/server';
 import convert from 'heic-convert';
 
@@ -52,7 +53,16 @@ export async function POST(request, { params }) {
       {
         error:
           'Imaging image saved. AI interpretation is disabled for X-rays and ultrasound; use dictation or typed findings for the report.',
-        imaging_saved: true,
+        skipped: true,
+      },
+      { status: 409 }
+    );
+  }
+  if (isBloodTest(diagnostic.goods_services?.name || testName)) {
+    return NextResponse.json(
+      {
+        error: 'Document saved. AI transcription is disabled for blood tests — review the attached file directly.',
+        skipped: true,
       },
       { status: 409 }
     );

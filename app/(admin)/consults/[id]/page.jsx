@@ -19,6 +19,7 @@ import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import { isXrayTest } from '@/lib/xrayProduct';
+import { isBloodTest } from '@/lib/bloodTestProduct';
 import RecordReports from '@/app/_components/RecordReports';
 import { ADMINISTRATION_METHOD_LABELS, ADMINISTRATION_METHOD_CODES } from '@/lib/administrationMethods';
 import { subcategoryName, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
@@ -476,7 +477,7 @@ export default function ConsultDetailPage() {
   // Read lab documents only. Keep originals attached for review in Reports.
   async function handleDiagnosticPhotoUploaded(diagId, testName, file, attachment) {
     setDiagPhotoVersion((prev) => ({ ...prev, [diagId]: (prev[diagId] || 0) + 1 }));
-    if (isUltrasoundTest(testName) || isXrayTest(testName)) return;
+    if (isUltrasoundTest(testName) || isXrayTest(testName) || isBloodTest(testName)) return;
     if (!file.type.startsWith('image/') && file.type !== 'application/pdf') return;
     setExtractingResultId(diagId);
     setExtractResultError((prev) => ({ ...prev, [diagId]: null }));
@@ -1142,7 +1143,11 @@ export default function ConsultDetailPage() {
               {d.description && <p>{d.description}</p>}
               <div className="diagnostic-result-row">
                 <textarea
-                  placeholder="Result (add once it's back, or attach a photo below to have it read automatically)"
+                  placeholder={
+                    isBloodTest(testName)
+                      ? "Result (attach the lab PDF/photo below — it's kept on file, not auto-read)"
+                      : "Result (add once it's back, or attach a photo below to have it read automatically)"
+                  }
                   rows={3}
                   value={resultDrafts[d.id] ?? d.result ?? ''}
                   onChange={(e) => setResultDrafts({ ...resultDrafts, [d.id]: e.target.value })}

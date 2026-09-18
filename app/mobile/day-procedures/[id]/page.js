@@ -184,7 +184,7 @@ export default function MobileDayProcedurePage() {
       formData.append('test_name', item.label);
       const res = await fetch(`/api/diagnostics/${diagnostic.id}/extract-result`, { method: 'POST', body: formData });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok && !data.imaging_saved) {
+      if (!res.ok && !data.skipped) {
         setItemError((prev) => ({ ...prev, [item.id]: `${data.error || 'Could not read the result'} — photo saved, log it manually on desktop.` }));
       }
       await logDone(item);
