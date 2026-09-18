@@ -71,7 +71,7 @@ export async function generateMetadata() {
       title: 'Europets',
     },
     icons: {
-      apple: '/icon.png',
+      apple: '/icons/client-app-icon-180.png',
     },
   };
 }
