@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 
 const TYPE_LABEL = {
@@ -81,6 +82,9 @@ export default function ClientAppAppointmentsPage() {
   return (
     <div className="mobile-page">
       <h1>Appointments</h1>
+      <p className="mobile-subtitle">
+        Want to book a new one? <Link href="/client-app/pets">Pick a pet</Link> to get started.
+      </p>
       {loading ? (
         <p className="mobile-subtitle">Loading...</p>
       ) : appointments.length === 0 ? (

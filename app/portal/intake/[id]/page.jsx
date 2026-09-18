@@ -29,7 +29,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import SpeciesField from '@/app/_components/SpeciesField';
 import PetAttributeField from '@/app/_components/PetAttributeField';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
@@ -64,6 +64,7 @@ function todayISODate() {
 
 export default function IntakePortalPage() {
   const { id } = useParams();
+  const searchParams = useSearchParams();
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -136,6 +137,19 @@ export default function IntakePortalPage() {
 
   const isExistingClient = Boolean(request?.client_id);
   const ownPatients = request?.clients?.patients || [];
+
+  // A link generated for a specific pet (see the client app's "Book
+  // Appointment" button, app/client-app/pets/[id]) carries ?pet=<id> —
+  // pre-select that pet and open the appointment section straight away,
+  // instead of making them pick it again from the radio list below.
+  useEffect(() => {
+    const petParam = searchParams.get('pet');
+    if (petParam && ownPatients.some((p) => p.id === petParam)) {
+      setPetChoice(petParam);
+      setWantsAppointment(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request]);
 
   // Species-gated on purpose (see updatePet's own reset of this field) —
   // an owner can only pick from protocols that actually apply to the

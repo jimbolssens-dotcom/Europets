@@ -6,32 +6,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { classifySpecies } from '@/lib/species';
+import { formatDate, dueStatus } from '@/lib/vaccinationDueStatus';
+
+export { formatDate, dueStatus };
 
 export function todayISODate() {
   return new Date().toISOString().slice(0, 10);
-}
-
-export function formatDate(dateStr) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString([], {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-function daysUntil(dateStr) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(`${dateStr}T00:00:00`);
-  return Math.round((due - today) / 86400000);
-}
-
-export function dueStatus(dateStr) {
-  if (!dateStr) return null;
-  const d = daysUntil(dateStr);
-  if (d < 0) return { label: `Overdue by ${Math.abs(d)}d`, className: 'error' };
-  if (d <= 30) return { label: `Due in ${d}d`, className: '' };
-  return { label: `Due ${formatDate(dateStr)}`, className: 'visit-meta' };
 }
 
 function addMonths(dateStr, months) {

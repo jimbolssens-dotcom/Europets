@@ -15,6 +15,18 @@ import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import HexIcon from '@/app/_components/HexIcon';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { reportPdfHref, reportText, reportKindIcon } from '@/lib/clientAppReports';
+import { dueStatus, formatDate } from '@/lib/vaccinationDueStatus';
+
+// Overdue/due-soon/due-later maps onto the same three-color pill the
+// Invoices tab already uses for unpaid/partially-paid/paid — reused here
+// rather than inventing a fourth color.
+function vaccineStatusPillClass(dateStr) {
+  const status = dueStatus(dateStr);
+  if (!status) return null;
+  if (status.className === 'error') return 'client-app-status-unpaid'; // overdue
+  if (status.className === '') return 'client-app-status-partially_paid'; // due within 30 days
+  return null; // due later — no pill, just the plain date
+}
 
 function ageFromDob(dob) {
   if (!dob) return null;
@@ -29,9 +41,12 @@ export default function ClientAppPetHistoryPage() {
   const router = useRouter();
   const [pet, setPet] = useState(null);
   const [rows, setRows] = useState([]);
+  const [vaccinationsDue, setVaccinationsDue] = useState([]);
   const [admission, setAdmission] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState(null);
 
   useEffect(() => {
     if (ready && !clientId) router.replace('/client-app');
@@ -44,7 +59,8 @@ export default function ClientAppPetHistoryPage() {
       fetch(`/api/patients/${id}`).then((res) => (res.ok ? res.json() : null)),
       fetch(`/api/patients/${id}/report-overview`).then((res) => (res.ok ? res.json() : [])),
       fetch(`/api/hospitalizations?patient_id=${id}&status=admitted`).then((res) => (res.ok ? res.json() : [])),
-    ]).then(([petData, rowsData, admissions]) => {
+      fetch(`/api/vaccinations?patient_id=${id}&due=true&within_days=180`).then((res) => (res.ok ? res.json() : [])),
+    ]).then(([petData, rowsData, admissions, dueVaccinations]) => {
       if (cancelled) return;
       // Not this client's pet — don't leak another client's history via a
       // guessed/typed-in patient id.
@@ -56,12 +72,46 @@ export default function ClientAppPetHistoryPage() {
       setPet(petData);
       setRows(Array.isArray(rowsData) ? rowsData : []);
       setAdmission(Array.isArray(admissions) && admissions.length > 0 ? admissions[0] : null);
+      setVaccinationsDue(
+        (Array.isArray(dueVaccinations) ? dueVaccinations : []).sort(
+          (a, b) => new Date(a.next_due_date) - new Date(b.next_due_date)
+        )
+      );
       setLoading(false);
     });
     return () => {
       cancelled = true;
     };
   }, [ready, clientId, id]);
+
+  // Reuses the clinic's existing client-booking system (the same
+  // intake_requests + /portal/intake/:id flow "Send Booking Link" starts
+  // from the Clients page) rather than rebuilding the slot-picker/roster/
+  // duration rules a second time — this just opens a fresh link already
+  // scoped to this client, with this pet pre-selected (see the ?pet=
+  // handling added to that page).
+  async function startBooking() {
+    setBookingError(null);
+    setBookingLoading(true);
+    const newTab = typeof window !== 'undefined' ? window.open('', '_blank') : null;
+    try {
+      const res = await fetch('/api/intake-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not start booking — please try again.');
+      const url = `/portal/intake/${data.id}?pet=${id}`;
+      if (newTab) newTab.location.href = url;
+      else window.location.href = url;
+    } catch (err) {
+      if (newTab) newTab.close();
+      setBookingError(err.message);
+    } finally {
+      setBookingLoading(false);
+    }
+  }
 
   if (!ready || loading) return null;
 
@@ -89,6 +139,11 @@ export default function ClientAppPetHistoryPage() {
         {pet.current_weight_kg ? ` · ${pet.current_weight_kg} kg` : ''}
       </p>
 
+      <button type="button" onClick={startBooking} disabled={bookingLoading}>
+        {bookingLoading ? 'Opening booking form...' : `📅 Book an Appointment for ${pet.name}`}
+      </button>
+      {bookingError && <p className="client-app-login-error">{bookingError}</p>}
+
       {admission && (
         <div className="client-app-admission-alert">
           <a href={`/portal/hospitalization/${admission.id}`} className="client-app-admission-alert-link">
@@ -96,6 +151,33 @@ export default function ClientAppPetHistoryPage() {
             <span>Currently at the clinic — tap for updates</span>
           </a>
         </div>
+      )}
+
+      <p className="mobile-section-header">Vaccinations Due</p>
+      {vaccinationsDue.length === 0 ? (
+        <p className="mobile-subtitle">Nothing due right now.</p>
+      ) : (
+        <ul className="mobile-list">
+          {vaccinationsDue.map((v) => {
+            const status = dueStatus(v.next_due_date);
+            const pillClass = vaccineStatusPillClass(v.next_due_date);
+            return (
+              <li key={v.id}>
+                <div className="mobile-list-item">
+                  <span className="mobile-list-title">
+                    💉 {v.vaccine_name}
+                    {pillClass && (
+                      <span className={`client-app-status-pill ${pillClass}`}>
+                        {status.className === 'error' ? 'Overdue' : 'Due soon'}
+                      </span>
+                    )}
+                  </span>
+                  <span className="mobile-list-meta">Due {formatDate(v.next_due_date)}</span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
       <p className="mobile-section-header">Full History</p>
