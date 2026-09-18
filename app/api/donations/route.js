@@ -19,20 +19,28 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Counts existing donations already numbered in this same YY-MM to find
-// the next one — not a DB sequence, since the whole point is that it
-// resets to 01 every month rather than ever climbing indefinitely.
+// Finds the highest existing sequence number already used this same YY-MM
+// and adds one — not a DB sequence, since the whole point is that it
+// resets to 01 every month rather than ever climbing indefinitely. Uses
+// the max of what's actually there rather than a plain count: a deleted
+// donation (see DELETE /api/donations/:id) leaves a gap, and counting
+// would recompute the exact same already-taken number on every retry
+// below, failing 5 times in a row instead of just skipping past it.
 async function nextDonationNumber(receivedDate) {
   const d = new Date(`${receivedDate}T00:00:00`);
   const yy = String(d.getFullYear() % 100).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const prefix = `${yy}-${mm}-`;
 
-  const { data, error } = await supabase.from('donations').select('id').like('donation_number', `${prefix}%`);
+  const { data, error } = await supabase.from('donations').select('donation_number').like('donation_number', `${prefix}%`);
   if (error) return { error };
 
-  const seq = (data || []).length + 1;
-  return { donationNumber: `${prefix}${String(seq).padStart(2, '0')}` };
+  const maxSeq = (data || []).reduce((max, row) => {
+    const seq = parseInt(row.donation_number.slice(prefix.length), 10);
+    return Number.isFinite(seq) && seq > max ? seq : max;
+  }, 0);
+
+  return { donationNumber: `${prefix}${String(maxSeq + 1).padStart(2, '0')}` };
 }
 
 export async function GET() {
