@@ -94,8 +94,10 @@ export default function ClientMessageThreadPage() {
           ← Messages
         </button>
         <h1>
-          {client?.full_name}
-          {client?.client_number ? ` (Client #${client.client_number})` : ''}
+          <a href={`/clients/${id}`}>
+            {client?.full_name}
+            {client?.client_number ? ` (Client #${client.client_number})` : ''}
+          </a>
         </h1>
       </div>
 
