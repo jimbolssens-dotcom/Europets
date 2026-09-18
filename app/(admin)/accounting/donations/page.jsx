@@ -97,7 +97,16 @@ export default function DonationsPage() {
     }
     setForm(emptyForm);
     setShowForm(false);
-    loadDonations();
+    await loadDonations();
+
+    // Drop straight into that payment's own row, already expanded to the
+    // "Apply to an Invoice" panel — otherwise the newly logged payment
+    // just sits collapsed in the table with no obvious next step, and
+    // nothing on screen actually confirms where it landed.
+    resetApplyPanel();
+    setExpandedId(data.id);
+    const detailRes = await fetch(`/api/donations/${data.id}`);
+    setDetail(await detailRes.json());
   }
 
   function resetApplyPanel() {
@@ -161,7 +170,7 @@ export default function DonationsPage() {
   }
 
   async function deleteDonation(donation) {
-    if (!confirm(`Delete donation #${donation.donation_number}? This cannot be undone.`)) return;
+    if (!confirm(`Delete payment #${donation.donation_number}? This cannot be undone.`)) return;
     const res = await fetch(`/api/donations/${donation.id}`, { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -231,7 +240,7 @@ export default function DonationsPage() {
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
           />
           <button type="submit" disabled={submitting || !form.amount || !form.source}>
-            {submitting ? 'Logging...' : 'Log Donation'}
+            {submitting ? 'Logging...' : 'Log Payment'}
           </button>
           <button
             type="button"
@@ -248,14 +257,14 @@ export default function DonationsPage() {
         </form>
       ) : (
         <button type="button" className="pill-btn" onClick={() => setShowForm(true)}>
-          + New Donation
+          + New Payment
         </button>
       )}
 
       {loading ? (
         <p>Loading...</p>
       ) : donations.length === 0 ? (
-        <p>No donations logged yet.</p>
+        <p>No payments logged yet.</p>
       ) : (
         <table>
           <thead>
@@ -355,12 +364,12 @@ export default function DonationsPage() {
                               <h3>Apply to an Invoice</h3>
                               {applyError && <p className="error">{applyError}</p>}
                               <p className="visit-meta">
-                                AED {money(detail.remaining)} of this donation is not yet applied.
+                                AED {money(detail.remaining)} of this payment is not yet applied.
                               </p>
                               <ClientOrPatientSearch
                                 onPickClient={pickApplyClient}
                                 onPickPatient={pickApplyPatient}
-                                placeholder="Find the client or patient to apply this donation to..."
+                                placeholder="Find the client or patient to apply this payment to..."
                               />
                               {applyClient && (
                                 <div className="note-form">
@@ -418,7 +427,7 @@ export default function DonationsPage() {
                                         onClick={() => applyToInvoice(d)}
                                         disabled={applying || !applyInvoiceId || !applyAmount}
                                       >
-                                        {applying ? 'Applying...' : 'Apply Donation'}
+                                        {applying ? 'Applying...' : 'Apply Payment'}
                                       </button>
                                     </>
                                   )}
