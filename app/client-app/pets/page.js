@@ -1,7 +1,9 @@
 // app/client-app/pets/page.js
 // The logged-in client's own pets — see useClientAppSession for what
-// "logged in" means here. A pet currently admitted links straight to its
-// existing public portal status page.
+// "logged in" means here. Tapping a pet opens its full history
+// (app/client-app/pets/[id]/page.js); a pet currently admitted also gets
+// its own separate link straight to the existing public portal status
+// page.
 
 'use client';
 
@@ -67,14 +69,26 @@ export default function ClientAppPetsPage() {
             const age = ageFromDob(pet.date_of_birth);
             return (
               <li key={pet.id}>
-                <div className="mobile-list-item client-app-pet-card">
+                <div
+                  className="mobile-list-item client-app-pet-card"
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => router.push(`/client-app/pets/${pet.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') router.push(`/client-app/pets/${pet.id}`);
+                  }}
+                >
                   <span className="mobile-list-title">{pet.name}</span>
                   <span className="mobile-list-meta">
                     {[pet.species, pet.breed, age].filter(Boolean).join(' · ')}
                     {pet.current_weight_kg ? ` · ${pet.current_weight_kg} kg` : ''}
                   </span>
                   {admission && (
-                    <a href={`/portal/hospitalization/${admission.id}`} className="client-app-pet-admitted-link">
+                    <a
+                      href={`/portal/hospitalization/${admission.id}`}
+                      className="client-app-pet-admitted-link"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <HexIcon>🏥</HexIcon>
                       <span>Currently at the clinic — tap for updates</span>
                     </a>

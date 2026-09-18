@@ -6342,6 +6342,29 @@ form.card.admit-patient-form {
   color: var(--ash);
 }
 
+/* A pet's full-history entries (app/client-app/pets/[id]) — the report's
+   own free text, and a link out to its PDF where one exists. */
+.client-app-report-text {
+  margin: 0.4rem 0 0;
+  color: var(--chalk);
+  font-size: 0.92rem;
+  white-space: pre-wrap;
+}
+
+.client-app-report-pdf-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--hot);
+  text-decoration: none;
+  border-bottom: 1px solid var(--hair-hot);
+  padding-bottom: 0.1rem;
+}
+
 /* ---- login screen ---- */
 
 .client-app-login {
@@ -6593,7 +6616,7 @@ form.card.admit-patient-form {
 }
 
 .client-app-pet-card {
-  cursor: default;
+  cursor: pointer;
 }
 
 .client-app-pet-admitted-link {

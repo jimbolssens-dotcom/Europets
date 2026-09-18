@@ -13,29 +13,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
-
-function reportPdfHref(row) {
-  switch (row.reportType) {
-    case 'consult':
-      return `/api/visits/${row.recordId}/report-pdf`;
-    case 'hospitalization':
-      return `/api/hospitalizations/${row.recordId}/summary-pdf`;
-    case 'dental':
-      return `/api/dental-reports/${row.recordId}/report-pdf`;
-    case 'surgical':
-      return `/api/surgical-reports/${row.recordId}/report-pdf`;
-    case 'ultrasound':
-      return `/api/ultrasound-reports/${row.recordId}/report-pdf`;
-    case 'xray':
-      return `/api/xray-reports/${row.recordId}/report-pdf`;
-    case 'diagnostic':
-      return row.visit_id
-        ? `/api/visits/${row.visit_id}/test-report-pdf`
-        : `/api/hospitalizations/${row.hospitalization_id}/test-report-pdf`;
-    default:
-      return null;
-  }
-}
+import { reportPdfHref } from '@/lib/clientAppReports';
 
 export default function ClientAppReportsPage() {
   const { clientId, ready } = useClientAppSession();
