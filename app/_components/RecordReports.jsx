@@ -27,6 +27,11 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
   const [summarizing, setSummarizing] = useState({});
   const [summaryErrors, setSummaryErrors] = useState({});
   const [deletingId, setDeletingId] = useState(null);
+  // A diagnostic with a file attached (a lab PDF/photo) counts as done on
+  // its own — no result text or AI transcription required — so this just
+  // tracks "does this diagnostic have at least one attachment" per id,
+  // reported up by AttachmentSection once it loads.
+  const [hasAttachment, setHasAttachment] = useState({});
 
   async function deleteGroupReport(group, report) {
     if (!confirm('Delete this report? This cannot be undone.')) return;
@@ -106,11 +111,12 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
       </details>}
       {diagnostics.map((diagnostic) => {
         const name = catalog.find((item) => item.id === diagnostic.goods_service_id)?.name || diagnostic.type?.replaceAll('_', ' ') || 'Test';
+        const done = !!diagnostic.result || !!hasAttachment[diagnostic.id];
         return <details className="card" key={diagnostic.id}>
-          <summary>{name} · {diagnostic.result ? 'Result recorded' : 'Awaiting result'}</summary>
+          <summary>{name} · {done ? 'Result recorded' : 'Awaiting result'}</summary>
           {diagnostic.description && <p>{diagnostic.description}</p>}
-          <label className="report-result-field">Results
-            <textarea rows={8} value={resultDrafts[diagnostic.id] ?? diagnostic.result ?? ''}
+          <label className="report-result-field">Results (optional — the attached file below is the record)
+            <textarea rows={2} value={resultDrafts[diagnostic.id] ?? diagnostic.result ?? ''}
               onChange={(event) => onResultChange(diagnostic.id, event.target.value)} />
           </label>
           <button type="button" onClick={() => onSaveResult(diagnostic.id)} disabled={savingResultId === diagnostic.id}>
@@ -140,7 +146,8 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
           {extractingResultId === diagnostic.id && <p role="status">Reading test results…</p>}
           {extractResultError[diagnostic.id] && <p className="error" role="alert">{extractResultError[diagnostic.id]}</p>}
           <AttachmentSection entityType="diagnostic" entityId={diagnostic.id} refreshKey={attachmentVersions[diagnostic.id]}
-            onUploaded={(file, attachment) => onUploaded(diagnostic.id, name, file, attachment)} />
+            onUploaded={(file, attachment) => onUploaded(diagnostic.id, name, file, attachment)}
+            onAttachmentsChange={(count) => setHasAttachment((prev) => ({ ...prev, [diagnostic.id]: count > 0 }))} />
         </details>;
       })}
     </section>}

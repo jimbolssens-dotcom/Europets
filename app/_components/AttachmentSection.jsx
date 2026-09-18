@@ -15,7 +15,7 @@ function isImage(attachment) {
   );
 }
 
-export default function AttachmentSection({ entityType, entityId, onUploaded, refreshKey }) {
+export default function AttachmentSection({ entityType, entityId, onUploaded, refreshKey, onAttachmentsChange }) {
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -25,7 +25,15 @@ export default function AttachmentSection({ entityType, entityId, onUploaded, re
   const load = () =>
     fetch(`/api/attachments?entity_type=${entityType}&entity_id=${entityId}`)
       .then((res) => res.json())
-      .then((data) => setAttachments(Array.isArray(data) ? data : []));
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setAttachments(list);
+        // Optional: lets a caller (e.g. RecordReports' diagnostics list)
+        // know whether this entity has any files on file at all, so it can
+        // show "done" as soon as one's attached — a test doesn't need a
+        // typed/AI result once its lab document is on record.
+        if (onAttachmentsChange) onAttachmentsChange(list.length);
+      });
 
   useEffect(() => {
     load();
