@@ -1,10 +1,12 @@
 // app/client-app/page.js
-// Client-app landing page: a phone-number entry screen if nobody's logged
-// in on this device yet, otherwise a dashboard — greeting, an alert if any
-// of the client's pets is currently admitted (linking straight to the
-// existing public portal status page for it), and quick links to the rest
-// of the app. See useClientAppSession for what "logged in" means here, and
-// app/client-app/layout.js for why this isn't real authentication yet.
+// Client-app landing page: a phone-number + WhatsApp-code login screen if
+// nobody's logged in on this device yet, otherwise a dashboard — greeting,
+// an alert if any of the client's pets is currently admitted (linking
+// straight to the existing public portal status page for it), and quick
+// links to the rest of the app. See useClientAppSession for what "logged
+// in" means here (a session cookie set once the code checks out — see
+// lib/clientAppAuth.js) and app/client-app/layout.js for what's still
+// needed before this is safe to open up beyond staff testing.
 
 'use client';
 
@@ -15,24 +17,7 @@ import HexIcon from '@/app/_components/HexIcon';
 import HexfieldCanvas from '@/app/_components/HexfieldCanvas';
 import EcgLine from '@/app/_components/EcgLine';
 import { dueStatus, formatDate } from '@/lib/vaccinationDueStatus';
-
-// Every phone number in the system is stored as +971<local number>, with
-// no leading 0 on the local part (see migrations/071_normalize_phone_
-// country_code.sql) — so a plain substring match against the stored text
-// only works once the digits sent here are in that exact shape. Handles
-// the same input variants that migration already normalizes for: a bare
-// local number with its leading 0 ("0501234567"), one without ("501234567"),
-// a country code typed with an international dialing prefix ("00971..."),
-// or an accidental extra 0 right after typing the +971 prefix.
-function normalizePhoneDigits(input) {
-  let digits = input.replace(/\D/g, '');
-  if (digits.startsWith('00971')) digits = digits.slice(2);
-  if (digits.startsWith('971')) {
-    const rest = digits.slice(3).replace(/^0/, '');
-    return `971${rest}`;
-  }
-  return `971${digits.replace(/^0/, '')}`;
-}
+import { normalizePhoneDigits } from '@/lib/clientPhoneDigits';
 
 const APPOINTMENT_TYPE_LABEL = {
   consult: 'Consult',
@@ -54,6 +39,10 @@ export default function ClientAppHomePage() {
   const { clientId, ready, login, logout } = useClientAppSession();
   const theme = useClientAppTheme();
   const [phoneInput, setPhoneInput] = useState('+971 ');
+  const [codeInput, setCodeInput] = useState('');
+  const [step, setStep] = useState('phone'); // 'phone' | 'code' | 'picker'
+  const [phoneDigits, setPhoneDigits] = useState('');
+  const [verifiedPhoneToken, setVerifiedPhoneToken] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [matches, setMatches] = useState(null);
@@ -156,17 +145,43 @@ export default function ClientAppHomePage() {
     }
     setSubmitting(true);
     setError('');
-    setMatches(null);
     try {
-      const res = await fetch(`/api/clients?phone=${digits}`);
-      const data = await res.json();
+      const res = await fetch('/api/client-app/auth/request-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: digits }),
+      });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Something went wrong.');
-      if (data.length === 0) {
-        setError("We couldn't find that number on file — please contact the clinic.");
-      } else if (data.length === 1) {
-        login(data[0].id);
+      setPhoneDigits(digits);
+      setCodeInput('');
+      setStep('code');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleCodeSubmit(e) {
+    e.preventDefault();
+    if (!codeInput.trim()) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetch('/api/client-app/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneDigits, code: codeInput.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Invalid code.');
+      if (data.clientId) {
+        login(data.clientId);
       } else {
-        setMatches(data);
+        setMatches(data.matches);
+        setVerifiedPhoneToken(data.verifiedPhoneToken);
+        setStep('picker');
       }
     } catch (err) {
       setError(err.message);
@@ -175,25 +190,69 @@ export default function ClientAppHomePage() {
     }
   }
 
+  async function handlePickAccount(id) {
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetch('/api/client-app/auth/select-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verifiedPhoneToken, clientId: id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+      login(data.clientId);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function resetToPhoneStep() {
+    setStep('phone');
+    setError('');
+    setMatches(null);
+    setCodeInput('');
+    setVerifiedPhoneToken(null);
+  }
+
   if (!ready) return null;
 
   if (!clientId) {
-    const loginForm = !matches && (
-      <form onSubmit={handlePhoneSubmit} className="client-app-login-form">
-        <input
-          type="tel"
-          inputMode="tel"
-          placeholder="+971 50 123 4567"
-          value={phoneInput}
-          onChange={(e) => setPhoneInput(e.target.value)}
-          className="client-app-login-input"
-          autoFocus
-        />
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Looking up...' : 'Continue'}
-        </button>
-      </form>
-    );
+    const loginForm =
+      step === 'phone' ? (
+        <form onSubmit={handlePhoneSubmit} className="client-app-login-form">
+          <input
+            type="tel"
+            inputMode="tel"
+            placeholder="+971 50 123 4567"
+            value={phoneInput}
+            onChange={(e) => setPhoneInput(e.target.value)}
+            className="client-app-login-input"
+            autoFocus
+          />
+          <button type="submit" disabled={submitting}>
+            {submitting ? 'Sending code...' : 'Send code'}
+          </button>
+        </form>
+      ) : step === 'code' ? (
+        <form onSubmit={handleCodeSubmit} className="client-app-login-form">
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="6-digit code"
+            value={codeInput}
+            onChange={(e) => setCodeInput(e.target.value)}
+            className="client-app-login-input"
+            autoFocus
+          />
+          <button type="submit" disabled={submitting}>
+            {submitting ? 'Verifying...' : 'Verify'}
+          </button>
+        </form>
+      ) : null;
 
     return (
       <div className="mobile-page client-app-login">
@@ -205,9 +264,16 @@ export default function ClientAppHomePage() {
               </a>
             </div>
             <p className="mobile-subtitle client-app-login-intro">
-              Enter the phone number on file with the clinic to see your pets, invoices, and appointments.
+              {step === 'code'
+                ? `Enter the code sent to your WhatsApp.`
+                : 'Enter the phone number on file with the clinic to see your pets, invoices, and appointments.'}
             </p>
             {loginForm}
+            {step === 'code' && (
+              <button type="button" className="mobile-link-btn" onClick={resetToPhoneStep}>
+                Change number
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -221,28 +287,40 @@ export default function ClientAppHomePage() {
                 </div>
                 <p className="client-app-login-eyebrow">Client Portal</p>
                 <p className="mobile-subtitle client-app-login-intro">
-                  Enter the phone number on file with the clinic to see your pets, invoices, and appointments.
+                  {step === 'code'
+                    ? `Enter the code sent to your WhatsApp.`
+                    : 'Enter the phone number on file with the clinic to see your pets, invoices, and appointments.'}
                 </p>
                 {loginForm}
+                {step === 'code' && (
+                  <button type="button" className="mobile-link-btn" onClick={resetToPhoneStep}>
+                    Change number
+                  </button>
+                )}
               </div>
             </div>
             <EcgLine />
           </>
         )}
-        {matches && (
+        {step === 'picker' && matches && (
           <>
             <p className="mobile-subtitle">A few accounts share that number — which one is you?</p>
             <ul className="mobile-list">
               {matches.map((m) => (
                 <li key={m.id}>
-                  <button type="button" className="mobile-list-item" onClick={() => login(m.id)}>
+                  <button
+                    type="button"
+                    className="mobile-list-item"
+                    onClick={() => handlePickAccount(m.id)}
+                    disabled={submitting}
+                  >
                     <span className="mobile-list-title">{m.full_name}</span>
                     <span className="mobile-list-meta">Client #{m.client_number}</span>
                   </button>
                 </li>
               ))}
             </ul>
-            <button type="button" className="mobile-link-btn" onClick={() => setMatches(null)}>
+            <button type="button" className="mobile-link-btn" onClick={resetToPhoneStep}>
               Use a different number
             </button>
           </>
