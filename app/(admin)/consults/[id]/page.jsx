@@ -780,7 +780,7 @@ export default function ConsultDetailPage() {
   const vac = useVaccinations(
     consult?.patients?.id,
     consult?.patients?.species,
-    { visitId: id },
+    { visitId: id, onBilled: () => { loadTreatmentItems(); loadInvoiceInfo(); } },
     consult?.attending_vet_id || ''
   );
 

@@ -86,6 +86,24 @@ async function addInvoiceLine(invoiceId, item, quantity, description) {
   });
 }
 
+// Same billing, but through the consult's own treatment plan (POST
+// /api/treatment-items) instead of a raw invoice line — so the vaccine
+// bundle actually shows up on the Treatment Plan tab (and its notes
+// narrative), not just the invoice, exactly like anything else added
+// from there. The invoice line itself still gets created, a moment
+// later, by the treatment-plan -> invoice sync that resolveInvoiceId's
+// POST /api/visits/:id/invoice already runs (see lib/invoicing.js
+// #syncInvoiceTreatmentItems) — this just needs to run first, so that
+// sync has something new to pick up.
+async function addTreatmentItem(visitId, item, quantity, instructions) {
+  if (!item) return;
+  await fetch('/api/treatment-items', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ visit_id: visitId, goods_service_id: item.id, quantity, instructions: instructions || undefined }),
+  });
+}
+
 export function useVaccinations(patientId, species, invoiceContext = {}, defaultVetId = '') {
   const [vaccinations, setVaccinations] = useState([]);
   const [protocols, setProtocols] = useState([]);
@@ -166,8 +184,6 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
   // Consult vacc — nothing prepaid, nothing assumed.
   async function billVaccinationVisit({ isPrimary, checkedProtocols, coreProtocol, rabiesGiven, boosterDue }) {
     if (!speciesClass) return; // can't tell cat vs dog — nothing to safely bill
-    const invoiceId = await resolveInvoiceId(invoiceContext);
-    if (!invoiceId) return; // no visit/hospitalization/client to attach the bill to
 
     const [productCatalog, serviceCatalog] = await Promise.all([
       fetch('/api/goods-services?main_category=product').then((res) => res.json()),
@@ -175,6 +191,44 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     ]);
     const coreItem = findByName(productCatalog, CORE_VACCINE_NAME[speciesClass]);
     const rabiesItem = findByName(productCatalog, RABIES_VACCINE_NAME);
+
+    const { visitId } = invoiceContext;
+
+    if (visitId) {
+      // Logged during a consult — add it to the treatment plan first (so
+      // it shows there and in the consult notes narrative, same as any
+      // other treatment plan item), then open/sync the invoice, which
+      // picks up these new items the same way it picks up everything
+      // else on the plan (see POST /api/visits/:id/invoice).
+      if (isPrimary) {
+        await addTreatmentItem(visitId, findByName(serviceCatalog, CONSULT_PRIMARY_NAME), 1);
+        await addTreatmentItem(
+          visitId,
+          coreItem,
+          2,
+          coreItem ? `today's dose plus the booster due ${formatDate(boosterDue)} (already paid)` : undefined
+        );
+        await addTreatmentItem(visitId, rabiesItem, 1, rabiesItem ? 'primary course' : undefined);
+      } else {
+        const coreChecked = coreProtocol && checkedProtocols.some((p) => p.id === coreProtocol.id);
+        if (coreChecked) await addTreatmentItem(visitId, coreItem, 1);
+        if (rabiesGiven) await addTreatmentItem(visitId, rabiesItem, 1);
+        if (coreChecked || rabiesGiven) await addTreatmentItem(visitId, findByName(serviceCatalog, CONSULT_ANNUAL_NAME), 1);
+      }
+      await resolveInvoiceId(invoiceContext);
+      // Realtime will eventually pick these up too, but the staff member
+      // looking at the Treatment Plan/invoice right after logging the
+      // vaccination shouldn't have to wait on that round-trip — refresh
+      // both right away, same as every other action that adds to the plan.
+      invoiceContext.onBilled?.();
+      return;
+    }
+
+    // Logged from the hospitalization page or the patient page directly —
+    // neither has a treatment plan of its own to add these to, so bill
+    // straight onto the invoice, same as before.
+    const invoiceId = await resolveInvoiceId(invoiceContext);
+    if (!invoiceId) return; // no hospitalization/client to attach the bill to
 
     if (isPrimary) {
       await addInvoiceLine(invoiceId, findByName(serviceCatalog, CONSULT_PRIMARY_NAME), 1);
