@@ -6537,6 +6537,48 @@ form.card.admit-patient-form {
   color: var(--ash);
 }
 
+/* The general chat page (app/client-app/messages) reuses the .portal-chat-*
+   bubble/thread/form markup verbatim from the hospitalization portal chat
+   (app/portal/hospitalization/[id]) — those base rules are plain/light, so
+   the light client-app theme just falls through to them unchanged (same
+   convention as everywhere else in this theme), and only the dark theme
+   needs its own palette here. "mine" there means "the client" here (the
+   sender flips per page — see the comment on .portal-chat-bubble itself). */
+.client-app[data-theme='light'] .portal-chat-thread {
+  background: #f7f7f7;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.client-app[data-theme='dark'] .portal-chat-thread {
+  background: var(--carbon);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.client-app[data-theme='dark'] .portal-chat-bubble-theirs {
+  background: var(--carbon-hi);
+  color: var(--chalk);
+}
+
+.client-app[data-theme='dark'] .portal-chat-bubble-theirs .portal-chat-bubble-meta {
+  color: var(--ash);
+}
+
+.client-app[data-theme='dark'] .portal-chat-bubble-mine {
+  background: linear-gradient(140deg, #ff4f97 0%, var(--magenta) 52%, #c20f57 100%);
+}
+
+.client-app[data-theme='dark'] .portal-chat-form textarea {
+  background: var(--carbon);
+  border: 1px solid var(--hair);
+  color: var(--chalk);
+  border-radius: 10px;
+  font-family: var(--body);
+}
+
 /* gradient pill button — the site's .btn-primary, applied to every plain
    <button type="submit"> in the client app (there's exactly one style of
    primary action here, so no separate class needed). The light theme

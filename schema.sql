@@ -82,6 +82,23 @@ create unique index client_phones_one_whatsapp_per_client
 create index client_phones_client_id_idx on client_phones (client_id);
 create index client_phones_phone_idx on client_phones (phone);
 
+-- A general client<->staff chat, not tied to any one hospitalization —
+-- mirrors hospitalization_messages below but scoped to a client instead of
+-- an admission (migration 120). Surfaced in the client app (app/client-app/
+-- messages) and a staff inbox (app/(admin)/messages). Whether a client is
+-- "waiting on a reply" is derived (their latest message has sender =
+-- 'client'), not stored as its own flag — same one-shared-flag-for-everyone
+-- model as the hospitalization thread, just computed on read.
+create table client_messages (
+    id uuid primary key default gen_random_uuid(),
+    client_id uuid references clients(id) on delete cascade not null,
+    sender text not null check (sender in ('client', 'staff')),
+    staff_id uuid references staff(id),   -- set when sender = 'staff'; null for a client message
+    body text not null,
+    created_at timestamptz default now()
+);
+create index client_messages_client_id_idx on client_messages (client_id, created_at);
+
 -- ============ PATIENTS ============
 create table patients (
     id uuid primary key default gen_random_uuid(),
@@ -1225,7 +1242,7 @@ alter publication supabase_realtime add table
     diagnostics, treatment_items, surgical_reports, dental_reports, ultrasound_reports, xray_reports,
     hospitalizations, hospitalization_notes, hospitalization_plan_items, attachments, recordings, clinic_settings,
     vaccine_protocols, vaccinations, intake_requests, expenses, staff_roster_entries, review_requests,
-    nomod_payment_links, policy_categories, policies;
+    nomod_payment_links, policy_categories, policies, client_messages;
 
 -- ============ ROW LEVEL SECURITY ============
 -- RLS is intentionally left disabled on every table below except
@@ -1241,6 +1258,7 @@ alter publication supabase_realtime add table
 -- this is explicit rather than relying on Postgres's off-by-default.
 alter table staff disable row level security;
 alter table staff_roster_entries disable row level security;
+alter table client_messages disable row level security;
 alter table rooms disable row level security;
 alter table appointments disable row level security;
 alter table visits disable row level security;

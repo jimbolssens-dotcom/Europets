@@ -16,6 +16,7 @@ const TABS = [
   { href: '/client-app/reports', label: 'Reports', icon: '🩻' },
   { href: '/client-app/invoices', label: 'Invoices', icon: '🧾' },
   { href: '/client-app/appointments', label: 'Visits', icon: '📅' },
+  { href: '/client-app/messages', label: 'Chat', icon: '💬' },
 ];
 
 export default function ClientAppNav() {

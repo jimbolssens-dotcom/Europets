@@ -1,12 +1,38 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
 import CultureReminderBanner from '../_components/CultureReminderBanner';
 import { useHospitalizationUpdatePending } from '../_components/useHospitalizationUpdatePending';
 import { navAlarmClass } from '@/lib/hospitalizationAttention';
 import { supabase } from '@/lib/supabaseClient';
+
+// A short two-note chime for a new client message arriving — there's no
+// notification sound asset anywhere in this app yet, so this follows the
+// one existing precedent (the roster-conflict beep on the Appointments
+// page) rather than adding an audio file: a synthesized Web Audio API
+// oscillator, silently no-opping if AudioContext is unavailable (e.g. no
+// user gesture has unlocked audio yet in some browsers).
+function playMessageAlertChime() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    [660, 880].forEach((freq, i) => {
+      const start = ctx.currentTime + i * 0.14;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.15, start);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.3);
+    });
+  } catch {}
+}
 
 // Wraps every internal staff page (everything except the public client
 // portal under app/portal/) with the nav. Nested inside the bare root
@@ -29,6 +55,34 @@ export default function AdminLayout({ children }) {
   const [hasPendingAppointmentRequest, setHasPendingAppointmentRequest] = useState(false);
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
   const [hasPendingReviewRequest, setHasPendingReviewRequest] = useState(false);
+  const [hasPendingClientMessage, setHasPendingClientMessage] = useState(false);
+  const pendingClientMessageRef = useRef(false);
+
+  // Same blinking treatment for a client-app chat message waiting on a
+  // reply (see app/messages and client_messages / migration 120) — plus a
+  // chime the moment it flips from "nothing pending" to "something's
+  // pending" (not on every poll/mount), since this is the one nav item the
+  // clinic asked to actually be noticed away from the screen.
+  useEffect(() => {
+    const checkPending = () =>
+      fetch('/api/client-messages')
+        .then((res) => res.json())
+        .then((data) => {
+          const pending = Array.isArray(data) && data.some((c) => c.pending);
+          if (pending && !pendingClientMessageRef.current) playMessageAlertChime();
+          pendingClientMessageRef.current = pending;
+          setHasPendingClientMessage(pending);
+        });
+
+    checkPending();
+
+    const channel = supabase
+      .channel('nav-client-messages')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'client_messages' }, checkPending)
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
 
   // Same blinking treatment for a submitted intake/invite request awaiting
   // review — Appointments if it also asked for a slot (reviewed there, see
@@ -95,6 +149,13 @@ export default function AdminLayout({ children }) {
         <div className="topnav-links">
           <a href="/search">Search</a>
           <a href="/add">Add</a>
+          <a
+            href="/messages"
+            className={hasPendingClientMessage ? 'nav-update-requested' : ''}
+            title={hasPendingClientMessage ? 'A client is waiting on a reply' : undefined}
+          >
+            Messages{hasPendingClientMessage && ' 🔔'}
+          </a>
           <a
             href="/intake"
             className={hasPendingInviteRequest ? 'nav-update-requested' : ''}
