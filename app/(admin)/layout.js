@@ -196,6 +196,9 @@ export default function AdminLayout({ children }) {
           <a href="/mobile" title="Mobile recording app" aria-label="Mobile recording app" className="settings-link">
             📱
           </a>
+          <a href="/client-app" title="Client app" aria-label="Client app" className="settings-link">
+            🐾
+          </a>
           <a
             href="/settings"
             title={hasPendingReviewRequest ? 'Settings — a review is waiting for moderation' : 'Settings'}
