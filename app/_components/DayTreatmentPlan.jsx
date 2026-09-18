@@ -831,10 +831,10 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
                     showBillOnce={!!editGoodsServiceId}
                   />
                   <div className="day-plan-edit-actions">
-                    <button type="button" onClick={() => saveEditItem(item.id)} disabled={editSaving}>
+                    <button type="button" className="day-plan-save-action" onClick={() => saveEditItem(item.id)} disabled={editSaving}>
                       {editSaving ? 'Saving...' : 'Save'}
                     </button>
-                    <button type="button" onClick={cancelEditItem} disabled={editSaving}>
+                    <button type="button" className="day-plan-cancel-action" onClick={cancelEditItem} disabled={editSaving}>
                       Cancel
                     </button>
                     <button

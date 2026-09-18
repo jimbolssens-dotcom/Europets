@@ -4998,7 +4998,14 @@ button.secondary:hover {
   position: relative;
 }
 
-.day-plan-task button:not(.day-plan-remove):not(.day-plan-test-link) {
+/* Child combinator, not descendant: this styles only the task tile's own
+   direct-child buttons (the tap target, remove ×, test-result link) as a
+   card. The long-press edit dialog (.day-plan-edit-task) nests its own
+   buttons — CatalogPicker's tabs, the Schedule control, Save/Cancel/Delete
+   — a level deeper, inside that div; a descendant selector here used to
+   catch those too and force them into oversized white/green cards instead
+   of their own styling. */
+.day-plan-task > button:not(.day-plan-remove):not(.day-plan-test-link) {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -5023,11 +5030,11 @@ button.secondary:hover {
   margin-top: 0.4rem;
 }
 
-.day-plan-task button:not(.day-plan-remove):hover {
+.day-plan-task > button:not(.day-plan-remove):hover {
   border-color: var(--pink);
 }
 
-.day-plan-task.done button:not(.day-plan-remove):not(.day-plan-test-link) {
+.day-plan-task.done > button:not(.day-plan-remove):not(.day-plan-test-link) {
   border-color: #3f8f5f;
   background: #eaf6ee;
 }
@@ -5112,6 +5119,37 @@ button.secondary:hover {
 .day-plan-edit-actions {
   display: flex;
   gap: 0.4rem;
+}
+
+.day-plan-save-action,
+.day-plan-cancel-action {
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.day-plan-save-action {
+  border: none;
+  background: var(--pink);
+  color: white;
+}
+
+.day-plan-save-action:hover {
+  background: var(--pink-dark);
+}
+
+.day-plan-cancel-action {
+  border: 1px solid #ddd;
+  background: white;
+  color: #555;
+}
+
+.day-plan-cancel-action:hover {
+  border-color: var(--pink-dark);
+  color: var(--pink-dark);
 }
 
 .day-plan-delete-action {
