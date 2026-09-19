@@ -276,11 +276,11 @@ function ConsultsPageInner() {
                   <td className="table-link-group">
                     {hosp && (
                       <a href={`/hospitalization/${hosp.id}`} className="button-link">
-                        Hospitalization
+                        Hospital
                       </a>
                     )}
                     <a href={`/consults/${c.id}`} className="button-link">
-                      Consult note
+                      Consult
                     </a>
                   </td>
                 </tr>

@@ -460,7 +460,7 @@ export default function InvoiceDetailPage() {
         </button>
         {editable && (
           <button type="button" onClick={sendPaymentLink}>
-            💳 Send
+            💳 Payment Link
           </button>
         )}
       <CrossRecordLinks>
@@ -671,7 +671,7 @@ export default function InvoiceDetailPage() {
       <InvoiceDiscountPanel invoice={invoice} staff={staff} onChanged={loadInvoice} />
 
       <h3>Payments</h3>
-      <InvoicePaymentPanel invoice={invoice} staff={staff} onChanged={loadInvoice} />
+      <InvoicePaymentPanel invoice={invoice} staff={staff} onChanged={loadInvoice} onSendPaymentLink={sendPaymentLink} />
 
       {microchipModalOpen && (
         <MicrochipCaptureModal

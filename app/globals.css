@@ -103,13 +103,20 @@ button:disabled {
 }
 
 /* A table cell holding more than one .button-link pill (e.g. the Consults
-   list's Hospitalized table — Hospitalization + Consult note) — without
-   this they render pressed together with no gap or wrapping. */
+   list's Hospitalized table — Hospital + Consult) — without this they
+   render pressed together with no gap. Deliberately nowrap (not wrap):
+   the whole point of these short one-word labels is staying side by side
+   so the row — and the list — stays compact. */
 .table-link-group {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+}
+
+.table-link-group .button-link {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
 }
 
 .hospitalization-reports-section { margin-top: 1rem; }
