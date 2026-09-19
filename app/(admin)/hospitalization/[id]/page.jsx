@@ -793,7 +793,7 @@ export default function HospitalizationDetailPage() {
   const usesClientApp =
     !!clientAppLastSeenAt && Date.now() - new Date(clientAppLastSeenAt).getTime() < 60 * 24 * 60 * 60 * 1000;
   const clientAppLastSeenLabel = clientAppLastSeenAt
-    ? new Date(clientAppLastSeenAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+    ? new Date(clientAppLastSeenAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })
     : null;
 
   const consentPreviewPlan = {
@@ -814,7 +814,7 @@ export default function HospitalizationDetailPage() {
           <p>
             Signed by {cf.signed_by_name}
             {cf.signed_by_relationship && ` (${cf.signed_by_relationship})`} ·{' '}
-            {new Date(cf.signed_at).toLocaleString()}
+            {formatDateTime(cf.signed_at)}
             {cf.staff?.full_name && ` · Witnessed by ${cf.staff.full_name}`}
           </p>
           <a href={`/api/consent-forms/${cf.id}/pdf`} target="_blank" rel="noreferrer">
@@ -1002,9 +1002,9 @@ export default function HospitalizationDetailPage() {
         </a>{' '}
         · Patient: <a href={`/patients/${admission.patients?.id}`}>record</a> ·
         Cage: {admission.cages?.name || '—'} · Admitted:{' '}
-        {new Date(admission.admitted_at).toLocaleString()}
+        {formatDateTime(admission.admitted_at)}
         {admission.discharged_at &&
-          ` · Discharged: ${new Date(admission.discharged_at).toLocaleString()}`}
+          ` · Discharged: ${formatDateTime(admission.discharged_at)}`}
       </p>
       {editingReason ? (
         <p className="reason-edit">

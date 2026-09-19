@@ -23,6 +23,7 @@ import SearchSelect from '@/app/_components/SearchSelect';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import InfoHint from '@/app/_components/InfoHint';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
+import { formatDateTime } from '@/lib/formatTimestamp';
 
 const DRAG_THRESHOLD = 6;
 const emptyAdmitForm = { client_id: '', patient_id: '', cage_id: '', reason: '' };
@@ -445,7 +446,7 @@ export default function HospitalizationPage() {
                   </td>
                   <td>{a.cages?.name || '—'}</td>
                   <td>{a.reason || '—'}</td>
-                  <td>{new Date(a.admitted_at).toLocaleString()}</td>
+                  <td>{formatDateTime(a.admitted_at)}</td>
                   <td>
                     <a href={`/hospitalization/${a.id}`}>Open</a>
                   </td>
@@ -479,7 +480,7 @@ export default function HospitalizationPage() {
                     {a.clients?.full_name}
                     {a.clients?.client_number ? ` (Client #${a.clients.client_number})` : ''}
                   </td>
-                  <td>{a.discharged_at ? new Date(a.discharged_at).toLocaleString() : '—'}</td>
+                  <td>{a.discharged_at ? formatDateTime(a.discharged_at) : '—'}</td>
                   <td>
                     <a href={`/hospitalization/${a.id}`}>Open</a>
                   </td>

@@ -162,7 +162,7 @@ export default function MobileSchedulePage() {
   }
 
   const me = staff.find((s) => s.id === staffId);
-  const weekLabel = `${weekDates[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${weekDates[6].toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+  const weekLabel = `${weekDates[0].toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })} – ${weekDates[6].toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })}`;
 
   if (!ready) return null;
 
@@ -241,7 +241,7 @@ export default function MobileSchedulePage() {
                   <li key={iso} className="mobile-schedule-day">
                     <div className="mobile-schedule-day-label">
                       {d.toLocaleDateString([], { weekday: 'long' })}
-                      <span className="mobile-list-meta"> {d.toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                      <span className="mobile-list-meta"> {d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })}</span>
                     </div>
                     <div className="mobile-schedule-shifts">
                       {SHIFTS.map((shift) => {

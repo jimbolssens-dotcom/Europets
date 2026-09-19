@@ -28,6 +28,7 @@ import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import { openWhatsApp } from '@/lib/whatsapp';
+import { formatDateTime } from '@/lib/formatTimestamp';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
 // catalog link — kept only to label those old rows.
@@ -829,7 +830,7 @@ export default function ConsultDetailPage() {
           {videoConsultError && <p className="error">{videoConsultError}</p>}
           {videoConsult?.status === 'ended' ? (
             <p className="visit-meta">
-              🔴 Call ended {videoConsult.ended_at && new Date(videoConsult.ended_at).toLocaleString()} — the client's
+              🔴 Call ended {videoConsult.ended_at && formatDateTime(videoConsult.ended_at)} — the client's
               link no longer works.
             </p>
           ) : videoConsult ? (
@@ -839,7 +840,7 @@ export default function ConsultDetailPage() {
                   {videoConsult.invited_at ? '💬 Re-send Invite' : '💬 Send Invite via WhatsApp'}
                 </button>
                 {videoConsult.invited_at && (
-                  <span className="visit-meta">Invited {new Date(videoConsult.invited_at).toLocaleString()}</span>
+                  <span className="visit-meta">Invited {formatDateTime(videoConsult.invited_at)}</span>
                 )}
                 <button type="button" className="button-link" onClick={endVideoCall} disabled={endingVideoCall}>
                   {endingVideoCall ? 'Ending…' : '🔴 End Call'}
@@ -1231,7 +1232,7 @@ export default function ConsultDetailPage() {
                       <p className="visit-meta">
                         {ultrasoundReport.staff?.full_name || 'unassigned'} ·{' '}
                         {ultrasoundReport.performed_at
-                          ? new Date(ultrasoundReport.performed_at).toLocaleString()
+                          ? formatDateTime(ultrasoundReport.performed_at)
                           : ''}
                       </p>
                       <AudioRecorder
@@ -1328,7 +1329,7 @@ export default function ConsultDetailPage() {
                     <>
                       <p className="visit-meta">
                         {xrayReport.staff?.full_name || 'unassigned'} ·{' '}
-                        {xrayReport.performed_at ? new Date(xrayReport.performed_at).toLocaleString() : ''}
+                        {xrayReport.performed_at ? formatDateTime(xrayReport.performed_at) : ''}
                       </p>
                       <AudioRecorder
                         entityType="xray_report"

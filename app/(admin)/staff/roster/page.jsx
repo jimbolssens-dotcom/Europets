@@ -256,8 +256,8 @@ export default function StaffRosterPage() {
     }
   }
 
-  const monthLabel = new Date(viewYear, viewMonthIndex, 1).toLocaleDateString([], { month: 'long', year: 'numeric' });
-  const weekLabel = `${weekDates[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${weekDates[6].toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+  const monthLabel = new Date(viewYear, viewMonthIndex, 1).toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' });
+  const weekLabel = `${weekDates[0].toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })} – ${weekDates[6].toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })}`;
 
   return (
     <div>

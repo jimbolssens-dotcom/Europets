@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { formatDateTime } from '@/lib/formatTimestamp';
 
 // Cross-record summary of every report on file for a patient (dental,
 // surgical, ultrasound, x-ray, diagnostics, plus the consult/hospitalization
@@ -73,7 +74,7 @@ export default function PatientReportOverview({ patientId, title = 'Earlier repo
         const canEdit = !!(r.editableField && r.apiBase && r.recordId);
         const isEditing = editingId === r.id;
         return <li key={`${r.source}-${r.id}`} className="consult-history-item">
-          <p className="visit-meta"><strong>{r.kind}</strong> · {r.date ? new Date(r.date).toLocaleString() : 'Date not recorded'} · <a href={r.href}>Open record</a></p>
+          <p className="visit-meta"><strong>{r.kind}</strong> · {r.date ? formatDateTime(r.date) : 'Date not recorded'} · <a href={r.href}>Open record</a></p>
           {isEditing
             ? <div className="postop-panel">
               <textarea rows={6} value={draft} onChange={(e) => setDraft(e.target.value)} />

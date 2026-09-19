@@ -7,6 +7,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatDateTime } from '@/lib/formatTimestamp';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -82,7 +83,7 @@ export default function InvoiceDiscountPanel({ invoice, staff = [], onChanged })
         <ul className="invoice-payments-list">
           {discounts.map((d) => (
             <li key={d.id}>
-              <span className="invoice-payment-date">{new Date(d.applied_at).toLocaleString()}</span>
+              <span className="invoice-payment-date">{formatDateTime(d.applied_at)}</span>
               <span className="invoice-payment-amount">AED {money(d.amount)}</span>
               <span>{d.reason || 'No reason given'}</span>
               <span className="invoice-payment-by">{d.staff?.full_name || 'unassigned'}</span>

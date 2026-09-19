@@ -11,16 +11,16 @@ import { useEffect, useState } from 'react';
 import { CLIENT_APPOINTMENT_TYPE_LABELS } from '@/lib/appointmentBooking';
 
 function formatDateTime(dateStr) {
-  return new Date(dateStr).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(dateStr).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 function formatApptTime(dateStr) {
-  return new Date(dateStr).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return new Date(dateStr).toLocaleString('en-GB', { weekday: 'short', day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 function petSummary(p, protocolNamesById) {
   const vaccineBit = p.last_vaccination_date
-    ? `last vaccinated ${new Date(`${p.last_vaccination_date}T00:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}${
+    ? `last vaccinated ${new Date(`${p.last_vaccination_date}T00:00:00`).toLocaleDateString('en-GB')}${
         p.last_vaccination_protocol_id && protocolNamesById[p.last_vaccination_protocol_id]
           ? ` (${protocolNamesById[p.last_vaccination_protocol_id]})`
           : ''
@@ -87,7 +87,7 @@ export default function IntakeReviewCard({
         <div className="intake-appointment-request">
           <p>
             📅 Requested: <strong>Custom surgery/procedure</strong>
-            {r.preferred_date && ` — preferred day: ${new Date(`${r.preferred_date}T00:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}`}
+            {r.preferred_date && ` — preferred day: ${new Date(`${r.preferred_date}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' })}`}
           </p>
           <p className="visit-meta">&quot;{r.custom_surgery_reason}&quot;</p>
           <p className="visit-meta">Pick a vet, date, time, and duration, and a room, to schedule this:</p>

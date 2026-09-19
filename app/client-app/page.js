@@ -26,12 +26,13 @@ const APPOINTMENT_TYPE_LABEL = {
 };
 
 function formatApptWhen(iso) {
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString('en-GB', {
     weekday: 'short',
-    day: 'numeric',
-    month: 'short',
+    day: '2-digit',
+    month: '2-digit',
     hour: 'numeric',
     minute: '2-digit',
+    hour12: true,
   });
 }
 

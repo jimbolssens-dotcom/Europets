@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
-import { formatShortDate } from '@/lib/formatTimestamp';
+import { formatShortDate, formatDateTime } from '@/lib/formatTimestamp';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -179,7 +179,7 @@ export default function DayProceduresPage() {
                     {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
                   </td>
                   <td>{d.reason || '—'}</td>
-                  <td>{new Date(d.admitted_at).toLocaleString()}</td>
+                  <td>{formatDateTime(d.admitted_at)}</td>
                   <td>
                     <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
                     <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
@@ -217,7 +217,7 @@ export default function DayProceduresPage() {
                   {d.clients?.full_name}
                   {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
                 </td>
-                <td>{d.discharged_at ? new Date(d.discharged_at).toLocaleString() : '—'}</td>
+                <td>{d.discharged_at ? formatDateTime(d.discharged_at) : '—'}</td>
                 <td>
                   <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
                   <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>

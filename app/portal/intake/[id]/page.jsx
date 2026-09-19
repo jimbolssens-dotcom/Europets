@@ -819,7 +819,7 @@ export default function IntakePortalPage() {
                                 className={`intake-slot-button${isSelected ? ' intake-slot-selected' : ''}${hasCapacity ? ' intake-slot-available' : ''}`}
                                 onClick={() => setPreferredDate(dateISO)}
                               >
-                                {d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                                {d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' })}
                               </button>
                             );
                           })}

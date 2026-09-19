@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { uploadRecording, recordingUrl } from '@/lib/recordings';
+import { formatDateTime } from '@/lib/formatTimestamp';
 
 const STATUS_LABEL = {
   processing: 'Transcribing & summarizing...',
@@ -251,7 +252,7 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
           {items.map((r) => (
             <li key={r.id}>
               <div className="recorder-item-header">
-                <span>{new Date(r.created_at).toLocaleString()}</span>
+                <span>{formatDateTime(r.created_at)}</span>
                 <span className={`recorder-status recorder-status-${r.status}`}>
                   {STATUS_LABEL[r.status] || r.status}
                 </span>

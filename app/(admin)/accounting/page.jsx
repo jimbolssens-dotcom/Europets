@@ -43,8 +43,8 @@ export default function AccountingOverviewPage() {
       });
   }, [month]);
 
-  const monthLabel = new Date(`${month}-01T00:00:00`).toLocaleDateString([], {
-    month: 'long',
+  const monthLabel = new Date(`${month}-01T00:00:00`).toLocaleDateString('en-GB', {
+    month: '2-digit',
     year: 'numeric',
   });
 

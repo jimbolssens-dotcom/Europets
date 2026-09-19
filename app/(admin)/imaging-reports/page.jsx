@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabaseClient';
 import InfoHint from '@/app/_components/InfoHint';
 
 function formatDateTime(dateStr) {
-  return new Date(dateStr).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(dateStr).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 export default function ImagingReportsPage() {

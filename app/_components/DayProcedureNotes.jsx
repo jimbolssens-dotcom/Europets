@@ -20,7 +20,7 @@ function todayISODate() {
 }
 
 function formatTime(iso) {
-  return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 export default function DayProcedureNotes({ hospitalizationId, staff = [] }) {

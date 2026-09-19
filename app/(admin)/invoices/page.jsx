@@ -18,7 +18,7 @@ import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import InvoiceDiscountPanel from '@/app/_components/InvoiceDiscountPanel';
 import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
-import { formatShortDate } from '@/lib/formatTimestamp';
+import { formatShortDate, formatDateTime } from '@/lib/formatTimestamp';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -558,7 +558,7 @@ function InvoicesPageInner() {
           <option value="">Link to a visit (optional)...</option>
           {visitsForClient.map((v) => (
             <option key={v.id} value={v.id}>
-              {v.patients?.name} — {new Date(v.started_at).toLocaleString()}
+              {v.patients?.name} — {formatDateTime(v.started_at)}
             </option>
           ))}
         </select>
