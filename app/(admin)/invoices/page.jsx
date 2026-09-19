@@ -18,6 +18,7 @@ import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import InvoiceDiscountPanel from '@/app/_components/InvoiceDiscountPanel';
 import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -55,6 +56,7 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [addCategory, setAddCategory] = useState('product');
+  const [paymentLinkError, setPaymentLinkError] = useState(null);
 
   const loadInvoice = () =>
     fetch(`/api/invoices/${summary.id}`)
@@ -133,6 +135,24 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
       return;
     }
     loadInvoice();
+  }
+
+  // Same handoff as the full invoice page's own Payment Link button — no
+  // link is generated here, it just points the client at their "Settle
+  // Your Bill" page (website/app/settle-bill/[id]), which creates the
+  // actual Nomod link itself for whatever the balance happens to be.
+  function sendPaymentLink() {
+    setPaymentLinkError(null);
+    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
+    const url = `${websiteUrl}/settle-bill/${summary.id}`;
+    const digits = (invoice.clients?.phone || '').replace(/\D/g, '');
+    const message = `Hi ${invoice.clients?.full_name || ''}! You can settle your Europets Clinic invoice online here: ${url}`;
+    if (digits.length > 3) {
+      openWhatsApp(invoice.clients?.phone, message);
+    } else {
+      navigator.clipboard.writeText(url);
+      setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
+    }
   }
 
   const selected = catalog.find((c) => c.id === goodsServiceId);
@@ -268,6 +288,8 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
                 }}
               />
 
+              {paymentLinkError && <p className="error">{paymentLinkError}</p>}
+
               <InvoicePaymentPanel
                 invoice={invoice}
                 staff={staff}
@@ -275,6 +297,7 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
                   loadInvoice();
                   onChanged();
                 }}
+                onSendPaymentLink={sendPaymentLink}
               />
             </>
           )}

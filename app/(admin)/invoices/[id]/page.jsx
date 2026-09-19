@@ -671,7 +671,7 @@ export default function InvoiceDetailPage() {
       <InvoiceDiscountPanel invoice={invoice} staff={staff} onChanged={loadInvoice} />
 
       <h3>Payments</h3>
-      <InvoicePaymentPanel invoice={invoice} staff={staff} onChanged={loadInvoice} onSendPaymentLink={sendPaymentLink} />
+      <InvoicePaymentPanel invoice={invoice} staff={staff} onChanged={loadInvoice} />
 
       {microchipModalOpen && (
         <MicrochipCaptureModal
