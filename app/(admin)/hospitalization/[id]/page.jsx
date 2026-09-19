@@ -41,6 +41,7 @@ import { useVaccinations } from '@/app/_components/useVaccinations';
 import VaccinationForm from '@/app/_components/VaccinationForm';
 import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { openWhatsApp } from '@/lib/whatsapp';
+import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -94,6 +95,13 @@ export default function HospitalizationDetailPage() {
   const [moveToHospitalError, setMoveToHospitalError] = useState(null);
   const reportsSectionRef = useRef(null);
   const [pendingChecklistAction, setPendingChecklistAction] = useState(null);
+  // The patient's currently active consult/hospitalization, regardless of
+  // whether THIS admission/day procedure happens to be directly linked to
+  // it (via originating_visit_id/originating_hospitalization_id) — a day
+  // procedure not booked off an open admission should still show that
+  // admission as active if the patient has one right now (see
+  // CrossRecordLinks below).
+  const [patientActive, setPatientActive] = useState({ consult: null, admission: null, dayProcedure: null });
 
   // The Procedure Checklist's/Day Treatment Plan's "Open Dental/Surgical
   // Report"/"Enter Test Result" buttons trigger HospitalizationReportsSection's
@@ -288,6 +296,14 @@ export default function HospitalizationDetailPage() {
       });
     });
   }, [admission?.originating_visit_id]);
+
+  useEffect(() => {
+    const patientId = admission?.patient_id;
+    if (!patientId) return;
+    fetchPatientActiveRecords(patientId)
+      .then(setPatientActive)
+      .catch(() => {}); // best-effort — the pills just fall back to their own-link behavior below
+  }, [admission?.patient_id]);
 
   useEffect(() => {
     if (!id) return;
@@ -1053,17 +1069,23 @@ export default function HospitalizationDetailPage() {
               </button>
               {admission.originating_visit_id ? (
                 <a className="button-link button-link-consult" href={`/consults/${admission.originating_visit_id}`}>Consult</a>
+              ) : patientActive.consult ? (
+                <a className="button-link button-link-consult" href={`/consults/${patientActive.consult.id}`}>Consult</a>
               ) : (
                 <button type="button" className="button-link" onClick={addConsult} disabled={addingConsult}
                   title="Most day procedures don't need one — only add this if you also want to write up an exam/consult note">
                   {addingConsult ? 'Adding…' : 'Add Consult'}
                 </button>
               )}
-              {admission.originating_hospitalization_id && (
+              {admission.originating_hospitalization_id ? (
                 <a className="button-link button-link-hospitalization" href={`/hospitalization/${admission.originating_hospitalization_id}`}>
                   Hospitalization
                 </a>
-              )}
+              ) : patientActive.admission ? (
+                <a className="button-link button-link-hospitalization" href={`/hospitalization/${patientActive.admission.id}`}>
+                  Hospitalization
+                </a>
+              ) : null}
               {addConsultError && <span className="error" role="alert">{addConsultError}</span>}
             </CrossRecordLinks>
           </div>
@@ -1197,6 +1219,8 @@ export default function HospitalizationDetailPage() {
           </button>
           {admission.originating_visit_id ? (
             <a className="button-link button-link-consult" href={`/consults/${admission.originating_visit_id}`}>Consult</a>
+          ) : patientActive.consult ? (
+            <a className="button-link button-link-consult" href={`/consults/${patientActive.consult.id}`}>Consult</a>
           ) : (
             <button type="button" className="button-link" onClick={addConsult} disabled={addingConsult}
               title="Most day procedures don't need one — only add this if you also want to write up an exam/consult note">
@@ -1213,6 +1237,10 @@ export default function HospitalizationDetailPage() {
           {linkedDayProcedures.find((dp) => dp.admitted_at?.slice(0, 10) === todayISODate()) ? (
             <a className="button-link button-link-day-procedure"
               href={`/hospitalization/${linkedDayProcedures.find((dp) => dp.admitted_at?.slice(0, 10) === todayISODate()).id}`}>
+              Day Procedure
+            </a>
+          ) : patientActive.dayProcedure ? (
+            <a className="button-link button-link-day-procedure" href={`/hospitalization/${patientActive.dayProcedure.id}`}>
               Day Procedure
             </a>
           ) : (
