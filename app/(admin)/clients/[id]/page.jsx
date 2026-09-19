@@ -15,6 +15,7 @@ import { EMIRATES } from '@/lib/emirates';
 import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder, openEmailReminder } from '@/lib/paymentReminders';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import { openWhatsApp } from '@/lib/whatsapp';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -495,7 +496,7 @@ export default function ClientDetailPage() {
                   <td>
                     <a href={`/invoices/${inv.id}`}>{invoiceLabel(inv)}</a>
                   </td>
-                  <td>{new Date(inv.created_at).toLocaleDateString()}</td>
+                  <td>{formatShortDate(inv.created_at)}</td>
                   <td>{inv.status === 'partially_paid' ? 'partially paid' : 'unpaid'}</td>
                   <td>AED {money(balanceDue(inv))}</td>
                 </tr>

@@ -16,7 +16,7 @@ import AttachmentSection from '@/app/_components/AttachmentSection';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
-import { formatTime, formatDayHeader, formatDateTime, groupNotesByDate } from '@/lib/formatTimestamp';
+import { formatTime, formatDayHeader, formatDateTime, formatShortDate, groupNotesByDate } from '@/lib/formatTimestamp';
 import { isWithinOfficeHours } from '@/lib/officeHours';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import { ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
@@ -1680,7 +1680,7 @@ export default function HospitalizationDetailPage() {
             catalog={catalog}
             subcategories={subcategories}
             onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
-            heading={`💰 Day Procedure Invoice — ${new Date(dp.admitted_at).toLocaleDateString()}${dp.reason ? `: ${dp.reason}` : ''}`}
+            heading={`💰 Day Procedure Invoice — ${formatShortDate(dp.admitted_at)}${dp.reason ? `: ${dp.reason}` : ''}`}
             recordHref={`/hospitalization/${dp.id}`}
             mergeTarget={{ id: admission.id, label: 'the hospitalization' }}
             onMerged={loadLinkedDayProcedures}

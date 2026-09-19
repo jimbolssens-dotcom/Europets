@@ -31,7 +31,11 @@ export const viewport = {
 // data; a client portal page must not carry it.
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    // en-GB (not en) nudges Chrome/Edge's native <input type="date"> picker
+    // and its typed display toward day/month/year — the clinic's preferred
+    // order. Not guaranteed on every browser (Firefox/Safari mostly key off
+    // OS locale instead), but it's the only lever a page has over that.
+    <html lang="en-GB">
       <body>{children}</body>
     </html>
   );

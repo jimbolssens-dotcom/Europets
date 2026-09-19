@@ -12,6 +12,7 @@
 
 import { Fragment, useEffect, useState } from 'react';
 import ClientPatientNumberSearch from '@/app/_components/ClientPatientNumberSearch';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -336,7 +337,7 @@ export default function DonationsPage() {
                               <tbody>
                                 {detail.allocations.map((a) => (
                                   <tr key={a.id}>
-                                    <td>{new Date(a.paid_at).toLocaleDateString()}</td>
+                                    <td>{formatShortDate(a.paid_at)}</td>
                                     <td>
                                       {a.invoices?.invoice_number ? (
                                         <a href={`/invoices/${a.invoices.id}`}>

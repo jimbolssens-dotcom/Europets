@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import { money, balanceDue, invoiceLabel } from '@/lib/paymentReminders';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 const STATUS_LABEL = {
   unpaid: 'Unpaid',
@@ -72,7 +73,7 @@ export default function ClientAppInvoicesPage() {
                     </span>
                   </span>
                   <span className="mobile-list-meta">
-                    {new Date(inv.created_at).toLocaleDateString()} · AED {money(inv.total)}
+                    {formatShortDate(inv.created_at)} · AED {money(inv.total)}
                     {due > 0 ? ` · AED ${money(due)} due` : ''}
                   </span>
                 </a>

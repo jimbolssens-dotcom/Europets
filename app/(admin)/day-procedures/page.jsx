@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -128,7 +129,7 @@ export default function DayProceduresPage() {
                       {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
                     </td>
                     <td>{d.reason || '—'}</td>
-                    <td>{new Date(d.admitted_at).toLocaleDateString()}</td>
+                    <td>{formatShortDate(d.admitted_at)}</td>
                     <td>
                       <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
                       <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>

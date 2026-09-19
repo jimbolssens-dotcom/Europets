@@ -11,6 +11,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 export default function WeightHistoryChart({ data, mini = false, unit = 'kg' }) {
   const points = useMemo(
@@ -111,7 +112,7 @@ export default function WeightHistoryChart({ data, mini = false, unit = 'kg' }) 
           <strong>
             {hovered.weight} {unit}
           </strong>
-          <span>{hovered.date.toLocaleDateString()}</span>
+          <span>{formatShortDate(hovered.date)}</span>
         </div>
       )}
     </div>

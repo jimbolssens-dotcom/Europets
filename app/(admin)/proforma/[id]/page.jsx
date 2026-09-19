@@ -14,6 +14,7 @@ import CatalogPicker from '@/app/_components/CatalogPicker';
 import { groupLineItemsByCategory } from '@/lib/catalogGrouping';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { openWhatsApp } from '@/lib/whatsapp';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -184,7 +185,7 @@ export default function ProformaInvoiceDetailPage() {
       <p className="visit-meta">
         {quote.clients?.phone} · {quote.clients?.email}
       </p>
-      <p className="visit-meta">Created: {new Date(quote.created_at).toLocaleDateString()}</p>
+      <p className="visit-meta">Created: {formatShortDate(quote.created_at)}</p>
 
       <div className="action-row">
         <button type="button" onClick={downloadQuote}>
