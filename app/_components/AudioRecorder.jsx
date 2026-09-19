@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { uploadRecording, recordingUrl } from '@/lib/recordings';
+import { describeMicrophoneError } from '@/lib/microphoneAccess';
 
 const STATUS_LABEL = {
   processing: 'Transcribing & summarizing...',
@@ -172,7 +173,7 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
       mediaRecorderRef.current = mediaRecorder;
       setRecording(true);
     } catch (err) {
-      setError('Could not access microphone: ' + err.message);
+      setError(describeMicrophoneError(err));
     }
   }
 

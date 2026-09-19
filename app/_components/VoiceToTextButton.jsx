@@ -6,6 +6,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { describeMicrophoneError } from '@/lib/microphoneAccess';
 
 export default function VoiceToTextButton({ kind, onResult }) {
   const [state, setState] = useState('idle'); // idle, recording, processing, error
@@ -44,7 +45,7 @@ export default function VoiceToTextButton({ kind, onResult }) {
       mediaRecorderRef.current = mediaRecorder;
       setState('recording');
     } catch (err) {
-      setError('Could not access microphone');
+      setError(describeMicrophoneError(err));
       setState('error');
     }
   }

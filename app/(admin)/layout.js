@@ -197,6 +197,16 @@ export default function AdminLayout({ children }) {
             📱
           </a>
           <a
+            href="/client-app"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Client app (opens in a new tab)"
+            aria-label="Client app (opens in a new tab)"
+            className="settings-link"
+          >
+            🐾
+          </a>
+          <a
             href="/settings"
             title={hasPendingReviewRequest ? 'Settings — a review is waiting for moderation' : 'Settings'}
             aria-label="Settings"
