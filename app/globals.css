@@ -6644,6 +6644,19 @@ form.card.admit-patient-form {
   margin-top: 0.6rem;
 }
 
+/* Shown only while WhatsApp sending isn't configured yet (see
+   app/api/client-app/auth/request-code/route.js) — the code is handed
+   back in the response and shown here instead of there being no way to
+   log in while that account setup is in progress. */
+.client-app-dev-code-hint {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px dashed var(--hot);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--chalk);
+}
+
 .client-app-login-form {
   display: flex;
   flex-direction: column;
