@@ -130,7 +130,7 @@ export default function DayProceduresPage() {
                     <td>{d.reason || '—'}</td>
                     <td>{new Date(d.admitted_at).toLocaleDateString()}</td>
                     <td>
-                      <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
+                      <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>{' '}
                       <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
                         {deletingId === d.id ? 'Deleting…' : 'Delete'}
                       </button>
@@ -180,7 +180,7 @@ export default function DayProceduresPage() {
                   <td>{d.reason || '—'}</td>
                   <td>{new Date(d.admitted_at).toLocaleString()}</td>
                   <td>
-                    <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
+                    <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>{' '}
                     <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
                       {deletingId === d.id ? 'Deleting…' : 'Delete'}
                     </button>
@@ -218,7 +218,7 @@ export default function DayProceduresPage() {
                 </td>
                 <td>{d.discharged_at ? new Date(d.discharged_at).toLocaleString() : '—'}</td>
                 <td>
-                  <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
+                  <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>{' '}
                   <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
                     {deletingId === d.id ? 'Deleting…' : 'Delete'}
                   </button>

@@ -447,7 +447,7 @@ export default function HospitalizationPage() {
                   <td>{a.reason || '—'}</td>
                   <td>{new Date(a.admitted_at).toLocaleString()}</td>
                   <td>
-                    <a href={`/hospitalization/${a.id}`}>Open</a>
+                    <a href={`/hospitalization/${a.id}`} className="button-link button-link-open">Open</a>
                   </td>
                 </tr>
               ))}
@@ -481,7 +481,7 @@ export default function HospitalizationPage() {
                   </td>
                   <td>{a.discharged_at ? new Date(a.discharged_at).toLocaleString() : '—'}</td>
                   <td>
-                    <a href={`/hospitalization/${a.id}`}>Open</a>
+                    <a href={`/hospitalization/${a.id}`} className="button-link button-link-open">Open</a>
                   </td>
                 </tr>
               ))}

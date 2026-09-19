@@ -230,7 +230,7 @@ function ConsultsPageInner() {
                 <td>{c.staff?.full_name || 'unassigned'}</td>
                 <td>{elapsedMinutes(c.started_at)} min</td>
                 <td>
-                  <a href={`/consults/${c.id}`}>Open</a>
+                  <a href={`/consults/${c.id}`} className="button-link button-link-open">Open</a>
                   <button type="button" onClick={() => completeConsult(c)}>
                     Complete
                   </button>
@@ -316,7 +316,7 @@ function ConsultsPageInner() {
                 </td>
                 <td>{c.ended_at ? new Date(c.ended_at).toLocaleString() : '—'}</td>
                 <td>
-                  <a href={`/consults/${c.id}`}>Open</a>
+                  <a href={`/consults/${c.id}`} className="button-link button-link-open">Open</a>
                   <button type="button" onClick={() => deleteConsult(c)}>
                     Delete
                   </button>

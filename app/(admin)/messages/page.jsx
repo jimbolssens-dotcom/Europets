@@ -83,7 +83,7 @@ export default function MessagesInboxPage() {
                 </td>
                 <td>{formatWhen(c.last_message_at)}</td>
                 <td>
-                  <a href={`/messages/${c.client_id}`}>Open</a>
+                  <a href={`/messages/${c.client_id}`} className="button-link button-link-open">Open</a>
                 </td>
               </tr>
             ))}

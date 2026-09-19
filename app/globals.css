@@ -2348,6 +2348,21 @@ button.secondary:hover {
   color: #661616;
 }
 
+/* A plain "Open" link next to a solid pink action button (Delete,
+   Complete, ...) in a list row — same pill shape as the cross-record
+   links above, in a light pink tint of the brand color, instead of
+   sitting there as bare underlined text. */
+.button-link-open {
+  background: var(--pink-tint);
+  border: 1px solid #eda9c4;
+  color: var(--pink-dark);
+}
+
+.button-link-open:hover {
+  background: #f8d3e3;
+  color: #8a0d40;
+}
+
 /* Groups a Consult/Day Procedure/Hospitalization/Invoice page's buttons
    linking to the other three into one recognizable unit, the same on all
    four pages — distinct from that page's own actions, which sit outside

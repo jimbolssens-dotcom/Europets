@@ -88,7 +88,7 @@ export default function EmptyReportsPage() {
                 <td>{r.client_name || '—'}</td>
                 <td>{formatWhen(r.date)}</td>
                 <td>
-                  <a href={r.href}>Open</a>
+                  <a href={r.href} className="button-link button-link-open">Open</a>
                 </td>
               </tr>
             ))}

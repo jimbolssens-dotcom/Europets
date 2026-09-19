@@ -510,7 +510,7 @@ function InvoicesPageInner() {
                     <td>{items.length}</td>
                     <td>AED {money(total)}</td>
                     <td>
-                      <a href={`/proforma/${q.id}`}>Open</a>{' '}
+                      <a href={`/proforma/${q.id}`} className="button-link button-link-open">Open</a>{' '}
                       <button type="button" onClick={() => discardQuote(q.id)} disabled={discardingQuoteId === q.id}>
                         {discardingQuoteId === q.id ? 'Discarding…' : 'Discard'}
                       </button>
