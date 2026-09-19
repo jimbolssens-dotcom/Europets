@@ -72,8 +72,10 @@ export default function MessagesInboxPage() {
               <tr key={c.client_id} className={c.pending ? 'cage-update-requested' : ''}>
                 <td>{c.pending && '🔔'}</td>
                 <td>
-                  {c.client?.full_name}
-                  {c.client?.client_number ? ` (Client #${c.client.client_number})` : ''}
+                  <a href={`/clients/${c.client_id}`}>
+                    {c.client?.full_name}
+                    {c.client?.client_number ? ` (Client #${c.client.client_number})` : ''}
+                  </a>
                 </td>
                 <td>
                   {c.last_sender === 'staff' ? 'You: ' : ''}

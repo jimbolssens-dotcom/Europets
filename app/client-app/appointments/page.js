@@ -6,7 +6,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 
 const TYPE_LABEL = {
@@ -31,6 +30,8 @@ export default function ClientAppAppointmentsPage() {
   const router = useRouter();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState(null);
 
   useEffect(() => {
     if (ready && !clientId) router.replace('/client-app');
@@ -51,6 +52,32 @@ export default function ClientAppAppointmentsPage() {
       cancelled = true;
     };
   }, [ready, clientId]);
+
+  // Same "start a fresh intake request, open its portal link" flow as a
+  // pet's own "Book an Appointment" button (app/client-app/pets/[id]) —
+  // just without a ?pet= param, since the pet is picked on that form
+  // instead when there's more than one to choose from. Navigates the
+  // current tab rather than pre-opening a blank one to fill in later —
+  // that pattern is unreliable on mobile browsers (popup blockers can
+  // silently drop it, or focus can shift to the blank tab before an
+  // error has a chance to render anywhere visible).
+  async function startBooking() {
+    setBookingError(null);
+    setBookingLoading(true);
+    try {
+      const res = await fetch('/api/intake-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not start booking — please try again.');
+      window.location.href = `/portal/intake/${data.id}`;
+    } catch (err) {
+      setBookingError(err.message);
+      setBookingLoading(false);
+    }
+  }
 
   if (!ready) return null;
 
@@ -82,9 +109,10 @@ export default function ClientAppAppointmentsPage() {
   return (
     <div className="mobile-page">
       <h1>Appointments</h1>
-      <p className="mobile-subtitle">
-        Want to book a new one? <Link href="/client-app/pets">Pick a pet</Link> to get started.
-      </p>
+      <button type="button" onClick={startBooking} disabled={bookingLoading}>
+        {bookingLoading ? 'Opening booking form...' : '📅 Book a New Appointment'}
+      </button>
+      {bookingError && <p className="client-app-login-error">{bookingError}</p>}
       {loading ? (
         <p className="mobile-subtitle">Loading...</p>
       ) : appointments.length === 0 ? (

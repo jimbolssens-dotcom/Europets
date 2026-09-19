@@ -1,24 +1,38 @@
 // app/_components/useClientAppSession.js
-// Shared "who's logged in" state for the client-app pages (app/client-app/*)
-// — same localStorage-remembers-who-you-picked pattern as the mobile staff
-// app's MOBILE_STAFF_STORAGE_KEY (see app/mobile/page.js), just storing a
-// client id instead of a staff id. See the security note in
-// app/client-app/layout.js: this remembers a *choice*, it does not verify
-// one — real verification (OTP) is a separate, not-yet-built step.
+// Shared "who's logged in" state for the client-app pages (app/client-app/*).
+// The actual session lives in an httpOnly cookie set by
+// app/api/client-app/auth/{verify-code,select-account} once a WhatsApp
+// one-time code checks out (see lib/clientAppAuth.js) — this hook just
+// asks the server who that cookie belongs to on mount, and mirrors it in
+// local state so pages don't all have to await that fetch themselves.
+// `login()` doesn't set the cookie itself (the auth routes already did,
+// via their response) — it just lets the page that just finished the OTP
+// flow update this state immediately instead of waiting on a fresh
+// GET .../session round trip.
 
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-
-export const CLIENT_APP_STORAGE_KEY = 'europets_client_app_client_id';
 
 export function useClientAppSession() {
   const [clientId, setClientId] = useState(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setClientId(localStorage.getItem(CLIENT_APP_STORAGE_KEY));
-    setReady(true);
+    let cancelled = false;
+    fetch('/api/client-app/auth/session')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        setClientId(data?.clientId || null);
+        setReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fire-and-forget "still using the app" signal — every client-app page
@@ -31,12 +45,11 @@ export function useClientAppSession() {
   }, [ready, clientId]);
 
   const login = useCallback((id) => {
-    localStorage.setItem(CLIENT_APP_STORAGE_KEY, id);
     setClientId(id);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(CLIENT_APP_STORAGE_KEY);
+    fetch('/api/client-app/auth/logout', { method: 'POST' }).catch(() => {});
     setClientId(null);
   }, []);
 
