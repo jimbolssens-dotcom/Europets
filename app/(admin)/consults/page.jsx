@@ -273,9 +273,15 @@ function ConsultsPageInner() {
                   </td>
                   <td>{c.staff?.full_name || 'unassigned'}</td>
                   <td>{hosp?.admitted_at ? new Date(hosp.admitted_at).toLocaleString() : '—'}</td>
-                  <td>
-                    {hosp && <a href={`/hospitalization/${hosp.id}`}>Hospitalization</a>}
-                    <a href={`/consults/${c.id}`}>Consult note</a>
+                  <td className="table-link-group">
+                    {hosp && (
+                      <a href={`/hospitalization/${hosp.id}`} className="button-link">
+                        Hospitalization
+                      </a>
+                    )}
+                    <a href={`/consults/${c.id}`} className="button-link">
+                      Consult note
+                    </a>
                   </td>
                 </tr>
               );

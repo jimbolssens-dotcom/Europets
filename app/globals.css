@@ -102,6 +102,16 @@ button:disabled {
   margin-bottom: 1rem;
 }
 
+/* A table cell holding more than one .button-link pill (e.g. the Consults
+   list's Hospitalized table — Hospitalization + Consult note) — without
+   this they render pressed together with no gap or wrapping. */
+.table-link-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .hospitalization-reports-section { margin-top: 1rem; }
 
 .hospitalization-actions > .button-link {
