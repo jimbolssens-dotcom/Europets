@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { normalizePhoneDigits, findClientsByPhone, generateOtpCode, storeOtpCode } from '@/lib/clientAppAuth';
-import { sendWhatsAppOtp } from '@/lib/metaWhatsapp';
+import { sendWhatsAppOtp, isWhatsAppConfigured } from '@/lib/metaWhatsapp';
 import { checkRateLimit, recordFailedAttempt, getClientKey } from '@/lib/loginRateLimit';
 
 export async function POST(request) {
@@ -47,7 +47,18 @@ export async function POST(request) {
   const code = generateOtpCode();
   try {
     await storeOtpCode(phoneDigits, code);
-    await sendWhatsAppOtp(phoneDigits, code);
+    // Meta's WhatsApp Business setup (System User token + registered
+    // sender + approved Authentication template — see lib/metaWhatsapp.js)
+    // is a real account-setup step, not something turned on by a code
+    // change. Until it's configured, log the code here instead of failing
+    // outright, so the rest of the client app stays testable in the
+    // meantime — read it from the server logs and enter it manually. This
+    // branch stops firing the moment the real credentials are set.
+    if (isWhatsAppConfigured()) {
+      await sendWhatsAppOtp(phoneDigits, code);
+    } else {
+      console.warn(`[client-app OTP] WhatsApp not configured — login code for ${phoneDigits}: ${code}`);
+    }
   } catch (err) {
     return NextResponse.json({ error: err.message || 'Could not send the code — please try again.' }, { status: 500 });
   }
