@@ -27,6 +27,7 @@ export default function IntakePage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [quickPhone, setQuickPhone] = useState('+971 ');
+  const [clientAppPhone, setClientAppPhone] = useState('+971 ');
   const [draftPhones, setDraftPhones] = useState({});
   const [copiedId, setCopiedId] = useState(null);
   const [error, setError] = useState(null);
@@ -109,6 +110,21 @@ export default function IntakePage() {
     load();
   }
 
+  // Unlike the intake links above, there's no per-send record to create —
+  // /client-app is a standing page any existing client can log into
+  // themselves (phone number + WhatsApp code, see app/client-app/page.js),
+  // so this just drafts the WhatsApp message straight away.
+  function sendClientAppLink() {
+    const phone = clientAppPhone.replace(/\D/g, '');
+    if (phone.length <= 3) {
+      setError('Enter a phone number first');
+      return;
+    }
+    const url = `${window.location.origin}/client-app`;
+    openWhatsApp(phone, `Hi! You can now view your pet(s), invoices, and appointments anytime here: ${url}`);
+    setClientAppPhone('+971 ');
+  }
+
   async function copyLink(id) {
     await navigator.clipboard.writeText(portalUrl(id));
     setCopiedId(id);
@@ -161,6 +177,8 @@ export default function IntakePage() {
 
       {error && <p className="error">{error}</p>}
 
+      <h2>New Patient Intake</h2>
+
       <div className="intake-quick-send">
         <input
           type="tel"
@@ -170,6 +188,27 @@ export default function IntakePage() {
         />
         <button type="button" onClick={sendNewLink} disabled={sending}>
           {sending ? 'Sending...' : '💬 WhatsApp'}
+        </button>
+      </div>
+
+      <h2>
+        Client App Link{' '}
+        <InfoHint>
+          For an existing client, not a new intake — sends a WhatsApp message with a link to the
+          Client App, where they can log in themselves (phone number + WhatsApp code) to see
+          their own pets, invoices, and appointments any time.
+        </InfoHint>
+      </h2>
+
+      <div className="intake-quick-send">
+        <input
+          type="tel"
+          placeholder="Phone number"
+          value={clientAppPhone}
+          onChange={(e) => setClientAppPhone(e.target.value)}
+        />
+        <button type="button" onClick={sendClientAppLink}>
+          💬 WhatsApp
         </button>
       </div>
 

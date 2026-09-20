@@ -169,42 +169,6 @@ export default function ClientAppHomePage() {
     }
   }
 
-  // Staff-only bypass (see app/api/client-app/auth/staff-login) — skips the
-  // WhatsApp code entirely. Safe here specifically because /client-app is
-  // still reachable by nobody but staff (not in PUBLIC_PATTERNS yet), so
-  // everyone who can even load this page already holds the staff PIN
-  // cookie the bypass route itself re-checks.
-  async function handleStaffBypass() {
-    const digits = normalizePhoneDigits(phoneInput);
-    if (digits.length < 12) {
-      setError('Enter a valid phone number.');
-      return;
-    }
-    setSubmitting(true);
-    setError('');
-    try {
-      const res = await fetch('/api/client-app/auth/staff-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: digits }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Something went wrong.');
-      if (data.clientId) {
-        login(data.clientId);
-      } else {
-        setPhoneDigits(digits);
-        setMatches(data.matches);
-        setVerifiedPhoneToken(data.verifiedPhoneToken);
-        setStep('picker');
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   async function handleCodeSubmit(e) {
     e.preventDefault();
     if (!codeInput.trim()) return;
@@ -277,14 +241,6 @@ export default function ClientAppHomePage() {
           />
           <button type="submit" disabled={submitting}>
             {submitting ? 'Sending code...' : 'Send code'}
-          </button>
-          <button
-            type="button"
-            className="mobile-link-btn"
-            onClick={handleStaffBypass}
-            disabled={submitting}
-          >
-            Staff: skip code (testing only)
           </button>
         </form>
       ) : step === 'code' ? (
