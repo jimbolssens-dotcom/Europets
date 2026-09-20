@@ -269,6 +269,7 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     const coreProtocol = relevantProtocols.find((p) => p.core && !p.is_rabies);
     const rabiesGiven = checkedProtocols.some((p) => p.is_rabies);
     const boosterDue = isPrimary ? addMonths(form.date_given, 1) : null;
+    const dateGiven = form.date_given;
 
     const payloads = checkedProtocols.map((p) => ({
       patient_id: patientId,
@@ -310,10 +311,20 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
       setError(failed.data.error || 'Failed to record one or more vaccinations');
     } else {
       setForm(makeEmptyForm(defaultVetId));
-      try {
-        await billVaccinationVisit({ isPrimary, checkedProtocols, coreProtocol, rabiesGiven, boosterDue });
-      } catch (billingError) {
-        setError(billingError.message || 'Vaccination saved, but failed to add it to the invoice');
+      // An annual vaccination logged for any date other than today almost
+      // always means it was already given — by this clinic earlier, or by
+      // another clinic entirely — and is only being recorded here for the
+      // patient's history, not something to charge for. A primary-course
+      // vaccination backdated the same way still bills as usual (it's
+      // never a "just recording history" entry the way an annual booster
+      // can be), and today's own annual visit bills normally too.
+      const isBackdatedAnnual = !isPrimary && dateGiven !== todayISODate();
+      if (!isBackdatedAnnual) {
+        try {
+          await billVaccinationVisit({ isPrimary, checkedProtocols, coreProtocol, rabiesGiven, boosterDue });
+        } catch (billingError) {
+          setError(billingError.message || 'Vaccination saved, but failed to add it to the invoice');
+        }
       }
     }
     loadVaccinations();

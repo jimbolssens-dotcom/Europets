@@ -231,7 +231,7 @@ function ConsultsPageInner() {
                 <td>{c.staff?.full_name || 'unassigned'}</td>
                 <td>{elapsedMinutes(c.started_at)} min</td>
                 <td>
-                  <a href={`/consults/${c.id}`}>Open</a>
+                  <a href={`/consults/${c.id}`} className="button-link button-link-open">Open</a>
                   <button type="button" onClick={() => completeConsult(c)}>
                     Complete
                   </button>
@@ -274,9 +274,15 @@ function ConsultsPageInner() {
                   </td>
                   <td>{c.staff?.full_name || 'unassigned'}</td>
                   <td>{hosp?.admitted_at ? formatDateTime(hosp.admitted_at) : '—'}</td>
-                  <td>
-                    {hosp && <a href={`/hospitalization/${hosp.id}`}>Hospitalization</a>}
-                    <a href={`/consults/${c.id}`}>Consult note</a>
+                  <td className="table-link-group">
+                    {hosp && (
+                      <a href={`/hospitalization/${hosp.id}`} className="button-link">
+                        Hospital
+                      </a>
+                    )}
+                    <a href={`/consults/${c.id}`} className="button-link">
+                      Consult
+                    </a>
                   </td>
                 </tr>
               );
@@ -311,7 +317,7 @@ function ConsultsPageInner() {
                 </td>
                 <td>{c.ended_at ? formatDateTime(c.ended_at) : '—'}</td>
                 <td>
-                  <a href={`/consults/${c.id}`}>Open</a>
+                  <a href={`/consults/${c.id}`} className="button-link button-link-open">Open</a>
                   <button type="button" onClick={() => deleteConsult(c)}>
                     Delete
                   </button>

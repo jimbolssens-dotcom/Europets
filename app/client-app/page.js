@@ -47,6 +47,10 @@ export default function ClientAppHomePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [matches, setMatches] = useState(null);
+  // Set only while WhatsApp sending isn't configured yet (see
+  // app/api/client-app/auth/request-code/route.js) — shows the code
+  // directly instead of leaving no way to log in.
+  const [devCode, setDevCode] = useState(null);
 
   const [client, setClient] = useState(null);
   const [openAdmissions, setOpenAdmissions] = useState([]);
@@ -156,6 +160,7 @@ export default function ClientAppHomePage() {
       if (!res.ok) throw new Error(data.error || 'Something went wrong.');
       setPhoneDigits(digits);
       setCodeInput('');
+      setDevCode(data.devCode || null);
       setStep('code');
     } catch (err) {
       setError(err.message);
@@ -252,6 +257,7 @@ export default function ClientAppHomePage() {
     setMatches(null);
     setCodeInput('');
     setVerifiedPhoneToken(null);
+    setDevCode(null);
   }
 
   if (!ready) return null;
@@ -313,6 +319,11 @@ export default function ClientAppHomePage() {
                 ? `Enter the code sent to your WhatsApp.`
                 : 'Enter the phone number on file with the clinic to see your pets, invoices, and appointments.'}
             </p>
+            {step === 'code' && devCode && (
+              <p className="client-app-dev-code-hint">
+                WhatsApp sending isn&apos;t configured yet — your code is <strong>{devCode}</strong>
+              </p>
+            )}
             {loginForm}
             {step === 'code' && (
               <button type="button" className="mobile-link-btn" onClick={resetToPhoneStep}>
@@ -336,6 +347,11 @@ export default function ClientAppHomePage() {
                     ? `Enter the code sent to your WhatsApp.`
                     : 'Enter the phone number on file with the clinic to see your pets, invoices, and appointments.'}
                 </p>
+                {step === 'code' && devCode && (
+                  <p className="client-app-dev-code-hint">
+                    WhatsApp sending isn&apos;t configured yet — your code is <strong>{devCode}</strong>
+                  </p>
+                )}
                 {loginForm}
                 {step === 'code' && (
                   <button type="button" className="mobile-link-btn" onClick={resetToPhoneStep}>

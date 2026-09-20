@@ -102,6 +102,23 @@ button:disabled {
   margin-bottom: 1rem;
 }
 
+/* A table cell holding more than one .button-link pill (e.g. the Consults
+   list's Hospitalized table — Hospital + Consult) — without this they
+   render pressed together with no gap. Deliberately nowrap (not wrap):
+   the whole point of these short one-word labels is staying side by side
+   so the row — and the list — stays compact. */
+.table-link-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+}
+
+.table-link-group .button-link {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+}
+
 .hospitalization-reports-section { margin-top: 1rem; }
 
 .hospitalization-actions > .button-link {
@@ -2329,6 +2346,21 @@ button.secondary:hover {
 .button-link-invoice:hover {
   background: #f7cfcf;
   color: #661616;
+}
+
+/* A plain "Open" link next to a solid pink action button (Delete,
+   Complete, ...) in a list row — same pill shape as the cross-record
+   links above, in a light pink tint of the brand color, instead of
+   sitting there as bare underlined text. */
+.button-link-open {
+  background: var(--pink-tint);
+  border: 1px solid #eda9c4;
+  color: var(--pink-dark);
+}
+
+.button-link-open:hover {
+  background: #f8d3e3;
+  color: #8a0d40;
 }
 
 /* Groups a Consult/Day Procedure/Hospitalization/Invoice page's buttons
@@ -6642,6 +6674,19 @@ form.card.admit-patient-form {
 
 .client-app-login-intro {
   margin-top: 0.6rem;
+}
+
+/* Shown only while WhatsApp sending isn't configured yet (see
+   app/api/client-app/auth/request-code/route.js) — the code is handed
+   back in the response and shown here instead of there being no way to
+   log in while that account setup is in progress. */
+.client-app-dev-code-hint {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px dashed var(--hot);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--chalk);
 }
 
 .client-app-login-form {

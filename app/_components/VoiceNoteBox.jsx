@@ -9,6 +9,7 @@
 
 import { useRef, useState } from 'react';
 import { uploadVoiceNote, voiceNoteUrl } from '@/lib/voiceNotes';
+import { describeMicrophoneError } from '@/lib/microphoneAccess';
 
 export default function VoiceNoteBox({ lineItemId, path, onUploaded, onCleared }) {
   const [recording, setRecording] = useState(false);
@@ -42,7 +43,7 @@ export default function VoiceNoteBox({ lineItemId, path, onUploaded, onCleared }
       mediaRecorderRef.current = mediaRecorder;
       setRecording(true);
     } catch (err) {
-      setError('Could not access microphone: ' + err.message);
+      setError(describeMicrophoneError(err));
     }
   }
 

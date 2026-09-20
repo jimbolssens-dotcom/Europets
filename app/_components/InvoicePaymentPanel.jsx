@@ -25,7 +25,7 @@ function money(n) {
   return Number(n || 0).toFixed(2);
 }
 
-export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) {
+export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, onSendPaymentLink }) {
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [receivedBy, setReceivedBy] = useState('');
@@ -204,6 +204,11 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged }) 
             >
               {submitting ? 'Logging...' : `Pay in Full (AED ${money(balanceDue)})`}
             </button>
+            {onSendPaymentLink && (
+              <button type="button" onClick={onSendPaymentLink}>
+                💳 Payment Link
+              </button>
+            )}
           </form>
           {confirmingVoid ? (
             <p className="invoice-void-confirm">

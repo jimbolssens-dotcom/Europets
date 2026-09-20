@@ -589,7 +589,7 @@ export default function PatientDetailPage() {
                     <td>{items.length}</td>
                     <td>AED {total.toFixed(2)}</td>
                     <td>
-                      <a href={`/proforma/${q.id}`}>Open</a>
+                      <a href={`/proforma/${q.id}`} className="button-link button-link-open">Open</a>
                     </td>
                   </tr>
                 );

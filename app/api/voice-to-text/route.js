@@ -14,6 +14,7 @@ export const maxDuration = 60;
 const VALID_KINDS = [
   'anamnesis',
   'findings',
+  'diagnosis',
   'treatment_notes',
   'surgical_notes',
   'dental_notes',

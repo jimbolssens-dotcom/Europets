@@ -448,7 +448,7 @@ export default function HospitalizationPage() {
                   <td>{a.reason || '—'}</td>
                   <td>{formatDateTime(a.admitted_at)}</td>
                   <td>
-                    <a href={`/hospitalization/${a.id}`}>Open</a>
+                    <a href={`/hospitalization/${a.id}`} className="button-link button-link-open">Open</a>
                   </td>
                 </tr>
               ))}
@@ -482,7 +482,7 @@ export default function HospitalizationPage() {
                   </td>
                   <td>{a.discharged_at ? formatDateTime(a.discharged_at) : '—'}</td>
                   <td>
-                    <a href={`/hospitalization/${a.id}`}>Open</a>
+                    <a href={`/hospitalization/${a.id}`} className="button-link button-link-open">Open</a>
                   </td>
                 </tr>
               ))}

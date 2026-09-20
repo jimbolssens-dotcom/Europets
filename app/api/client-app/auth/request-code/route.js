@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { normalizePhoneDigits, findClientsByPhone, generateOtpCode, storeOtpCode } from '@/lib/clientAppAuth';
-import { sendWhatsAppOtp } from '@/lib/metaWhatsapp';
+import { sendWhatsAppOtp, isWhatsAppConfigured } from '@/lib/metaWhatsapp';
 import { checkRateLimit, recordFailedAttempt, getClientKey } from '@/lib/loginRateLimit';
 
 export async function POST(request) {
@@ -45,13 +45,25 @@ export async function POST(request) {
   }
 
   const code = generateOtpCode();
+  let devCode;
   try {
     await storeOtpCode(phoneDigits, code);
-    await sendWhatsAppOtp(phoneDigits, code);
+    // Meta's WhatsApp Business setup (System User token + registered
+    // sender + approved Authentication template — see lib/metaWhatsapp.js)
+    // is a real account-setup step, not something turned on by a code
+    // change. Until it's configured, hand the code back in the response
+    // instead of failing outright, so the rest of the client app stays
+    // testable in the meantime — the login page below shows it directly.
+    // This branch stops firing the moment the real credentials are set.
+    if (isWhatsAppConfigured()) {
+      await sendWhatsAppOtp(phoneDigits, code);
+    } else {
+      devCode = code;
+    }
   } catch (err) {
     return NextResponse.json({ error: err.message || 'Could not send the code — please try again.' }, { status: 500 });
   }
 
   recordFailedAttempt(ipKey); // counts toward the IP throttle regardless of outcome — sending codes costs money
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, ...(devCode ? { devCode } : {}) });
 }

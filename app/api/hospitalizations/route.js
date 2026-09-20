@@ -21,7 +21,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { attachCages } from '@/lib/attachCages';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
-import { seedVitalsFromOrigin } from '@/lib/hospitalizationVitalsSync';
+import { seedVitalsFromOrigin, seedVitalsFromVisit } from '@/lib/hospitalizationVitalsSync';
 import { NextResponse } from 'next/server';
 
 // The existing twice-daily "morning by 12:00, afternoon by 18:00" alarm —
@@ -323,6 +323,13 @@ export async function POST(request) {
   // asked for a reading that was already taken an hour ago.
   if (originating_hospitalization_id) {
     await seedVitalsFromOrigin(data.id, originating_hospitalization_id);
+  }
+
+  // Same idea booking straight from a consult (admission or day procedure
+  // — either way the consult's own Vitals & Exam weight/temperature
+  // already exist) — see seedVitalsFromVisit.
+  if (originating_visit_id) {
+    await seedVitalsFromVisit(data.id, originating_visit_id);
   }
 
   return NextResponse.json(await attachCages(data), { status: 201 });

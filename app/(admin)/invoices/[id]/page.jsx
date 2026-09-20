@@ -21,6 +21,7 @@ import InfoHint from '@/app/_components/InfoHint';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -39,6 +40,13 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState(null);
   const [linking, setLinking] = useState(null); // 'consult' | 'hosp' | 'dayproc' | null
   const [linkError, setLinkError] = useState(null);
+  // The patient's currently active consult/hospitalization/day procedure,
+  // regardless of whether THIS invoice happens to be directly linked to it
+  // — an invoice created from a consult has no hospitalization_id of its
+  // own, but the patient can still be actively hospitalized right now off
+  // a separate admission, and the Hospitalization/Day Procedure pills below
+  // need to reflect that instead of offering to start a new one.
+  const [patientActive, setPatientActive] = useState({ consult: null, admission: null, dayProcedure: null });
   const [loading, setLoading] = useState(true);
   const [catalog, setCatalog] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
@@ -98,6 +106,15 @@ export default function InvoiceDetailPage() {
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const patientId = invoice?.visits?.patients?.id || invoice?.hospitalizations?.patients?.id;
+
+  useEffect(() => {
+    if (!patientId) return;
+    fetchPatientActiveRecords(patientId)
+      .then(setPatientActive)
+      .catch(() => {}); // best-effort — the pills just fall back to their own-link behavior below
+  }, [patientId]);
 
   async function postLineItem() {
     const res = await fetch(`/api/invoices/${id}/line-items`, {
@@ -461,12 +478,16 @@ export default function InvoiceDetailPage() {
         </button>
         {editable && (
           <button type="button" onClick={sendPaymentLink}>
-            💳 Send
+            💳 Payment Link
           </button>
         )}
       <CrossRecordLinks>
         {invoice.visit_id ? (
           <a className="button-link button-link-consult" href={`/consults/${invoice.visit_id}`}>
+            Consult
+          </a>
+        ) : patientActive.consult ? (
+          <a className="button-link button-link-consult" href={`/consults/${patientActive.consult.id}`}>
             Consult
           </a>
         ) : invoice.hospitalization_id ? (
@@ -476,6 +497,10 @@ export default function InvoiceDetailPage() {
         ) : null}
         {invoice.hospitalization_id && invoice.hospitalizations?.kind === 'admission' ? (
           <a className="button-link button-link-hospitalization" href={`/hospitalization/${invoice.hospitalization_id}`}>
+            Hospitalization
+          </a>
+        ) : patientActive.admission ? (
+          <a className="button-link button-link-hospitalization" href={`/hospitalization/${patientActive.admission.id}`}>
             Hospitalization
           </a>
         ) : invoice.hospitalization_id ? (
@@ -489,6 +514,10 @@ export default function InvoiceDetailPage() {
         ) : null}
         {invoice.hospitalization_id && invoice.hospitalizations?.kind === 'day_procedure' ? (
           <a className="button-link button-link-day-procedure" href={`/hospitalization/${invoice.hospitalization_id}`}>
+            Day Procedure
+          </a>
+        ) : patientActive.dayProcedure ? (
+          <a className="button-link button-link-day-procedure" href={`/hospitalization/${patientActive.dayProcedure.id}`}>
             Day Procedure
           </a>
         ) : invoice.hospitalization_id ? (

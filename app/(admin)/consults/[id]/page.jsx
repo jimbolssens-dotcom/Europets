@@ -29,6 +29,7 @@ import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatDateTime } from '@/lib/formatTimestamp';
+import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
 // catalog link — kept only to label those old rows.
@@ -113,16 +114,21 @@ export default function ConsultDetailPage() {
 
   const [hospReason, setHospReason] = useState('');
   const [admitting, setAdmitting] = useState(false);
-  const [linkedHospitalization, setLinkedHospitalization] = useState(null);
+  // Patient-scoped, not just whatever this one consult happens to have
+  // spawned — the patient can already be actively hospitalized off an
+  // earlier, unrelated admission, and these pills need to reflect that.
+  const [linkedAdmission, setLinkedAdmission] = useState(null);
+  const [linkedDayProcedure, setLinkedDayProcedure] = useState(null);
   const [checkingHospitalization, setCheckingHospitalization] = useState(true);
   const [hospitalizationError, setHospitalizationError] = useState(null);
+  const patientIdRef = useRef(null); // set once the consult loads, for the realtime callback below
 
-  async function loadLinkedHospitalization() {
+  async function loadLinkedHospitalization(patientId) {
+    if (!patientId) return;
     try {
-      const response = await fetch(`/api/hospitalizations?originating_visit_id=${id}`);
-      const rows = await response.json();
-      if (!response.ok || !Array.isArray(rows)) throw new Error('Could not check hospitalization. Please retry.');
-      setLinkedHospitalization(rows.find((row) => row.status === 'admitted') || rows[0] || null);
+      const { admission, dayProcedure } = await fetchPatientActiveRecords(patientId);
+      setLinkedAdmission(admission);
+      setLinkedDayProcedure(dayProcedure);
       setHospitalizationError(null);
     } catch (error) {
       setHospitalizationError(error.message);
@@ -155,6 +161,8 @@ export default function ConsultDetailPage() {
       .then((res) => res.json())
       .then((data) => {
         setConsult(data);
+        patientIdRef.current = data.patient_id;
+        loadLinkedHospitalization(data.patient_id);
         const serverRecord = {
           weight_kg: data.weight_kg ?? data.patients?.current_weight_kg ?? '',
           temperature_c: data.temperature_c ?? '',
@@ -291,7 +299,6 @@ export default function ConsultDetailPage() {
     loadUltrasoundReports();
     loadXrayReports();
     loadInvoiceInfo();
-    loadLinkedHospitalization();
 
     Promise.all([
       fetch('/api/staff').then((res) => res.json()),
@@ -308,7 +315,7 @@ export default function ConsultDetailPage() {
     const channel = supabase
       .channel(`consult-${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'visits', filter: `id=eq.${id}` }, loadConsult)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations', filter: `originating_visit_id=eq.${id}` }, loadLinkedHospitalization)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations', filter: `originating_visit_id=eq.${id}` }, () => loadLinkedHospitalization(patientIdRef.current))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'diagnostics', filter: `visit_id=eq.${id}` }, loadDiagnostics)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'treatment_items', filter: `visit_id=eq.${id}` }, loadTreatmentItems)
       .on(
@@ -731,8 +738,9 @@ export default function ConsultDetailPage() {
 
   async function admitToHospital(e, kind = 'admission') {
     e.preventDefault();
-    if (linkedHospitalization) {
-      router.push(`/hospitalization/${linkedHospitalization.id}`);
+    const existing = kind === 'admission' ? linkedAdmission : linkedDayProcedure;
+    if (existing) {
+      router.push(`/hospitalization/${existing.id}`);
       return;
     }
     setAdmitting(true);
@@ -744,7 +752,8 @@ export default function ConsultDetailPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not admit the patient.');
-      setLinkedHospitalization(data);
+      if (kind === 'admission') setLinkedAdmission(data);
+      else setLinkedDayProcedure(data);
       router.push(`/hospitalization/${data.id}`);
     } catch (error) {
       setHospitalizationError(error.message);
@@ -758,18 +767,19 @@ export default function ConsultDetailPage() {
   // transition as "Move to Hospital" on the hospitalization page itself)
   // instead of creating a second hospitalization row for this consult.
   async function moveLinkedToHospital() {
-    if (!linkedHospitalization) return;
+    if (!linkedDayProcedure) return;
     setAdmitting(true);
     setHospitalizationError(null);
     try {
-      const res = await fetch(`/api/hospitalizations/${linkedHospitalization.id}`, {
+      const res = await fetch(`/api/hospitalizations/${linkedDayProcedure.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kind: 'admission' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not move to hospital.');
-      setLinkedHospitalization(data);
+      setLinkedAdmission(data);
+      setLinkedDayProcedure(null);
       router.push(`/hospitalization/${data.id}`);
     } catch (error) {
       setHospitalizationError(error.message);
@@ -917,16 +927,16 @@ export default function ConsultDetailPage() {
           🧾 {creatingInvoice ? 'Saving...' : invoiceInfo ? `Invoiced (${invoiceInfo.status})` : 'Invoice'}
         </button>
         {checkingHospitalization || hospitalizationError ? (
-          <button type="button" className="button-link" disabled={checkingHospitalization} onClick={loadLinkedHospitalization}>
+          <button type="button" className="button-link" disabled={checkingHospitalization} onClick={() => loadLinkedHospitalization(patientIdRef.current)}>
             {checkingHospitalization ? 'Checking hospitalization…' : 'Retry hospitalization check'}
           </button>
         ) : (
           <>
-            {linkedHospitalization?.kind === 'admission' ? (
-              <a className="button-link button-link-hospitalization" href={`/hospitalization/${linkedHospitalization.id}`}>
+            {linkedAdmission ? (
+              <a className="button-link button-link-hospitalization" href={`/hospitalization/${linkedAdmission.id}`}>
                 🏥 Hospitalized
               </a>
-            ) : linkedHospitalization?.kind === 'day_procedure' ? (
+            ) : linkedDayProcedure ? (
               <button type="button" className="button-link" disabled={admitting} onClick={moveLinkedToHospital}>
                 {admitting ? 'Moving...' : '🏥 Hospitalization'}
               </button>
@@ -946,14 +956,14 @@ export default function ConsultDetailPage() {
               </details>
             )}
 
-            {linkedHospitalization?.kind === 'day_procedure' ? (
-              <a className="button-link button-link-day-procedure" href={`/hospitalization/${linkedHospitalization.id}`}>
+            {linkedDayProcedure ? (
+              <a className="button-link button-link-day-procedure" href={`/hospitalization/${linkedDayProcedure.id}`}>
                 📋 Day Procedure
               </a>
-            ) : linkedHospitalization?.kind === 'admission' ? (
+            ) : linkedAdmission ? (
               <a
                 className="button-link"
-                href={`/hospitalization/${linkedHospitalization.id}`}
+                href={`/hospitalization/${linkedAdmission.id}`}
                 title="Already hospitalized — view it"
               >
                 📋 Day Procedure

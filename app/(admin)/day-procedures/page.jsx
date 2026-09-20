@@ -131,7 +131,7 @@ export default function DayProceduresPage() {
                     <td>{d.reason || '—'}</td>
                     <td>{formatShortDate(d.admitted_at)}</td>
                     <td>
-                      <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
+                      <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>{' '}
                       <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
                         {deletingId === d.id ? 'Deleting…' : 'Delete'}
                       </button>
@@ -181,7 +181,7 @@ export default function DayProceduresPage() {
                   <td>{d.reason || '—'}</td>
                   <td>{formatDateTime(d.admitted_at)}</td>
                   <td>
-                    <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
+                    <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>{' '}
                     <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
                       {deletingId === d.id ? 'Deleting…' : 'Delete'}
                     </button>
@@ -219,7 +219,7 @@ export default function DayProceduresPage() {
                 </td>
                 <td>{d.discharged_at ? formatDateTime(d.discharged_at) : '—'}</td>
                 <td>
-                  <a href={`/hospitalization/${d.id}`}>Open</a>{' '}
+                  <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>{' '}
                   <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
                     {deletingId === d.id ? 'Deleting…' : 'Delete'}
                   </button>
