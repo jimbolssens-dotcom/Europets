@@ -105,7 +105,7 @@ export default function ClientAppPetHistoryPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Could not start booking — please try again.');
-      window.location.href = `/portal/intake/${data.id}?pet=${id}`;
+      window.location.href = `/portal/intake/${data.id}?pet=${id}&app=1`;
     } catch (err) {
       setBookingError(err.message);
       setBookingLoading(false);
@@ -145,7 +145,7 @@ export default function ClientAppPetHistoryPage() {
 
       {admission && (
         <div className="client-app-admission-alert">
-          <a href={`/portal/hospitalization/${admission.id}`} className="client-app-admission-alert-link">
+          <a href={`/portal/hospitalization/${admission.id}?app=1`} className="client-app-admission-alert-link">
             <HexIcon>🏥</HexIcon>
             <span>Currently at the clinic — tap for updates</span>
           </a>

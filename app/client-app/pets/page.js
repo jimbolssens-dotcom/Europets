@@ -85,7 +85,7 @@ export default function ClientAppPetsPage() {
                   </span>
                   {admission && (
                     <a
-                      href={`/portal/hospitalization/${admission.id}`}
+                      href={`/portal/hospitalization/${admission.id}?app=1`}
                       className="client-app-pet-admitted-link"
                       onClick={(e) => e.stopPropagation()}
                     >

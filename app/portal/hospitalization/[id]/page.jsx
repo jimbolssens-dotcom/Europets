@@ -8,7 +8,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
@@ -26,6 +27,13 @@ export const fetchCache = 'force-no-store';
 
 export default function HospitalizationPortalPage() {
   const { id } = useParams();
+  const searchParams = useSearchParams();
+  // Set by every link the client app itself generates (see app/client-app/
+  // pets/[id], app/client-app/pets and app/client-app/page) — never present
+  // on a link sent straight from the desktop to someone with no client-app
+  // account, who has nowhere to go "home" to. Drives both the dark theme
+  // below and the "← Home" link.
+  const fromApp = searchParams.get('app') === '1';
   const [admission, setAdmission] = useState(null);
   const [notes, setNotes] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -118,7 +126,12 @@ export default function HospitalizationPortalPage() {
   if (!admission || admission.error) return <p className="portal-loading">We couldn&apos;t find that page.</p>;
 
   return (
-    <div className="portal-page">
+    <div className={`portal-page${fromApp ? ' client-app' : ''}`}>
+      {fromApp && (
+        <Link href="/client-app" className="mobile-link-btn portal-home-link">
+          ← Home
+        </Link>
+      )}
       <header className="portal-header">
         <img src="/logo.png" alt="Europets Clinic" />
         <p className="tagline">Kind, caring, and compassionate veterinary care</p>

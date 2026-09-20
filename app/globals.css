@@ -4482,6 +4482,134 @@ button.secondary:hover {
   margin: 0.5rem 0;
 }
 
+/* Client-app-embedded portal pages (?app=1 — see app/portal/intake/[id]
+   and app/portal/hospitalization/[id]) — the .client-app class those pages
+   add themselves picks up the same dark "Hexfield" tokens/background as
+   the rest of the client app (see the CLIENT APP section below), so the
+   trip out to these shared public pages doesn't look like a different
+   site, and the "← Home" link (.portal-home-link) gets them back in. A
+   link sent straight from the desktop to someone with no client-app
+   account renders these same pages with neither — .portal-page alone, no
+   .client-app class — since there's nowhere for that person to go "home"
+   to. */
+.portal-page.client-app {
+  padding: 1.5rem 1rem 3rem;
+}
+
+.portal-page.client-app .portal-home-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.portal-page.client-app .portal-header img {
+  filter: brightness(0) invert(1);
+}
+
+.portal-page.client-app .portal-header .tagline,
+.portal-page.client-app .visit-meta,
+.portal-page.client-app .portal-footer,
+.portal-page.client-app .intake-filter-label {
+  color: var(--ash);
+}
+
+.portal-page.client-app .portal-card,
+.portal-page.client-app .card,
+.portal-page.client-app .intake-pet,
+.portal-page.client-app .intake-appointment {
+  background: linear-gradient(165deg, var(--carbon-hi), var(--void-2));
+  border: 1px solid var(--hair);
+  border-top: 1px solid var(--hair);
+  color: var(--chalk);
+}
+
+.portal-page.client-app .portal-card h1,
+.portal-page.client-app .portal-card h2,
+.portal-page.client-app h1,
+.portal-page.client-app h2 {
+  color: var(--chalk);
+  font-family: var(--display);
+}
+
+.portal-page.client-app .portal-status-admitted {
+  background: rgba(230, 24, 109, 0.2);
+  color: var(--hot);
+}
+
+.portal-page.client-app .portal-status-discharged {
+  background: var(--hair);
+  color: var(--ash);
+}
+
+.portal-page.client-app .portal-note {
+  border-top-color: var(--hair);
+}
+
+.portal-page.client-app .portal-note-date {
+  color: var(--hot);
+}
+
+.portal-page.client-app .portal-note-author {
+  color: var(--ash-dim);
+}
+
+.portal-page.client-app .portal-chat-bubble-theirs {
+  background: var(--carbon);
+  color: var(--chalk);
+}
+
+.portal-page.client-app .portal-chat-bubble-theirs .portal-chat-bubble-meta {
+  color: var(--ash);
+}
+
+.portal-page.client-app input,
+.portal-page.client-app select,
+.portal-page.client-app textarea {
+  background: var(--carbon);
+  border: 1px solid var(--hair);
+  color: var(--chalk);
+}
+
+.portal-page.client-app form.card label {
+  color: var(--chalk);
+}
+
+.portal-page.client-app .intake-slot-button {
+  background: var(--carbon);
+  border-color: var(--hair);
+  color: var(--chalk);
+}
+
+.portal-page.client-app .intake-slot-button:hover {
+  border-color: var(--hot);
+  color: var(--hot);
+}
+
+.portal-page.client-app .intake-slot-selected,
+.portal-page.client-app .intake-slot-selected:hover {
+  background: var(--magenta);
+  border-color: var(--magenta);
+  color: white;
+}
+
+.portal-page.client-app .intake-slot-available {
+  background: rgba(230, 24, 109, 0.15);
+  border-color: var(--hair-hot);
+}
+
+.portal-page.client-app .error {
+  color: var(--hot);
+}
+
+.portal-page.client-app button.secondary {
+  background: transparent;
+  border: 1px solid var(--hair-hot);
+  color: var(--hot);
+}
+
+.portal-page.client-app button.secondary:hover {
+  background: var(--hair-hot);
+}
+
 .possible-duplicate-warning {
   background: #fff8ec;
   border: 1px solid #f0c674;

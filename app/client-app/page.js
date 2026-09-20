@@ -364,7 +364,7 @@ export default function ClientAppHomePage() {
       {!loadingDashboard && openAdmissions.length > 0 && (
         <div className="client-app-admission-alert">
           {openAdmissions.map((h) => (
-            <a key={h.id} href={`/portal/hospitalization/${h.id}`} className="client-app-admission-alert-link">
+            <a key={h.id} href={`/portal/hospitalization/${h.id}?app=1`} className="client-app-admission-alert-link">
               <HexIcon>🏥</HexIcon>
               <span>{h.patients?.name || 'Your pet'} is currently at the clinic — tap for updates</span>
             </a>

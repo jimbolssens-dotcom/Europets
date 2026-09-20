@@ -30,6 +30,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import SpeciesField from '@/app/_components/SpeciesField';
 import PetAttributeField from '@/app/_components/PetAttributeField';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
@@ -65,6 +66,12 @@ function todayISODate() {
 export default function IntakePortalPage() {
   const { id } = useParams();
   const searchParams = useSearchParams();
+  // Set by every link the client app itself generates (see app/client-app/
+  // pets/[id] and app/client-app/appointments) — never present on a link
+  // sent straight from the desktop to someone with no client-app account,
+  // who has nowhere to go "home" to. Drives both the dark theme below and
+  // the "← Home" link.
+  const fromApp = searchParams.get('app') === '1';
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -423,7 +430,12 @@ export default function IntakePortalPage() {
   const hasAppointmentRequest = wantsAppointment && (isCustomSurgery ? Boolean(customSurgeryReason.trim()) : Boolean(selectedSlot));
 
   return (
-    <div className="portal-page">
+    <div className={`portal-page${fromApp ? ' client-app' : ''}`}>
+      {fromApp && (
+        <Link href="/client-app" className="mobile-link-btn portal-home-link">
+          ← Home
+        </Link>
+      )}
       <header className="portal-header">
         <img src="/logo.png" alt="Europets Clinic" />
         <p className="tagline">Kind, caring, and compassionate veterinary care</p>
