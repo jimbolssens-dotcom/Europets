@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { formatDateTime } from '@/lib/formatTimestamp';
 
 export default function PoliciesPage() {
   const [categories, setCategories] = useState([]);
@@ -279,7 +280,7 @@ export default function PoliciesPage() {
                 </div>
               </div>
               <p className="policies-updated">
-                Last updated {new Date(selected.updated_at).toLocaleString()}
+                Last updated {formatDateTime(selected.updated_at)}
               </p>
               <div className="policies-content-box">
                 {(selected.content || '(No content yet.)').split('\n').map((line, i) =>

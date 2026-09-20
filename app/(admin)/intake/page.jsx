@@ -19,7 +19,7 @@ import InfoHint from '@/app/_components/InfoHint';
 import { openWhatsApp } from '@/lib/whatsapp';
 
 function formatDateTime(dateStr) {
-  return new Date(dateStr).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(dateStr).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 export default function IntakePage() {

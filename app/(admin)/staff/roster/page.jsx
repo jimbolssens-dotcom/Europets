@@ -13,6 +13,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { buildStaffColorMap, ROLE_SECTION_TINTS } from '@/lib/staffColors';
 import InfoHint from '@/app/_components/InfoHint';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const SHIFTS = ['morning', 'afternoon'];
@@ -255,8 +256,8 @@ export default function StaffRosterPage() {
     }
   }
 
-  const monthLabel = new Date(viewYear, viewMonthIndex, 1).toLocaleDateString([], { month: 'long', year: 'numeric' });
-  const weekLabel = `${weekDates[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${weekDates[6].toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+  const monthLabel = new Date(viewYear, viewMonthIndex, 1).toLocaleDateString('en-GB', { month: '2-digit', year: 'numeric' });
+  const weekLabel = `${weekDates[0].toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })} – ${weekDates[6].toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })}`;
 
   return (
     <div>
@@ -404,7 +405,7 @@ export default function StaffRosterPage() {
                                           className="roster-toggle roster-toggle-on"
                                           style={{ background: color.fg, borderColor: color.fg }}
                                           onClick={() => toggleCell(s, iso, shift)}
-                                          title={`${s.full_name} — ${d.toLocaleDateString()} ${SHIFT_LABELS[shift]} — click to remove`}
+                                          title={`${s.full_name} — ${formatShortDate(d)} ${SHIFT_LABELS[shift]} — click to remove`}
                                         >
                                           ✓
                                         </button>
@@ -434,7 +435,7 @@ export default function StaffRosterPage() {
                                         type="button"
                                         className="roster-toggle"
                                         onClick={() => toggleCell(s, iso, shift)}
-                                        title={`${s.full_name} — ${d.toLocaleDateString()} ${SHIFT_LABELS[shift]} — click to add`}
+                                        title={`${s.full_name} — ${formatShortDate(d)} ${SHIFT_LABELS[shift]} — click to add`}
                                       >
                                         +
                                       </button>

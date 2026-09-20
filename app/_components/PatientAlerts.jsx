@@ -6,6 +6,8 @@
 
 'use client';
 
+import { formatShortDate } from '@/lib/formatTimestamp';
+
 export default function PatientAlerts({ alerts, text, setText, authorId, setAuthorId, submitting, addAlert, deleteAlert, staff = [] }) {
   return (
     <div className="patient-alerts">
@@ -16,7 +18,7 @@ export default function PatientAlerts({ alerts, text, setText, authorId, setAuth
           {alerts.map((a) => (
             <li key={a.id}>
               <span className="patient-alert-date">
-                {new Date(a.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                {formatShortDate(a.created_at)}
               </span>
               <span className="patient-alert-text">{a.note_text}</span>
               <span className="patient-alert-author">{a.staff?.full_name || 'Unknown'}</span>

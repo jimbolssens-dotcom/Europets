@@ -13,11 +13,12 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 function formatWhen(iso) {
-  return new Date(iso).toLocaleString(undefined, {
-    day: 'numeric',
-    month: 'short',
+  return new Date(iso).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
     hour: 'numeric',
     minute: '2-digit',
+    hour12: true,
   });
 }
 

@@ -29,6 +29,7 @@ import {
   TEMPERATURE_ZONE_BAND_COLORS as ZONE_BAND_COLORS,
   temperatureZoneColor as zoneColor,
 } from '@/lib/temperatureZones';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 export default function TemperatureHistoryChart({ data, mini = false, unit = '°C' }) {
   const points = useMemo(
@@ -147,7 +148,7 @@ export default function TemperatureHistoryChart({ data, mini = false, unit = '°
           <strong style={{ color: zoneColor(hovered.temp) }}>
             {hovered.temp} {unit}
           </strong>
-          <span>{hovered.date.toLocaleDateString()}</span>
+          <span>{formatShortDate(hovered.date)}</span>
         </div>
       )}
     </div>

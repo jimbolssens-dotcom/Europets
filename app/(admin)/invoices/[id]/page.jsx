@@ -20,6 +20,7 @@ import { printPdfUrl } from '@/lib/printPdf';
 import InfoHint from '@/app/_components/InfoHint';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import { openWhatsApp } from '@/lib/whatsapp';
+import { formatShortDate } from '@/lib/formatTimestamp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
 
 function money(n) {
@@ -462,8 +463,8 @@ export default function InvoiceDetailPage() {
         {invoice.clients?.phone} · {invoice.clients?.email}
       </p>
       <p className="visit-meta">
-        Created: {new Date(invoice.created_at).toLocaleDateString()}
-        {invoice.paid_at && ` · Paid: ${new Date(invoice.paid_at).toLocaleDateString()}`}
+        Created: {formatShortDate(invoice.created_at)}
+        {invoice.paid_at && ` · Paid: ${formatShortDate(invoice.paid_at)}`}
       </p>
       <div className="action-row">
         <button type="button" onClick={downloadTaxInvoice}>

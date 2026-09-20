@@ -9,6 +9,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatDateTime } from '@/lib/formatTimestamp';
 
 const PAYMENT_METHOD_LABELS = {
   cash: 'Cash',
@@ -136,7 +137,7 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
         <ul className="invoice-payments-list">
           {payments.map((p) => (
             <li key={p.id}>
-              <span className="invoice-payment-date">{new Date(p.paid_at).toLocaleString()}</span>
+              <span className="invoice-payment-date">{formatDateTime(p.paid_at)}</span>
               <span className="invoice-payment-amount">AED {money(p.amount)}</span>
               <span>{PAYMENT_METHOD_LABELS[p.payment_method] || p.payment_method}</span>
               <span className="invoice-payment-by">

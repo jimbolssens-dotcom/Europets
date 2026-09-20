@@ -134,8 +134,8 @@ export default function HospitalizationPortalPage() {
           <TemperatureHistoryChart data={stayTemperatureHistory} mini />
         </h1>
         <p className="visit-meta">
-          Admitted {new Date(admission.admitted_at).toLocaleString()}
-          {admission.discharged_at && ` · Discharged ${new Date(admission.discharged_at).toLocaleString()}`}
+          Admitted {formatDateTime(admission.admitted_at)}
+          {admission.discharged_at && ` · Discharged ${formatDateTime(admission.discharged_at)}`}
         </p>
         {admission.reason && <p>{admission.reason}</p>}
       </div>

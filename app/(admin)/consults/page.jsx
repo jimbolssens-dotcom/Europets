@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import SearchSelect from '@/app/_components/SearchSelect';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
+import { formatDateTime } from '@/lib/formatTimestamp';
 
 function elapsedMinutes(startedAt) {
   return Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000));
@@ -272,7 +273,7 @@ function ConsultsPageInner() {
                     {c.clients?.client_number ? ` (Client #${c.clients.client_number})` : ''}
                   </td>
                   <td>{c.staff?.full_name || 'unassigned'}</td>
-                  <td>{hosp?.admitted_at ? new Date(hosp.admitted_at).toLocaleString() : '—'}</td>
+                  <td>{hosp?.admitted_at ? formatDateTime(hosp.admitted_at) : '—'}</td>
                   <td className="table-link-group">
                     {hosp && (
                       <a href={`/hospitalization/${hosp.id}`} className="button-link">
@@ -314,7 +315,7 @@ function ConsultsPageInner() {
                   {c.clients?.full_name}
                   {c.clients?.client_number ? ` (Client #${c.clients.client_number})` : ''}
                 </td>
-                <td>{c.ended_at ? new Date(c.ended_at).toLocaleString() : '—'}</td>
+                <td>{c.ended_at ? formatDateTime(c.ended_at) : '—'}</td>
                 <td>
                   <a href={`/consults/${c.id}`} className="button-link button-link-open">Open</a>
                   <button type="button" onClick={() => deleteConsult(c)}>

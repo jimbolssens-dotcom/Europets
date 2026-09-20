@@ -18,6 +18,7 @@
 
 import { useEffect, useState } from 'react';
 import { money, balanceDue, invoiceLabel } from '@/lib/paymentReminders';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 function truncate(str, max = 160) {
   const s = (str || '').trim();
@@ -98,7 +99,7 @@ export default function PatientHistoryPanel({
               <li key={`v-${e.data.id}`} className="consult-history-item">
                 <p className="visit-meta">
                   🩺 {petTag}
-                  <a href={`/consults/${e.data.id}`}>{new Date(e.data.started_at).toLocaleDateString()}</a>
+                  <a href={`/consults/${e.data.id}`}>{formatShortDate(e.data.started_at)}</a>
                   {e.data.staff?.full_name && ` · ${e.data.staff.full_name}`}
                 </p>
                 {e.data.anamnesis && (
@@ -127,11 +128,11 @@ export default function PatientHistoryPanel({
               <li key={`h-${e.data.id}`} className="consult-history-item">
                 <p className="visit-meta">
                   🏥 {petTag}
-                  <a href={`/hospitalization/${e.data.id}`}>{new Date(e.data.admitted_at).toLocaleDateString()}</a>
+                  <a href={`/hospitalization/${e.data.id}`}>{formatShortDate(e.data.admitted_at)}</a>
                   {' · '}
                   {e.data.status === 'admitted'
                     ? 'Currently admitted'
-                    : `Discharged ${e.data.discharged_at ? new Date(e.data.discharged_at).toLocaleDateString() : ''}`}
+                    : `Discharged ${e.data.discharged_at ? formatShortDate(e.data.discharged_at) : ''}`}
                 </p>
                 {e.data.reason && (
                   <p>
@@ -147,7 +148,7 @@ export default function PatientHistoryPanel({
                 🧾 {petTag}
                 <a href={`/invoices/${e.data.id}`}>{invoiceLabel(e.data)}</a>
                 {' · '}
-                {new Date(e.data.created_at).toLocaleDateString()}
+                {formatShortDate(e.data.created_at)}
                 {' · '}
                 {e.data.status === 'partially_paid' ? 'partially paid' : e.data.status}
                 {' · '}

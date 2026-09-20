@@ -27,11 +27,7 @@ function dueLabel(dateStr) {
 }
 
 function formatDate(dateStr) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString([], {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-GB');
 }
 
 function listNames(names) {

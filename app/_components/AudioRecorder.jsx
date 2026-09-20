@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { uploadRecording, recordingUrl } from '@/lib/recordings';
+import { formatDateTime } from '@/lib/formatTimestamp';
 import { describeMicrophoneError } from '@/lib/microphoneAccess';
 
 const STATUS_LABEL = {
@@ -64,8 +65,25 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
   useEffect(() => {
     seenDoneIdsRef.current = null;
     load();
+
+    // Two AudioRecorders can end up mounted for the same entity at once —
+    // e.g. a "dictate now" convenience recorder shown right after creating
+    // a report (see HospitalizationReportsSection), alongside that same
+    // report's own entry in the Reports list above (RecordReports). Since
+    // supabase.channel() hands back an already-subscribed channel when one
+    // with the same topic already exists, a second .on() call on it throws
+    // ("cannot add postgres_changes callbacks ... after subscribe()").
+    // Only the first mount takes the live subscription; every instance
+    // still gets fresh data from its own load() above and the "processing"
+    // poll below, so a duplicate instance just misses the live push.
+    const topic = `recordings-${entityType}-${entityId}`;
+    const alreadySubscribed = supabase
+      .getChannels()
+      .some((c) => c.topic === `realtime:${topic}` && (c.state === 'joined' || c.state === 'joining'));
+    if (alreadySubscribed) return;
+
     const channel = supabase
-      .channel(`recordings-${entityType}-${entityId}`)
+      .channel(topic)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'recordings', filter: `entity_id=eq.${entityId}` },
@@ -252,7 +270,7 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
           {items.map((r) => (
             <li key={r.id}>
               <div className="recorder-item-header">
-                <span>{new Date(r.created_at).toLocaleString()}</span>
+                <span>{formatDateTime(r.created_at)}</span>
                 <span className={`recorder-status recorder-status-${r.status}`}>
                   {STATUS_LABEL[r.status] || r.status}
                 </span>

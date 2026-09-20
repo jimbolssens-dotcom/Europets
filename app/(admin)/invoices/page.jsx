@@ -18,6 +18,7 @@ import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import InvoiceDiscountPanel from '@/app/_components/InvoiceDiscountPanel';
 import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
+import { formatShortDate, formatDateTime } from '@/lib/formatTimestamp';
 import { openWhatsApp } from '@/lib/whatsapp';
 
 function money(n) {
@@ -183,7 +184,7 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
           </span>
           {invoiceNumberLabel && <span className="invoice-row-inv">{invoiceNumberLabel}</span>}
         </span>
-        <span className="invoice-row-date">{new Date(summary.created_at).toLocaleDateString()}</span>
+        <span className="invoice-row-date">{formatShortDate(summary.created_at)}</span>
         <span className="invoice-row-total">AED {money(summary.total)}</span>
         <span className={`invoice-row-due${balanceDue === 0 ? ' zero' : ''}`}>AED {money(balanceDue)}</span>
         <span className={`status-pill ${dotClass}`}>{STATUS_LABELS[summary.status] || summary.status}</span>
@@ -200,7 +201,7 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
             <>
               <p className="invoice-row-detail-link">
                 <a href={`/invoices/${summary.id}`}>Open full invoice page ↗</a>
-                {invoice.paid_at && ` · Paid: ${new Date(invoice.paid_at).toLocaleDateString()}`}
+                {invoice.paid_at && ` · Paid: ${formatShortDate(invoice.paid_at)}`}
               </p>
 
               <table>
@@ -501,7 +502,7 @@ function InvoicesPageInner() {
                 const total = Math.round(subtotal * 1.05 * 100) / 100;
                 return (
                   <tr key={q.id}>
-                    <td>{new Date(q.created_at).toLocaleDateString()}</td>
+                    <td>{formatShortDate(q.created_at)}</td>
                     <td>
                       {q.clients?.full_name}
                       {q.clients?.client_number ? ` (Client #${q.clients.client_number})` : ''}
@@ -580,7 +581,7 @@ function InvoicesPageInner() {
           <option value="">Link to a visit (optional)...</option>
           {visitsForClient.map((v) => (
             <option key={v.id} value={v.id}>
-              {v.patients?.name} — {new Date(v.started_at).toLocaleString()}
+              {v.patients?.name} — {formatDateTime(v.started_at)}
             </option>
           ))}
         </select>

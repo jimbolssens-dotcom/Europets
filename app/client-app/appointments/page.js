@@ -16,12 +16,13 @@ const TYPE_LABEL = {
 
 function formatWhen(iso) {
   const d = new Date(iso);
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString('en-GB', {
     weekday: 'short',
-    day: 'numeric',
-    month: 'short',
+    day: '2-digit',
+    month: '2-digit',
     hour: 'numeric',
     minute: '2-digit',
+    hour12: true,
   });
 }
 

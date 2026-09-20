@@ -17,6 +17,7 @@ import AudioRecorder from './AudioRecorder';
 import { useState } from 'react';
 import { isImagingDiagnostic } from '@/lib/diagnosticReportPolicy';
 import { isBloodTest } from '@/lib/bloodTestProduct';
+import { formatDateTime } from '@/lib/formatTimestamp';
 
 export default function RecordReports({ record, recordApiBase, showOverallReport, diagnostics, catalog, groups, onRecordSaved,
   onGenerate, generatingId, generationError, generationErrorId,
@@ -80,7 +81,7 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
     {groups.map((group) => group.reports.length > 0 && <section key={group.apiBase} id={group.anchorId} aria-label={group.label}>
       <h4>{group.label}</h4>
       {group.reports.map((report) => <details className="card" key={report.id}>
-        <summary>{report.procedure_name || group.label} · {report.performed_at ? new Date(report.performed_at).toLocaleString() : 'Date not recorded'} · {report.ai_summary ? 'Report available' : 'Report pending'}</summary>
+        <summary>{report.procedure_name || group.label} · {report.performed_at ? formatDateTime(report.performed_at) : 'Date not recorded'} · {report.ai_summary ? 'Report available' : 'Report pending'}</summary>
         <p className="visit-meta">{report.staff?.full_name || 'Unassigned'}</p>
         {!report.ai_summary && <p style={{ whiteSpace: 'pre-wrap' }}>{[report.findings, report.procedures_performed, report.notes].filter(Boolean).join('\n') || 'Awaiting findings or dictation.'}</p>}
         <div className="home-links">

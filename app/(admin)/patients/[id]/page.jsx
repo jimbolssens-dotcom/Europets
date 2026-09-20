@@ -23,6 +23,7 @@ import TemperatureHistoryChart from '@/app/_components/TemperatureHistoryChart';
 import SpeciesField from '@/app/_components/SpeciesField';
 import PetAttributeField from '@/app/_components/PetAttributeField';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 const SEX_LABELS = {
   male: 'Male',
@@ -584,7 +585,7 @@ export default function PatientDetailPage() {
                 const total = Math.round(subtotal * 1.05 * 100) / 100;
                 return (
                   <tr key={q.id}>
-                    <td>{new Date(q.created_at).toLocaleDateString()}</td>
+                    <td>{formatShortDate(q.created_at)}</td>
                     <td>{items.length}</td>
                     <td>AED {total.toFixed(2)}</td>
                     <td>

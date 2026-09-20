@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import { reportPdfHref } from '@/lib/clientAppReports';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 export default function ClientAppReportsPage() {
   const { clientId, ready } = useClientAppSession();
@@ -73,7 +74,7 @@ export default function ClientAppReportsPage() {
                     {row.kind} — {row.petName}
                   </span>
                   <span className="mobile-list-meta">
-                    {row.date ? new Date(row.date).toLocaleDateString() : 'Undated'}
+                    {row.date ? formatShortDate(row.date) : 'Undated'}
                   </span>
                 </Tag>
               </li>
