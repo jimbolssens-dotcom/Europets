@@ -7101,14 +7101,71 @@ form.card.admit-patient-form {
   margin-bottom: 0.15rem;
 }
 
-.client-app-pet-avatar-btn {
+.client-app-pet-avatar-wrap {
   position: relative;
   flex: none;
+}
+
+.client-app-pet-avatar-btn {
+  position: relative;
   padding: 0;
   background: none;
   border: none;
   border-radius: 50%;
   cursor: pointer;
+}
+
+/* Tapping the avatar asks camera-or-library rather than jumping straight
+   into either — a plain <input type="file"> without a capture hint
+   already prompts for this on some browsers, but not reliably across
+   iOS/Android/installed-PWA combinations, so this makes the choice
+   explicit instead of hoping the OS shows it. The backdrop is just an
+   invisible full-screen click-catcher to dismiss on an outside tap. */
+.client-app-pet-avatar-choice-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+
+.client-app-pet-avatar-choice {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  background: var(--carbon-hi);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.client-app-pet-avatar-choice button {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  color: var(--chalk);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.client-app-pet-avatar-choice button:first-child {
+  border-bottom: 1px solid var(--hair);
+}
+
+.client-app-pet-avatar-choice button:hover {
+  background: var(--hair);
 }
 
 .client-app-pet-avatar {

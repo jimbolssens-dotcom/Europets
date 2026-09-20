@@ -50,7 +50,9 @@ export default function ClientAppPetHistoryPage() {
   const [bookingError, setBookingError] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState(null);
-  const photoInputRef = useRef(null);
+  const [showPhotoChoice, setShowPhotoChoice] = useState(false);
+  const cameraInputRef = useRef(null);
+  const libraryInputRef = useRef(null);
 
   useEffect(() => {
     if (ready && !clientId) router.replace('/client-app');
@@ -160,27 +162,62 @@ export default function ClientAppPetHistoryPage() {
       </Link>
 
       <div className="client-app-pet-header">
-        <button
-          type="button"
-          className="client-app-pet-avatar-btn"
-          onClick={() => photoInputRef.current?.click()}
-          disabled={uploadingPhoto}
-          title={pet.profile_photo_url ? 'Change photo' : 'Add a photo'}
-        >
-          {pet.profile_photo_url ? (
-            <img src={pet.profile_photo_url} alt="" className="client-app-pet-avatar" />
-          ) : (
-            <span className="client-app-pet-avatar client-app-pet-avatar-placeholder">🐾</span>
+        <div className="client-app-pet-avatar-wrap">
+          <button
+            type="button"
+            className="client-app-pet-avatar-btn"
+            onClick={() => setShowPhotoChoice((v) => !v)}
+            disabled={uploadingPhoto}
+            title={pet.profile_photo_url ? 'Change photo' : 'Add a photo'}
+          >
+            {pet.profile_photo_url ? (
+              <img src={pet.profile_photo_url} alt="" className="client-app-pet-avatar" />
+            ) : (
+              <span className="client-app-pet-avatar client-app-pet-avatar-placeholder">🐾</span>
+            )}
+            <span className="client-app-pet-avatar-edit">{uploadingPhoto ? '…' : '✏️'}</span>
+          </button>
+          {showPhotoChoice && (
+            <>
+              <div className="client-app-pet-avatar-choice-backdrop" onClick={() => setShowPhotoChoice(false)} />
+              <div className="client-app-pet-avatar-choice">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPhotoChoice(false);
+                    cameraInputRef.current?.click();
+                  }}
+                >
+                  📷 Take Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPhotoChoice(false);
+                    libraryInputRef.current?.click();
+                  }}
+                >
+                  🖼️ Choose from Library
+                </button>
+              </div>
+            </>
           )}
-          <span className="client-app-pet-avatar-edit">{uploadingPhoto ? '…' : '✏️'}</span>
-        </button>
-        <input
-          ref={photoInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handlePhotoChange}
-          className="client-app-pet-avatar-input"
-        />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoChange}
+            className="client-app-pet-avatar-input"
+          />
+          <input
+            ref={libraryInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoChange}
+            className="client-app-pet-avatar-input"
+          />
+        </div>
         <div>
           <h1>{pet.name}</h1>
           <p className="mobile-subtitle">
