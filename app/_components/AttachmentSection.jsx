@@ -7,6 +7,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 import { uploadAttachment, attachmentUrl } from '@/lib/attachments';
 
 function isImage(attachment) {
@@ -41,6 +42,31 @@ export default function AttachmentSection({ entityType, entityId, onUploaded, re
     // attachment on this entity from outside this component (e.g. once a
     // diagnostic photo's contents have been extracted into text — see the
     // consult page) so this list picks up the removal without a remount.
+
+    // A photo taken on the mobile consult/hospitalization page needs to
+    // show up on an already-open desktop page too, the same way a
+    // recording's transcription does (see the desktop consult page's own
+    // `consult-${id}` channel, which listens to visits/diagnostics/etc but
+    // not attachments — so without a subscription of our own here, photos
+    // just sat there until someone happened to reload the page). Guarded
+    // against a duplicate mount the same way AudioRecorder is, since this
+    // component is also rendered more than once for the same entity (e.g.
+    // once per diagnostic row).
+    const topic = `attachments-${entityType}-${entityId}`;
+    const alreadySubscribed = supabase
+      .getChannels()
+      .some((c) => c.topic === `realtime:${topic}` && (c.state === 'joined' || c.state === 'joining'));
+    if (alreadySubscribed) return;
+
+    const channel = supabase
+      .channel(topic)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'attachments', filter: `entity_id=eq.${entityId}` },
+        () => load()
+      )
+      .subscribe();
+    return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entityType, entityId, refreshKey]);
 
