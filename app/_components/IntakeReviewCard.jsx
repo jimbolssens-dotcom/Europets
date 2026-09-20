@@ -155,20 +155,24 @@ export default function IntakeReviewCard({
             {r.requested_vet?.full_name || 'any available vet'} — {formatApptTime(r.requested_start_time)} (
             {r.requested_duration_minutes} min)
           </p>
-          <label>
-            Room (required to approve)
-            <select
-              value={approvalRoom[r.id] || ''}
-              onChange={(e) => setApprovalRoom({ ...approvalRoom, [r.id]: e.target.value })}
-            >
-              <option value="">Select room...</option>
-              {rooms.map((room) => (
-                <option key={room.id} value={room.id}>
-                  {room.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {r.appointment_type === 'video' ? (
+            <p className="visit-meta">🎥 No room needed — video consult</p>
+          ) : (
+            <label>
+              Room (required to approve)
+              <select
+                value={approvalRoom[r.id] || ''}
+                onChange={(e) => setApprovalRoom({ ...approvalRoom, [r.id]: e.target.value })}
+              >
+                <option value="">Select room...</option>
+                {rooms.map((room) => (
+                  <option key={room.id} value={room.id}>
+                    {room.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
       )}
 
@@ -205,7 +209,7 @@ export default function IntakeReviewCard({
           disabled={
             reviewing?.id === r.id ||
             (Boolean(r.appointment_type) &&
-              (!approvalRoom[r.id] ||
+              ((!approvalRoom[r.id] && r.appointment_type !== 'video') ||
                 (r.appointment_type === 'other_surgery' &&
                   (!customBooking[r.id]?.vetId ||
                     !(customBooking[r.id]?.date || r.preferred_date) ||

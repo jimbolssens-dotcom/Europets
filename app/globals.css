@@ -6790,12 +6790,22 @@ form.card.admit-patient-form {
 }
 
 /* The "pulse" divider (see EcgLine.jsx) — a heartbeat trace sweeping over
-   a faint base line, the site's own transition out of its hero. */
+   a faint base line, the site's own transition out of its hero.
+   Full-bleed via the viewport-width technique (left:50% + translateX)
+   rather than a negative margin sized to match some ancestor's padding —
+   on the dashboard that ancestor is .client-app three levels up, and the
+   -1rem guess left a visible gap on real devices (the near-black hero
+   backdrop was hiding the exact same gap on the login screen). This way
+   it reaches the true viewport edge regardless of how deep it's nested or
+   what padding sits above it. */
 .client-app-ecg {
   position: relative;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
   height: clamp(46px, 12vw, 64px);
   overflow: hidden;
-  margin: 0 -1rem 1.25rem;
+  margin: 0 0 1.25rem;
   background: linear-gradient(180deg, var(--void) 0%, var(--void-2) 100%);
 }
 

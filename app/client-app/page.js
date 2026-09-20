@@ -57,6 +57,8 @@ export default function ClientAppHomePage() {
   const [reminders, setReminders] = useState([]);
   const [consentRequests, setConsentRequests] = useState([]);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
+  const [videoBookingLoading, setVideoBookingLoading] = useState(false);
+  const [videoBookingError, setVideoBookingError] = useState(null);
 
   useEffect(() => {
     if (!ready || !clientId) return;
@@ -222,6 +224,31 @@ export default function ClientAppHomePage() {
     setCodeInput('');
     setVerifiedPhoneToken(null);
     setDevCode(null);
+  }
+
+  // Same "start a fresh intake request, open its portal link" flow as
+  // Appointments' own "Book a New Appointment" (app/client-app/appointments)
+  // — just pre-set to a video consult via ?type=video (see the matching
+  // effect on app/portal/intake/[id]). A client can never start a call
+  // outright from here: this only ever requests a slot, which still goes
+  // through the normal staff approval/scheduling step like any other
+  // appointment request.
+  async function startVideoBooking() {
+    setVideoBookingError(null);
+    setVideoBookingLoading(true);
+    try {
+      const res = await fetch('/api/intake-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not start booking — please try again.');
+      window.location.href = `/portal/intake/${data.id}?app=1&type=video`;
+    } catch (err) {
+      setVideoBookingError(err.message);
+      setVideoBookingLoading(false);
+    }
   }
 
   if (!ready) return null;
@@ -416,7 +443,21 @@ export default function ClientAppHomePage() {
           <HexIcon>📅</HexIcon>
           <span>Appointments</span>
         </a>
+        <a href="/client-app/messages" className="mobile-square-tile">
+          <HexIcon>💬</HexIcon>
+          <span>Messages</span>
+        </a>
+        <button
+          type="button"
+          className="mobile-square-tile"
+          onClick={startVideoBooking}
+          disabled={videoBookingLoading}
+        >
+          <HexIcon>🎥</HexIcon>
+          <span>{videoBookingLoading ? 'Opening…' : 'Video Consult'}</span>
+        </button>
       </div>
+      {videoBookingError && <p className="client-app-login-error">{videoBookingError}</p>}
 
       <p className="mobile-hint">
         Add this to your home screen for one-tap access: on iPhone, tap Share, then &quot;Add to Home

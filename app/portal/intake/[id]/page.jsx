@@ -37,6 +37,7 @@ import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttribu
 import { EMIRATES } from '@/lib/emirates';
 import { classifySpecies } from '@/lib/species';
 import {
+  CLIENT_APPOINTMENT_TYPES,
   clientAppointmentTypeEntriesForSex,
   clientBookingDurationMinutes,
   isSurgeryType,
@@ -157,6 +158,28 @@ export default function IntakePortalPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request]);
+
+  // A link generated for a specific appointment type (see the client
+  // app's home-screen "Video Consult" tile) carries ?type=video —
+  // pre-select it so all that's left is picking which pet it's for,
+  // instead of hunting for it in the dropdown themselves. Turning on
+  // "Request an appointment" waits for a pet to actually be chosen (the
+  // section it belongs to doesn't render before then) — see the second
+  // effect below.
+  useEffect(() => {
+    const typeParam = searchParams.get('type');
+    if (typeParam && CLIENT_APPOINTMENT_TYPES.includes(typeParam)) {
+      setAppointmentType(typeParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (petChoice && searchParams.get('type')) {
+      setWantsAppointment(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [petChoice]);
 
   // Species-gated on purpose (see updatePet's own reset of this field) —
   // an owner can only pick from protocols that actually apply to the
@@ -797,6 +820,12 @@ export default function IntakePortalPage() {
                       <p className="visit-meta">
                         🕘 Surgeries (spay, castration, dental, and anything else) are only scheduled in the
                         morning.
+                      </p>
+                    )}
+                    {appointmentType === 'video' && (
+                      <p className="visit-meta">
+                        🎥 Once confirmed, we&apos;ll send you a link to join the call at your appointment
+                        time.
                       </p>
                     )}
 
