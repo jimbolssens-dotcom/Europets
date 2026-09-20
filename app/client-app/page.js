@@ -266,9 +266,7 @@ export default function ClientAppHomePage() {
         {theme === 'light' ? (
           <>
             <div className="mobile-heading-row">
-              <a href="/" className="mobile-home-logo-link">
-                <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
-              </a>
+              <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
             </div>
             <p className="mobile-subtitle client-app-login-intro">
               {step === 'code'
@@ -293,9 +291,7 @@ export default function ClientAppHomePage() {
               <HexfieldCanvas />
               <div className="client-app-hero-content">
                 <div className="mobile-heading-row">
-                  <a href="/" className="mobile-home-logo-link">
-                    <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
-                  </a>
+                  <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
                 </div>
                 <p className="client-app-login-eyebrow">Client Portal</p>
                 <p className="mobile-subtitle client-app-login-intro">
@@ -350,9 +346,7 @@ export default function ClientAppHomePage() {
   return (
     <div className="mobile-page client-app-home">
       <div className="mobile-heading-row">
-        <a href="/" className="mobile-home-logo-link">
-          <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
-        </a>
+        <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
         <span className="mobile-greeting">Hello, {client?.full_name?.split(' ')[0] || 'there'}!</span>
       </div>
 
