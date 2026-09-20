@@ -2484,6 +2484,18 @@ button.secondary:hover {
   flex-wrap: wrap;
 }
 
+/* Owner-set profile photo (patients.profile_photo_url, migration 129) —
+   read-only here, set from the client app's own pet page. */
+.patient-header-avatar {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+  border: 1px solid var(--pink-tint);
+}
+
 .consult-header-row .patient-alerts-panel {
   margin-bottom: 0;
   min-width: 0;
@@ -4501,10 +4513,6 @@ button.secondary:hover {
   margin-bottom: 1rem;
 }
 
-.portal-page.client-app .portal-header img {
-  filter: brightness(0) invert(1);
-}
-
 .portal-page.client-app .portal-header .tagline,
 .portal-page.client-app .visit-meta,
 .portal-page.client-app .portal-footer,
@@ -6207,6 +6215,41 @@ form.card.admit-patient-form {
   margin-bottom: 1rem;
 }
 
+/* Deliberately the least prominent thing on the client-app dashboard —
+   logging out isn't something a returning client should stumble into, so
+   it's tucked at the very bottom instead of sitting next to the greeting
+   (see app/client-app/page.js). Reuses the .client-app dark/light --ash
+   tokens rather than .mobile-link-btn's brand-pink treatment, which would
+   make it read as a call to action instead of an easy-to-miss escape
+   hatch. */
+.client-app-logout-row {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.client-app-logout-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.72rem;
+  color: #999;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.client-app[data-theme='dark'] .client-app-logout-btn {
+  color: var(--ash-dim);
+}
+
+.client-app-logout-btn:hover {
+  color: #666;
+}
+
+.client-app[data-theme='dark'] .client-app-logout-btn:hover {
+  color: var(--ash);
+}
+
 .mobile-section-header {
   font-size: 0.85rem;
   text-transform: uppercase;
@@ -7013,6 +7056,89 @@ form.card.admit-patient-form {
 
 .client-app-pet-admitted-link .client-app-hex-face {
   font-size: 0.85rem;
+}
+
+/* Owner-set profile photo (patients.profile_photo_url, migration 129) —
+   shows on the pet's own page (large, tappable to change) and as a small
+   avatar on each row of My Pets. Token-based (--carbon/--hair/--chalk),
+   not a hardcoded color, so it reads correctly in both the dark and light
+   client-app themes without a separate rule for each. */
+.client-app-pet-header {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.client-app-pet-header h1 {
+  margin-bottom: 0.15rem;
+}
+
+.client-app-pet-avatar-btn {
+  position: relative;
+  flex: none;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.client-app-pet-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--carbon);
+  border: 1px solid var(--hair);
+  font-size: 1.8rem;
+}
+
+.client-app-pet-avatar-edit {
+  position: absolute;
+  right: -0.15rem;
+  bottom: -0.15rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--magenta);
+  font-size: 0.7rem;
+  box-shadow: 0 0 0 2px var(--void-2);
+}
+
+.client-app-pet-avatar-input {
+  display: none;
+}
+
+.client-app-pet-card-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.client-app-pet-avatar-sm {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--carbon);
+  border: 1px solid var(--hair);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+.client-app-pet-card-row .mobile-list-title,
+.client-app-pet-card-row .mobile-list-meta {
+  display: block;
 }
 
 /* A standalone confirmation icon sitting above a heading (the consent

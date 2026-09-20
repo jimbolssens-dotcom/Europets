@@ -20,6 +20,7 @@ const EDITABLE_FIELDS = [
   'deceased',
   'notes',
   'dental_chart',
+  'profile_photo_url',
 ];
 
 export async function GET(request, { params }) {

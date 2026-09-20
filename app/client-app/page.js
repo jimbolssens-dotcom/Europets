@@ -355,9 +355,6 @@ export default function ClientAppHomePage() {
         </a>
         <span className="mobile-greeting">Hello, {client?.full_name?.split(' ')[0] || 'there'}!</span>
       </div>
-      <button type="button" className="mobile-link-btn" onClick={logout}>
-        Not you? Switch account
-      </button>
 
       {theme === 'dark' && <EcgLine />}
 
@@ -432,6 +429,12 @@ export default function ClientAppHomePage() {
         Screen&quot;. On Android, tap the ⋮ menu, then &quot;Add to Home screen&quot; or &quot;Install
         app&quot;.
       </p>
+
+      <div className="client-app-logout-row">
+        <button type="button" className="client-app-logout-btn" onClick={logout}>
+          Log out
+        </button>
+      </div>
     </div>
   );
 }
