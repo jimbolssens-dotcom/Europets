@@ -1,4 +1,5 @@
 // app/api/whatsapp/concierge-trace/route.js
+//
 // GET /api/whatsapp/concierge-trace?client_id=X (or ?phone=X, or ?name=X —
 // the easiest of the three, a plain substring match against full_name)
 //   -> runs the AI concierge (lib/whatsappConcierge.js) against a client's
