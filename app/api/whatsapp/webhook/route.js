@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
-import { maybeRunConcierge, sendConciergeReply } from '@/lib/whatsappConcierge';
+import { maybeRunConcierge, sendConciergeReply, sendEscalationNotice } from '@/lib/whatsappConcierge';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -114,6 +114,7 @@ async function runConciergeForInbound(message, clientId, digits) {
       await sendConciergeReply({ clientId, phone: digits, reply: result.reply });
     } else if (result.escalated) {
       console.log('WhatsApp AI concierge escalated to staff', message.id, result.reason);
+      await sendEscalationNotice(digits);
     }
   } catch (err) {
     console.error('WhatsApp AI concierge failed', message.id, err);
