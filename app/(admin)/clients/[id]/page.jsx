@@ -289,6 +289,13 @@ export default function ClientDetailPage() {
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   const totalOutstanding = totalBalanceDue(outstandingInvoices);
 
+  // A client with several pets can have outstanding invoices for more than
+  // one of them — this list has no other way to tell those apart. Not
+  // every invoice is tied to a patient (a standalone product sale isn't).
+  function patientFor(inv) {
+    return inv.visits?.patients || inv.hospitalizations?.patients;
+  }
+
   return (
     <div>
       <p>
@@ -486,21 +493,28 @@ export default function ClientDetailPage() {
               <tr>
                 <th>Invoice</th>
                 <th>Date</th>
+                <th>Patient</th>
                 <th>Status</th>
                 <th>Balance Due</th>
               </tr>
             </thead>
             <tbody>
-              {outstandingInvoices.map((inv) => (
-                <tr key={inv.id}>
-                  <td>
-                    <a href={`/invoices/${inv.id}`}>{invoiceLabel(inv)}</a>
-                  </td>
-                  <td>{formatShortDate(inv.created_at)}</td>
-                  <td>{inv.status === 'partially_paid' ? 'partially paid' : 'unpaid'}</td>
-                  <td>AED {money(balanceDue(inv))}</td>
-                </tr>
-              ))}
+              {outstandingInvoices.map((inv) => {
+                const patient = patientFor(inv);
+                return (
+                  <tr key={inv.id}>
+                    <td>
+                      <a href={`/invoices/${inv.id}`}>{invoiceLabel(inv)}</a>
+                    </td>
+                    <td>{formatShortDate(inv.created_at)}</td>
+                    <td>
+                      {patient ? `${patient.name}${patient.patient_number ? ` (#${patient.patient_number})` : ''}` : '—'}
+                    </td>
+                    <td>{inv.status === 'partially_paid' ? 'partially paid' : 'unpaid'}</td>
+                    <td>AED {money(balanceDue(inv))}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         ) : (
