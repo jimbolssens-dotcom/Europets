@@ -65,10 +65,15 @@ export default function ClientMessageThreadPage() {
     if (!text || !replyStaffId) return;
     setSendingReply(true);
     setError(null);
+    // Reply on whichever channel the conversation is currently happening
+    // on — the same channel the most recent message came in through —
+    // rather than always defaulting to the app chat, so a WhatsApp
+    // conversation naturally stays a WhatsApp conversation.
+    const channel = messages[messages.length - 1]?.channel === 'whatsapp' ? 'whatsapp' : 'app';
     const res = await fetch(`/api/clients/${id}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: text, staff_id: replyStaffId }),
+      body: JSON.stringify({ body: text, staff_id: replyStaffId, channel }),
     });
     setSendingReply(false);
     if (!res.ok) {
@@ -111,6 +116,7 @@ export default function ClientMessageThreadPage() {
             <span className="portal-chat-bubble-meta">
               {m.sender === 'staff' ? m.staff?.full_name || 'Staff' : client?.full_name || 'Client'} ·{' '}
               {formatDateTime(m.created_at)}
+              {m.channel === 'whatsapp' && ' · WhatsApp'}
             </span>
           </div>
         ))}

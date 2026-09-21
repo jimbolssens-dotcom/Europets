@@ -1,16 +1,24 @@
 // app/messages/page.jsx
-// Staff inbox for the client app's general chat (see client_messages /
-// migration 120) — one row per client conversation, newest first, exactly
-// like the day-procedures/hospitalization lists' table-of-records pattern.
-// A client waiting on a reply (their last message hasn't been answered)
-// gets the same amber "needs attention" row highlight as a cage/nav link
-// elsewhere in the app (.cage-update-requested) — see app/(admin)/layout.js
-// for the matching nav badge + alert chime.
+// Staff inbox for general client conversations — the client app's own chat
+// (migration 120) and WhatsApp (migration 130) folded into one list, one
+// row per conversation, newest first, exactly like the day-procedures/
+// hospitalization lists' table-of-records pattern. A client waiting on a
+// reply (their last message hasn't been answered) gets the same amber
+// "needs attention" row highlight as a cage/nav link elsewhere in the app
+// (.cage-update-requested) — see app/(admin)/layout.js for the matching
+// nav badge + alert chime.
+//
+// A WhatsApp message from a number not yet linked to any client (a new
+// inquiry, a wrong number) has no client_id to route a normal thread page
+// to — those sit in their own section below, expandable in place (same
+// pattern as the invoices list's row expansion) rather than a page of
+// their own, with a reply box and a "link to client" search right there.
 
 'use client';
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 
 function formatWhen(iso) {
   return new Date(iso).toLocaleString('en-GB', {
@@ -27,26 +35,189 @@ function preview(text) {
   return text.length > 90 ? `${text.slice(0, 90)}…` : text;
 }
 
-export default function MessagesInboxPage() {
-  const [conversations, setConversations] = useState([]);
-  const [loading, setLoading] = useState(true);
+function UnmatchedThreadRow({ conv, staff, onLinked }) {
+  const [expanded, setExpanded] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [replyStaffId, setReplyStaffId] = useState('');
+  const [sending, setSending] = useState(false);
+  const [linking, setLinking] = useState(false);
+  const [error, setError] = useState(null);
+
+  const phone = conv.phone;
+
+  const loadMessages = () =>
+    fetch(`/api/client-messages/unmatched/${encodeURIComponent(phone)}`)
+      .then((res) => res.json())
+      .then((data) => setMessages(Array.isArray(data) ? data : []));
 
   useEffect(() => {
-    const load = () =>
-      fetch('/api/client-messages')
-        .then((res) => res.json())
-        .then((data) => {
-          setConversations(Array.isArray(data) ? data : []);
-          setLoading(false);
-        });
+    if (!expanded) return;
+    setLoading(true);
+    loadMessages().finally(() => setLoading(false));
 
+    const channel = supabase
+      .channel(`unmatched-whatsapp-${phone}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'client_messages', filter: `phone=eq.${phone}` },
+        loadMessages
+      )
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, phone]);
+
+  async function sendReply(e) {
+    e.preventDefault();
+    const text = replyDraft.trim();
+    if (!text || !replyStaffId) return;
+    setSending(true);
+    setError(null);
+    const res = await fetch(`/api/client-messages/unmatched/${encodeURIComponent(phone)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: text, staff_id: replyStaffId }),
+    });
+    setSending(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || 'Failed to send');
+      return;
+    }
+    setReplyDraft('');
+    loadMessages();
+  }
+
+  async function linkToClient(clientId) {
+    if (!clientId) return;
+    setLinking(true);
+    setError(null);
+    const res = await fetch(`/api/client-messages/unmatched/${encodeURIComponent(phone)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: clientId }),
+    });
+    setLinking(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || 'Failed to link');
+      return;
+    }
+    onLinked();
+  }
+
+  return (
+    <>
+      <tr className={conv.pending ? 'cage-update-requested' : ''}>
+        <td>{conv.pending && '🔔'}</td>
+        <td>
+          <button type="button" className="button-link" onClick={() => setExpanded((v) => !v)}>
+            {phone} <span className="visit-meta">(unmatched WhatsApp)</span>
+          </button>
+        </td>
+        <td>
+          {conv.last_sender === 'staff' ? 'You: ' : ''}
+          {preview(conv.last_message)}
+        </td>
+        <td>{formatWhen(conv.last_message_at)}</td>
+        <td>
+          <button type="button" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Close' : 'Open'}
+          </button>
+        </td>
+      </tr>
+      {expanded && (
+        <tr>
+          <td colSpan={5}>
+            {error && <p className="error">{error}</p>}
+            {loading ? (
+              <p>Loading...</p>
+            ) : (
+              <div className="portal-chat-thread staff-chat-thread">
+                {messages.length === 0 && <p className="visit-meta">No messages yet.</p>}
+                {messages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`portal-chat-bubble portal-chat-bubble-${m.sender === 'staff' ? 'mine' : 'theirs'}`}
+                  >
+                    <p>{m.body}</p>
+                    <span className="portal-chat-bubble-meta">
+                      {m.sender === 'staff' ? m.staff?.full_name || 'Staff' : phone} · {formatWhen(m.created_at)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="hospitalization-chat">
+              <form className="portal-chat-form" onSubmit={sendReply}>
+                <select value={replyStaffId} onChange={(e) => setReplyStaffId(e.target.value)} required>
+                  <option value="">Replying as...</option>
+                  {staff.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.full_name}
+                    </option>
+                  ))}
+                </select>
+                <textarea
+                  rows={2}
+                  placeholder="Reply..."
+                  value={replyDraft}
+                  onChange={(e) => setReplyDraft(e.target.value)}
+                />
+                <button type="submit" disabled={sending || !replyDraft.trim() || !replyStaffId}>
+                  {sending ? 'Sending...' : 'Send'}
+                </button>
+              </form>
+            </div>
+
+            <div className="note-form">
+              <p className="visit-meta">Not a client yet, or want to link this number to an existing one?</p>
+              <ClientOrPatientSearch
+                placeholder="Search clients or patients to link this number..."
+                onPickClient={(c) => linkToClient(c.id)}
+                onPickPatient={(p) => linkToClient(p.client_id)}
+              />
+              {linking && <p className="visit-meta">Linking...</p>}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+export default function MessagesInboxPage() {
+  const [conversations, setConversations] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = () =>
+    fetch('/api/client-messages')
+      .then((res) => res.json())
+      .then((data) => {
+        setConversations(Array.isArray(data) ? data : []);
+        setLoading(false);
+      });
+
+  useEffect(() => {
     load();
+    fetch('/api/staff')
+      .then((res) => res.json())
+      .then((data) => setStaff(Array.isArray(data) ? data : []));
+
     const channel = supabase
       .channel('messages-inbox')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'client_messages' }, load)
       .subscribe();
     return () => supabase.removeChannel(channel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const matched = conversations.filter((c) => c.client_id);
+  const unmatched = conversations.filter((c) => !c.client_id && c.phone);
 
   return (
     <>
@@ -56,40 +227,73 @@ export default function MessagesInboxPage() {
       {loading ? (
         <p>Loading...</p>
       ) : conversations.length === 0 ? (
-        <p>No conversations yet — messages clients send from the client app will show up here.</p>
+        <p>No conversations yet — messages clients send from the client app or WhatsApp will show up here.</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th></th>
-              <th>Client</th>
-              <th>Last message</th>
-              <th>When</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {conversations.map((c) => (
-              <tr key={c.client_id} className={c.pending ? 'cage-update-requested' : ''}>
-                <td>{c.pending && '🔔'}</td>
-                <td>
-                  <a href={`/clients/${c.client_id}`}>
-                    {c.client?.full_name}
-                    {c.client?.client_number ? ` (Client #${c.client.client_number})` : ''}
-                  </a>
-                </td>
-                <td>
-                  {c.last_sender === 'staff' ? 'You: ' : ''}
-                  {preview(c.last_message)}
-                </td>
-                <td>{formatWhen(c.last_message_at)}</td>
-                <td>
-                  <a href={`/messages/${c.client_id}`} className="button-link button-link-open">Open</a>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          {matched.length > 0 && (
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Client</th>
+                  <th>Last message</th>
+                  <th>When</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {matched.map((c) => (
+                  <tr key={c.client_id} className={c.pending ? 'cage-update-requested' : ''}>
+                    <td>{c.pending && '🔔'}</td>
+                    <td>
+                      <a href={`/clients/${c.client_id}`}>
+                        {c.client?.full_name}
+                        {c.client?.client_number ? ` (Client #${c.client.client_number})` : ''}
+                      </a>
+                      {c.channel === 'whatsapp' && <span className="visit-meta"> · WhatsApp</span>}
+                    </td>
+                    <td>
+                      {c.last_sender === 'staff' ? 'You: ' : ''}
+                      {preview(c.last_message)}
+                    </td>
+                    <td>{formatWhen(c.last_message_at)}</td>
+                    <td>
+                      <a href={`/messages/${c.client_id}`} className="button-link button-link-open">
+                        Open
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {unmatched.length > 0 && (
+            <>
+              <h3>Unmatched WhatsApp numbers</h3>
+              <p className="visit-meta">
+                Messages from a number that isn&apos;t linked to a client yet — reply below, or link it to a client to
+                fold it into their normal conversation.
+              </p>
+              <table>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Number</th>
+                    <th>Last message</th>
+                    <th>When</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unmatched.map((c) => (
+                    <UnmatchedThreadRow key={c.thread_key} conv={c} staff={staff} onLinked={load} />
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </>
       )}
     </>
   );
