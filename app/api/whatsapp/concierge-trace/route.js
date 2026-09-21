@@ -6,6 +6,10 @@
 //      but as a true dry run: nothing is sent over WhatsApp, nothing is
 //      logged to client_messages, and book_consult is stubbed out so no
 //      real appointment can be created (see runTool's dryRun check).
+//      Replays against the last real CLIENT message, trimming off any of
+//      the concierge's own later replies — otherwise there's usually
+//      nothing new to "respond to" as-is, since its own last reply is
+//      typically the newest row.
 //
 // Built after several rounds of prompt/logic fixes to the concierge each
 // looked right in code but didn't visibly fix a live symptom (it kept
@@ -54,6 +58,6 @@ export async function GET(request) {
     return NextResponse.json({ error: 'client_id, phone, or name is required' }, { status: 400 });
   }
 
-  const result = await maybeRunConcierge({ clientId, phone: phone || '', dryRun: true });
+  const result = await maybeRunConcierge({ clientId, phone: phone || '', dryRun: true, replayLastClientMessage: true });
   return NextResponse.json(result);
 }
