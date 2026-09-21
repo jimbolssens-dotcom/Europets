@@ -112,7 +112,12 @@ export default function ClientMessageThreadPage() {
         {messages.length === 0 && <p className="visit-meta">No messages yet.</p>}
         {messages.map((m) => (
           <div key={m.id} className={`portal-chat-bubble portal-chat-bubble-${m.sender === 'staff' ? 'mine' : 'theirs'}`}>
-            <p>{m.body}</p>
+            {m.media_url && (
+              <a href={m.media_url} target="_blank" rel="noopener noreferrer">
+                <img src={m.media_url} alt="" className="portal-chat-bubble-image" />
+              </a>
+            )}
+            {m.body && <p>{m.body}</p>}
             <span className="portal-chat-bubble-meta">
               {m.sender === 'staff' ? m.staff?.full_name || 'Staff' : client?.full_name || 'Client'} ·{' '}
               {formatDateTime(m.created_at)}
