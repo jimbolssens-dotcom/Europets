@@ -193,6 +193,8 @@ export default function MessagesInboxPage() {
   const [conversations, setConversations] = useState([]);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribeResult, setSubscribeResult] = useState(null); // { ok: boolean, message: string } | null
 
   const load = () =>
     fetch('/api/client-messages')
@@ -219,11 +221,41 @@ export default function MessagesInboxPage() {
   const matched = conversations.filter((c) => c.client_id);
   const unmatched = conversations.filter((c) => !c.client_id && c.phone);
 
+  async function fixWhatsAppSubscription() {
+    setSubscribing(true);
+    setSubscribeResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/subscribe', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setSubscribeResult({ ok: true, message: 'Done — this number is now subscribed to receive WhatsApp messages here.' });
+    } catch (err) {
+      setSubscribeResult({ ok: false, message: err.message });
+    }
+    setSubscribing(false);
+  }
+
   return (
     <>
       <div className="page-header">
         <h1>Messages</h1>
       </div>
+
+      {/* One-time fix for a webhook that's configured correctly in Meta App
+          Dashboard (verified, published, "messages" subscribed) but still
+          isn't receiving anything — the phone number itself also has to be
+          explicitly subscribed, a step Meta's dashboard gives no indication
+          of missing. Safe to click more than once. */}
+      <p className="visit-meta">
+        Not receiving WhatsApp messages here even though the webhook looks configured in Meta?{' '}
+        <button type="button" onClick={fixWhatsAppSubscription} disabled={subscribing}>
+          {subscribing ? 'Fixing…' : 'Fix WhatsApp subscription'}
+        </button>
+        {subscribeResult && (
+          <span className={subscribeResult.ok ? '' : 'error'}> {subscribeResult.message}</span>
+        )}
+      </p>
+
       {loading ? (
         <p>Loading...</p>
       ) : conversations.length === 0 ? (
