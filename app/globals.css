@@ -6371,6 +6371,12 @@ form.card.admit-patient-form {
   align-items: flex-end;
 }
 
+/* Post-Op sits below the two columns above, full width — see the comment
+   on MobileCageColumns in app/mobile/hospitalization/page.js for why. */
+.mobile-cage-postop-row {
+  margin-top: 0.8rem;
+}
+
 /* ============ CLIENT APP (app/client-app) — "Hexfield" theme ============
    Matches the epc.vet website's "Hexfield" design concept: a single dark
    world built around the hexagon (the honeycomb, the paw pad, the
