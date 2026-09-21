@@ -1,0 +1,57 @@
+// app/api/whatsapp/diagnose/route.js
+// GET /api/whatsapp/diagnose -> a temporary, staff-gated troubleshooting
+// endpoint for "the webhook responds 200 to Meta but no message shows up
+// in /messages". The webhook route (see app/api/whatsapp/webhook) never
+// fails its response to Meta on a DB error — it just logs and still
+// acks — so from Meta's side everything looks fine even if the insert is
+// silently failing (e.g. migrations/130_client_messages_whatsapp.sql
+// hasn't actually been run, so the channel/phone/wa_message_id/status
+// columns don't exist yet). This does the same insert the webhook does,
+// against a throwaway row, and reports the exact Postgres error instead
+// of swallowing it — so the real cause shows up in a browser instead of
+// requiring Supabase or Vercel log access.
+//
+// Safe to leave in place — every call inserts then immediately deletes
+// its own row, and it's staff-gated like any other non-public route.
+
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  const report = {};
+
+  // 1. Do the new columns from migrations/130 actually exist?
+  const columnsCheck = await supabaseAdmin
+    .from('client_messages')
+    .select('channel, phone, wa_message_id, status')
+    .limit(1);
+  report.columns_exist = !columnsCheck.error;
+  if (columnsCheck.error) report.columns_error = columnsCheck.error.message;
+
+  // 2. Is client_id actually nullable? (migrations/130 also does `alter
+  // column client_id drop not null` — a partial run could add the columns
+  // but miss this, or vice versa.)
+  const insertResult = await supabaseAdmin
+    .from('client_messages')
+    .insert([
+      {
+        phone: '00000000000',
+        channel: 'whatsapp',
+        sender: 'client',
+        body: '[diagnostic test row — safe to ignore/delete]',
+      },
+    ])
+    .select('id')
+    .single();
+
+  report.insert_ok = !insertResult.error;
+  if (insertResult.error) {
+    report.insert_error = insertResult.error.message;
+    report.insert_error_code = insertResult.error.code;
+  } else {
+    // Clean up immediately — this row has no purpose beyond the test.
+    await supabaseAdmin.from('client_messages').delete().eq('id', insertResult.data.id);
+  }
+
+  return NextResponse.json(report);
+}
