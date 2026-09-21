@@ -3,12 +3,18 @@
 // resized copy of the desktop Cage Layout page (see CageFloorPlan.jsx
 // for that one) — two vertical columns side by side, sized to fit a
 // portrait phone's width with no horizontal scrolling:
-//   left column, top to bottom:  Recovery -> Isolation -> Dog -> Post-Op
+//   left column, top to bottom:  Recovery -> Isolation -> Dog
 //   right column, top to bottom: LT (4-5) -> Hospitalization (1-12) -> LT (1-3)
-// Every cluster keeps its own cage grouping/count; only where the
-// clusters sit relative to each other changes. Tile text stays upright
-// throughout — no CSS rotation. No drag/assign here; tap an occupied
-// cage straight into recording.
+//   full-width row below both:   Post-Op
+// Post-Op is desktop's own 3-per-row cluster (see CageFloorPlan.jsx) —
+// squeezed into either of the two narrow columns above, .cage-tile's fixed
+// minimum width leaves no room for a 3rd tile per row without shrinking
+// them past legible, so it gets its own full-width row underneath instead,
+// which is exactly the width a 3-per-row layout needs. Every other cluster
+// keeps its own cage grouping/count; only where the clusters sit relative
+// to each other changes. Tile text stays upright throughout — no CSS
+// rotation. No drag/assign here; tap an occupied cage straight into
+// recording.
 
 'use client';
 
@@ -118,19 +124,25 @@ function MobileCageColumns({ cages, renderTile, isCleaner }) {
   const postOpCages = byGroup(cages, 'post_op');
 
   return (
-    <div className="mobile-cage-columns">
-      <div className="mobile-cage-col">
-        <Cluster label={t('Recovery Cages', isCleaner)} cages={recoveryCages} cols={1} renderTile={renderTile} />
-        <IsoCluster cages={isoCages} renderTile={renderTile} isCleaner={isCleaner} />
-        <Cluster label={t('Dog Cages', isCleaner)} cages={dogCages} cols={2} renderTile={renderTile} />
-        <Cluster label={t('Post-Op Cages', isCleaner)} cages={postOpCages} cols={2} renderTile={renderTile} />
+    <>
+      <div className="mobile-cage-columns">
+        <div className="mobile-cage-col">
+          <Cluster label={t('Recovery Cages', isCleaner)} cages={recoveryCages} cols={1} renderTile={renderTile} />
+          <IsoCluster cages={isoCages} renderTile={renderTile} isCleaner={isCleaner} />
+          <Cluster label={t('Dog Cages', isCleaner)} cages={dogCages} cols={2} renderTile={renderTile} />
+        </div>
+        <div className="mobile-cage-col mobile-cage-col-right">
+          <Cluster label={t('LT', isCleaner)} cages={ltUpper} cols={ltUpper.length} renderTile={renderTile} />
+          <Cluster label={t('Hospitalization Cages', isCleaner)} cages={standardCages} cols={2} renderTile={renderTile} />
+          <Cluster label={t('LT', isCleaner)} cages={ltLower} cols={ltLower.length} renderTile={renderTile} />
+        </div>
       </div>
-      <div className="mobile-cage-col mobile-cage-col-right">
-        <Cluster label={t('LT', isCleaner)} cages={ltUpper} cols={ltUpper.length} renderTile={renderTile} />
-        <Cluster label={t('Hospitalization Cages', isCleaner)} cages={standardCages} cols={2} renderTile={renderTile} />
-        <Cluster label={t('LT', isCleaner)} cages={ltLower} cols={ltLower.length} renderTile={renderTile} />
+      {/* Full width, not squeezed into either column above — see the
+          file-header comment on why Post-Op needs 3 per row like desktop. */}
+      <div className="mobile-cage-postop-row">
+        <Cluster label={t('Post-Op Cages', isCleaner)} cages={postOpCages} cols={3} renderTile={renderTile} />
       </div>
-    </div>
+    </>
   );
 }
 
