@@ -18,8 +18,9 @@ import { byGroup } from '@/app/_components/CageFloorPlan';
 import { useMobileStaff } from '@/app/_components/useMobileStaff';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
+import { t } from '@/lib/cleanerTranslations';
 
-function MobileCageTile({ cage, hosp, checkinOnly }) {
+function MobileCageTile({ cage, hosp, checkinOnly, isCleaner }) {
   if (hosp) {
     const href = checkinOnly ? `/mobile/hospitalization/${hosp.id}/checkin` : `/mobile/hospitalization/${hosp.id}`;
     const { yellow, red } = hospitalizationAttentionReasons(hosp);
@@ -51,7 +52,7 @@ function MobileCageTile({ cage, hosp, checkinOnly }) {
         <span className="cage-name">{cage.name}</span>
         {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
       </div>
-      <span className="cage-status">Empty</span>
+      <span className="cage-status">{t('Empty', isCleaner)}</span>
     </div>
   );
 }
@@ -68,11 +69,11 @@ function Cluster({ label, cages, cols, renderTile }) {
   );
 }
 
-function IsoCluster({ cages, renderTile }) {
+function IsoCluster({ cages, renderTile, isCleaner }) {
   if (cages.length === 0) return null;
   return (
     <div>
-      <h3 className="cage-cluster-label">Isolation Cages</h3>
+      <h3 className="cage-cluster-label">{t('Isolation Cages', isCleaner)}</h3>
       <div className="cage-cluster-flex">
         <div className="cage-cluster" style={{ '--cols': 1 }}>
           {cages.slice(0, 2).map((cage) => renderTile(cage))}
@@ -106,7 +107,7 @@ function reorderForMobileHospitalizationCages(cages) {
   return reordered;
 }
 
-function MobileCageColumns({ cages, renderTile }) {
+function MobileCageColumns({ cages, renderTile, isCleaner }) {
   const standardCages = reorderForMobileHospitalizationCages(byGroup(cages, 'standard'));
   const ltCages = byGroup(cages, 'long_term');
   const ltLower = ltCages.slice(0, 3); // LT 1-3, at the bottom of the right column
@@ -119,15 +120,15 @@ function MobileCageColumns({ cages, renderTile }) {
   return (
     <div className="mobile-cage-columns">
       <div className="mobile-cage-col">
-        <Cluster label="Recovery Cages" cages={recoveryCages} cols={1} renderTile={renderTile} />
-        <IsoCluster cages={isoCages} renderTile={renderTile} />
-        <Cluster label="Dog Cages" cages={dogCages} cols={2} renderTile={renderTile} />
-        <Cluster label="Post-Op Cages" cages={postOpCages} cols={2} renderTile={renderTile} />
+        <Cluster label={t('Recovery Cages', isCleaner)} cages={recoveryCages} cols={1} renderTile={renderTile} />
+        <IsoCluster cages={isoCages} renderTile={renderTile} isCleaner={isCleaner} />
+        <Cluster label={t('Dog Cages', isCleaner)} cages={dogCages} cols={2} renderTile={renderTile} />
+        <Cluster label={t('Post-Op Cages', isCleaner)} cages={postOpCages} cols={2} renderTile={renderTile} />
       </div>
       <div className="mobile-cage-col mobile-cage-col-right">
-        <Cluster label="LT" cages={ltUpper} cols={ltUpper.length} renderTile={renderTile} />
-        <Cluster label="Hospitalization Cages" cages={standardCages} cols={2} renderTile={renderTile} />
-        <Cluster label="LT" cages={ltLower} cols={ltLower.length} renderTile={renderTile} />
+        <Cluster label={t('LT', isCleaner)} cages={ltUpper} cols={ltUpper.length} renderTile={renderTile} />
+        <Cluster label={t('Hospitalization Cages', isCleaner)} cages={standardCages} cols={2} renderTile={renderTile} />
+        <Cluster label={t('LT', isCleaner)} cages={ltLower} cols={ltLower.length} renderTile={renderTile} />
       </div>
     </div>
   );
@@ -172,15 +173,16 @@ export default function MobileHospitalizationListPage() {
   return (
     <div className="mobile-page">
       <MobileHomeButton />
-      <h1>Hospitalization</h1>
+      <h1>{t('Hospitalization', isCleaner)}</h1>
 
       {loading ? (
-        <p>Loading...</p>
+        <p>{t('Loading...', isCleaner)}</p>
       ) : (
         <MobileCageColumns
           cages={cages}
+          isCleaner={isCleaner}
           renderTile={(cage) => (
-            <MobileCageTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} checkinOnly={isCleaner} />
+            <MobileCageTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} checkinOnly={isCleaner} isCleaner={isCleaner} />
           )}
         />
       )}

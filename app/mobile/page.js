@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
 import { useHospitalizationUpdatePending } from '@/app/_components/useHospitalizationUpdatePending';
 import { cageAlarmClass } from '@/lib/hospitalizationAttention';
+import { t } from '@/lib/cleanerTranslations';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 
@@ -56,6 +57,7 @@ export default function MobileHomePage() {
 
   const me = staff.find((s) => s.id === staffId);
   const firstName = firstNameOf(me?.full_name);
+  const isCleaner = me?.role === 'cleaner';
 
   return (
     <div className="mobile-home">
@@ -89,14 +91,14 @@ export default function MobileHomePage() {
               <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
             </a>
             <a href="/mobile/schedule" className="mobile-greeting" title="Go to your schedule">
-              Hello, {firstName || 'there'}!
+              {t('Hello,', isCleaner)} {firstName || 'there'}!
             </a>
           </div>
           <button type="button" className="mobile-link-btn" onClick={switchStaff}>
-            Switch
+            {t('Switch', isCleaner)}
           </button>
 
-          {me?.role === 'cleaner' ? (
+          {isCleaner ? (
             // A cleaner's whole job on this phone is these two things —
             // no Consults, Scan Receipt, or anything clinical/admin.
             <MobileCleanerTabs />
