@@ -35,6 +35,7 @@ const PUBLIC_PATTERNS = [
   /^\/api\/hospitalizations\/[^/]+\/request-update$/,
   /^\/api\/booking-availability(\/.*)?$/,
   /^\/api\/app-version$/, // polled by AppVersionWatcher on every page, staff and portal alike
+  /^\/api\/whatsapp\/webhook$/, // Meta's own verification + event delivery — can't carry a staff cookie; verified via its own signature header instead (see the route)
   // Report/invoice PDFs staff link directly to a client via WhatsApp/email
   // (see ReportShareActions and the invoice/consult pages) — these need to
   // open for the client with no login, same reasoning as the rest of this
