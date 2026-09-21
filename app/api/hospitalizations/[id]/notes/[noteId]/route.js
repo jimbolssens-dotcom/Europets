@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { mirrorVitalsToLinkedHospitalizations } from '@/lib/hospitalizationVitalsSync';
+import { removeTreatmentItemFromInvoiceLines } from '@/lib/invoicing';
 
 const EDITABLE_FIELDS = [
   'note_date',
@@ -43,8 +44,23 @@ export async function DELETE(request, { params }) {
     .eq('entity_type', 'hospitalization_note').eq('entity_id', note.id);
   if (attachmentError) return NextResponse.json({ error: 'Could not preserve the attached files. Entry was not deleted.' }, { status: 500 });
 
-  // The existing foreign key cascades this entry's treatment_items.
-  // Invoice line items are independent and are not modified here.
+  // The foreign key below cascades this entry's treatment_items away, so
+  // any invoice line already built from one of them needs cleaning up
+  // first (see removeTreatmentItemFromInvoiceLines, lib/invoicing.js) —
+  // it reads each treatment_item's own quantity, which won't exist to
+  // read anymore once the cascade fires. Best-effort: a hiccup here is
+  // logged, never blocks deleting the entry itself.
+  const { data: itemsOnEntry } = await supabase
+    .from('treatment_items')
+    .select('id')
+    .eq('hospitalization_note_id', note.id);
+  for (const item of itemsOnEntry || []) {
+    const cleanup = await removeTreatmentItemFromInvoiceLines(supabase, item.id);
+    if (cleanup.error) {
+      console.error('Failed to remove treatment item from an invoice it was already on', item.id, cleanup.error);
+    }
+  }
+
   const { data: deleted, error } = await supabaseAdmin.from('hospitalization_notes')
     .delete().eq('id', note.id).eq('hospitalization_id', params.id).select('id').maybeSingle();
   if (error) return NextResponse.json({ error: 'Could not delete the worksheet entry.' }, { status: 500 });
