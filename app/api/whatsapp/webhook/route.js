@@ -19,6 +19,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
+import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -46,18 +47,23 @@ function isValidSignature(rawBody, signatureHeader) {
   return timingSafeEqual(expectedBuf, gotBuf);
 }
 
-// A text message's body, or a short bracketed placeholder for any other
-// message type Meta might deliver (image, voice note, document, location,
-// a reaction, ...) — v1 logs that something arrived and lets staff open
-// WhatsApp itself for the rare non-text message, rather than silently
-// dropping it or blocking on building a viewer for every media type.
+// A text message's body, an image's caption (may be empty — the photo
+// itself is handled separately, see downloadInboundImage), or a short
+// bracketed placeholder for any other message type Meta might deliver
+// (voice note, document, location, a reaction, ...). There's no "open
+// WhatsApp instead" fallback for those — this number can only ever be
+// used through this app, never the regular WhatsApp client — so v1 just
+// says plainly that type isn't viewable here yet rather than pointing
+// staff somewhere that doesn't exist for this number.
 function extractBody(message) {
   if (message.type === 'text') return message.text?.body || '';
+  if (message.type === 'image') return message.image?.caption || '';
+  if (message.type === 'sticker') return '';
   if (message.type === 'button') return message.button?.text || '[button reply]';
   if (message.type === 'interactive') {
     return message.interactive?.button_reply?.title || message.interactive?.list_reply?.title || '[interactive reply]';
   }
-  return `[${message.type || 'unsupported'} message — open WhatsApp to view]`;
+  return `[${message.type || 'unsupported'} message — not viewable here yet]`;
 }
 
 async function findClientIdForPhone(digits) {
@@ -66,9 +72,37 @@ async function findClientIdForPhone(digits) {
   return matches[0] || null;
 }
 
+// Downloads a photo/sticker a client sent and re-hosts it in the same
+// "consult-files" Storage bucket every other photo/file in this app
+// already lives in (see migrations/131) — Meta only keeps the original
+// for a few days, so this has to happen right away, not on first view.
+// Best-effort: a failure here (Meta media API hiccup, huge file, ...)
+// shouldn't lose the rest of the message — it just falls back to no
+// photo, same as before this existed.
+async function downloadInboundImage(message) {
+  const media = message.image || message.sticker;
+  if (!media?.id) return {};
+  try {
+    const { buffer, mimeType } = await downloadWhatsAppMedia(media.id);
+    const ext = mimeType.split('/')[1]?.split(';')[0] || 'jpg';
+    const path = `whatsapp/${message.id}.${ext}`;
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('consult-files')
+      .upload(path, buffer, { contentType: mimeType, upsert: true });
+    if (uploadError) throw uploadError;
+    const { data } = supabaseAdmin.storage.from('consult-files').getPublicUrl(path);
+    return { media_url: data.publicUrl, media_type: 'image' };
+  } catch (err) {
+    console.error('Failed to download/store inbound WhatsApp image', message.id, err);
+    return {};
+  }
+}
+
 async function handleInboundMessage(message, contactPhone) {
   const digits = (contactPhone || message.from || '').replace(/\D/g, '');
   const clientId = await findClientIdForPhone(digits);
+  const media =
+    message.type === 'image' || message.type === 'sticker' ? await downloadInboundImage(message) : {};
 
   const { error } = await supabaseAdmin.from('client_messages').insert([
     {
@@ -78,6 +112,7 @@ async function handleInboundMessage(message, contactPhone) {
       sender: 'client',
       body: extractBody(message),
       wa_message_id: message.id,
+      ...media,
     },
   ]);
   // Duplicate delivery of the same message (Meta retries on a slow 200) is
