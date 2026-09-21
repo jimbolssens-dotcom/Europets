@@ -1782,6 +1782,21 @@ export default function HospitalizationDetailPage() {
             onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
             onCategoryChange={setPendingItemCategory}
           />
+          {/* This form has no memory between days — quantity gets retyped
+              from scratch every time, which is exactly how a stay's real
+              per-day dose can quietly drift (see the Day Treatment Plan's
+              own "Qty" + Schedule fields below, which fix the quantity once
+              and consolidate every tap into one invoice line). A catalog
+              item with an administration_method (SC/IM/dispensed) is
+              usually given more than once over a stay, so nudge toward the
+              plan instead of silently letting staff re-enter it here daily. */}
+          {catalog.find((c) => c.id === pendingItemForm.goods_service_id)?.administration_method && (
+            <p className="visit-meta pending-item-recurring-hint">
+              This looks like a medication given more than once — for recurring dosing, add it to the{' '}
+              <strong>Day Treatment Plan</strong> above instead (set the quantity once, then just tap it each
+              day) so it isn&apos;t logged with a different amount by accident.
+            </p>
+          )}
           <input
             placeholder="Instructions (dosage, frequency, duration)"
             value={pendingItemForm.instructions}
