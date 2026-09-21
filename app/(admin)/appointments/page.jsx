@@ -120,6 +120,8 @@ function AppointmentsPageInner() {
   const [rooms, setRooms] = useState([]);
   const [vets, setVets] = useState([]);
   const [staffList, setStaffList] = useState([]); // every active staff member, for the Staff Meeting picker (not just vets)
+  const [rosterEntries, setRosterEntries] = useState([]); // this week's staff_roster_entries, for the date header color wash below
+  const [rosterTick, setRosterTick] = useState(0);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -179,9 +181,23 @@ function AppointmentsPageInner() {
       setVets(Array.isArray(vetsData) ? vetsData : []);
       setStaffList(Array.isArray(staffData) ? staffData : []);
     });
-    const channel = supabase.channel('appointments-view-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => setRefreshTick((n) => n + 1)).subscribe();
+    const channel = supabase.channel('appointments-view-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => setRefreshTick((n) => n + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_roster_entries' }, () => setRosterTick((n) => n + 1))
+      .subscribe();
     return () => supabase.removeChannel(channel);
   }, []);
+
+  // The date headers' morning/afternoon color wash (below) needs who's
+  // rostered for the visible week — re-fetched whenever the week changes or
+  // the roster itself is edited (Staff Roster page, another tab, ...).
+  useEffect(() => {
+    const start = toISODate(currentWeek[0]);
+    const end = toISODate(currentWeek[6]);
+    fetch(`/api/staff-roster?start=${start}&end=${end}`)
+      .then((res) => res.json())
+      .then((data) => setRosterEntries(Array.isArray(data) ? data : []));
+  }, [currentWeek, rosterTick]);
 
   const vetColor = useMemo(() => buildStaffColorMap(vets), [vets]);
   // Deactivated vets keep their color/legend entry (past appointments are
@@ -198,6 +214,25 @@ function AppointmentsPageInner() {
   const staffRoom = useMemo(() => rooms.find((r) => r.type === 'staff'), [rooms]);
   const clinicalRooms = useMemo(() => rooms.filter((r) => r.type !== 'staff'), [rooms]);
   const colorForVetAppt = (vetId, type) => colorForAppointment(vetColor, vetId, type);
+  // Per date, which vets' colors to wash across the week view's date
+  // header — morning entries tint the top half, afternoon the bottom,
+  // split evenly across however many are on. Only vets (not techs/admin/etc
+  // also on staff_roster_entries) show up here, matching the existing
+  // vet-legend row above the schedule. A non-vet entry, or one for a vet
+  // whose own color hasn't loaded yet, is silently skipped rather than
+  // falling back to a generic gray, which would just read as "someone
+  // unknown is on" instead of quietly doing nothing.
+  const rosterColorsByDate = useMemo(() => {
+    const map = {};
+    for (const entry of rosterEntries) {
+      const color = vetColor[entry.staff_id];
+      if (!color) continue;
+      if (!map[entry.date]) map[entry.date] = { morning: [], afternoon: [] };
+      const half = map[entry.date][entry.shift];
+      if (half && !half.some((c) => c.fg === color.fg)) half.push(color);
+    }
+    return map;
+  }, [rosterEntries, vetColor]);
   useEffect(() => { if (rosterBlock) playAlertBeep(); }, [rosterBlock]);
   useEffect(() => { setPickedRoomId(''); }, [roomConflictBlock]);
   useEffect(() => () => { if (pendingClickTimeoutRef.current) clearTimeout(pendingClickTimeoutRef.current); }, []);
@@ -321,7 +356,7 @@ function AppointmentsPageInner() {
   }
 
   function renderWeekView() {
-    return <div className="schedule-wrap" ref={scheduleWrapRef} style={{ maxWidth: TIME_COL_WIDTH + 7 * WEEK_DAY_MIN_WIDTH + 2 }}>{renderTimeColumn()}{currentWeek.map((day) => { const iso = toISODate(day); const dayApps = liveWeekAppointmentsByDate[iso] || []; const overlapLayout = layoutOverlaps(dayApps.map((a) => ({ id: a.id, start: minutesSinceOpen(a.start_time), end: minutesSinceOpen(a.start_time) + a.duration_minutes }))); const isToday = iso === todayISODate(); const isSelected = iso === selectedDate; return <div key={iso} className="schedule-day-col" style={{ borderLeft: '1px solid #eee' }}><button type="button" onClick={() => selectDay(day, true)} style={{ width: '100%', height: SCHEDULE_HEADER_HEIGHT, borderRadius: 0, background: isSelected ? 'var(--pink)' : isToday ? 'var(--pink-tint)' : 'white', color: isSelected ? 'white' : 'var(--ink)', borderBottom: '1px solid #ddd', padding: '0.25rem' }}><div style={{ fontSize: '0.72rem', textTransform: 'uppercase' }}>{day.toLocaleDateString([], { weekday: 'short' })}</div><strong>{day.getDate()}</strong></button><div className="schedule-room-track" data-date={iso} style={{ height: scheduleHeight, position: 'relative' }} onClick={(e) => { if (e.target.closest('.schedule-block')) return; const { minutesFromOpen } = computeSlot(e); applySlotSelection('', minutesFromOpen, SNAP_MINUTES, iso); }} onMouseMove={(e) => hoverGrid(e, '', iso)} onMouseLeave={() => setHoverSlot(null)}>{gridLines()}{hoverSlot?.dateISO === iso && hoverSlot.roomId === '' && <div className="schedule-hover-slot" style={{ top: hoverSlot.top, height: SNAP_MINUTES * pixelsPerMinute }}><span className="schedule-hover-label">{hoverSlot.label}</span></div>}{selectedSlotPreview?.date === iso && <div className="schedule-drag-select" style={{ top: selectedSlotPreview.startMinutes * pixelsPerMinute, height: Math.max(selectedSlotPreview.duration * pixelsPerMinute, 22), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 700, color: 'var(--pink-dark)', zIndex: 2 }}>Selected {formatSlotLabel(form.time)}</div>}{dayApps.map((a) => { const { col, count, maxMinutes } = overlapLayout.get(a.id) || { col: 0, count: 1, maxMinutes: Infinity }; const width = 100 / count; const naturalHeight = Math.max(a.duration_minutes * pixelsPerMinute, 22); const height = maxMinutes === Infinity ? naturalHeight : Math.min(naturalHeight, maxMinutes * pixelsPerMinute); return appointmentBlock(a, { top: minutesSinceOpen(a.start_time) * pixelsPerMinute, height, left: `calc(${col * width}% + 1px)`, width: `calc(${width}% - 2px)`, right: 'auto', fontSize: count > 1 ? '0.68rem' : '0.74rem', padding: count > 1 ? '2px 3px' : '3px 5px', zIndex: 3 }, true); })}</div></div>; })}</div>;
+    return <div className="schedule-wrap" ref={scheduleWrapRef} style={{ maxWidth: TIME_COL_WIDTH + 7 * WEEK_DAY_MIN_WIDTH + 2 }}>{renderTimeColumn()}{currentWeek.map((day) => { const iso = toISODate(day); const dayApps = liveWeekAppointmentsByDate[iso] || []; const overlapLayout = layoutOverlaps(dayApps.map((a) => ({ id: a.id, start: minutesSinceOpen(a.start_time), end: minutesSinceOpen(a.start_time) + a.duration_minutes }))); const isToday = iso === todayISODate(); const isSelected = iso === selectedDate; return <div key={iso} className="schedule-day-col" style={{ borderLeft: '1px solid #eee' }}><button type="button" onClick={() => selectDay(day, true)} style={{ width: '100%', height: SCHEDULE_HEADER_HEIGHT, borderRadius: 0, position: 'relative', overflow: 'hidden', background: isSelected ? 'var(--pink)' : isToday ? 'var(--pink-tint)' : 'white', color: isSelected ? 'white' : 'var(--ink)', borderBottom: '1px solid #ddd', padding: '0.25rem' }}>{rosterColorsByDate[iso] && <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', pointerEvents: 'none' }}>{['morning', 'afternoon'].map((shift) => <div key={shift} style={{ flex: 1, display: 'flex' }}>{rosterColorsByDate[iso][shift].map((c, i) => <div key={i} style={{ flex: 1, background: `${c.fg}2a` }} />)}</div>)}</div>}<div style={{ position: 'relative' }}><div style={{ fontSize: '0.72rem', textTransform: 'uppercase' }}>{day.toLocaleDateString([], { weekday: 'short' })}</div><strong>{day.getDate()}</strong></div></button><div className="schedule-room-track" data-date={iso} style={{ height: scheduleHeight, position: 'relative' }} onClick={(e) => { if (e.target.closest('.schedule-block')) return; const { minutesFromOpen } = computeSlot(e); applySlotSelection('', minutesFromOpen, SNAP_MINUTES, iso); }} onMouseMove={(e) => hoverGrid(e, '', iso)} onMouseLeave={() => setHoverSlot(null)}>{gridLines()}{hoverSlot?.dateISO === iso && hoverSlot.roomId === '' && <div className="schedule-hover-slot" style={{ top: hoverSlot.top, height: SNAP_MINUTES * pixelsPerMinute }}><span className="schedule-hover-label">{hoverSlot.label}</span></div>}{selectedSlotPreview?.date === iso && <div className="schedule-drag-select" style={{ top: selectedSlotPreview.startMinutes * pixelsPerMinute, height: Math.max(selectedSlotPreview.duration * pixelsPerMinute, 22), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 700, color: 'var(--pink-dark)', zIndex: 2 }}>Selected {formatSlotLabel(form.time)}</div>}{dayApps.map((a) => { const { col, count, maxMinutes } = overlapLayout.get(a.id) || { col: 0, count: 1, maxMinutes: Infinity }; const width = 100 / count; const naturalHeight = Math.max(a.duration_minutes * pixelsPerMinute, 22); const height = maxMinutes === Infinity ? naturalHeight : Math.min(naturalHeight, maxMinutes * pixelsPerMinute); return appointmentBlock(a, { top: minutesSinceOpen(a.start_time) * pixelsPerMinute, height, left: `calc(${col * width}% + 1px)`, width: `calc(${width}% - 2px)`, right: 'auto', fontSize: count > 1 ? '0.68rem' : '0.74rem', padding: count > 1 ? '2px 3px' : '3px 5px', zIndex: 3 }, true); })}</div></div>; })}</div>;
   }
 
   return <div className="appointments-page">
