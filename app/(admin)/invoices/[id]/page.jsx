@@ -242,6 +242,20 @@ export default function InvoiceDetailPage() {
     saveLineItemField(li.id, { quantity });
   }
 
+  function commitLineItemTimesGiven(li, value) {
+    const timesGiven = Number(value);
+    const current = Number(li.times_given) || 1;
+    if (!value || !Number.isInteger(timesGiven) || timesGiven <= 0 || timesGiven === current) {
+      setLineItemDrafts((prev) => {
+        const next = { ...prev };
+        delete next[li.id];
+        return next;
+      });
+      return;
+    }
+    saveLineItemField(li.id, { times_given: timesGiven });
+  }
+
   function commitLineItemInstructions(li, value) {
     if (value === (li.instructions || '')) {
       setLineItemDrafts((prev) => {
@@ -428,7 +442,7 @@ export default function InvoiceDetailPage() {
   const patientName = patient?.name;
   const invoiceSections = groupLineItemsBySection(invoice.line_items);
   const editable = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
-  const columnCount = editable ? 7 : 6;
+  const columnCount = editable ? 8 : 7;
   // Only the medications actually dispensed to go home get a printable
   // label — an SC/IM injection given in-clinic (or a non-medication
   // product) has nothing to print.
@@ -540,6 +554,7 @@ export default function InvoiceDetailPage() {
           <tr>
             <th>Item</th>
             <th>Qty</th>
+            <th>Given</th>
             <th>Method</th>
             <th>Instructions</th>
             <th>Unit price</th>
@@ -582,15 +597,22 @@ export default function InvoiceDetailPage() {
                               {li.quantity} {li.goods_services?.unit || ''}
                             </>
                           )}
-                          {/* How many separate worksheet entries this line's quantity was
-                              built from — e.g. "4.00" for a medication given four times
-                              reads very differently from one given once at a large dose.
-                              Only a recurring hospitalization-worksheet line has more than
-                              one source id; a one-off consult item is always exactly 1. */}
-                          {li.source_treatment_item_ids?.length > 1 && (
-                            <span className="visit-meta line-item-frequency">
-                              given {li.source_treatment_item_ids.length}×
-                            </span>
+                        </td>
+                        <td>
+                          {editable ? (
+                            <input
+                              type="number"
+                              step="1"
+                              min="1"
+                              className="qty-input"
+                              value={draft?.timesGiven ?? li.times_given ?? 1}
+                              onChange={(e) =>
+                                setLineItemDrafts({ ...lineItemDrafts, [li.id]: { ...draft, timesGiven: e.target.value } })
+                              }
+                              onBlur={(e) => commitLineItemTimesGiven(li, e.target.value)}
+                            />
+                          ) : (
+                            <>{li.times_given ?? 1}×</>
                           )}
                         </td>
                         <td>

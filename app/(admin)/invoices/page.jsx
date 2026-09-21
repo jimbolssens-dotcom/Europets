@@ -58,6 +58,8 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
   const [submitting, setSubmitting] = useState(false);
   const [addCategory, setAddCategory] = useState('product');
   const [paymentLinkError, setPaymentLinkError] = useState(null);
+  const [lineItemDrafts, setLineItemDrafts] = useState({}); // line item id -> { quantity, timesGiven } while typing, before it's saved on blur
+  const [lineItemEditError, setLineItemEditError] = useState(null);
 
   const loadInvoice = () =>
     fetch(`/api/invoices/${summary.id}`)
@@ -138,6 +140,57 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
     loadInvoice();
   }
 
+  // Correcting an already-added line's per-dose quantity or how many times
+  // it was given — same draft-on-blur pattern as the full invoice page (see
+  // app/(admin)/invoices/[id]/page.jsx), so this compact row-expansion view
+  // can fix the same mistakes without opening that page.
+  async function saveLineItemField(itemId, patch) {
+    setLineItemEditError(null);
+    const res = await fetch(`/api/invoices/${summary.id}/line-items/${itemId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setLineItemEditError(data.error || 'Failed to save changes');
+      return;
+    }
+    setLineItemDrafts((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+    loadInvoice();
+  }
+
+  function commitLineItemQuantity(li, value) {
+    const quantity = Number(value);
+    if (!value || Number.isNaN(quantity) || quantity <= 0 || quantity === Number(li.quantity)) {
+      setLineItemDrafts((prev) => {
+        const next = { ...prev };
+        delete next[li.id];
+        return next;
+      });
+      return;
+    }
+    saveLineItemField(li.id, { quantity });
+  }
+
+  function commitLineItemTimesGiven(li, value) {
+    const timesGiven = Number(value);
+    const current = Number(li.times_given) || 1;
+    if (!value || !Number.isInteger(timesGiven) || timesGiven <= 0 || timesGiven === current) {
+      setLineItemDrafts((prev) => {
+        const next = { ...prev };
+        delete next[li.id];
+        return next;
+      });
+      return;
+    }
+    saveLineItemField(li.id, { times_given: timesGiven });
+  }
+
   // Same handoff as the full invoice page's own Payment Link button — no
   // link is generated here, it just points the client at their "Settle
   // Your Bill" page (website/app/settle-bill/[id]), which creates the
@@ -166,7 +219,7 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
 
   const lineItemGroups = invoice ? groupLineItemsByCategory(invoice.line_items) : [];
   const editable = invoice && (invoice.status === 'unpaid' || invoice.status === 'partially_paid');
-  const columnCount = editable ? 5 : 4;
+  const columnCount = editable ? 6 : 5;
 
   return (
     <div className="invoice-row-card">
@@ -204,11 +257,13 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
                 {invoice.paid_at && ` · Paid: ${formatShortDate(invoice.paid_at)}`}
               </p>
 
+              {lineItemEditError && <p className="error">{lineItemEditError}</p>}
               <table>
                 <thead>
                   <tr>
                     <th>Item</th>
                     <th>Qty</th>
+                    <th>Given</th>
                     <th>Unit price</th>
                     <th>Line total</th>
                     {editable && <th></th>}
@@ -220,28 +275,63 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
                       <tr className="invoice-category-row">
                         <td colSpan={columnCount}>{group.label}</td>
                       </tr>
-                      {group.items.map((li) => (
-                        <tr key={li.id}>
-                          <td>{li.description}</td>
-                          <td>
-                            {li.quantity} {li.goods_services?.unit || ''}
-                          </td>
-                          <td>{money(li.unit_price)}</td>
-                          <td>{money(li.line_total)}</td>
-                          {editable && (
+                      {group.items.map((li) => {
+                        const draft = lineItemDrafts[li.id];
+                        return (
+                          <tr key={li.id}>
+                            <td>{li.description}</td>
                             <td>
-                              <button type="button" onClick={() => removeLineItem(li.id)}>
-                                Remove
-                              </button>
+                              {editable ? (
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="qty-input"
+                                  value={draft?.quantity ?? li.quantity}
+                                  onChange={(e) =>
+                                    setLineItemDrafts({ ...lineItemDrafts, [li.id]: { ...draft, quantity: e.target.value } })
+                                  }
+                                  onBlur={(e) => commitLineItemQuantity(li, e.target.value)}
+                                />
+                              ) : (
+                                <>
+                                  {li.quantity} {li.goods_services?.unit || ''}
+                                </>
+                              )}
                             </td>
-                          )}
-                        </tr>
-                      ))}
+                            <td>
+                              {editable ? (
+                                <input
+                                  type="number"
+                                  step="1"
+                                  min="1"
+                                  className="qty-input"
+                                  value={draft?.timesGiven ?? li.times_given ?? 1}
+                                  onChange={(e) =>
+                                    setLineItemDrafts({ ...lineItemDrafts, [li.id]: { ...draft, timesGiven: e.target.value } })
+                                  }
+                                  onBlur={(e) => commitLineItemTimesGiven(li, e.target.value)}
+                                />
+                              ) : (
+                                <>{li.times_given ?? 1}×</>
+                              )}
+                            </td>
+                            <td>{money(li.unit_price)}</td>
+                            <td>{money(li.line_total)}</td>
+                            {editable && (
+                              <td>
+                                <button type="button" onClick={() => removeLineItem(li.id)}>
+                                  Remove
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
                     </Fragment>
                   ))}
                   {invoice.line_items.length === 0 && (
                     <tr>
-                      <td colSpan={5}>No line items yet.</td>
+                      <td colSpan={columnCount}>No line items yet.</td>
                     </tr>
                   )}
                 </tbody>
