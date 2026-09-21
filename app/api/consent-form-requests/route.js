@@ -15,6 +15,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_ATTACHMENT, CONSENT_FORM_LABELS } from '@/lib/consentTemplates';
 import { NextResponse } from 'next/server';
+import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -22,6 +24,14 @@ export async function GET(request) {
   const status = searchParams.get('status') || 'pending';
   if (!clientId) {
     return NextResponse.json({ error: 'client_id is required' }, { status: 400 });
+  }
+  // Public now (see middleware.js) — a non-staff caller must be asking
+  // about their own requests.
+  if (!(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    if (sessionClientId !== clientId) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
   }
 
   const [{ data: visits }, { data: admissions }] = await Promise.all([

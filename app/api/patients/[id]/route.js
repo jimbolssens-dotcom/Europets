@@ -6,6 +6,8 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 
 const EDITABLE_FIELDS = [
   'name',
@@ -23,6 +25,12 @@ const EDITABLE_FIELDS = [
   'profile_photo_url',
 ];
 
+// All a non-staff caller (a logged-in client, editing their own pet from
+// the client app) is ever allowed to touch — everything else in
+// EDITABLE_FIELDS stays staff-only, even though this route is reachable
+// without the staff PIN now (see middleware.js).
+const CLIENT_EDITABLE_FIELDS = ['profile_photo_url'];
+
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('patients')
@@ -33,13 +41,34 @@ export async function GET(request, { params }) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 404 });
   }
+  if (!(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    if (!sessionClientId || sessionClientId !== data.client_id) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+  }
   return NextResponse.json(data);
 }
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
+  const staff = await isStaffRequest(request);
+
+  if (!staff) {
+    const sessionClientId = await getClientSession(request);
+    const { data: owner } = await supabase.from('patients').select('client_id').eq('id', params.id).single();
+    if (!sessionClientId || !owner || sessionClientId !== owner.client_id) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+    const attemptedStaffOnlyField = Object.keys(body).some((field) => !CLIENT_EDITABLE_FIELDS.includes(field));
+    if (attemptedStaffOnlyField) {
+      return NextResponse.json({ error: 'not authorized to edit those fields' }, { status: 403 });
+    }
+  }
+
   const update = {};
-  for (const field of EDITABLE_FIELDS) {
+  const allowedFields = staff ? EDITABLE_FIELDS : CLIENT_EDITABLE_FIELDS;
+  for (const field of allowedFields) {
     if (body[field] === undefined) continue;
     // microchip_number is `text unique` — a plain "not provided" NULL lets
     // any number of patients go unchipped, but an empty string is a real

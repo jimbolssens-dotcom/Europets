@@ -15,10 +15,23 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
+  // Reachable without the staff PIN now (the client app's own chat tab —
+  // see middleware.js) — a non-staff caller must be reading their own
+  // thread. POST (the staff reply) stays off the public path list
+  // entirely, so it still requires the staff PIN as before.
+  if (!(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    if (!sessionClientId || sessionClientId !== params.id) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+  }
+
   const { data, error } = await supabase
     .from('client_messages')
     .select('*, staff(full_name)')

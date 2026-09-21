@@ -11,6 +11,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { seedCoreVaccinationsFromLastGiven } from '@/lib/vaccinationSeeding';
+import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -21,6 +23,18 @@ export async function GET(request) {
   const microchip = searchParams.get('microchip');
   const owner = searchParams.get('owner');
   const patientNumber = searchParams.get('patient_number');
+
+  // This route is reachable without the staff PIN now (the client app's
+  // own "My Pets" list — see middleware.js) — a non-staff caller must be
+  // asking for exactly their own pets, never the broad staff search this
+  // same route also serves (name/species/breed/microchip/owner/
+  // patient_number with no client_id, or another client's id).
+  if (!(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    if (!clientId || sessionClientId !== clientId) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+  }
 
   // Filtering on the owner's name requires the join to be an inner join so
   // the foreign-table filter below actually applies.

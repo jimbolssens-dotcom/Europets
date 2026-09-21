@@ -7,12 +7,28 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const patientId = searchParams.get('patient_id');
   const due = searchParams.get('due');
   const withPatient = due === 'true' || !patientId;
+
+  // Reachable without the staff PIN now (a pet's vaccination history in
+  // the client app — see middleware.js) — a non-staff caller must be
+  // asking about their own pet, never the broad due/overdue-across-every-
+  // patient reminders query (no patient_id) this same route also serves.
+  if (!(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    const { data: owner } = patientId
+      ? await supabase.from('patients').select('client_id').eq('id', patientId).single()
+      : { data: null };
+    if (!sessionClientId || !owner || sessionClientId !== owner.client_id) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+  }
 
   // The due list needs patient/client details too, but doesn't embed them
   // in one PostgREST query (vaccinations -> patients is a relationship

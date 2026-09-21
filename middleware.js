@@ -53,6 +53,46 @@ const PUBLIC_PATTERNS = [
   /^\/api\/hospitalizations\/[^/]+\/summary-pdf$/,
   /^\/api\/clients\/[^/]+\/statement-pdf$/,
   /^\/api\/proforma-invoices\/[^/]+\/quote-pdf$/,
+  // The client-app UI itself, plus its login flow (request/verify code,
+  // pick an account, log out, check the session) — see app/client-app/
+  // layout.js. Every other client-app-facing route below is deliberately
+  // NOT blanket-public: each one still checks (in-route, since middleware
+  // only sees path+method, not who's asking) that the caller is either
+  // staff or the client-app session that matches the client_id/patient_id
+  // actually being requested — see lib/clientAppAuth.js's getClientSession
+  // and every route below that imports it.
+  /^\/client-app(\/.*)?$/,
+  /^\/api\/client-app\/.*$/,
+  // A logged-in client requesting their own appointment (any type,
+  // including a video consult) still goes through the same staff-approved
+  // intake_requests flow as a new-client submission — this is that same
+  // POST, just also reachable by a client_id-carrying request now. The
+  // in-route check (see app/api/intake-requests/route.js) only relaxes
+  // for a request whose client_id matches the caller's own session;
+  // client_id omitted (the anonymous new-client/QR flow) is unaffected.
+  /^\/api\/intake-requests$/,
+];
+
+// GET-only client_id/patient_id-scoped data the client app reads about
+// itself — each route still checks in-route that the id actually
+// requested belongs to the caller (staff, or a matching client-app
+// session), the same "public path, route does the real check" split as
+// HOSPITALIZATION_READ_PATTERNS/VISIT_READ_PATTERNS below. A bare pattern
+// here would also let the *staff-only* unfiltered form of these same
+// routes (e.g. GET /api/invoices with no client_id, or GET
+// /api/vaccinations?due=true) through with no login at all — the in-route
+// check is what keeps those staff-wide queries staff-only.
+const CLIENT_APP_READ_PATTERNS = [
+  /^\/api\/patients$/,
+  /^\/api\/patients\/[^/]+$/,
+  /^\/api\/patients\/[^/]+\/report-overview$/,
+  /^\/api\/appointments$/,
+  /^\/api\/clients\/[^/]+$/,
+  /^\/api\/clients\/[^/]+\/messages$/,
+  /^\/api\/hospitalizations$/,
+  /^\/api\/invoices$/,
+  /^\/api\/vaccinations$/,
+  /^\/api\/consent-form-requests$/,
 ];
 
 // Hospitalization by-id, its /notes, and its /messages are public for the
@@ -92,6 +132,15 @@ function isPublicPath(pathname, method) {
   if (pathname === '/api/attachments' && method === 'GET') return true;
   if (method === 'GET' && HOSPITALIZATION_READ_PATTERNS.some((re) => re.test(pathname))) return true;
   if (method === 'GET' && VISIT_READ_PATTERNS.some((re) => re.test(pathname))) return true;
+  if (method === 'GET' && CLIENT_APP_READ_PATTERNS.some((re) => re.test(pathname))) return true;
+  // The client app's own writes — each still re-checks ownership in-route
+  // (see lib/clientAppAuth.js's getClientSession) the same way the
+  // GET routes above do. PATCH /api/patients/:id also serves staff's much
+  // broader patient-edit form under the same path/method, so its in-route
+  // check additionally restricts a non-staff caller to just
+  // profile_photo_url — see EDITABLE_FIELDS there.
+  if (method === 'POST' && /^\/api\/clients\/[^/]+\/(request-message|app-seen)$/.test(pathname)) return true;
+  if (method === 'PATCH' && /^\/api\/patients\/[^/]+$/.test(pathname)) return true;
   return PUBLIC_PATTERNS.some((re) => re.test(pathname));
 }
 

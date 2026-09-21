@@ -10,8 +10,20 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 
 export async function POST(request, { params }) {
+  // Public now (see middleware.js) — a non-staff caller can only ping
+  // this for themselves, even though the worst case of skipping this
+  // check would just be a wrong last-seen timestamp, not a data leak.
+  if (!(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    if (!sessionClientId || sessionClientId !== params.id) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+  }
+
   const { error } = await supabaseAdmin
     .from('clients')
     .update({ client_app_last_seen_at: new Date().toISOString() })
