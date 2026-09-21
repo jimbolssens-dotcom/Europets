@@ -2484,6 +2484,18 @@ button.secondary:hover {
   flex-wrap: wrap;
 }
 
+/* Owner-set profile photo (patients.profile_photo_url, migration 129) —
+   read-only here, set from the client app's own pet page. */
+.patient-header-avatar {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+  border: 1px solid var(--pink-tint);
+}
+
 .consult-header-row .patient-alerts-panel {
   margin-bottom: 0;
   min-width: 0;
@@ -4176,6 +4188,15 @@ button.secondary:hover {
   white-space: pre-wrap;
 }
 
+.portal-chat-bubble-image {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  border-radius: 8px;
+  margin-bottom: 0.3rem;
+  cursor: zoom-in;
+}
+
 .portal-chat-bubble-mine {
   align-self: flex-end;
   background: var(--pink);
@@ -4480,6 +4501,130 @@ button.secondary:hover {
   border-radius: 6px;
   padding: 0.6rem 0.75rem;
   margin: 0.5rem 0;
+}
+
+/* Client-app-embedded portal pages (?app=1 — see app/portal/intake/[id]
+   and app/portal/hospitalization/[id]) — the .client-app class those pages
+   add themselves picks up the same dark "Hexfield" tokens/background as
+   the rest of the client app (see the CLIENT APP section below), so the
+   trip out to these shared public pages doesn't look like a different
+   site, and the "← Home" link (.portal-home-link) gets them back in. A
+   link sent straight from the desktop to someone with no client-app
+   account renders these same pages with neither — .portal-page alone, no
+   .client-app class — since there's nowhere for that person to go "home"
+   to. */
+.portal-page.client-app {
+  padding: 1.5rem 1rem 3rem;
+}
+
+.portal-page.client-app .portal-home-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.portal-page.client-app .portal-header .tagline,
+.portal-page.client-app .visit-meta,
+.portal-page.client-app .portal-footer,
+.portal-page.client-app .intake-filter-label {
+  color: var(--ash);
+}
+
+.portal-page.client-app .portal-card,
+.portal-page.client-app .card,
+.portal-page.client-app .intake-pet,
+.portal-page.client-app .intake-appointment {
+  background: linear-gradient(165deg, var(--carbon-hi), var(--void-2));
+  border: 1px solid var(--hair);
+  border-top: 1px solid var(--hair);
+  color: var(--chalk);
+}
+
+.portal-page.client-app .portal-card h1,
+.portal-page.client-app .portal-card h2,
+.portal-page.client-app h1,
+.portal-page.client-app h2 {
+  color: var(--chalk);
+  font-family: var(--display);
+}
+
+.portal-page.client-app .portal-status-admitted {
+  background: rgba(230, 24, 109, 0.2);
+  color: var(--hot);
+}
+
+.portal-page.client-app .portal-status-discharged {
+  background: var(--hair);
+  color: var(--ash);
+}
+
+.portal-page.client-app .portal-note {
+  border-top-color: var(--hair);
+}
+
+.portal-page.client-app .portal-note-date {
+  color: var(--hot);
+}
+
+.portal-page.client-app .portal-note-author {
+  color: var(--ash-dim);
+}
+
+.portal-page.client-app .portal-chat-bubble-theirs {
+  background: var(--carbon);
+  color: var(--chalk);
+}
+
+.portal-page.client-app .portal-chat-bubble-theirs .portal-chat-bubble-meta {
+  color: var(--ash);
+}
+
+.portal-page.client-app input,
+.portal-page.client-app select,
+.portal-page.client-app textarea {
+  background: var(--carbon);
+  border: 1px solid var(--hair);
+  color: var(--chalk);
+}
+
+.portal-page.client-app form.card label {
+  color: var(--chalk);
+}
+
+.portal-page.client-app .intake-slot-button {
+  background: var(--carbon);
+  border-color: var(--hair);
+  color: var(--chalk);
+}
+
+.portal-page.client-app .intake-slot-button:hover {
+  border-color: var(--hot);
+  color: var(--hot);
+}
+
+.portal-page.client-app .intake-slot-selected,
+.portal-page.client-app .intake-slot-selected:hover {
+  background: var(--magenta);
+  border-color: var(--magenta);
+  color: white;
+}
+
+.portal-page.client-app .intake-slot-available {
+  background: rgba(230, 24, 109, 0.15);
+  border-color: var(--hair-hot);
+}
+
+.portal-page.client-app .error {
+  color: var(--hot);
+}
+
+.portal-page.client-app button.secondary {
+  background: transparent;
+  border: 1px solid var(--hair-hot);
+  color: var(--hot);
+}
+
+.portal-page.client-app button.secondary:hover {
+  background: var(--hair-hot);
 }
 
 .possible-duplicate-warning {
@@ -6079,6 +6224,41 @@ form.card.admit-patient-form {
   margin-bottom: 1rem;
 }
 
+/* Deliberately the least prominent thing on the client-app dashboard —
+   logging out isn't something a returning client should stumble into, so
+   it's tucked at the very bottom instead of sitting next to the greeting
+   (see app/client-app/page.js). Reuses the .client-app dark/light --ash
+   tokens rather than .mobile-link-btn's brand-pink treatment, which would
+   make it read as a call to action instead of an easy-to-miss escape
+   hatch. */
+.client-app-logout-row {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.client-app-logout-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.72rem;
+  color: #999;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.client-app[data-theme='dark'] .client-app-logout-btn {
+  color: var(--ash-dim);
+}
+
+.client-app-logout-btn:hover {
+  color: #666;
+}
+
+.client-app[data-theme='dark'] .client-app-logout-btn:hover {
+  color: var(--ash);
+}
+
 .mobile-section-header {
   font-size: 0.85rem;
   text-transform: uppercase;
@@ -6408,6 +6588,11 @@ form.card.admit-patient-form {
   --body: var(--font-body), system-ui, -apple-system, sans-serif;
   --mono: var(--font-mono), ui-monospace, 'SF Mono', Menlo, monospace;
   --hex: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  /* Pink paw-print pointer, client app only — only ever visible on a
+     mouse (there's no cursor to swap on a phone), so this mostly shows up
+     for anyone browsing/testing the app on a desktop. Hotspot (16 23) is
+     roughly the center of the main pad. */
+  --paw-cursor: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj4KICA8ZyBmaWxsPSIjZmYzZDhjIiBzdHJva2U9IiM1YzAyMmMiIHN0cm9rZS13aWR0aD0iMS4xIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICAgIDxlbGxpcHNlIGN4PSIxNiIgY3k9IjIyLjUiIHJ4PSI4LjYiIHJ5PSI2LjYiLz4KICAgIDxjaXJjbGUgY3g9IjcuMiIgY3k9IjE1IiByPSIzLjMiLz4KICAgIDxjaXJjbGUgY3g9IjEyLjYiIGN5PSI5LjYiIHI9IjMuNSIvPgogICAgPGNpcmNsZSBjeD0iMTkuNCIgY3k9IjkuNiIgcj0iMy41Ii8+CiAgICA8Y2lyY2xlIGN4PSIyNC44IiBjeT0iMTUiIHI9IjMuMyIvPgogIDwvZz4KPC9zdmc+") 16 23, pointer;
 
   min-height: 100vh;
   background-color: var(--void);
@@ -6442,6 +6627,18 @@ form.card.admit-patient-form {
   --hair-hot: var(--pink-tint);
 
   background-image: none;
+}
+
+/* Every real click target in the client app gets the paw cursor — plain
+   text inputs/textareas are deliberately left alone so typing still shows
+   the normal text-select cursor. */
+.client-app a,
+.client-app button,
+.client-app summary,
+.client-app select,
+.client-app [role='link'],
+.client-app [role='button'] {
+  cursor: var(--paw-cursor);
 }
 
 .client-app h1 {
@@ -6608,12 +6805,22 @@ form.card.admit-patient-form {
 }
 
 /* The "pulse" divider (see EcgLine.jsx) — a heartbeat trace sweeping over
-   a faint base line, the site's own transition out of its hero. */
+   a faint base line, the site's own transition out of its hero.
+   Full-bleed via the viewport-width technique (left:50% + translateX)
+   rather than a negative margin sized to match some ancestor's padding —
+   on the dashboard that ancestor is .client-app three levels up, and the
+   -1rem guess left a visible gap on real devices (the near-black hero
+   backdrop was hiding the exact same gap on the login screen). This way
+   it reaches the true viewport edge regardless of how deep it's nested or
+   what padding sits above it. */
 .client-app-ecg {
   position: relative;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
   height: clamp(46px, 12vw, 64px);
   overflow: hidden;
-  margin: 0 -1rem 1.25rem;
+  margin: 0 0 1.25rem;
   background: linear-gradient(180deg, var(--void) 0%, var(--void-2) 100%);
 }
 
@@ -6891,6 +7098,146 @@ form.card.admit-patient-form {
 
 .client-app-pet-admitted-link .client-app-hex-face {
   font-size: 0.85rem;
+}
+
+/* Owner-set profile photo (patients.profile_photo_url, migration 129) —
+   shows on the pet's own page (large, tappable to change) and as a small
+   avatar on each row of My Pets. Token-based (--carbon/--hair/--chalk),
+   not a hardcoded color, so it reads correctly in both the dark and light
+   client-app themes without a separate rule for each. */
+.client-app-pet-header {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.client-app-pet-header h1 {
+  margin-bottom: 0.15rem;
+}
+
+.client-app-pet-avatar-wrap {
+  position: relative;
+  flex: none;
+}
+
+.client-app-pet-avatar-btn {
+  position: relative;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* Tapping the avatar asks camera-or-library rather than jumping straight
+   into either — a plain <input type="file"> without a capture hint
+   already prompts for this on some browsers, but not reliably across
+   iOS/Android/installed-PWA combinations, so this makes the choice
+   explicit instead of hoping the OS shows it. The backdrop is just an
+   invisible full-screen click-catcher to dismiss on an outside tap. */
+.client-app-pet-avatar-choice-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+
+.client-app-pet-avatar-choice {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  background: var(--carbon-hi);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.client-app-pet-avatar-choice button {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  color: var(--chalk);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.client-app-pet-avatar-choice button:first-child {
+  border-bottom: 1px solid var(--hair);
+}
+
+.client-app-pet-avatar-choice button:hover {
+  background: var(--hair);
+}
+
+.client-app-pet-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--carbon);
+  border: 1px solid var(--hair);
+  font-size: 1.8rem;
+}
+
+.client-app-pet-avatar-edit {
+  position: absolute;
+  right: -0.15rem;
+  bottom: -0.15rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--magenta);
+  font-size: 0.7rem;
+  box-shadow: 0 0 0 2px var(--void-2);
+}
+
+.client-app-pet-avatar-input {
+  display: none;
+}
+
+.client-app-pet-card-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.client-app-pet-avatar-sm {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--carbon);
+  border: 1px solid var(--hair);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+.client-app-pet-card-row .mobile-list-title,
+.client-app-pet-card-row .mobile-list-meta {
+  display: block;
 }
 
 /* A standalone confirmation icon sitting above a heading (the consent

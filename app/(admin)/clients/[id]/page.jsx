@@ -28,6 +28,7 @@ export default function ClientDetailPage() {
   const [sendingReviewLink, setSendingReviewLink] = useState(false);
   const [reviewLinkError, setReviewLinkError] = useState(null);
   const [paymentLinkError, setPaymentLinkError] = useState(null);
+  const [clientAppLinkError, setClientAppLinkError] = useState(null);
 
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
@@ -156,6 +157,22 @@ export default function ClientDetailPage() {
     } else {
       navigator.clipboard.writeText(url);
       setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
+    }
+  }
+
+  // Same pattern as sendPaymentLink above — no link to generate, /client-app
+  // is a standing page any existing client can log into themselves (phone
+  // number + WhatsApp code, see app/client-app/page.js).
+  function sendClientAppLink() {
+    setClientAppLinkError(null);
+    const url = `${window.location.origin}/client-app`;
+    const digits = (client.phone || '').replace(/\D/g, '');
+    const message = `Hi ${client.full_name}! You can now view your pet(s), invoices, and appointments anytime here: ${url}`;
+    if (digits.length > 3) {
+      openWhatsApp(client.phone, message);
+    } else {
+      navigator.clipboard.writeText(url);
+      setClientAppLinkError('No phone number on file — link copied to clipboard instead.');
     }
   }
 
@@ -528,10 +545,14 @@ export default function ClientDetailPage() {
         </button>{' '}
         <button type="button" onClick={sendReviewLink} disabled={sendingReviewLink}>
           {sendingReviewLink ? 'Sending...' : '⭐ Review'}
+        </button>{' '}
+        <button type="button" onClick={sendClientAppLink}>
+          📱 Client App
         </button>
       </p>
       {bookingLinkError && <p className="error">{bookingLinkError}</p>}
       {reviewLinkError && <p className="error">{reviewLinkError}</p>}
+      {clientAppLinkError && <p className="error">{clientAppLinkError}</p>}
 
       <h2>Emirates ID</h2>
       {!client.emirates_id && <ScanIdButton onScanned={handleScanned} />}

@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
+import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +26,13 @@ function recordHref(row) {
 }
 
 export async function GET(request, { params }) {
+  if (!(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    const { data: owner } = await supabase.from('patients').select('client_id').eq('id', params.id).single();
+    if (!sessionClientId || !owner || sessionClientId !== owner.client_id) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+  }
   const { data: visits } = await supabase.from('visits').select('id, started_at, ai_summary').eq('patient_id', params.id);
   const { data: hospitalizations } = await supabase.from('hospitalizations').select('id, admitted_at, ai_summary').eq('patient_id', params.id);
   const visitIds = (visits || []).map((v) => v.id);

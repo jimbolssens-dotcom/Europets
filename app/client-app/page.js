@@ -57,6 +57,8 @@ export default function ClientAppHomePage() {
   const [reminders, setReminders] = useState([]);
   const [consentRequests, setConsentRequests] = useState([]);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
+  const [videoBookingLoading, setVideoBookingLoading] = useState(false);
+  const [videoBookingError, setVideoBookingError] = useState(null);
 
   useEffect(() => {
     if (!ready || !clientId) return;
@@ -169,42 +171,6 @@ export default function ClientAppHomePage() {
     }
   }
 
-  // Staff-only bypass (see app/api/client-app/auth/staff-login) — skips the
-  // WhatsApp code entirely. Safe here specifically because /client-app is
-  // still reachable by nobody but staff (not in PUBLIC_PATTERNS yet), so
-  // everyone who can even load this page already holds the staff PIN
-  // cookie the bypass route itself re-checks.
-  async function handleStaffBypass() {
-    const digits = normalizePhoneDigits(phoneInput);
-    if (digits.length < 12) {
-      setError('Enter a valid phone number.');
-      return;
-    }
-    setSubmitting(true);
-    setError('');
-    try {
-      const res = await fetch('/api/client-app/auth/staff-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: digits }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Something went wrong.');
-      if (data.clientId) {
-        login(data.clientId);
-      } else {
-        setPhoneDigits(digits);
-        setMatches(data.matches);
-        setVerifiedPhoneToken(data.verifiedPhoneToken);
-        setStep('picker');
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   async function handleCodeSubmit(e) {
     e.preventDefault();
     if (!codeInput.trim()) return;
@@ -260,6 +226,31 @@ export default function ClientAppHomePage() {
     setDevCode(null);
   }
 
+  // Same "start a fresh intake request, open its portal link" flow as
+  // Appointments' own "Book a New Appointment" (app/client-app/appointments)
+  // — just pre-set to a video consult via ?type=video (see the matching
+  // effect on app/portal/intake/[id]). A client can never start a call
+  // outright from here: this only ever requests a slot, which still goes
+  // through the normal staff approval/scheduling step like any other
+  // appointment request.
+  async function startVideoBooking() {
+    setVideoBookingError(null);
+    setVideoBookingLoading(true);
+    try {
+      const res = await fetch('/api/intake-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not start booking — please try again.');
+      window.location.href = `/portal/intake/${data.id}?app=1&type=video`;
+    } catch (err) {
+      setVideoBookingError(err.message);
+      setVideoBookingLoading(false);
+    }
+  }
+
   if (!ready) return null;
 
   if (!clientId) {
@@ -277,14 +268,6 @@ export default function ClientAppHomePage() {
           />
           <button type="submit" disabled={submitting}>
             {submitting ? 'Sending code...' : 'Send code'}
-          </button>
-          <button
-            type="button"
-            className="mobile-link-btn"
-            onClick={handleStaffBypass}
-            disabled={submitting}
-          >
-            Staff: skip code (testing only)
           </button>
         </form>
       ) : step === 'code' ? (
@@ -310,9 +293,7 @@ export default function ClientAppHomePage() {
         {theme === 'light' ? (
           <>
             <div className="mobile-heading-row">
-              <a href="/" className="mobile-home-logo-link">
-                <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
-              </a>
+              <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
             </div>
             <p className="mobile-subtitle client-app-login-intro">
               {step === 'code'
@@ -337,9 +318,7 @@ export default function ClientAppHomePage() {
               <HexfieldCanvas />
               <div className="client-app-hero-content">
                 <div className="mobile-heading-row">
-                  <a href="/" className="mobile-home-logo-link">
-                    <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
-                  </a>
+                  <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
                 </div>
                 <p className="client-app-login-eyebrow">Client Portal</p>
                 <p className="mobile-subtitle client-app-login-intro">
@@ -394,21 +373,16 @@ export default function ClientAppHomePage() {
   return (
     <div className="mobile-page client-app-home">
       <div className="mobile-heading-row">
-        <a href="/" className="mobile-home-logo-link">
-          <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
-        </a>
+        <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
         <span className="mobile-greeting">Hello, {client?.full_name?.split(' ')[0] || 'there'}!</span>
       </div>
-      <button type="button" className="mobile-link-btn" onClick={logout}>
-        Not you? Switch account
-      </button>
 
       {theme === 'dark' && <EcgLine />}
 
       {!loadingDashboard && openAdmissions.length > 0 && (
         <div className="client-app-admission-alert">
           {openAdmissions.map((h) => (
-            <a key={h.id} href={`/portal/hospitalization/${h.id}`} className="client-app-admission-alert-link">
+            <a key={h.id} href={`/portal/hospitalization/${h.id}?app=1`} className="client-app-admission-alert-link">
               <HexIcon>🏥</HexIcon>
               <span>{h.patients?.name || 'Your pet'} is currently at the clinic — tap for updates</span>
             </a>
@@ -469,13 +443,33 @@ export default function ClientAppHomePage() {
           <HexIcon>📅</HexIcon>
           <span>Appointments</span>
         </a>
+        <a href="/client-app/messages" className="mobile-square-tile">
+          <HexIcon>💬</HexIcon>
+          <span>Messages</span>
+        </a>
+        <button
+          type="button"
+          className="mobile-square-tile"
+          onClick={startVideoBooking}
+          disabled={videoBookingLoading}
+        >
+          <HexIcon>🎥</HexIcon>
+          <span>{videoBookingLoading ? 'Opening…' : 'Video Consult'}</span>
+        </button>
       </div>
+      {videoBookingError && <p className="client-app-login-error">{videoBookingError}</p>}
 
       <p className="mobile-hint">
         Add this to your home screen for one-tap access: on iPhone, tap Share, then &quot;Add to Home
         Screen&quot;. On Android, tap the ⋮ menu, then &quot;Add to Home screen&quot; or &quot;Install
         app&quot;.
       </p>
+
+      <div className="client-app-logout-row">
+        <button type="button" className="client-app-logout-btn" onClick={logout}>
+          Log out
+        </button>
+      </div>
     </div>
   );
 }

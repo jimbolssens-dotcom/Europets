@@ -30,12 +30,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import SpeciesField from '@/app/_components/SpeciesField';
 import PetAttributeField from '@/app/_components/PetAttributeField';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
 import { EMIRATES } from '@/lib/emirates';
 import { classifySpecies } from '@/lib/species';
 import {
+  CLIENT_APPOINTMENT_TYPES,
   clientAppointmentTypeEntriesForSex,
   clientBookingDurationMinutes,
   isSurgeryType,
@@ -65,6 +67,12 @@ function todayISODate() {
 export default function IntakePortalPage() {
   const { id } = useParams();
   const searchParams = useSearchParams();
+  // Set by every link the client app itself generates (see app/client-app/
+  // pets/[id] and app/client-app/appointments) — never present on a link
+  // sent straight from the desktop to someone with no client-app account,
+  // who has nowhere to go "home" to. Drives both the dark theme below and
+  // the "← Home" link.
+  const fromApp = searchParams.get('app') === '1';
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -150,6 +158,28 @@ export default function IntakePortalPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request]);
+
+  // A link generated for a specific appointment type (see the client
+  // app's home-screen "Video Consult" tile) carries ?type=video —
+  // pre-select it so all that's left is picking which pet it's for,
+  // instead of hunting for it in the dropdown themselves. Turning on
+  // "Request an appointment" waits for a pet to actually be chosen (the
+  // section it belongs to doesn't render before then) — see the second
+  // effect below.
+  useEffect(() => {
+    const typeParam = searchParams.get('type');
+    if (typeParam && CLIENT_APPOINTMENT_TYPES.includes(typeParam)) {
+      setAppointmentType(typeParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (petChoice && searchParams.get('type')) {
+      setWantsAppointment(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [petChoice]);
 
   // Species-gated on purpose (see updatePet's own reset of this field) —
   // an owner can only pick from protocols that actually apply to the
@@ -423,7 +453,12 @@ export default function IntakePortalPage() {
   const hasAppointmentRequest = wantsAppointment && (isCustomSurgery ? Boolean(customSurgeryReason.trim()) : Boolean(selectedSlot));
 
   return (
-    <div className="portal-page">
+    <div className={`portal-page${fromApp ? ' client-app' : ''}`}>
+      {fromApp && (
+        <Link href="/client-app" className="mobile-link-btn portal-home-link">
+          ← Home
+        </Link>
+      )}
       <header className="portal-header">
         <img src="/logo.png" alt="Europets Clinic" />
         <p className="tagline">Kind, caring, and compassionate veterinary care</p>
@@ -785,6 +820,12 @@ export default function IntakePortalPage() {
                       <p className="visit-meta">
                         🕘 Surgeries (spay, castration, dental, and anything else) are only scheduled in the
                         morning.
+                      </p>
+                    )}
+                    {appointmentType === 'video' && (
+                      <p className="visit-meta">
+                        🎥 Once confirmed, we&apos;ll send you a link to join the call at your appointment
+                        time.
                       </p>
                     )}
 

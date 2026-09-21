@@ -317,6 +317,9 @@ export default function PatientDetailPage() {
       </p>
       <div className="consult-header-row">
         <h1>
+          {patient.profile_photo_url && (
+            <img src={patient.profile_photo_url} alt="" className="patient-header-avatar" />
+          )}
           {patient.name} <span>(Patient #{patient.patient_number})</span>
           {patient.deceased && <span className="error"> · Deceased</span>}
         </h1>

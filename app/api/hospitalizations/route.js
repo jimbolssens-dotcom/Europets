@@ -23,6 +23,8 @@ import { attachCages } from '@/lib/attachCages';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
 import { seedVitalsFromOrigin, seedVitalsFromVisit } from '@/lib/hospitalizationVitalsSync';
 import { NextResponse } from 'next/server';
+import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 
 // The existing twice-daily "morning by 12:00, afternoon by 18:00" alarm —
 // originally satisfied by any worksheet entry at all — now specifically
@@ -127,6 +129,31 @@ export async function GET(request) {
   const appointmentId = searchParams.get('appointment_id');
   const originatingHospitalizationId = searchParams.get('originating_hospitalization_id');
   const kind = searchParams.get('kind');
+
+  // Reachable without the staff PIN now (the client app checks for an
+  // open admission by client_id or patient_id — see middleware.js) — a
+  // non-staff caller must be asking about themselves or their own pet,
+  // never the broad staff dashboard queries (status=admitted with no
+  // client_id/patient_id, or the originating_*/appointment_id/kind
+  // filters) this same route also serves.
+  if (!(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    if (!sessionClientId) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+    if (clientId) {
+      if (sessionClientId !== clientId) {
+        return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+      }
+    } else if (patientId) {
+      const { data: owner } = await supabase.from('patients').select('client_id').eq('id', patientId).single();
+      if (!owner || sessionClientId !== owner.client_id) {
+        return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+      }
+    } else {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+  }
 
   let query = supabase
     .from('hospitalizations')

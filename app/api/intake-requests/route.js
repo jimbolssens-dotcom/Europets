@@ -26,6 +26,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { phoneSearchDigits, clientIdsWithPhoneLike } from '@/lib/phoneMatch';
+import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 
 export async function GET() {
   const { data, error } = await supabase
@@ -43,6 +45,18 @@ export async function POST(request) {
   const body = await request.json().catch(() => ({}));
 
   let clientId = body.client_id || null;
+
+  // Reachable without the staff PIN now (the client app's own "Book an
+  // Appointment"/"Video Consult" flow — see middleware.js) — a non-staff
+  // caller carrying a client_id must be booking for themselves. The
+  // anonymous new-client/QR path (no client_id at all) is untouched, and
+  // staff can still book on behalf of any client as before.
+  if (clientId && !(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    if (sessionClientId !== clientId) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+  }
 
   if (clientId) {
     const { data: client, error: clientError } = await supabase

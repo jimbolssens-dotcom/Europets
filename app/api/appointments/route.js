@@ -34,6 +34,8 @@ import {
   findAppointmentConflict,
   checkStaffRoster,
 } from '@/lib/appointmentScheduling';
+import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -42,6 +44,17 @@ export async function GET(request) {
   const roomId = searchParams.get('room_id');
   const vetId = searchParams.get('vet_id');
   const clientId = searchParams.get('client_id');
+
+  // Reachable without the staff PIN now (the client app's own Appointments
+  // tab — see middleware.js) — a non-staff caller must be asking for
+  // exactly their own appointments, never the date/month schedule views
+  // this same route also serves for staff.
+  if (!(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    if (!clientId || sessionClientId !== clientId) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+  }
 
   let query = supabase
     .from('appointments')

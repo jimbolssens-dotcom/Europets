@@ -24,7 +24,9 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const { data, error } = await supabase
     .from('client_messages')
-    .select('id, client_id, phone, channel, sender, body, created_at, clients(full_name, client_number, phone)')
+    .select(
+      'id, client_id, phone, channel, sender, body, media_type, created_at, clients(full_name, client_number, phone)'
+    )
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -41,7 +43,9 @@ export async function GET() {
         client: row.clients,
         phone: row.phone,
         channel: row.channel,
-        last_message: row.body,
+        // A photo with no caption has an empty body — fall back to a
+        // short label so the inbox row isn't just blank.
+        last_message: row.body || (row.media_type === 'image' ? '📷 Photo' : row.body),
         last_sender: row.sender,
         last_message_at: row.created_at,
         pending: row.sender === 'client',

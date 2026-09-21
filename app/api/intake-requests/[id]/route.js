@@ -264,8 +264,14 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
   let appointmentStart;
   let appointmentEnd;
   if (intake.appointment_type) {
-    if (!roomId) {
+    // A video consult has no physical room at all (same as a staff-booked
+    // one — see lib/appointmentScheduling.js's findAppointmentConflict) —
+    // every other type still needs one.
+    if (!roomId && intake.appointment_type !== 'video') {
       return NextResponse.json({ error: 'a room is required to approve an appointment request' }, { status: 400 });
+    }
+    if (intake.appointment_type === 'video') {
+      roomId = null;
     }
     appointmentVetId = overrides.vetId || intake.requested_vet_id;
     appointmentStart = new Date(overrides.startTime || intake.requested_start_time);
@@ -414,7 +420,10 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
         client_id: client.id,
         room_id: roomId,
         vet_id: appointmentVetId,
-        type: intake.appointment_type === 'consult' ? 'consult' : 'surgery',
+        type:
+          intake.appointment_type === 'consult' || intake.appointment_type === 'video'
+            ? intake.appointment_type
+            : 'surgery',
         start_time: appointmentStart.toISOString(),
         duration_minutes: Math.round((appointmentEnd.getTime() - appointmentStart.getTime()) / 60000),
         status: 'booked',

@@ -8,7 +8,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
@@ -16,6 +16,7 @@ import HexIcon from '@/app/_components/HexIcon';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { reportPdfHref, reportText, reportKindIcon } from '@/lib/clientAppReports';
 import { dueStatus, formatDate } from '@/lib/vaccinationDueStatus';
+import { uploadPatientProfilePhoto } from '@/lib/attachments';
 
 // Overdue/due-soon/due-later maps onto the same three-color pill the
 // Invoices tab already uses for unpaid/partially-paid/paid — reused here
@@ -47,6 +48,11 @@ export default function ClientAppPetHistoryPage() {
   const [notFound, setNotFound] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState(null);
+  const [showPhotoChoice, setShowPhotoChoice] = useState(false);
+  const cameraInputRef = useRef(null);
+  const libraryInputRef = useRef(null);
 
   useEffect(() => {
     if (ready && !clientId) router.replace('/client-app');
@@ -84,6 +90,28 @@ export default function ClientAppPetHistoryPage() {
     };
   }, [ready, clientId, id]);
 
+  // Owner-set profile picture (patients.profile_photo_url, migration 129)
+  // — shown throughout the app wherever this pet appears (this page, the
+  // My Pets list) and, once the same field is wired in elsewhere, on the
+  // admin side and eventually reports/messages too. Uploading straight
+  // away on file-select rather than a separate "save" step — there's
+  // nothing else on this screen to batch it with.
+  async function handlePhotoChange(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setPhotoError(null);
+    setUploadingPhoto(true);
+    try {
+      const updated = await uploadPatientProfilePhoto(id, file);
+      setPet((prev) => ({ ...prev, profile_photo_url: updated.profile_photo_url }));
+    } catch (err) {
+      setPhotoError(err.message);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
   // Reuses the clinic's existing client-booking system (the same
   // intake_requests + /portal/intake/:id flow "Send Booking Link" starts
   // from the Clients page) rather than rebuilding the slot-picker/roster/
@@ -105,7 +133,7 @@ export default function ClientAppPetHistoryPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Could not start booking — please try again.');
-      window.location.href = `/portal/intake/${data.id}?pet=${id}`;
+      window.location.href = `/portal/intake/${data.id}?pet=${id}&app=1`;
     } catch (err) {
       setBookingError(err.message);
       setBookingLoading(false);
@@ -132,11 +160,73 @@ export default function ClientAppPetHistoryPage() {
       <Link href="/client-app/pets" className="mobile-link-btn">
         ← My Pets
       </Link>
-      <h1>{pet.name}</h1>
-      <p className="mobile-subtitle">
-        {[pet.species, pet.breed, age].filter(Boolean).join(' · ')}
-        {pet.current_weight_kg ? ` · ${pet.current_weight_kg} kg` : ''}
-      </p>
+
+      <div className="client-app-pet-header">
+        <div className="client-app-pet-avatar-wrap">
+          <button
+            type="button"
+            className="client-app-pet-avatar-btn"
+            onClick={() => setShowPhotoChoice((v) => !v)}
+            disabled={uploadingPhoto}
+            title={pet.profile_photo_url ? 'Change photo' : 'Add a photo'}
+          >
+            {pet.profile_photo_url ? (
+              <img src={pet.profile_photo_url} alt="" className="client-app-pet-avatar" />
+            ) : (
+              <span className="client-app-pet-avatar client-app-pet-avatar-placeholder">🐾</span>
+            )}
+            <span className="client-app-pet-avatar-edit">{uploadingPhoto ? '…' : '✏️'}</span>
+          </button>
+          {showPhotoChoice && (
+            <>
+              <div className="client-app-pet-avatar-choice-backdrop" onClick={() => setShowPhotoChoice(false)} />
+              <div className="client-app-pet-avatar-choice">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPhotoChoice(false);
+                    cameraInputRef.current?.click();
+                  }}
+                >
+                  📷 Take Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPhotoChoice(false);
+                    libraryInputRef.current?.click();
+                  }}
+                >
+                  🖼️ Choose from Library
+                </button>
+              </div>
+            </>
+          )}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoChange}
+            className="client-app-pet-avatar-input"
+          />
+          <input
+            ref={libraryInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoChange}
+            className="client-app-pet-avatar-input"
+          />
+        </div>
+        <div>
+          <h1>{pet.name}</h1>
+          <p className="mobile-subtitle">
+            {[pet.species, pet.breed, age].filter(Boolean).join(' · ')}
+            {pet.current_weight_kg ? ` · ${pet.current_weight_kg} kg` : ''}
+          </p>
+        </div>
+      </div>
+      {photoError && <p className="client-app-login-error">{photoError}</p>}
 
       <button type="button" onClick={startBooking} disabled={bookingLoading}>
         {bookingLoading ? 'Opening booking form...' : `📅 Book an Appointment for ${pet.name}`}
@@ -145,7 +235,7 @@ export default function ClientAppPetHistoryPage() {
 
       {admission && (
         <div className="client-app-admission-alert">
-          <a href={`/portal/hospitalization/${admission.id}`} className="client-app-admission-alert-link">
+          <a href={`/portal/hospitalization/${admission.id}?app=1`} className="client-app-admission-alert-link">
             <HexIcon>🏥</HexIcon>
             <span>Currently at the clinic — tap for updates</span>
           </a>

@@ -11,6 +11,8 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -18,6 +20,17 @@ export async function GET(request) {
   const status = searchParams.get('status');
   const visitId = searchParams.get('visit_id');
   const hospitalizationId = searchParams.get('hospitalization_id');
+
+  // Reachable without the staff PIN now (the client app's own Invoices
+  // tab — see middleware.js) — a non-staff caller must be asking for
+  // their own invoices, never the broad staff queries (e.g. status=unpaid
+  // with no client_id) this same route also serves.
+  if (!(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    if (!clientId || sessionClientId !== clientId) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+  }
 
   let query = supabase
     .from('invoices')

@@ -8,10 +8,21 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request, { params }) {
+  // Public now (see middleware.js) since it's the client app's own send —
+  // a non-staff caller must be posting as themselves.
+  if (!(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    if (!sessionClientId || sessionClientId !== params.id) {
+      return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    }
+  }
+
   const body = await request.json().catch(() => ({}));
   const message = typeof body.message === 'string' ? body.message.trim().slice(0, 2000) : '';
 

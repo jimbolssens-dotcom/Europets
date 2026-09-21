@@ -78,14 +78,23 @@ export default function ClientAppPetsPage() {
                     if (e.key === 'Enter') router.push(`/client-app/pets/${pet.id}`);
                   }}
                 >
-                  <span className="mobile-list-title">{pet.name}</span>
-                  <span className="mobile-list-meta">
-                    {[pet.species, pet.breed, age].filter(Boolean).join(' · ')}
-                    {pet.current_weight_kg ? ` · ${pet.current_weight_kg} kg` : ''}
-                  </span>
+                  <div className="client-app-pet-card-row">
+                    {pet.profile_photo_url ? (
+                      <img src={pet.profile_photo_url} alt="" className="client-app-pet-avatar-sm" />
+                    ) : (
+                      <span className="client-app-pet-avatar-sm client-app-pet-avatar-placeholder">🐾</span>
+                    )}
+                    <div>
+                      <span className="mobile-list-title">{pet.name}</span>
+                      <span className="mobile-list-meta">
+                        {[pet.species, pet.breed, age].filter(Boolean).join(' · ')}
+                        {pet.current_weight_kg ? ` · ${pet.current_weight_kg} kg` : ''}
+                      </span>
+                    </div>
+                  </div>
                   {admission && (
                     <a
-                      href={`/portal/hospitalization/${admission.id}`}
+                      href={`/portal/hospitalization/${admission.id}?app=1`}
                       className="client-app-pet-admitted-link"
                       onClick={(e) => e.stopPropagation()}
                     >

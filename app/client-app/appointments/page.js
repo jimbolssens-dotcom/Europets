@@ -73,7 +73,7 @@ export default function ClientAppAppointmentsPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Could not start booking — please try again.');
-      window.location.href = `/portal/intake/${data.id}`;
+      window.location.href = `/portal/intake/${data.id}?app=1`;
     } catch (err) {
       setBookingError(err.message);
       setBookingLoading(false);
