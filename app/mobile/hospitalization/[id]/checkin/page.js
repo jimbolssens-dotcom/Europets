@@ -19,10 +19,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CHECKIN_CATEGORIES } from '@/lib/hospitalizationCheckin';
-import { MOBILE_STAFF_STORAGE_KEY } from '@/app/_components/useMobileStaff';
+import { MOBILE_STAFF_STORAGE_KEY, useMobileStaff } from '@/app/_components/useMobileStaff';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import TempDial from '@/app/_components/TempDial';
 import { uploadAttachment } from '@/lib/attachments';
+import { t, checkinCategoryLabel, checkinOptionLabel } from '@/lib/cleanerTranslations';
 
 // The dial gives an exact reading, which buildEmpathicCheckinText already
 // prefers over the qualitative feel whenever both are present — but
@@ -50,6 +51,12 @@ function todayISODate() {
 export default function MobileHospitalizationCheckinPage() {
   const { id } = useParams();
   const router = useRouter();
+  // This page is only ever reached from the cage layout when the current
+  // phone is a cleaner (see app/mobile/hospitalization/page.js), but this
+  // is a plain URL like any other — re-checking here rather than assuming
+  // it means a stray link (or a bookmark) can't ever get someone else's
+  // English-reading screen replaced with Sinhala.
+  const { isCleaner } = useMobileStaff();
   const [admission, setAdmission] = useState(null);
   const [authorId, setAuthorId] = useState('');
   const [selection, setSelection] = useState(emptySelection);
@@ -151,7 +158,7 @@ export default function MobileHospitalizationCheckinPage() {
       {admission && (
         <>
           <h1>
-            {admission.cages?.name || 'No cage'} — {admission.patients?.name}
+            {admission.cages?.name || t('No cage', isCleaner)} — {admission.patients?.name}
             {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''}
           </h1>
           <p className="mobile-subtitle">
@@ -159,15 +166,17 @@ export default function MobileHospitalizationCheckinPage() {
             {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''}
           </p>
 
-          {saved && <p className="mobile-saved">✅ Check-in logged.</p>}
+          {saved && <p className="mobile-saved">{t('✅ Check-in logged.', isCleaner)}</p>}
           {uploadError && <p className="error">{uploadError}</p>}
 
           <div className="checkin-section">
             <h2 className="checkin-section-label">
-              Temperature
+              {t('Temperature', isCleaner)}
               {temperatureC !== '' && <span className="checkin-temp-badge">{Number(temperatureC).toFixed(1)}°C</span>}
             </h2>
-            <p className="checkin-temp-hint">Press and hold, then drag up (warmer) or down (cooler) — optional.</p>
+            <p className="checkin-temp-hint">
+              {t('Press and hold, then drag up (warmer) or down (cooler) — optional.', isCleaner)}
+            </p>
             <TempDial
               key={dialResetKey}
               value={temperatureC !== '' ? Number(temperatureC) : null}
@@ -186,14 +195,14 @@ export default function MobileHospitalizationCheckinPage() {
                   setDialResetKey((k) => k + 1);
                 }}
               >
-                ✕ Clear reading
+                {t('✕ Clear reading', isCleaner)}
               </button>
             )}
           </div>
 
           {CHECKIN_CATEGORIES.filter((c) => c.key !== TEMPERATURE_CATEGORY_KEY).map((category) => (
             <div key={category.key} className="checkin-section">
-              <h2 className="checkin-section-label">{category.label}</h2>
+              <h2 className="checkin-section-label">{checkinCategoryLabel(category, isCleaner)}</h2>
               <div className="checkin-tile-grid">
                 {category.options.map((option) => {
                   const isSelected = selection[category.key] === option.value;
@@ -205,7 +214,7 @@ export default function MobileHospitalizationCheckinPage() {
                       onClick={() => pickTile(category.key, option.value)}
                     >
                       <span className="checkin-tile-icon">{option.icon}</span>
-                      <span>{option.label}</span>
+                      <span>{checkinOptionLabel(category.key, option, isCleaner)}</span>
                     </button>
                   );
                 })}
@@ -214,14 +223,14 @@ export default function MobileHospitalizationCheckinPage() {
           ))}
 
           <div className="checkin-section">
-            <h2 className="checkin-section-label">Photo</h2>
+            <h2 className="checkin-section-label">{t('Photo', isCleaner)}</h2>
             {stagedPhotos.length > 0 && (
               <ul className="attachment-list">
                 {stagedPhotos.map((p, i) => (
                   <li key={i}>
                     <img className="attachment-thumb" src={p.previewUrl} alt="staged photo" />
                     <button type="button" onClick={() => removeStagedPhoto(i)}>
-                      Remove
+                      {t('Remove', isCleaner)}
                     </button>
                   </li>
                 ))}
@@ -229,10 +238,10 @@ export default function MobileHospitalizationCheckinPage() {
             )}
             <div className="attachment-actions">
               <button type="button" onClick={() => cameraInputRef.current?.click()}>
-                📷 Photo
+                {t('📷 Photo', isCleaner)}
               </button>
               <button type="button" onClick={() => fileInputRef.current?.click()}>
-                📎 File
+                {t('📎 File', isCleaner)}
               </button>
             </div>
             <input
@@ -247,7 +256,7 @@ export default function MobileHospitalizationCheckinPage() {
           </div>
 
           <button type="button" onClick={saveCheckin} disabled={submitting || !hasAnySelection}>
-            {submitting ? 'Saving...' : '✅ Save'}
+            {submitting ? t('Saving...', isCleaner) : t('✅ Save', isCleaner)}
           </button>
 
           <button
@@ -255,7 +264,7 @@ export default function MobileHospitalizationCheckinPage() {
             className="mobile-secondary-action"
             onClick={() => router.push('/mobile/hospitalization')}
           >
-            Done
+            {t('Done', isCleaner)}
           </button>
         </>
       )}
