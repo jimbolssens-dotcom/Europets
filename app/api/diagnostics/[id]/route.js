@@ -9,6 +9,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { removeTreatmentItemFromInvoiceLines } from '@/lib/invoicing';
 
 const EDITABLE_FIELDS = ['description', 'result'];
 
@@ -49,6 +50,10 @@ export async function DELETE(request, { params }) {
   }
 
   if (diagnostic?.treatment_item_id) {
+    const cleanup = await removeTreatmentItemFromInvoiceLines(supabase, diagnostic.treatment_item_id);
+    if (cleanup.error) {
+      console.error('Failed to remove treatment item from an invoice it was already on', diagnostic.treatment_item_id, cleanup.error);
+    }
     await supabaseAdmin.from('treatment_items').delete().eq('id', diagnostic.treatment_item_id);
   }
 
