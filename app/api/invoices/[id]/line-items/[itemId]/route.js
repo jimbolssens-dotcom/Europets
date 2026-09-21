@@ -5,18 +5,21 @@
 //      dispensing-label form before printing — see migrations/049)
 //      and/or its plain voice note (migration 060). Doesn't touch
 //      price/quantity/description.
-//   { quantity, administration_method } -> correct an unpaid/partially-paid
-//      invoice's line — e.g. the wrong number of tablets was logged, or an
-//      injection's route (dispense/sc/im) was picked wrong. Recomputes
-//      line_total from quantity × the item's existing unit_price, then
-//      re-applies the administration fee fresh (stripping any previous fee
-//      tag first — see stripAdministrationFeeTag), scaled to the new
-//      quantity, so editing never stacks, under-scales, or leaves a stale
-//      fee. administration_method is a per-line override, whether or not
-//      the item is linked to a catalog medication — a quantity-only edit
-//      that doesn't touch this field leaves whatever's already on the line
-//      alone, rather than silently resetting it to the catalog item's
-//      default.
+//   { quantity, times_given, administration_method } -> correct an
+//      unpaid/partially-paid invoice's line — e.g. the wrong per-dose amount
+//      was logged (quantity: how much each time — 0.5ml, 3 tablets), the
+//      wrong number of times it was actually given (times_given: once a
+//      day for how many days), or an injection's route (dispense/sc/im)
+//      was picked wrong. Recomputes line_total from quantity × times_given
+//      × the item's existing unit_price, then re-applies the
+//      administration fee fresh (stripping any previous fee tag first —
+//      see stripAdministrationFeeTag), scaled to the new times_given (an
+//      SC/IM fee is per administration, not per unit of medication), so
+//      editing never stacks, under-scales, or leaves a stale fee.
+//      administration_method is a per-line override, whether or not the
+//      item is linked to a catalog medication — an edit that doesn't touch
+//      this field leaves whatever's already on the line alone, rather than
+//      silently resetting it to the catalog item's default.
 //   At least one field must be given; several may be combined in one call.
 // DELETE /api/invoices/:id/line-items/:itemId  -> remove a line item, recomputing totals
 //
@@ -37,11 +40,12 @@ export async function PATCH(request, { params }) {
   const hasInstructions = body.instructions !== undefined;
   const hasVoiceNote = body.voice_note_path !== undefined;
   const hasQuantity = body.quantity !== undefined;
+  const hasTimesGiven = body.times_given !== undefined;
   const hasAdministrationMethod = body.administration_method !== undefined;
 
-  if (!hasInstructions && !hasVoiceNote && !hasQuantity && !hasAdministrationMethod) {
+  if (!hasInstructions && !hasVoiceNote && !hasQuantity && !hasTimesGiven && !hasAdministrationMethod) {
     return NextResponse.json(
-      { error: 'instructions, voice_note_path, quantity, or administration_method is required' },
+      { error: 'instructions, voice_note_path, quantity, times_given, or administration_method is required' },
       { status: 400 }
     );
   }
@@ -61,10 +65,14 @@ export async function PATCH(request, { params }) {
   if (hasInstructions) update.instructions = body.instructions === '' ? null : body.instructions;
   if (hasVoiceNote) update.voice_note_path = body.voice_note_path || null;
 
-  if (hasQuantity || hasAdministrationMethod) {
+  if (hasQuantity || hasTimesGiven || hasAdministrationMethod) {
     const quantity = hasQuantity ? Number(body.quantity) : Number(current.quantity);
     if (Number.isNaN(quantity) || quantity <= 0) {
       return NextResponse.json({ error: 'quantity must be a positive number' }, { status: 400 });
+    }
+    const timesGiven = hasTimesGiven ? Number(body.times_given) : Number(current.times_given) || 1;
+    if (!Number.isInteger(timesGiven) || timesGiven <= 0) {
+      return NextResponse.json({ error: 'times_given must be a positive whole number' }, { status: 400 });
     }
 
     // An explicit administration_method always wins, catalog-linked item
@@ -86,17 +94,18 @@ export async function PATCH(request, { params }) {
     const baseDescription = stripAdministrationFeeTag(current.description);
     let line = {
       description: baseDescription,
-      line_total: Math.round(unit_price * quantity * 100) / 100,
+      line_total: Math.round(unit_price * quantity * timesGiven * 100) / 100,
     };
     if (administrationMethod) {
       const { data: clinicSettings } = await supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle();
-      // count = quantity, same as the sync path (newConsolidatedLine) —
+      // count = timesGiven, same as the sync path (newConsolidatedLine) —
       // an SC/IM fee is per administration, so it has to scale with how
-      // many times this was actually given, not always charge for one.
-      line = applyAdministrationFee(line, administrationMethod, clinicSettings, quantity);
+      // many times this was actually given, not with the per-dose amount.
+      line = applyAdministrationFee(line, administrationMethod, clinicSettings, timesGiven);
     }
 
     update.quantity = quantity;
+    update.times_given = timesGiven;
     update.description = line.description;
     update.line_total = line.line_total;
     update.administration_method = administrationMethod;
@@ -148,7 +157,7 @@ export async function PATCH(request, { params }) {
     await supabase.storage.from('consult-files').remove([previousVoiceNotePath]);
   }
 
-  if (hasQuantity || hasAdministrationMethod) {
+  if (hasQuantity || hasTimesGiven || hasAdministrationMethod) {
     const { error: totalsError } = await recomputeInvoiceTotals(supabase, params.id);
     if (totalsError) {
       return NextResponse.json({ error: totalsError.message }, { status: 500 });
