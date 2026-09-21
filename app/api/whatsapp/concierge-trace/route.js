@@ -1,5 +1,6 @@
 // app/api/whatsapp/concierge-trace/route.js
-// GET /api/whatsapp/concierge-trace?client_id=X (or ?phone=X)
+// GET /api/whatsapp/concierge-trace?client_id=X (or ?phone=X, or ?name=X —
+// the easiest of the three, a plain substring match against full_name)
 //   -> runs the AI concierge (lib/whatsappConcierge.js) against a client's
 //      REAL current conversation history exactly as the webhook would,
 //      but as a true dry run: nothing is sent over WhatsApp, nothing is
@@ -29,6 +30,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   let clientId = searchParams.get('client_id');
   const phone = searchParams.get('phone');
+  const name = searchParams.get('name');
 
   if (!clientId && phone) {
     const matches = await clientIdsWithPhoneLike(supabase, phone);
@@ -38,8 +40,18 @@ export async function GET(request) {
     }
   }
 
+  if (!clientId && name) {
+    const { data: clients, error } = await supabase.from('clients').select('id, full_name').ilike('full_name', `%${name}%`).limit(5);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!clients?.length) return NextResponse.json({ error: `No client found matching name "${name}"` }, { status: 404 });
+    if (clients.length > 1) {
+      return NextResponse.json({ error: `Multiple clients match "${name}" — be more specific`, matches: clients }, { status: 409 });
+    }
+    clientId = clients[0].id;
+  }
+
   if (!clientId) {
-    return NextResponse.json({ error: 'client_id or phone is required' }, { status: 400 });
+    return NextResponse.json({ error: 'client_id, phone, or name is required' }, { status: 400 });
   }
 
   const result = await maybeRunConcierge({ clientId, phone: phone || '', dryRun: true });
