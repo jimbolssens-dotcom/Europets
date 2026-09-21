@@ -11,6 +11,14 @@
 // of swallowing it — so the real cause shows up in a browser instead of
 // requiring Supabase or Vercel log access.
 //
+// Also checks migrations/131's media_url/media_type columns — GET
+// /api/client-messages (the whole /messages inbox list) selects
+// media_type unconditionally, so a missing column there doesn't just
+// break photos, it 500s that query and blanks the entire inbox for every
+// conversation, WhatsApp and app-chat alike (the same "everything looks
+// fine except nothing shows up" shape as the migrations/130 gap this
+// endpoint was first built for).
+//
 // Safe to leave in place — every call inserts then immediately deletes
 // its own row, and it's staff-gated like any other non-public route.
 
@@ -27,6 +35,14 @@ export async function GET() {
     .limit(1);
   report.columns_exist = !columnsCheck.error;
   if (columnsCheck.error) report.columns_error = columnsCheck.error.message;
+
+  // 1b. Same check for migrations/131's media columns — see note above.
+  const mediaColumnsCheck = await supabaseAdmin
+    .from('client_messages')
+    .select('media_url, media_type')
+    .limit(1);
+  report.media_columns_exist = !mediaColumnsCheck.error;
+  if (mediaColumnsCheck.error) report.media_columns_error = mediaColumnsCheck.error.message;
 
   // 2. Is client_id actually nullable? (migrations/130 also does `alter
   // column client_id drop not null` — a partial run could add the columns
