@@ -46,6 +46,8 @@ export default function Footer() {
       </div>
       <div className="container footer-bottom">
         <span>© {new Date().getFullYear()} Europets Clinic</span>
+        {' · '}
+        <a href="/privacy">Privacy Policy</a>
       </div>
     </footer>
   );
