@@ -290,7 +290,7 @@ export default function MessagesInboxPage() {
                       {c.channel === 'whatsapp' && <span className="visit-meta"> · WhatsApp</span>}
                     </td>
                     <td>
-                      {c.last_sender === 'staff' ? 'You: ' : ''}
+                      {c.last_sender === 'staff' ? 'You: ' : c.last_sender === 'ai' ? '🤖 ' : ''}
                       {preview(c.last_message)}
                     </td>
                     <td>{formatWhen(c.last_message_at)}</td>
