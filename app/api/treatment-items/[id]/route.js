@@ -25,8 +25,10 @@
 //                                      gets copied from.
 // DELETE /api/treatment-items/:id  -> remove a planned treatment item
 
+import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { removeTreatmentItemFromInvoiceLines } from '@/lib/invoicing';
 
 const ADMINISTRATION_METHODS = ['dispense', 'sc', 'im'];
 
@@ -64,6 +66,11 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+  const cleanup = await removeTreatmentItemFromInvoiceLines(supabase, params.id);
+  if (cleanup.error) {
+    console.error('Failed to remove treatment item from an invoice it was already on', params.id, cleanup.error);
+  }
+
   const { error } = await supabaseAdmin.from('treatment_items').delete().eq('id', params.id);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
