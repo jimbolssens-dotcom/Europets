@@ -19,6 +19,13 @@
 // fine except nothing shows up" shape as the migrations/130 gap this
 // endpoint was first built for).
 //
+// Also reports whether the WhatsApp AI concierge (lib/whatsappConcierge.js)
+// is actually switched on end to end — both the WHATSAPP_AI_ENABLED env
+// var AND migrations/132's 'ai' sender value, since the concierge would
+// otherwise silently fail every reply attempt (send succeeds, but logging
+// it errors on the sender check constraint) with nothing visible to Meta
+// or the client either way.
+//
 // Safe to leave in place — every call inserts then immediately deletes
 // its own row, and it's staff-gated like any other non-public route.
 
@@ -67,6 +74,29 @@ export async function GET() {
   } else {
     // Clean up immediately — this row has no purpose beyond the test.
     await supabaseAdmin.from('client_messages').delete().eq('id', insertResult.data.id);
+  }
+
+  // 3. Is the concierge switched on end to end?
+  report.whatsapp_ai_enabled = process.env.WHATSAPP_AI_ENABLED === 'true';
+
+  const aiSenderCheck = await supabaseAdmin
+    .from('client_messages')
+    .insert([
+      {
+        phone: '00000000000',
+        channel: 'whatsapp',
+        sender: 'ai',
+        body: '[diagnostic test row — safe to ignore/delete]',
+      },
+    ])
+    .select('id')
+    .single();
+
+  report.ai_sender_allowed = !aiSenderCheck.error;
+  if (aiSenderCheck.error) {
+    report.ai_sender_error = aiSenderCheck.error.message;
+  } else {
+    await supabaseAdmin.from('client_messages').delete().eq('id', aiSenderCheck.data.id);
   }
 
   return NextResponse.json(report);
