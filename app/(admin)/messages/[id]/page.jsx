@@ -111,7 +111,7 @@ export default function ClientMessageThreadPage() {
       <div className="portal-chat-thread staff-chat-thread" ref={threadRef}>
         {messages.length === 0 && <p className="visit-meta">No messages yet.</p>}
         {messages.map((m) => (
-          <div key={m.id} className={`portal-chat-bubble portal-chat-bubble-${m.sender === 'staff' ? 'mine' : 'theirs'}`}>
+          <div key={m.id} className={`portal-chat-bubble portal-chat-bubble-${m.sender === 'client' ? 'theirs' : 'mine'}`}>
             {m.media_url && (
               <a href={m.media_url} target="_blank" rel="noopener noreferrer">
                 <img src={m.media_url} alt="" className="portal-chat-bubble-image" />
@@ -119,7 +119,7 @@ export default function ClientMessageThreadPage() {
             )}
             {m.body && <p>{m.body}</p>}
             <span className="portal-chat-bubble-meta">
-              {m.sender === 'staff' ? m.staff?.full_name || 'Staff' : client?.full_name || 'Client'} ·{' '}
+              {m.sender === 'staff' ? m.staff?.full_name || 'Staff' : m.sender === 'ai' ? '🤖 AI concierge' : client?.full_name || 'Client'} ·{' '}
               {formatDateTime(m.created_at)}
               {m.channel === 'whatsapp' && ' · WhatsApp'}
             </span>

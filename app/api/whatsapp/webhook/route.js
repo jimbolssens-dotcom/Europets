@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
+import { maybeRunConcierge, sendConciergeReply } from '@/lib/whatsappConcierge';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -98,6 +99,27 @@ async function downloadInboundImage(message) {
   }
 }
 
+// After a fresh inbound message is stored, gives the AI concierge (see
+// lib/whatsappConcierge.js) a chance to answer it directly — gated by
+// WHATSAPP_AI_ENABLED and only for a message matched to a client, both
+// checked inside maybeRunConcierge. Best-effort and isolated from the
+// message-storage path above: any failure here (a bad model response, a
+// send failure, a bug) is caught and logged, never allowed to turn an
+// otherwise-successful webhook delivery into a failed one Meta would
+// retry forever.
+async function runConciergeForInbound(message, clientId, digits) {
+  try {
+    const result = await maybeRunConcierge({ clientId, phone: digits });
+    if (result.sent) {
+      await sendConciergeReply({ clientId, phone: digits, reply: result.reply });
+    } else if (result.escalated) {
+      console.log('WhatsApp AI concierge escalated to staff', message.id, result.reason);
+    }
+  } catch (err) {
+    console.error('WhatsApp AI concierge failed', message.id, err);
+  }
+}
+
 async function handleInboundMessage(message, contactPhone) {
   const digits = (contactPhone || message.from || '').replace(/\D/g, '');
   const clientId = await findClientIdForPhone(digits);
@@ -119,8 +141,17 @@ async function handleInboundMessage(message, contactPhone) {
   // a no-op thanks to wa_message_id's unique constraint — anything else is
   // worth knowing about, but shouldn't turn into a failed webhook response
   // (Meta interprets a non-2xx as "retry this delivery forever").
-  if (error && error.code !== '23505') {
-    console.error('Failed to store inbound WhatsApp message', message.id, error);
+  if (error) {
+    if (error.code !== '23505') {
+      console.error('Failed to store inbound WhatsApp message', message.id, error);
+    }
+    return;
+  }
+
+  // Only a genuine plain-text message is ever handed to the concierge — a
+  // photo (of an injury, a receipt, anything) always needs a human's eyes.
+  if (message.type === 'text') {
+    await runConciergeForInbound(message, clientId, digits);
   }
 }
 

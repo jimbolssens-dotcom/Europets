@@ -14,30 +14,18 @@
 // a room, staff assign one when approving it (see
 // app/api/intake-requests/[id]).
 //
+// The actual slot computation lives in lib/appointmentBooking.js's
+// computeAvailableSlots — shared with the WhatsApp AI concierge
+// (lib/whatsappConcierge.js), which walks the exact same roster/conflict
+// logic to check and book a consult, rather than re-implementing it.
+//
 // Everything here is computed in UAE local time (UTC+4, no DST) regardless
 // of the server process's own timezone — same technique as
 // app/api/shift-summary, since "9am" has to mean the clinic's 9am.
 
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
-import {
-  CLIENT_APPOINTMENT_TYPES,
-  buildClientBookingWindows,
-  clientBookingDurationMinutes,
-  isSurgeryType,
-} from '@/lib/appointmentBooking';
-
-const SLOT_STEP_MINUTES = 15;
-
-function uaeIso(date, time) {
-  return `${date}T${time}:00.000+04:00`;
-}
-
-function minutesToTime(minutes) {
-  const hh = String(Math.floor(minutes / 60)).padStart(2, '0');
-  const mm = String(minutes % 60).padStart(2, '0');
-  return `${hh}:${mm}`;
-}
+import { computeAvailableSlots } from '@/lib/appointmentBooking';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -46,95 +34,9 @@ export async function GET(request) {
   const species = searchParams.get('species');
   const weightKg = searchParams.get('weight_kg');
 
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return NextResponse.json({ error: 'a valid date (YYYY-MM-DD) is required' }, { status: 400 });
+  const result = await computeAvailableSlots(supabase, { date, type, species, weightKg });
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: result.status || 500 });
   }
-  if (!CLIENT_APPOINTMENT_TYPES.includes(type)) {
-    return NextResponse.json({ error: `type must be one of ${CLIENT_APPOINTMENT_TYPES.join(', ')}` }, { status: 400 });
-  }
-
-  const duration = clientBookingDurationMinutes(type, species, weightKg);
-  if (!duration) {
-    return NextResponse.json({ error: 'could not determine a standard duration for that request' }, { status: 400 });
-  }
-
-  const capabilityColumn = type === 'consult' || type === 'video' ? 'can_consult' : 'can_surgery';
-  const dayStart = new Date(uaeIso(date, '00:00'));
-  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-
-  // Only doctors are ever bookable through the client portal — a cleaner
-  // or admin staff member on the roster (even one accidentally left with
-  // can_consult/can_surgery set) must never show up here.
-  let rosterQuery = supabase
-    .from('staff_roster_entries')
-    .select('staff_id, shift, staff!inner(full_name, role)')
-    .eq('date', date)
-    .eq(capabilityColumn, true)
-    .eq('staff.role', 'vet');
-  if (isSurgeryType(type)) {
-    rosterQuery = rosterQuery.eq('shift', 'morning');
-  }
-
-  const [{ data: roster, error: rosterError }, { data: dayAppointments, error: apptError }, { data: clinicSettings, error: settingsError }] =
-    await Promise.all([
-      rosterQuery,
-      supabase
-        .from('appointments')
-        .select('vet_id, start_time, duration_minutes')
-        .neq('status', 'cancelled')
-        .gte('start_time', dayStart.toISOString())
-        .lt('start_time', dayEnd.toISOString()),
-      supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
-    ]);
-
-  if (rosterError) {
-    return NextResponse.json({ error: rosterError.message }, { status: 500 });
-  }
-  if (apptError) {
-    return NextResponse.json({ error: apptError.message }, { status: 500 });
-  }
-  if (settingsError) {
-    return NextResponse.json({ error: settingsError.message }, { status: 500 });
-  }
-
-  const bookingWindows = buildClientBookingWindows(clinicSettings);
-
-  const appointmentsByVet = new Map();
-  for (const appt of dayAppointments || []) {
-    if (!appt.vet_id) continue;
-    if (!appointmentsByVet.has(appt.vet_id)) appointmentsByVet.set(appt.vet_id, []);
-    appointmentsByVet.get(appt.vet_id).push(appt);
-  }
-
-  function isVetFree(vetId, slotStart, slotEnd) {
-    const existing = appointmentsByVet.get(vetId) || [];
-    return !existing.some((appt) => {
-      const apptStart = new Date(appt.start_time);
-      const apptEnd = new Date(apptStart.getTime() + appt.duration_minutes * 60000);
-      return apptStart < slotEnd && slotStart < apptEnd;
-    });
-  }
-
-  const slots = [];
-  for (const entry of roster || []) {
-    const window = bookingWindows.find((w) => w.shift === entry.shift);
-    if (!window) continue;
-
-    for (let startMin = window.startMinutes; startMin + duration <= window.endMinutes; startMin += SLOT_STEP_MINUTES) {
-      const slotStart = new Date(uaeIso(date, minutesToTime(startMin)));
-      const slotEnd = new Date(slotStart.getTime() + duration * 60000);
-      if (!isVetFree(entry.staff_id, slotStart, slotEnd)) continue;
-      slots.push({
-        vet_id: entry.staff_id,
-        vet_name: entry.staff?.full_name || 'Available doctor',
-        shift: entry.shift,
-        start_time: slotStart.toISOString(),
-        duration_minutes: duration,
-      });
-    }
-  }
-
-  slots.sort((a, b) => a.start_time.localeCompare(b.start_time) || a.vet_name.localeCompare(b.vet_name));
-
-  return NextResponse.json({ duration_minutes: duration, slots });
+  return NextResponse.json({ duration_minutes: result.duration_minutes, slots: result.slots });
 }
