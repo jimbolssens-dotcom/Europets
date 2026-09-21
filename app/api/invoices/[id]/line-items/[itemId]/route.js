@@ -6,16 +6,17 @@
 //      and/or its plain voice note (migration 060). Doesn't touch
 //      price/quantity/description.
 //   { quantity, administration_method } -> correct an unpaid/partially-paid
-//      invoice's line — e.g. the wrong number of tablets was logged.
-//      Recomputes line_total from quantity × the item's existing
-//      unit_price, then re-applies the administration fee fresh (stripping
-//      any previous fee tag first — see stripAdministrationFeeTag) so
-//      editing never stacks or leaves a stale fee. If the item is linked
-//      to a catalog medication, administration_method always comes from
-//      that catalog item's own fixed classification (see
-//      resolveAdministrationMethod) — a caller-supplied value is ignored
-//      for those; an unlinked custom line item accepts any of
-//      dispense/sc/im directly, since it has no catalog item to fix it.
+//      invoice's line — e.g. the wrong number of tablets was logged, or an
+//      injection's route (dispense/sc/im) was picked wrong. Recomputes
+//      line_total from quantity × the item's existing unit_price, then
+//      re-applies the administration fee fresh (stripping any previous fee
+//      tag first — see stripAdministrationFeeTag), scaled to the new
+//      quantity, so editing never stacks, under-scales, or leaves a stale
+//      fee. administration_method is a per-line override, whether or not
+//      the item is linked to a catalog medication — a quantity-only edit
+//      that doesn't touch this field leaves whatever's already on the line
+//      alone, rather than silently resetting it to the catalog item's
+//      default.
 //   At least one field must be given; several may be combined in one call.
 // DELETE /api/invoices/:id/line-items/:itemId  -> remove a line item, recomputing totals
 //
@@ -30,7 +31,6 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { recomputeInvoiceTotals, applyAdministrationFee, stripAdministrationFeeTag, VAT_RATE } from '@/lib/invoicing';
-import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
@@ -67,11 +67,15 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: 'quantity must be a positive number' }, { status: 400 });
     }
 
-    let administrationMethod;
-    if (current.goods_service_id) {
-      administrationMethod = resolveAdministrationMethod(current.goods_services?.administration_method).administration_method;
-    } else {
-      const method = hasAdministrationMethod ? body.administration_method : current.administration_method;
+    // An explicit administration_method always wins, catalog-linked item
+    // or not — staff correcting how THIS particular dose was actually
+    // given (e.g. SC instead of a medication's usual IM default) is
+    // exactly what this field is for. A quantity-only edit that doesn't
+    // touch this field keeps whatever's already on the line, rather than
+    // silently resetting a route staff already corrected here before.
+    let administrationMethod = current.administration_method || null;
+    if (hasAdministrationMethod) {
+      const method = body.administration_method;
       if (method && !['dispense', 'sc', 'im'].includes(method)) {
         return NextResponse.json({ error: 'administration_method must be one of dispense, sc, im' }, { status: 400 });
       }
@@ -86,7 +90,10 @@ export async function PATCH(request, { params }) {
     };
     if (administrationMethod) {
       const { data: clinicSettings } = await supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle();
-      line = applyAdministrationFee(line, administrationMethod, clinicSettings);
+      // count = quantity, same as the sync path (newConsolidatedLine) —
+      // an SC/IM fee is per administration, so it has to scale with how
+      // many times this was actually given, not always charge for one.
+      line = applyAdministrationFee(line, administrationMethod, clinicSettings, quantity);
     }
 
     update.quantity = quantity;

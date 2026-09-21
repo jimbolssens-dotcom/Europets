@@ -582,8 +582,36 @@ export default function InvoiceDetailPage() {
                               {li.quantity} {li.goods_services?.unit || ''}
                             </>
                           )}
+                          {/* How many separate worksheet entries this line's quantity was
+                              built from — e.g. "4.00" for a medication given four times
+                              reads very differently from one given once at a large dose.
+                              Only a recurring hospitalization-worksheet line has more than
+                              one source id; a one-off consult item is always exactly 1. */}
+                          {li.source_treatment_item_ids?.length > 1 && (
+                            <span className="visit-meta line-item-frequency">
+                              given {li.source_treatment_item_ids.length}×
+                            </span>
+                          )}
                         </td>
-                        <td>{li.administration_method ? ADMINISTRATION_METHOD_LABELS[li.administration_method] : '—'}</td>
+                        <td>
+                          {editable ? (
+                            <select
+                              value={li.administration_method || ''}
+                              onChange={(e) => saveLineItemField(li.id, { administration_method: e.target.value || null })}
+                            >
+                              <option value="">—</option>
+                              {Object.entries(ADMINISTRATION_METHOD_LABELS).map(([value, label]) => (
+                                <option key={value} value={value}>
+                                  {label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : li.administration_method ? (
+                            ADMINISTRATION_METHOD_LABELS[li.administration_method]
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                         <td>
                           {editable ? (
                             <input

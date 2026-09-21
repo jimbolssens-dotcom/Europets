@@ -688,6 +688,13 @@ td select {
   margin-top: 0.7rem;
 }
 
+/* "given 4×" next to a consolidated line's quantity — see the invoice
+   detail page's line item table. */
+.line-item-frequency {
+  display: block;
+  margin-top: 0.15rem;
+}
+
 .pre-invoice-rate-override {
   margin: 0.5rem 0 0.75rem;
 }
