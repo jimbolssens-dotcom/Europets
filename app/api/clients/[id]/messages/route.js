@@ -50,7 +50,14 @@ export async function GET(request, { params }) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data);
+  // `dynamic = 'force-dynamic'` above only stops Next's own server-side
+  // caching — without an explicit no-store header, a browser can still
+  // cache this GET response itself, which is exactly what live testing
+  // showed: a thread stuck showing an old handful of messages even
+  // through a hard page reload, with the same URL returning the full,
+  // correct list when hit fresh. This is the one route that most needs
+  // never to look stale — it's the live WhatsApp/app chat thread.
+  return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(request, { params }) {
