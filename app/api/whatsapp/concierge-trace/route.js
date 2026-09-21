@@ -31,6 +31,14 @@ import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { maybeRunConcierge } from '@/lib/whatsappConcierge';
 import { NextResponse } from 'next/server';
 
+// Same lesson as GET /api/clients/:id/messages (see that route's comment):
+// a plain GET route with no explicit no-store header can get cached by a
+// browser and keep showing an old result — including a stale "no client
+// message to respond to" from before the conversation had one — even
+// past a hard reload. A debug tool needs to be trusted to always reflect
+// live state.
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   let clientId = searchParams.get('client_id');
@@ -41,24 +49,29 @@ export async function GET(request) {
     const matches = await clientIdsWithPhoneLike(supabase, phone);
     clientId = matches[0] || null;
     if (!clientId) {
-      return NextResponse.json({ error: `No client found matching phone "${phone}"` }, { status: 404 });
+      return NextResponse.json({ error: `No client found matching phone "${phone}"` }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
     }
   }
 
   if (!clientId && name) {
     const { data: clients, error } = await supabase.from('clients').select('id, full_name').ilike('full_name', `%${name}%`).limit(5);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    if (!clients?.length) return NextResponse.json({ error: `No client found matching name "${name}"` }, { status: 404 });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
+    if (!clients?.length) {
+      return NextResponse.json({ error: `No client found matching name "${name}"` }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    }
     if (clients.length > 1) {
-      return NextResponse.json({ error: `Multiple clients match "${name}" — be more specific`, matches: clients }, { status: 409 });
+      return NextResponse.json(
+        { error: `Multiple clients match "${name}" — be more specific`, matches: clients },
+        { status: 409, headers: { 'Cache-Control': 'no-store' } }
+      );
     }
     clientId = clients[0].id;
   }
 
   if (!clientId) {
-    return NextResponse.json({ error: 'client_id, phone, or name is required' }, { status: 400 });
+    return NextResponse.json({ error: 'client_id, phone, or name is required' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }
 
   const result = await maybeRunConcierge({ clientId, phone: phone || '', dryRun: true, replayLastClientMessage: true });
-  return NextResponse.json(result);
+  return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
 }
