@@ -29,12 +29,14 @@ export default function ClientMessageThreadPage() {
   const [replyStaffId, setReplyStaffId] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [channelOverride, setChannelOverride] = useState(null); // 'app' | 'whatsapp' | null (auto)
   const [error, setError] = useState(null);
   const threadRef = useRef(null);
   const cameraInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
+    setChannelOverride(null);
     const loadMessages = () =>
       fetch(`/api/clients/${id}/messages`)
         .then((res) => res.json())
@@ -72,12 +74,27 @@ export default function ClientMessageThreadPage() {
     }
   }, [messages, loading]);
 
-  // currentChannel: reply on whichever channel the conversation is
-  // currently happening on — the same channel the most recent message
-  // came in through — rather than always defaulting to the app chat, so a
-  // WhatsApp conversation naturally stays a WhatsApp conversation.
+  // A client only counts as an app user if they've actually opened it
+  // recently — same 60-day "recently" and the same field as the
+  // hospitalization page's usesClientApp, reused here for the same reason:
+  // most clients have never opened the client app at all, so a brand-new
+  // thread (no messages yet — nothing to infer a channel from) should
+  // default to WhatsApp, not silently fall back to 'app' just because
+  // that happens to be this route's technical default.
+  const clientAppLastSeenAt = client?.client_app_last_seen_at;
+  const usesClientApp =
+    !!clientAppLastSeenAt && Date.now() - new Date(clientAppLastSeenAt).getTime() < 60 * 24 * 60 * 60 * 1000;
+
+  // currentChannel: an explicit pick (the toggle below) always wins;
+  // otherwise reply on whichever channel the conversation is already
+  // happening on — the same channel the most recent message came in
+  // through, so an ongoing WhatsApp conversation naturally stays one —
+  // and only fall back to the app-usage guess above for a thread with no
+  // messages at all yet.
   function currentChannel() {
-    return messages[messages.length - 1]?.channel === 'whatsapp' ? 'whatsapp' : 'app';
+    if (channelOverride) return channelOverride;
+    if (messages.length > 0) return messages[messages.length - 1]?.channel === 'whatsapp' ? 'whatsapp' : 'app';
+    return usesClientApp ? 'app' : 'whatsapp';
   }
 
   async function postReply(extra) {
@@ -192,6 +209,26 @@ export default function ClientMessageThreadPage() {
           form's select/textarea sizing — reused here via the same
           wrapper class rather than duplicating that CSS. */}
       <div className="hospitalization-chat">
+        {/* Explicit channel pick, reusing the vaccinations page's pill-
+            toggle look (.window-filter) — currentChannel() would otherwise
+            guess silently, which is exactly what left a brand-new thread
+            stuck on "App" with no way to switch it to WhatsApp. */}
+        <div className="window-filter">
+          <button
+            type="button"
+            className={currentChannel() === 'app' ? 'window-filter-active' : ''}
+            onClick={() => setChannelOverride('app')}
+          >
+            📱 App
+          </button>
+          <button
+            type="button"
+            className={currentChannel() === 'whatsapp' ? 'window-filter-active' : ''}
+            onClick={() => setChannelOverride('whatsapp')}
+          >
+            💬 WhatsApp
+          </button>
+        </div>
         <form className="portal-chat-form" onSubmit={sendReply}>
           <select value={replyStaffId} onChange={(e) => setReplyStaffId(e.target.value)} required>
             <option value="">Replying as...</option>
