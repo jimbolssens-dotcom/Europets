@@ -24,11 +24,13 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
   resultDrafts, onResultChange, onSaveResult, savingResultId, resultError,
   onUploaded, extractingResultId, extractResultError, attachmentVersions, onOpenSource,
   onGenerateOverallReport, onDeleteOverallReport, onDeleteDiagnostic,
-  overallReportLabel = 'consult report', overallReportPdfPath = 'report-pdf', reportsError }) {
+  overallReportLabel = 'consult report', overallReportPdfPath = 'report-pdf', reportsError,
+  assignableStaff = [] }) {
   const [summaries, setSummaries] = useState({});
   const [summarizing, setSummarizing] = useState({});
   const [summaryErrors, setSummaryErrors] = useState({});
   const [deletingId, setDeletingId] = useState(null);
+  const [assigningId, setAssigningId] = useState(null);
   // A diagnostic with a file attached (a lab PDF/photo) counts as done on
   // its own — no result text or AI transcription required — so this just
   // tracks "does this diagnostic have at least one attachment" per id,
@@ -40,6 +42,19 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
     setDeletingId(report.id);
     await fetch(`${group.apiBase}/${report.id}`, { method: 'DELETE' });
     setDeletingId(null);
+    group.reload();
+  }
+  // group.staffField is which column names who performed it — 'surgeon_id'
+  // for a surgical report, 'performed_by' for the other three — see each
+  // group's definition on the consult/hospitalization page.
+  async function assignReportStaff(group, report, staffId) {
+    setAssigningId(report.id);
+    await fetch(`${group.apiBase}/${report.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [group.staffField]: staffId }),
+    });
+    setAssigningId(null);
     group.reload();
   }
   async function summarize(diagnostic) {
@@ -82,7 +97,18 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
       <h4>{group.label}</h4>
       {group.reports.map((report) => <details className="card" key={report.id}>
         <summary>{report.procedure_name || group.label} · {report.performed_at ? formatDateTime(report.performed_at) : 'Date not recorded'} · {report.ai_summary ? 'Report available' : 'Report pending'}</summary>
-        <p className="visit-meta">{report.staff?.full_name || 'Unassigned'}</p>
+        {group.staffField ? (
+          <label className="visit-meta">
+            Performed by:{' '}
+            <select value={report[group.staffField] || ''} disabled={assigningId === report.id}
+              onChange={(e) => assignReportStaff(group, report, e.target.value)}>
+              <option value="">Unassigned</option>
+              {assignableStaff.map((s) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+            </select>
+          </label>
+        ) : (
+          <p className="visit-meta">{report.staff?.full_name || 'Unassigned'}</p>
+        )}
         {!report.ai_summary && <p style={{ whiteSpace: 'pre-wrap' }}>{[report.findings, report.procedures_performed, report.notes].filter(Boolean).join('\n') || 'Awaiting findings or dictation.'}</p>}
         <div className="home-links">
           {onOpenSource && group.sourceTab && <button type="button" onClick={() => onOpenSource(group.sourceTab)}>Open source notes</button>}
