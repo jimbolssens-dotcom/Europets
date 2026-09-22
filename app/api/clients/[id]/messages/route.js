@@ -4,12 +4,16 @@
 //      WhatsApp channels both — see migrations/130). Used by both the
 //      client app's own chat page and the staff inbox thread view.
 // POST /api/clients/:id/messages  -> staff's reply
-//      ({ body, staff_id, channel? }). channel defaults to 'app' (an
-//      ordinary client-app chat row, exactly as before); 'whatsapp' also
-//      sends the text live via the WhatsApp Cloud API to this client's own
-//      phone number (clients.phone — see migrations/055) before logging
-//      it, and fails the request if that send fails rather than logging a
-//      reply that was never actually delivered. The client's own side of
+//      ({ body, staff_id, channel?, media_url?, media_type?, media_name? }).
+//      channel defaults to 'app' (an ordinary client-app chat row, exactly
+//      as before); 'whatsapp' also sends it live via the WhatsApp Cloud API
+//      to this client's own phone number (clients.phone — see migrations/
+//      055) before logging it, and fails the request if that send fails
+//      rather than logging a reply that was never actually delivered. A
+//      photo or file (see lib/attachments.js's uploadClientMessageMedia,
+//      already uploaded to Storage client-side before this is called)
+//      sends as WhatsApp media instead of text when media_url is set,
+//      with body used as its caption if present. The client's own side of
 //      the app conversation goes through POST /api/clients/:id/request-
 //      message instead — same client-send vs. staff-reply split as the
 //      hospitalization chat (see /api/hospitalizations/:id/messages and
@@ -22,7 +26,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { sendWhatsAppText } from '@/lib/metaWhatsapp';
+import { sendWhatsAppText, sendWhatsAppMedia } from '@/lib/metaWhatsapp';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
@@ -63,16 +67,26 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   const body = await request.json().catch(() => ({}));
   const text = typeof body.body === 'string' ? body.body.trim().slice(0, 2000) : '';
+  const mediaUrl = typeof body.media_url === 'string' ? body.media_url : null;
+  const mediaType = typeof body.media_type === 'string' ? body.media_type : null; // 'image' | 'file'
+  const mediaName = typeof body.media_name === 'string' ? body.media_name : null;
   const channel = body.channel === 'whatsapp' ? 'whatsapp' : 'app';
 
-  if (!text) {
-    return NextResponse.json({ error: 'body is required' }, { status: 400 });
+  if (!text && !mediaUrl) {
+    return NextResponse.json({ error: 'body or media_url is required' }, { status: 400 });
   }
   if (!body.staff_id) {
     return NextResponse.json({ error: 'staff_id is required' }, { status: 400 });
   }
 
+  // body stays required not-null at the DB level (migration 120) — an
+  // image/file with no caption is stored as '', same as an inbound
+  // WhatsApp photo with no caption already is (see the webhook).
   const row = { client_id: params.id, sender: 'staff', staff_id: body.staff_id, body: text, channel };
+  if (mediaUrl) {
+    row.media_url = mediaUrl;
+    row.media_type = mediaType || 'file';
+  }
 
   if (channel === 'whatsapp') {
     const { data: client } = await supabase.from('clients').select('phone').eq('id', params.id).maybeSingle();
@@ -84,7 +98,14 @@ export async function POST(request, { params }) {
       );
     }
     try {
-      row.wa_message_id = await sendWhatsAppText(digits, text);
+      row.wa_message_id = mediaUrl
+        ? await sendWhatsAppMedia(digits, {
+            url: mediaUrl,
+            contentType: mediaType === 'image' ? 'image/*' : 'application/octet-stream',
+            caption: text || undefined,
+            filename: mediaName,
+          })
+        : await sendWhatsAppText(digits, text);
       row.status = 'sent';
       row.phone = digits;
     } catch (err) {

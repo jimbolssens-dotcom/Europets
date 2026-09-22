@@ -4,7 +4,11 @@
 // bubble markup/CSS and "Replying as..." staff-picker convention as the
 // hospitalization chat on app/(admin)/hospitalization/[id]/page.jsx, just
 // standing on its own page instead of a collapsible panel, and scoped to a
-// client instead of one admission.
+// client instead of one admission. Enter sends (Shift+Enter for a new
+// line); 📷/📎 attach a photo/file, uploaded to Storage then sent as
+// WhatsApp media or logged straight onto the row for the app channel (see
+// lib/attachments.js's uploadClientMessageMedia and POST /api/clients/
+// :id/messages).
 
 'use client';
 
@@ -12,6 +16,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { formatDateTime } from '@/lib/formatTimestamp';
+import { uploadClientMessageMedia } from '@/lib/attachments';
 
 export default function ClientMessageThreadPage() {
   const { id } = useParams();
@@ -23,8 +28,11 @@ export default function ClientMessageThreadPage() {
   const [replyDraft, setReplyDraft] = useState('');
   const [replyStaffId, setReplyStaffId] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [error, setError] = useState(null);
   const threadRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const loadMessages = () =>
@@ -64,27 +72,24 @@ export default function ClientMessageThreadPage() {
     }
   }, [messages, loading]);
 
-  async function sendReply(e) {
-    e.preventDefault();
-    const text = replyDraft.trim();
-    if (!text || !replyStaffId) return;
-    setSendingReply(true);
-    setError(null);
-    // Reply on whichever channel the conversation is currently happening
-    // on — the same channel the most recent message came in through —
-    // rather than always defaulting to the app chat, so a WhatsApp
-    // conversation naturally stays a WhatsApp conversation.
-    const channel = messages[messages.length - 1]?.channel === 'whatsapp' ? 'whatsapp' : 'app';
+  // currentChannel: reply on whichever channel the conversation is
+  // currently happening on — the same channel the most recent message
+  // came in through — rather than always defaulting to the app chat, so a
+  // WhatsApp conversation naturally stays a WhatsApp conversation.
+  function currentChannel() {
+    return messages[messages.length - 1]?.channel === 'whatsapp' ? 'whatsapp' : 'app';
+  }
+
+  async function postReply(extra) {
     const res = await fetch(`/api/clients/${id}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: text, staff_id: replyStaffId, channel }),
+      body: JSON.stringify({ staff_id: replyStaffId, channel: currentChannel(), ...extra }),
     });
-    setSendingReply(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error || 'Failed to send');
-      return;
+      return false;
     }
     setReplyDraft('');
     // Don't wait on realtime for the reply to show up — same as the
@@ -93,6 +98,52 @@ export default function ClientMessageThreadPage() {
     fetch(`/api/clients/${id}/messages`)
       .then((r) => r.json())
       .then((data) => setMessages(Array.isArray(data) ? data : []));
+    return true;
+  }
+
+  // e is undefined when called from the Enter-to-send keydown handler
+  // rather than an actual form submit.
+  async function sendReply(e) {
+    e?.preventDefault();
+    const text = replyDraft.trim();
+    if (!text || !replyStaffId) return;
+    setSendingReply(true);
+    setError(null);
+    await postReply({ body: text });
+    setSendingReply(false);
+  }
+
+  function handleReplyKeyDown(e) {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    e.preventDefault();
+    sendReply();
+  }
+
+  async function sendMedia(file) {
+    if (!replyStaffId) {
+      setError("Pick who you're replying as before attaching a file.");
+      return;
+    }
+    setUploadingFile(true);
+    setError(null);
+    try {
+      const { url, contentType, name } = await uploadClientMessageMedia(id, file);
+      await postReply({
+        body: replyDraft.trim(),
+        media_url: url,
+        media_type: contentType.startsWith('image/') ? 'image' : 'file',
+        media_name: name,
+      });
+    } catch (err) {
+      setError(err.message);
+    }
+    setUploadingFile(false);
+  }
+
+  function handleFileChange(e) {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (file) sendMedia(file);
   }
 
   if (loading) return <p>Loading...</p>;
@@ -117,10 +168,16 @@ export default function ClientMessageThreadPage() {
         {messages.length === 0 && <p className="visit-meta">No messages yet.</p>}
         {messages.map((m) => (
           <div key={m.id} className={`portal-chat-bubble portal-chat-bubble-${m.sender === 'client' ? 'theirs' : 'mine'}`}>
-            {m.media_url && (
+            {m.media_url && m.media_type === 'file' ? (
               <a href={m.media_url} target="_blank" rel="noopener noreferrer">
-                <img src={m.media_url} alt="" className="portal-chat-bubble-image" />
+                📎 Download file
               </a>
+            ) : (
+              m.media_url && (
+                <a href={m.media_url} target="_blank" rel="noopener noreferrer">
+                  <img src={m.media_url} alt="" className="portal-chat-bubble-image" />
+                </a>
+              )
             )}
             {m.body && <p>{m.body}</p>}
             <span className="portal-chat-bubble-meta">
@@ -147,14 +204,30 @@ export default function ClientMessageThreadPage() {
           </select>
           <textarea
             rows={2}
-            placeholder="Reply..."
+            placeholder="Reply... (Enter to send, Shift+Enter for a new line)"
             value={replyDraft}
             onChange={(e) => setReplyDraft(e.target.value)}
+            onKeyDown={handleReplyKeyDown}
           />
-          <button type="submit" disabled={sendingReply || !replyDraft.trim() || !replyStaffId}>
-            {sendingReply ? 'Sending...' : 'Send'}
+          <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={uploadingFile}>
+            📷
+          </button>
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingFile}>
+            📎
+          </button>
+          <button type="submit" disabled={sendingReply || uploadingFile || !replyDraft.trim() || !replyStaffId}>
+            {sendingReply ? 'Sending...' : uploadingFile ? 'Uploading...' : 'Send'}
           </button>
         </form>
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileChange}
+          hidden
+        />
+        <input ref={fileInputRef} type="file" onChange={handleFileChange} hidden />
       </div>
     </>
   );
