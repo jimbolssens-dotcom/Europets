@@ -131,6 +131,7 @@ export default function HospitalizationDetailPage() {
   });
   const [consentSubmitting, setConsentSubmitting] = useState(false);
   const [consentError, setConsentError] = useState(null);
+  const [consentInfo, setConsentInfo] = useState(null);
   const [sendingConsentLink, setSendingConsentLink] = useState(false);
   // The originating consult's own treatment plan (if this admission came
   // from one) — folded into the consent form's preview text below, same
@@ -550,11 +551,17 @@ export default function HospitalizationDetailPage() {
     setConsentSubmitting(false);
   }
 
-  // Alternative to signing in person: sends the owner a link to review and
-  // digitally sign (by typing their name) on their own phone, then WhatsApps
-  // it — same pattern as sendConsentLink on the consult page.
+  // Alternative to signing in person: generates a link to review and
+  // digitally sign (by typing their name) on the owner's own phone. The
+  // server sends it automatically over WhatsApp (see POST
+  // /api/consent-form-requests — a pre-approved template, since this needs
+  // to reach any client regardless of an existing WhatsApp conversation);
+  // this just surfaces whether that send actually went through, falling
+  // back to a copy-to-clipboard link when it didn't (no phone on file, the
+  // template isn't approved yet, etc.) — same pattern as the consult page.
   async function sendConsentLink() {
     setConsentError(null);
+    setConsentInfo(null);
     setSendingConsentLink(true);
     const res = await fetch('/api/consent-form-requests', {
       method: 'POST',
@@ -572,19 +579,13 @@ export default function HospitalizationDetailPage() {
       return;
     }
     const url = `${window.location.origin}/portal/consent/${data.id}`;
-    const digits = (admission.clients?.phone || '').replace(/\D/g, '');
-    const clientLabel = `${admission.clients?.full_name || 'there'}${
-      admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''
-    }`;
-    const patientLabel = `${admission.patients?.name || 'your pet'}${
-      admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''
-    }`;
-    const message = `Hi ${clientLabel}! Please review and sign this consent form for ${patientLabel}: ${url}`;
-    if (digits.length > 3) {
-      openWhatsApp(admission.clients?.phone, message);
+    if (data.whatsapp?.sent) {
+      setConsentInfo('Sent — the link was WhatsApped to the owner.');
     } else {
       await navigator.clipboard.writeText(url);
-      setConsentError('No phone number on file — link copied to clipboard instead.');
+      setConsentError(
+        `Could not send over WhatsApp (${data.whatsapp?.reason || 'unknown reason'}) — link copied to clipboard instead.`
+      );
     }
   }
 
@@ -847,6 +848,7 @@ export default function HospitalizationDetailPage() {
       <form className="card" onSubmit={addConsentForm}>
         <h3>Sign {CONSENT_FORM_LABELS[consentFormType]}</h3>
         {consentError && <p className="error">{consentError}</p>}
+        {consentInfo && <p className="visit-meta">{consentInfo}</p>}
         <p className="visit-meta">
           Patient: {admission.patients?.name}
           {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''} · Owner:{' '}
