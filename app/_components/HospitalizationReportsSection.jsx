@@ -481,7 +481,10 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
     }
   }
 
-  const vets = (staff || []).filter((s) => s.role === 'vet');
+  // Who a report can be assigned to — includes vet techs alongside vets,
+  // since a tech routinely performs a dental cleaning or assists on other
+  // procedures.
+  const vets = (staff || []).filter((s) => s.role === 'vet' || s.role === 'tech');
   const ultrasoundByDiagnostic = Object.fromEntries(ultrasoundReports.map((r) => [r.diagnostic_id, r]));
   const xrayByDiagnostic = Object.fromEntries(xrayReports.map((r) => [r.diagnostic_id, r]));
 
@@ -495,11 +498,12 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
         onDeleteOverallReport={deleteHospitalReport} onDeleteDiagnostic={deleteDiagnostic}
         diagnostics={diagnostics} catalog={catalog}
         groups={[
-          { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', anchorId: 'report-dental', reload: loadDentalReports },
-          { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', anchorId: 'report-surgical', reload: loadSurgicalReports },
-          { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', anchorId: 'report-ultrasound', reload: loadUltrasoundReports, hasClientSummary: true },
-          { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', anchorId: 'report-xray', reload: loadXrayReports, hasClientSummary: true },
+          { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', staffField: 'performed_by', anchorId: 'report-dental', reload: loadDentalReports },
+          { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', staffField: 'surgeon_id', anchorId: 'report-surgical', reload: loadSurgicalReports },
+          { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', staffField: 'performed_by', anchorId: 'report-ultrasound', reload: loadUltrasoundReports, hasClientSummary: true },
+          { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', staffField: 'performed_by', anchorId: 'report-xray', reload: loadXrayReports, hasClientSummary: true },
         ]}
+        assignableStaff={vets}
         onGenerate={generateAiReport} generatingId={generatingReportId}
         generationError={generateReportError} generationErrorId={generateReportErrorId}
         resultDrafts={resultDrafts} onResultChange={(diagId, text) => setResultDrafts((prev) => ({ ...prev, [diagId]: text }))}

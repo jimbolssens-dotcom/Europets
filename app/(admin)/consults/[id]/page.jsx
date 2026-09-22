@@ -798,7 +798,11 @@ export default function ConsultDetailPage() {
   if (loading || !consult || !record) return <p>Loading consult...</p>;
   if (consult.error) return <p>Consult not found.</p>;
 
-  const vets = staff.filter((s) => s.role === 'vet');
+  // Who a report (dental/surgical/ultrasound/x-ray) can be assigned to —
+  // wider than the attending-vet select below (that's the whole-consult
+  // clinician, vet-only) since a vet tech routinely performs a dental
+  // cleaning or assists on other procedures.
+  const reportStaff = staff.filter((s) => s.role === 'vet' || s.role === 'tech');
 
   return (
     <div>
@@ -1206,7 +1210,7 @@ export default function ConsultDetailPage() {
                             }
                           >
                             <option value="">Performed by...</option>
-                            {vets.map((v) => (
+                            {reportStaff.map((v) => (
                               <option key={v.id} value={v.id}>
                                 {v.full_name}
                               </option>
@@ -1304,7 +1308,7 @@ export default function ConsultDetailPage() {
                             }
                           >
                             <option value="">Performed by...</option>
-                            {vets.map((v) => (
+                            {reportStaff.map((v) => (
                               <option key={v.id} value={v.id}>
                                 {v.full_name}
                               </option>
@@ -1529,11 +1533,12 @@ export default function ConsultDetailPage() {
           record={consult} recordApiBase="/api/visits" showOverallReport
           diagnostics={diagnostics} catalog={catalog}
           groups={[
-            { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', reload: loadDentalReports },
-            { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', reload: loadSurgicalReports },
-            { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', sourceTab: 'exam', reload: loadUltrasoundReports, hasClientSummary: true },
-            { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', sourceTab: 'exam', reload: loadXrayReports, hasClientSummary: true },
+            { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', staffField: 'performed_by', reload: loadDentalReports },
+            { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', staffField: 'surgeon_id', reload: loadSurgicalReports },
+            { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', staffField: 'performed_by', sourceTab: 'exam', reload: loadUltrasoundReports, hasClientSummary: true },
+            { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', staffField: 'performed_by', sourceTab: 'exam', reload: loadXrayReports, hasClientSummary: true },
           ]}
+          assignableStaff={reportStaff}
           onRecordSaved={loadConsult} onOpenSource={setActiveTab}
           onGenerate={generateAiReport} generatingId={generatingReportId}
           generationError={generateReportError} generationErrorId={generateReportErrorId}
