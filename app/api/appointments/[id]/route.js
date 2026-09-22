@@ -1,4 +1,12 @@
 // app/api/appointments/[id]/route.js
+// DELETE /api/appointments/:id
+//   -> permanently remove a cancelled/no-show appointment — the "ghost"
+//      slot it otherwise leaves behind can't be booked over or dragged
+//      out of the way (see the Appointments page's click-through
+//      handling for that), so once it's cancelled, deleting it outright
+//      is the other way to clear it. Refuses on anything still
+//      active/completed — that's real schedule history, Cancel it
+//      instead, never delete.
 // PATCH /api/appointments/:id
 //   { status }                                    -> status-only update
 //     (check-in, cancel, etc. — unchanged behavior)
@@ -31,6 +39,30 @@ import {
 } from '@/lib/appointmentScheduling';
 
 const VALID_STATUSES = ['booked', 'checked_in', 'in_progress', 'complete', 'cancelled', 'no_show'];
+
+export async function DELETE(request, { params }) {
+  const { data: current, error: currentError } = await supabase
+    .from('appointments')
+    .select('status')
+    .eq('id', params.id)
+    .single();
+
+  if (currentError || !current) {
+    return NextResponse.json({ error: 'appointment not found' }, { status: 404 });
+  }
+  if (current.status !== 'cancelled' && current.status !== 'no_show') {
+    return NextResponse.json(
+      { error: 'Only a cancelled or no-show appointment can be deleted — cancel it first.' },
+      { status: 409 }
+    );
+  }
+
+  const { error } = await supabaseAdmin.from('appointments').delete().eq('id', params.id);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
+}
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
