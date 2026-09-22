@@ -200,6 +200,8 @@ export default function MessagesInboxPage() {
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeResult, setSubscribeResult] = useState(null); // { ok: boolean, message: string } | null
+  const [submittingTemplate, setSubmittingTemplate] = useState(false);
+  const [templateResult, setTemplateResult] = useState(null); // { ok: boolean, message: string } | null
 
   const load = () =>
     fetch('/api/client-messages')
@@ -240,6 +242,24 @@ export default function MessagesInboxPage() {
     setSubscribing(false);
   }
 
+  async function submitConsentTemplate() {
+    setSubmittingTemplate(true);
+    setTemplateResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/create-consent-template', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setTemplateResult({
+        ok: true,
+        message:
+          'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
+      });
+    } catch (err) {
+      setTemplateResult({ ok: false, message: err.message });
+    }
+    setSubmittingTemplate(false);
+  }
+
   return (
     <>
       <div className="page-header">
@@ -258,6 +278,21 @@ export default function MessagesInboxPage() {
         </button>
         {subscribeResult && (
           <span className={subscribeResult.ok ? '' : 'error'}> {subscribeResult.message}</span>
+        )}
+      </p>
+
+      {/* One-time setup for automated outbound consent-form links: proposes
+          a Meta-approved message template so a consent form can be pushed
+          to any client's WhatsApp, not just those already in an open
+          conversation. Nothing sends until Meta approves it — safe to click
+          more than once (e.g. after editing the wording and resubmitting). */}
+      <p className="visit-meta">
+        Set up automated WhatsApp consent form links (one-time, needs Meta's approval before it goes live):{' '}
+        <button type="button" onClick={submitConsentTemplate} disabled={submittingTemplate}>
+          {submittingTemplate ? 'Submitting…' : 'Submit consent form WhatsApp template'}
+        </button>
+        {templateResult && (
+          <span className={templateResult.ok ? '' : 'error'}> {templateResult.message}</span>
         )}
       </p>
 
