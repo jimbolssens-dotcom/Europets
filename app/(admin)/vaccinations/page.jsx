@@ -1,16 +1,19 @@
 // app/vaccinations/page.jsx
 // Vaccination Reminders: every patient's due/overdue vaccinations in one
-// list, across the whole clinic. "WhatsApp"/"Email" draft a pre-filled
-// reminder for staff to send themselves (there's no email service or
-// WhatsApp Business API connected to send these automatically yet) and
-// mark it reminded so the list doesn't nag about the same due date again.
+// list, across the whole clinic. "WhatsApp" sends the reminder
+// automatically (see POST /api/vaccinations/send-reminder — a
+// pre-approved Meta template, so it reaches a client whether or not
+// they've already messaged the clinic's WhatsApp number; its Quick Reply
+// button lets them book straight through that same conversation) and
+// marks it reminded so the list doesn't nag about the same due date
+// again. "Email" still drafts a pre-filled message for staff to send
+// themselves — there's no connected email service.
 
 'use client';
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import InfoHint from '@/app/_components/InfoHint';
-import { openWhatsApp } from '@/lib/whatsapp';
 
 function daysUntil(dateStr) {
   const today = new Date();
@@ -61,6 +64,8 @@ export default function VaccinationsDuePage() {
   const [windowDays, setWindowDays] = useState(30);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sendingKey, setSendingKey] = useState(null);
+  const [sendResult, setSendResult] = useState(null); // { key, ok: boolean, message: string } | null
 
   const load = () =>
     fetch(`/api/vaccinations?due=true&within_days=${windowDays}`)
@@ -107,9 +112,28 @@ export default function VaccinationsDuePage() {
     )}). Please call us to book a time. — Europets Clinic`;
   }
 
-  function draftWhatsApp(group) {
-    if (!openWhatsApp(group.patients?.clients?.phone, reminderMessage(group))) return;
-    markReminded(group.rows.map((r) => r.id));
+  // Sends the reminder automatically over WhatsApp (see POST
+  // /api/vaccinations/send-reminder — a pre-approved template, since this
+  // needs to reach the client whether or not they've already messaged the
+  // clinic's WhatsApp number) instead of drafting one for staff to send
+  // from their own phone. Its Quick Reply "Book Appointment" button lands
+  // the client straight in a booking conversation with the AI concierge.
+  async function sendWhatsApp(group) {
+    setSendingKey(group.key);
+    setSendResult(null);
+    const res = await fetch('/api/vaccinations/send-reminder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: group.rows.map((r) => r.id) }),
+    });
+    const data = await res.json().catch(() => null);
+    setSendingKey(null);
+    if (!res.ok) {
+      setSendResult({ key: group.key, ok: false, message: data?.error || 'Failed to send' });
+      return;
+    }
+    setSendResult({ key: group.key, ok: true, message: 'Sent' });
+    load();
   }
 
   function draftEmail(group) {
@@ -133,9 +157,9 @@ export default function VaccinationsDuePage() {
       <h1>
         Vaccination Reminders{' '}
         <InfoHint>
-          Due and overdue vaccinations across every patient. WhatsApp/Email drafts a pre-filled
-          reminder for you to send — there&apos;s no connected service to send these on their own
-          yet.
+          Due and overdue vaccinations across every patient. WhatsApp sends the reminder
+          automatically, with a button the client can tap to book right in that conversation.
+          Email still drafts a pre-filled message for you to send yourself.
         </InfoHint>
       </h1>
 
@@ -189,14 +213,17 @@ export default function VaccinationsDuePage() {
                   <td>{g.patients?.clients?.full_name || '—'}</td>
                   <td>
                     {g.patients?.clients?.phone && (
-                      <button type="button" onClick={() => draftWhatsApp(g)}>
-                        💬 WhatsApp
+                      <button type="button" onClick={() => sendWhatsApp(g)} disabled={sendingKey === g.key}>
+                        {sendingKey === g.key ? 'Sending…' : '💬 WhatsApp'}
                       </button>
                     )}
                     {g.patients?.clients?.email && (
                       <button type="button" onClick={() => draftEmail(g)}>
                         ✉️ Email
                       </button>
+                    )}
+                    {sendResult?.key === g.key && (
+                      <span className={sendResult.ok ? 'visit-meta' : 'error'}> {sendResult.message}</span>
                     )}
                     {allReminded ? (
                       <span className="visit-meta"> Reminded {formatDate(lastReminded.slice(0, 10))}</span>

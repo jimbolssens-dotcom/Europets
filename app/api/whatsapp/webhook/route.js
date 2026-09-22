@@ -149,9 +149,11 @@ async function handleInboundMessage(message, contactPhone) {
     return;
   }
 
-  // Only a genuine plain-text message is ever handed to the concierge — a
-  // photo (of an injury, a receipt, anything) always needs a human's eyes.
-  if (message.type === 'text') {
+  // A plain-text message or a tapped template button/quick-reply (its text
+  // arrives exactly like typing it — see extractBody above) both go to the
+  // concierge; anything else (a photo of an injury, a receipt, ...) always
+  // needs a human's eyes.
+  if (message.type === 'text' || message.type === 'button' || message.type === 'interactive') {
     await runConciergeForInbound(message, clientId, digits);
   }
 }

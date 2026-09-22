@@ -202,6 +202,8 @@ export default function MessagesInboxPage() {
   const [subscribeResult, setSubscribeResult] = useState(null); // { ok: boolean, message: string } | null
   const [submittingTemplate, setSubmittingTemplate] = useState(false);
   const [templateResult, setTemplateResult] = useState(null); // { ok: boolean, message: string } | null
+  const [submittingVaccinationTemplate, setSubmittingVaccinationTemplate] = useState(false);
+  const [vaccinationTemplateResult, setVaccinationTemplateResult] = useState(null); // { ok: boolean, message: string } | null
 
   const load = () =>
     fetch('/api/client-messages')
@@ -260,6 +262,24 @@ export default function MessagesInboxPage() {
     setSubmittingTemplate(false);
   }
 
+  async function submitVaccinationTemplate() {
+    setSubmittingVaccinationTemplate(true);
+    setVaccinationTemplateResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/create-vaccination-template', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setVaccinationTemplateResult({
+        ok: true,
+        message:
+          'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
+      });
+    } catch (err) {
+      setVaccinationTemplateResult({ ok: false, message: err.message });
+    }
+    setSubmittingVaccinationTemplate(false);
+  }
+
   return (
     <>
       <div className="page-header">
@@ -293,6 +313,20 @@ export default function MessagesInboxPage() {
         </button>
         {templateResult && (
           <span className={templateResult.ok ? '' : 'error'}> {templateResult.message}</span>
+        )}
+      </p>
+
+      {/* Same one-time setup, for the vaccination-reminders page's
+          automatic WhatsApp send (see app/(admin)/vaccinations) — its
+          Quick Reply button lets a client book straight through that
+          conversation. */}
+      <p className="visit-meta">
+        Set up automated WhatsApp vaccination reminders (one-time, needs Meta's approval before it goes live):{' '}
+        <button type="button" onClick={submitVaccinationTemplate} disabled={submittingVaccinationTemplate}>
+          {submittingVaccinationTemplate ? 'Submitting…' : 'Submit vaccination reminder WhatsApp template'}
+        </button>
+        {vaccinationTemplateResult && (
+          <span className={vaccinationTemplateResult.ok ? '' : 'error'}> {vaccinationTemplateResult.message}</span>
         )}
       </p>
 
