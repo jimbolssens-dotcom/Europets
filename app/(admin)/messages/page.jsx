@@ -287,7 +287,7 @@ export default function MessagesInboxPage() {
                         {c.client?.full_name}
                         {c.client?.client_number ? ` (Client #${c.client.client_number})` : ''}
                       </a>
-                      {c.channel === 'whatsapp' && <span className="visit-meta"> · WhatsApp</span>}
+                      <span className="visit-meta"> · {c.channel === 'whatsapp' ? 'WhatsApp' : 'App'}</span>
                     </td>
                     <td>
                       {c.last_sender === 'staff' ? 'You: ' : c.last_sender === 'ai' ? '🤖 ' : ''}

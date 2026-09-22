@@ -182,8 +182,7 @@ export default function ClientMessageThreadPage() {
             {m.body && <p>{m.body}</p>}
             <span className="portal-chat-bubble-meta">
               {m.sender === 'staff' ? m.staff?.full_name || 'Staff' : m.sender === 'ai' ? '🤖 AI concierge' : client?.full_name || 'Client'} ·{' '}
-              {formatDateTime(m.created_at)}
-              {m.channel === 'whatsapp' && ' · WhatsApp'}
+              {formatDateTime(m.created_at)} · {m.channel === 'whatsapp' ? '💬 WhatsApp' : '📱 App'}
             </span>
           </div>
         ))}
