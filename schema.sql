@@ -366,9 +366,10 @@ create table vaccine_protocols (
 -- never rewrites a patient's history. next_due_date defaults to
 -- date_given + the protocol's interval but stays editable. is_primary
 -- flags a row as part of a primary (puppy/kitten) course — its booster is
--- due in 1 month rather than the normal annual cycle. reminder_sent_at
--- tracks whether staff already drafted a reminder for the current due
--- date, so the due list doesn't nag about the same one twice.
+-- due in 1 month rather than the normal annual cycle. reminder_sent_at is
+-- the last time a reminder actually went out for the current due date;
+-- reminder_count how many times, so the app can cap and cool down
+-- reminders instead of nagging indefinitely (migration 133).
 create table vaccinations (
     id uuid primary key default gen_random_uuid(),
     patient_id uuid references patients(id) on delete cascade not null,
@@ -381,6 +382,7 @@ create table vaccinations (
     notes text,
     is_primary boolean not null default false,
     reminder_sent_at timestamptz,
+    reminder_count integer not null default 0,
     created_at timestamptz default now()
 );
 

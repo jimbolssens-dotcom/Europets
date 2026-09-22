@@ -12,11 +12,15 @@
 // Unlike consent-form-requests, the WhatsApp send here IS the point of the
 // request (there's no underlying record being created either way), so a
 // send failure is a real error, not a best-effort footnote — nothing is
-// marked reminded unless it actually sent.
+// marked reminded unless it actually sent. Also enforces
+// lib/vaccinationReminderPolicy's cooldown/cap/cutoff server-side (409 if
+// not eligible) — the UI hides/disables the button for the same reason,
+// but this is the real gate.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendVaccinationReminder } from '@/lib/metaWhatsapp';
+import { reminderEligibility } from '@/lib/vaccinationReminderPolicy';
 import { NextResponse } from 'next/server';
 
 function listNames(names) {
@@ -34,7 +38,7 @@ export async function POST(request) {
 
   const { data: rows, error: rowsError } = await supabase
     .from('vaccinations')
-    .select('id, patient_id, vaccine_name, next_due_date')
+    .select('id, patient_id, vaccine_name, next_due_date, reminder_sent_at, reminder_count')
     .in('id', ids);
   if (rowsError) {
     return NextResponse.json({ error: rowsError.message }, { status: 500 });
@@ -45,6 +49,18 @@ export async function POST(request) {
   const patientId = rows[0].patient_id;
   if (!rows.every((r) => r.patient_id === patientId)) {
     return NextResponse.json({ error: 'ids must all belong to the same patient' }, { status: 400 });
+  }
+
+  // Enforced here, not just hidden in the UI — see lib/vaccinationReminderPolicy
+  // for why (a lapsed/badly-overdue vaccine stops being auto-reminded
+  // rather than nagging a client who's clearly not coming back for it).
+  const eligibility = reminderEligibility({
+    nextDueDate: rows[0].next_due_date,
+    reminderSentAt: rows[0].reminder_sent_at,
+    reminderCount: rows[0].reminder_count,
+  });
+  if (!eligibility.canSendNow) {
+    return NextResponse.json({ error: eligibility.reason, lapsed: eligibility.lapsed }, { status: 409 });
   }
 
   const { data: patient, error: patientError } = await supabase
@@ -85,7 +101,7 @@ export async function POST(request) {
 
   const { error: markError } = await supabaseAdmin
     .from('vaccinations')
-    .update({ reminder_sent_at: new Date().toISOString() })
+    .update({ reminder_sent_at: new Date().toISOString(), reminder_count: (rows[0].reminder_count || 0) + 1 })
     .in('id', ids);
   if (markError) {
     return NextResponse.json({ error: markError.message }, { status: 500 });

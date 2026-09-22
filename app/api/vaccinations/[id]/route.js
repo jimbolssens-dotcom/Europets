@@ -13,6 +13,13 @@ export async function PATCH(request, { params }) {
   for (const field of EDITABLE_FIELDS) {
     if (body[field] !== undefined) update[field] = body[field];
   }
+  // A new next_due_date is a fresh reminder cycle (a booster was actually
+  // given, or the date was corrected) — carrying over the old count/cap
+  // would keep an unrelated due date locked out or prematurely lapsed.
+  if (body.next_due_date !== undefined) {
+    update.reminder_sent_at = null;
+    update.reminder_count = 0;
+  }
   // Set by the "remind" button on the due list — one click both drafts the
   // WhatsApp/email message and marks it handled, so the list stops nagging
   // about the same due date. clear_reminder undoes that if needed.

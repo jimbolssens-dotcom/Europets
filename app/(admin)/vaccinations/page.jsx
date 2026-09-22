@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import InfoHint from '@/app/_components/InfoHint';
+import { reminderEligibility } from '@/lib/vaccinationReminderPolicy';
 
 function daysUntil(dateStr) {
   const today = new Date();
@@ -41,17 +42,27 @@ function listNames(names) {
 
 // One patient can have several vaccines due on the same next_due_date (e.g.
 // a Primary Booster's core vaccine + its rabies reminder) — group those into
-// a single reminder row/message instead of sending one per vaccine.
+// a single reminder row/message instead of sending one per vaccine. Every
+// row in a group is reminded together (see send-reminder), so their
+// reminder_sent_at/reminder_count stay in lockstep — take the first row's.
 function groupRows(rows) {
   const groups = new Map();
   for (const r of rows) {
     const key = `${r.patient_id}__${r.next_due_date}`;
     if (!groups.has(key)) {
-      groups.set(key, { key, patient_id: r.patient_id, next_due_date: r.next_due_date, patients: r.patients, rows: [] });
+      groups.set(key, {
+        key,
+        patient_id: r.patient_id,
+        next_due_date: r.next_due_date,
+        patients: r.patients,
+        reminder_sent_at: r.reminder_sent_at,
+        reminder_count: r.reminder_count,
+        rows: [],
+      });
     }
     groups.get(key).rows.push(r);
   }
-  return [...groups.values()];
+  return [...groups.values()].map((g) => ({ ...g, eligibility: reminderEligibility(g) }));
 }
 
 const WINDOWS = [
@@ -179,65 +190,123 @@ export default function VaccinationsDuePage() {
       {rows.length === 0 ? (
         <p>Nothing due in this window.</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Patient</th>
-              <th>Species</th>
-              <th>Vaccine</th>
-              <th>Due</th>
-              <th>Owner</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {groupRows(rows).map((g) => {
-              const allReminded = g.rows.every((r) => r.reminder_sent_at);
-              const lastReminded = g.rows
-                .map((r) => r.reminder_sent_at)
-                .filter(Boolean)
-                .sort()
-                .pop();
-              return (
-                <tr key={g.key}>
-                  <td className={daysUntil(g.next_due_date) < 0 ? 'error' : ''}>
-                    {dueLabel(g.next_due_date)}
-                  </td>
-                  <td>
-                    <a href={`/patients/${g.patients?.id}`}>{g.patients?.name}</a>
-                  </td>
-                  <td>{g.patients?.species}</td>
-                  <td>{listNames(g.rows.map((r) => r.vaccine_name))}</td>
-                  <td>{formatDate(g.next_due_date)}</td>
-                  <td>{g.patients?.clients?.full_name || '—'}</td>
-                  <td>
-                    {g.patients?.clients?.phone && (
-                      <button type="button" onClick={() => sendWhatsApp(g)} disabled={sendingKey === g.key}>
-                        {sendingKey === g.key ? 'Sending…' : '💬 WhatsApp'}
-                      </button>
-                    )}
-                    {g.patients?.clients?.email && (
-                      <button type="button" onClick={() => draftEmail(g)}>
-                        ✉️ Email
-                      </button>
-                    )}
-                    {sendResult?.key === g.key && (
-                      <span className={sendResult.ok ? 'visit-meta' : 'error'}> {sendResult.message}</span>
-                    )}
-                    {allReminded ? (
-                      <span className="visit-meta"> Reminded {formatDate(lastReminded.slice(0, 10))}</span>
-                    ) : (
-                      <button type="button" onClick={() => markReminded(g.rows.map((r) => r.id))}>
-                        Done
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        (() => {
+          const groups = groupRows(rows);
+          const activeGroups = groups.filter((g) => !g.eligibility.lapsed);
+          const lapsedGroups = groups.filter((g) => g.eligibility.lapsed);
+          return (
+            <>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Patient</th>
+                    <th>Species</th>
+                    <th>Vaccine</th>
+                    <th>Due</th>
+                    <th>Owner</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeGroups.map((g) => {
+                    const allReminded = g.rows.every((r) => r.reminder_sent_at);
+                    const lastReminded = g.rows
+                      .map((r) => r.reminder_sent_at)
+                      .filter(Boolean)
+                      .sort()
+                      .pop();
+                    return (
+                      <tr key={g.key}>
+                        <td className={daysUntil(g.next_due_date) < 0 ? 'error' : ''}>
+                          {dueLabel(g.next_due_date)}
+                        </td>
+                        <td>
+                          <a href={`/patients/${g.patients?.id}`}>{g.patients?.name}</a>
+                        </td>
+                        <td>{g.patients?.species}</td>
+                        <td>{listNames(g.rows.map((r) => r.vaccine_name))}</td>
+                        <td>{formatDate(g.next_due_date)}</td>
+                        <td>{g.patients?.clients?.full_name || '—'}</td>
+                        <td>
+                          {g.patients?.clients?.phone && (
+                            <button
+                              type="button"
+                              onClick={() => sendWhatsApp(g)}
+                              disabled={sendingKey === g.key || !g.eligibility.canSendNow}
+                              title={g.eligibility.reason || ''}
+                            >
+                              {sendingKey === g.key ? 'Sending…' : '💬 WhatsApp'}
+                            </button>
+                          )}
+                          {g.patients?.clients?.email && (
+                            <button type="button" onClick={() => draftEmail(g)}>
+                              ✉️ Email
+                            </button>
+                          )}
+                          {!g.eligibility.canSendNow && !sendResult && (
+                            <span className="visit-meta"> {g.eligibility.reason}</span>
+                          )}
+                          {sendResult?.key === g.key && (
+                            <span className={sendResult.ok ? 'visit-meta' : 'error'}> {sendResult.message}</span>
+                          )}
+                          {allReminded ? (
+                            <span className="visit-meta"> Reminded {formatDate(lastReminded.slice(0, 10))}</span>
+                          ) : (
+                            <button type="button" onClick={() => markReminded(g.rows.map((r) => r.id))}>
+                              Done
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {lapsedGroups.length > 0 && (
+                <details className="case-files">
+                  <summary>
+                    📵 Lapsed — needs a phone call, not another WhatsApp ({lapsedGroups.length})
+                  </summary>
+                  <p className="visit-meta">
+                    Past the automatic-reminder cutoff (badly overdue, or already reminded the maximum
+                    number of times with no response) — WhatsApp is disabled here on purpose. Follow up
+                    directly, or edit the vaccination&apos;s due date once you know where things stand.
+                  </p>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Status</th>
+                        <th>Patient</th>
+                        <th>Vaccine</th>
+                        <th>Due</th>
+                        <th>Owner</th>
+                        <th>Phone</th>
+                        <th>Reminded</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lapsedGroups.map((g) => (
+                        <tr key={g.key}>
+                          <td className="error">{dueLabel(g.next_due_date)}</td>
+                          <td>
+                            <a href={`/patients/${g.patients?.id}`}>{g.patients?.name}</a>
+                          </td>
+                          <td>{listNames(g.rows.map((r) => r.vaccine_name))}</td>
+                          <td>{formatDate(g.next_due_date)}</td>
+                          <td>{g.patients?.clients?.full_name || '—'}</td>
+                          <td>{g.patients?.clients?.phone || '—'}</td>
+                          <td>{g.reminder_count || 0}×</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              )}
+            </>
+          );
+        })()
       )}
     </div>
   );
