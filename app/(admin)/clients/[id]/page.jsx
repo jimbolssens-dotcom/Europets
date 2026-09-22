@@ -332,10 +332,13 @@ export default function ClientDetailPage() {
           Invoice
         </a>{' '}
         {/* The real conversation thread (client_messages, same inbox as
-            /messages) — distinct from the openWhatsApp "draft a canned
-            message from my own phone" buttons further down this page. */}
-        <a href={`/messages/${client.id}`} className="button-link">
-          💬 Message
+            /messages, over the clinic's own WhatsApp number and the
+            client app) — distinct from the openWhatsApp "draft a canned
+            message from my own personal phone" buttons further down this
+            page, hence the spelled-out label rather than reusing their
+            "💬 WhatsApp" wording for something that behaves differently. */}
+        <a href={`/messages/${client.id}`} className="button-link" title="Open this client's message thread — the clinic's own WhatsApp number and app chat, unified">
+          💬 App/WhatsApp Chat
         </a>
       </p>
 
