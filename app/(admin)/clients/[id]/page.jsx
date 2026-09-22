@@ -330,6 +330,12 @@ export default function ClientDetailPage() {
         </a>{' '}
         <a href={`/invoices?client_id=${client.id}`} className="button-link">
           Invoice
+        </a>{' '}
+        {/* The real conversation thread (client_messages, same inbox as
+            /messages) — distinct from the openWhatsApp "draft a canned
+            message from my own phone" buttons further down this page. */}
+        <a href={`/messages/${client.id}`} className="button-link">
+          💬 Message
         </a>
       </p>
 
