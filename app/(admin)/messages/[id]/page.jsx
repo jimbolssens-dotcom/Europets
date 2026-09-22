@@ -54,10 +54,15 @@ export default function ClientMessageThreadPage() {
   }, [id]);
 
   useEffect(() => {
+    // Also depends on `loading`, not just `messages`: the thread <div> (and
+    // this ref) doesn't exist until loading flips to false, but messages was
+    // already set moments earlier in the same load — same reference, so this
+    // effect wouldn't otherwise rerun on the one render where the ref first
+    // becomes non-null, and the page would silently open scrolled to the top.
     if (threadRef.current) {
       threadRef.current.scrollTop = threadRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, loading]);
 
   async function sendReply(e) {
     e.preventDefault();

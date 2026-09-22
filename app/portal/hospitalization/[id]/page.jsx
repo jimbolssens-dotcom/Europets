@@ -89,12 +89,17 @@ export default function HospitalizationPortalPage() {
 
   // The thread is a fixed-height scroll box (see .portal-chat-thread) —
   // without this it stays scrolled to the top, so a growing conversation
-  // shows the oldest messages instead of the latest one.
+  // shows the oldest messages instead of the latest one. Also depends on
+  // `loading`: the page renders nothing but a loading message (see the
+  // `if (loading) return ...` below) until it flips to false, so this ref
+  // doesn't exist yet on the render where messages was actually set —
+  // without loading in the deps, the one render where the ref first
+  // becomes non-null wouldn't rerun this effect.
   useEffect(() => {
     if (chatThreadRef.current) {
       chatThreadRef.current.scrollTop = chatThreadRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, loading]);
 
   async function sendMessage(e) {
     e.preventDefault();

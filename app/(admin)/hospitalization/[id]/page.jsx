@@ -764,12 +764,18 @@ export default function HospitalizationDetailPage() {
   }
 
   // Same fixed-height scroll box as the portal's thread — keep it pinned
-  // to the latest message instead of the top.
+  // to the latest message instead of the top. Also depends on `loading`:
+  // the whole page renders nothing but "Loading admission..." (see the
+  // loading || !admission guard below) until it flips to false, so this
+  // ref doesn't exist yet on the render where messages was actually set —
+  // without loading in the deps, the one render where the ref first
+  // becomes non-null wouldn't rerun this effect, and the thread would
+  // silently open scrolled to the top instead of the latest message.
   useEffect(() => {
     if (chatThreadRef.current) {
       chatThreadRef.current.scrollTop = chatThreadRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, loading]);
 
   // Pop the panel open whenever a new client message comes in (this fires
   // on the timestamp actually changing, not just being present, so if

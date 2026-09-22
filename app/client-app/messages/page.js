@@ -54,11 +54,17 @@ export default function ClientAppMessagesPage() {
     return () => supabase.removeChannel(channel);
   }, [ready, clientId]);
 
+  // Also depends on `loading`: the page renders nothing (see the `if
+  // (!ready || loading) return null` below) until it flips to false, so
+  // this ref doesn't exist yet on the render where messages was actually
+  // set — without loading in the deps, the one render where the ref first
+  // becomes non-null wouldn't rerun this effect, and the thread would
+  // silently open scrolled to the top instead of the latest message.
   useEffect(() => {
     if (threadRef.current) {
       threadRef.current.scrollTop = threadRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, loading]);
 
   async function sendMessage(e) {
     e.preventDefault();
