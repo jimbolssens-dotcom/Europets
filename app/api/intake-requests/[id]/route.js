@@ -18,6 +18,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { sendBookingConfirmation } from '@/lib/metaWhatsapp';
 import { CLIENT_APPOINTMENT_TYPES, CLIENT_APPOINTMENT_TYPE_LABELS, appointmentTypeAllowedForSex } from '@/lib/appointmentBooking';
 import { seedCoreVaccinationsFromLastGiven, seedVaccinationFromIntake } from '@/lib/vaccinationSeeding';
 import { findAppointmentConflict } from '@/lib/appointmentScheduling';
@@ -457,19 +458,47 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
   }
 
   // The confirmed slot (and the pet's actual name, whether it's the one
-  // they already had or the one just created above) — handed back so
-  // staff can fire off a one-click WhatsApp confirmation right away,
-  // without a second round trip. Only present when this request actually
-  // booked something.
+  // they already had or the one just created above) — the client never
+  // saw a confirmed slot before now (a custom surgery/procedure request
+  // only had a preferred day, and even a normal request's own chosen slot
+  // isn't real until staff approve it). Only present when this request
+  // actually booked something.
   let patient_name = null;
   if (bookingPatientId) {
     const { data: bookingPatient } = await supabase.from('patients').select('name').eq('id', bookingPatientId).single();
     patient_name = bookingPatient?.name || null;
   }
 
+  // Sent from the clinic's own WhatsApp Business number, not staff's own
+  // personal WhatsApp (see lib/useIntakeReview.js — that used to be the
+  // only way this went out, via a wa.me/whatsapp:// link staff had to
+  // click and send by hand). A send failure here (template not approved
+  // yet, no phone on file, etc.) doesn't undo the booking — it's already
+  // real — so it's reported back for the UI to fall back to the old
+  // manual-send button rather than failing the whole approval.
+  let confirmation_sent = false;
+  let confirmation_error = null;
+  if (appointmentId && data.clients?.phone) {
+    try {
+      const dateLabel = appointmentStart.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: '2-digit' });
+      const timeLabel = appointmentStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      await sendBookingConfirmation(data.clients.phone.replace(/\D/g, ''), {
+        clientName: data.clients.full_name,
+        patientName: patient_name,
+        dateLabel,
+        timeLabel,
+      });
+      confirmation_sent = true;
+    } catch (err) {
+      confirmation_error = err.message;
+    }
+  }
+
   return NextResponse.json({
     ...data,
     patient_name,
+    confirmation_sent,
+    confirmation_error,
     appointment: appointmentId
       ? {
           id: appointmentId,

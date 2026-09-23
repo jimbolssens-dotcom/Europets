@@ -222,6 +222,8 @@ export default function MessagesInboxPage() {
   const [subscribeResult, setSubscribeResult] = useState(null); // { ok: boolean, message: string } | null
   const [submittingFirstContact, setSubmittingFirstContact] = useState(false);
   const [firstContactResult, setFirstContactResult] = useState(null); // { ok: boolean, message: string } | null
+  const [submittingBookingTemplate, setSubmittingBookingTemplate] = useState(false);
+  const [bookingTemplateResult, setBookingTemplateResult] = useState(null); // { ok: boolean, message: string } | null
 
   const load = () =>
     fetch('/api/client-messages')
@@ -280,6 +282,24 @@ export default function MessagesInboxPage() {
     setSubmittingFirstContact(false);
   }
 
+  async function submitBookingConfirmationTemplate() {
+    setSubmittingBookingTemplate(true);
+    setBookingTemplateResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/create-booking-confirmation-template', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setBookingTemplateResult({
+        ok: true,
+        message:
+          'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
+      });
+    } catch (err) {
+      setBookingTemplateResult({ ok: false, message: err.message });
+    }
+    setSubmittingBookingTemplate(false);
+  }
+
   return (
     <>
       <div className="page-header">
@@ -314,6 +334,23 @@ export default function MessagesInboxPage() {
         </button>
         {firstContactResult && (
           <span className={firstContactResult.ok ? '' : 'error'}> {firstContactResult.message}</span>
+        )}
+      </p>
+
+      {/* One-time setup so approving a client's booking request (submitted
+          via the client app or an Invite link) sends its confirmation from
+          the clinic's own WhatsApp Business number automatically, instead
+          of staff having to send it by hand from their own personal
+          WhatsApp — see the auto-send in POST /api/intake-requests/:id
+          and lib/useIntakeReview.js's manual fallback for when this
+          template isn't approved yet. */}
+      <p className="visit-meta">
+        Set up the booking-confirmation WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
+        <button type="button" onClick={submitBookingConfirmationTemplate} disabled={submittingBookingTemplate}>
+          {submittingBookingTemplate ? 'Submitting…' : 'Submit booking-confirmation WhatsApp template'}
+        </button>
+        {bookingTemplateResult && (
+          <span className={bookingTemplateResult.ok ? '' : 'error'}> {bookingTemplateResult.message}</span>
         )}
       </p>
 
