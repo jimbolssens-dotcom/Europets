@@ -84,17 +84,25 @@ async function resolveInvoiceId({ hospitalizationId, visitId, clientId } = {}) {
 // anywhere, exactly what happened to a rabies dose when its catalog entry
 // didn't match. Still doesn't abort the other lines, but now collects the
 // miss into `missing` (itemName, the human label to report by) so the
-// caller can warn staff once everything else has gone through.
+// caller can warn staff once everything else has gone through. The POST
+// itself used to go unchecked too — a failed request (a duplicate catalog
+// name resolving to a row the API rejects, a validation error, anything)
+// was exactly as invisible as a missing item, just one layer deeper; now
+// its error lands in `missing` the same way.
 async function addInvoiceLine(invoiceId, item, itemName, quantity, description, missing) {
   if (!item) {
     missing.push(itemName);
     return;
   }
-  await fetch(`/api/invoices/${invoiceId}/line-items`, {
+  const res = await fetch(`/api/invoices/${invoiceId}/line-items`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ goods_service_id: item.id, quantity, description }),
   });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    missing.push(`${itemName} (${data.error || 'failed to add'})`);
+  }
 }
 
 // Same billing, but through the consult's own treatment plan (POST
@@ -111,11 +119,15 @@ async function addTreatmentItem(visitId, item, itemName, quantity, instructions,
     missing.push(itemName);
     return;
   }
-  await fetch('/api/treatment-items', {
+  const res = await fetch('/api/treatment-items', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ visit_id: visitId, goods_service_id: item.id, quantity, instructions: instructions || undefined }),
   });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    missing.push(`${itemName} (${data.error || 'failed to add'})`);
+  }
 }
 
 export function useVaccinations(patientId, species, invoiceContext = {}, defaultVetId = '') {
