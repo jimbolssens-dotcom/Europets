@@ -2829,6 +2829,20 @@ button.secondary:hover {
   margin: 0.25rem 0 0.75rem;
 }
 
+/* Tucks the one-time WhatsApp setup actions (fix subscription, submit a
+   template) out of the way above the Messages inbox — done once, rarely
+   touched again, so a plain closed disclosure beats permanent clutter. */
+.messages-setup-toggle {
+  margin-bottom: 1rem;
+}
+
+.messages-setup-toggle summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--pink-dark);
+}
+
 .info-hint {
   position: relative;
   display: inline-block;

@@ -306,53 +306,64 @@ export default function MessagesInboxPage() {
         <h1>Messages</h1>
       </div>
 
-      {/* One-time fix for a webhook that's configured correctly in Meta App
-          Dashboard (verified, published, "messages" subscribed) but still
-          isn't receiving anything — the phone number itself also has to be
-          explicitly subscribed, a step Meta's dashboard gives no indication
-          of missing. Safe to click more than once. */}
-      <p className="visit-meta">
-        Not receiving WhatsApp messages here even though the webhook looks configured in Meta?{' '}
-        <button type="button" onClick={fixWhatsAppSubscription} disabled={subscribing}>
-          {subscribing ? 'Fixing…' : 'Fix WhatsApp subscription'}
-        </button>
-        {subscribeResult && (
-          <span className={subscribeResult.ok ? '' : 'error'}> {subscribeResult.message}</span>
-        )}
-      </p>
+      {/* All three below are one-time setup actions (fix the subscription,
+          submit a template) — done once and rarely touched again, so they
+          sat as permanent clutter above the inbox everyone actually reads
+          daily. Tucked into a closed disclosure instead of removed
+          outright: the subscription fix may be needed again if it ever
+          drops, and a template can need resubmitting after Meta rejects
+          it or its wording changes. */}
+      <details className="messages-setup-toggle">
+        <summary>⚙️ WhatsApp setup</summary>
 
-      {/* One-time setup so a text reply to a client with no open WhatsApp
-          window (never messaged this number, or not in the last 24h)
-          actually reaches them — a plain reply can otherwise be silently
-          accepted by Meta's API and then never delivered (see POST
-          /api/clients/:id/messages and the ⚠️ Not delivered status shown
-          in a thread when that happens). */}
-      <p className="visit-meta">
-        Set up the first-contact WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
-        <button type="button" onClick={submitFirstContactTemplate} disabled={submittingFirstContact}>
-          {submittingFirstContact ? 'Submitting…' : 'Submit first-contact WhatsApp template'}
-        </button>
-        {firstContactResult && (
-          <span className={firstContactResult.ok ? '' : 'error'}> {firstContactResult.message}</span>
-        )}
-      </p>
+        {/* One-time fix for a webhook that's configured correctly in Meta App
+            Dashboard (verified, published, "messages" subscribed) but still
+            isn't receiving anything — the phone number itself also has to be
+            explicitly subscribed, a step Meta's dashboard gives no indication
+            of missing. Safe to click more than once. */}
+        <p className="visit-meta">
+          Not receiving WhatsApp messages here even though the webhook looks configured in Meta?{' '}
+          <button type="button" onClick={fixWhatsAppSubscription} disabled={subscribing}>
+            {subscribing ? 'Fixing…' : 'Fix WhatsApp subscription'}
+          </button>
+          {subscribeResult && (
+            <span className={subscribeResult.ok ? '' : 'error'}> {subscribeResult.message}</span>
+          )}
+        </p>
 
-      {/* One-time setup so approving a client's booking request (submitted
-          via the client app or an Invite link) sends its confirmation from
-          the clinic's own WhatsApp Business number automatically, instead
-          of staff having to send it by hand from their own personal
-          WhatsApp — see the auto-send in POST /api/intake-requests/:id
-          and lib/useIntakeReview.js's manual fallback for when this
-          template isn't approved yet. */}
-      <p className="visit-meta">
-        Set up the booking-confirmation WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
-        <button type="button" onClick={submitBookingConfirmationTemplate} disabled={submittingBookingTemplate}>
-          {submittingBookingTemplate ? 'Submitting…' : 'Submit booking-confirmation WhatsApp template'}
-        </button>
-        {bookingTemplateResult && (
-          <span className={bookingTemplateResult.ok ? '' : 'error'}> {bookingTemplateResult.message}</span>
-        )}
-      </p>
+        {/* One-time setup so a text reply to a client with no open WhatsApp
+            window (never messaged this number, or not in the last 24h)
+            actually reaches them — a plain reply can otherwise be silently
+            accepted by Meta's API and then never delivered (see POST
+            /api/clients/:id/messages and the ⚠️ Not delivered status shown
+            in a thread when that happens). */}
+        <p className="visit-meta">
+          Set up the first-contact WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
+          <button type="button" onClick={submitFirstContactTemplate} disabled={submittingFirstContact}>
+            {submittingFirstContact ? 'Submitting…' : 'Submit first-contact WhatsApp template'}
+          </button>
+          {firstContactResult && (
+            <span className={firstContactResult.ok ? '' : 'error'}> {firstContactResult.message}</span>
+          )}
+        </p>
+
+        {/* One-time setup so approving a client's booking request (submitted
+            via the client app or an Invite link) sends its confirmation from
+            the clinic's own WhatsApp Business number automatically, instead
+            of staff having to send it by hand from their own personal
+            WhatsApp — see the auto-send in POST /api/intake-requests/:id
+            and lib/useIntakeReview.js's manual fallback for when this
+            template isn't approved yet. */}
+        <p className="visit-meta">
+          Set up the booking-confirmation WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
+          <button type="button" onClick={submitBookingConfirmationTemplate} disabled={submittingBookingTemplate}>
+            {submittingBookingTemplate ? 'Submitting…' : 'Submit booking-confirmation WhatsApp template'}
+          </button>
+          {bookingTemplateResult && (
+            <span className={bookingTemplateResult.ok ? '' : 'error'}> {bookingTemplateResult.message}</span>
+          )}
+        </p>
+      </details>
 
       {loading ? (
         <p>Loading...</p>
