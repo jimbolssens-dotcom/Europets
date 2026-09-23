@@ -271,6 +271,13 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     const boosterDue = isPrimary ? addMonths(form.date_given, 1) : null;
     const dateGiven = form.date_given;
 
+    // Primary means a 1-month booster follow-up for whatever was actually
+    // given today — the core vaccine and, if it was checked too, rabies
+    // right alongside it. Rabies only fell through to the server's normal
+    // annual-interval default (see POST /api/vaccinations) when it WAS
+    // given, which is backwards: the un-given case below already
+    // schedules its placeholder reminder for this same one-month date —
+    // a given dose needs the same follow-up, not a longer one.
     const payloads = checkedProtocols.map((p) => ({
       patient_id: patientId,
       vaccine_protocol_id: p.id,
@@ -279,7 +286,7 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
       administered_by: form.administered_by || null,
       notes: form.notes,
       is_primary: isPrimary,
-      ...(isPrimary && coreProtocol && p.id === coreProtocol.id ? { next_due_date: boosterDue } : {}),
+      ...(isPrimary && ((coreProtocol && p.id === coreProtocol.id) || p.is_rabies) ? { next_due_date: boosterDue } : {}),
     }));
 
     if (isPrimary && !rabiesGiven) {
