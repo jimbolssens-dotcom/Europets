@@ -135,7 +135,7 @@ export async function DELETE(request, { params }) {
     ...(recordings || []).map((r) => r.file_path),
   ];
   if (filePaths.length > 0) {
-    await supabase.storage.from('consult-files').remove(filePaths);
+    await supabaseAdmin.storage.from('consult-files').remove(filePaths);
   }
   if (attachments?.length) {
     await supabaseAdmin.from('attachments').delete().in('id', attachments.map((a) => a.id));

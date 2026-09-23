@@ -16,7 +16,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: 'recording not found' }, { status: 404 });
   }
 
-  await supabase.storage.from('consult-files').remove([recording.file_path]);
+  await supabaseAdmin.storage.from('consult-files').remove([recording.file_path]);
 
   const { error } = await supabaseAdmin.from('recordings').delete().eq('id', params.id);
   if (error) {

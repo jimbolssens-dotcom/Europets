@@ -4,6 +4,7 @@
 // download and send to the client (e.g. attach in WhatsApp).
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { buildHospitalizationSummaryPdf } from '@/lib/hospitalizationSummaryPdf';
 import { NextResponse } from 'next/server';
 
@@ -23,7 +24,11 @@ function isImageAttachment(a) {
 }
 
 async function fetchAttachmentBytes(attachment) {
-  const { data, error } = await supabase.storage.from('consult-files').download(attachment.file_path);
+  // supabaseAdmin, not the anon client: .download() always goes through
+  // the bucket's RLS-gated object endpoint regardless of the bucket's own
+  // "public" flag, so it needs the service-role client now that the
+  // public SELECT policy on storage.objects has been removed (migrations/139).
+  const { data, error } = await supabaseAdmin.storage.from('consult-files').download(attachment.file_path);
   if (error || !data) return null;
   return {
     bytes: Buffer.from(await data.arrayBuffer()),

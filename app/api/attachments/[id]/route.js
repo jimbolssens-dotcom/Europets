@@ -16,7 +16,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: 'attachment not found' }, { status: 404 });
   }
 
-  await supabase.storage.from('consult-files').remove([attachment.file_path]);
+  await supabaseAdmin.storage.from('consult-files').remove([attachment.file_path]);
 
   const { error } = await supabaseAdmin.from('attachments').delete().eq('id', params.id);
   if (error) {

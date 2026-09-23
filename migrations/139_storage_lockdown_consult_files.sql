@@ -1,0 +1,44 @@
+-- Migration 139: close "consult-files" bucket listing/delete exposure
+--
+-- Three storage.objects policies existed for this bucket, all scoped to
+-- role `public` (i.e. anyone, including the anon key): read, upload, and
+-- delete, each with no restriction beyond "the object is in this bucket".
+-- Flagged by Supabase's security linter as "Public Bucket Allows
+-- Listing" — the open SELECT policy lets anyone enumerate every file in
+-- the bucket via Storage's list() API, not just fetch a file whose exact
+-- path they already know. It also meant anyone could delete any file.
+--
+-- IMPORTANT deploy order: deploy the code change first (switching every
+-- server-side .download()/.remove() call on this bucket from the anon
+-- `supabase` client to the service-role `supabaseAdmin` one — see
+-- lib/pdfAttachments.js and the several app/api/**/route.js files that
+-- delete an attachment/recording), THEN run this migration. Running this
+-- first would break those routes until the new code is live — same
+-- deploy-order requirement migrations/093 established for the table RLS
+-- fix this mirrors.
+--
+-- Why this is safe: the bucket itself is flagged `public = true` in
+-- storage.buckets, which serves an individual file by its known path
+-- (getPublicUrl() — used everywhere in the app for photos, consent PDFs,
+-- portal links, etc.) through a separate, unauthenticated serving path
+-- that doesn't depend on these RLS policies at all. Only Storage's
+-- .download() and .list() actually go through the regular RLS-gated
+-- object endpoint these policies govern — confirmed via a full grep that
+-- every .download()/.remove() call in the app already uses (or, per the
+-- code change above, now uses) the service-role client, which bypasses
+-- RLS entirely regardless of these policies.
+--
+-- Upload stays public deliberately: several features upload directly
+-- from the browser to Storage using the anon key (lib/attachments.js's
+-- uploadAttachment/uploadClientMessageMedia/uploadPatientProfilePhoto),
+-- with no per-user Supabase Auth session for a policy to check against —
+-- the app's own staff-PIN/client-session authorization lives in the
+-- Next.js API layer, which a direct-to-storage upload bypasses by design.
+-- Tightening that further would mean routing every one of those uploads
+-- through a server endpoint instead — a real improvement worth doing,
+-- but a separate, larger change from this security-advisor cleanup.
+--
+-- Run this in your Supabase SQL editor. Safe to run more than once.
+
+drop policy if exists "Public read consult-files" on storage.objects;
+drop policy if exists "Public delete consult-files" on storage.objects;

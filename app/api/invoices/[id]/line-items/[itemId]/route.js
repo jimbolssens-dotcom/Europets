@@ -154,7 +154,7 @@ export async function PATCH(request, { params }) {
 
   // Being replaced or cleared — the old clip has no further purpose.
   if (previousVoiceNotePath && previousVoiceNotePath !== data.voice_note_path) {
-    await supabase.storage.from('consult-files').remove([previousVoiceNotePath]);
+    await supabaseAdmin.storage.from('consult-files').remove([previousVoiceNotePath]);
   }
 
   if (hasQuantity || hasTimesGiven || hasAdministrationMethod) {
