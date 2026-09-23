@@ -145,6 +145,7 @@ create table patients (
 create or replace function set_first_patient_number()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   if new.client_id is not null and not exists (
