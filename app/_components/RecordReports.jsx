@@ -25,13 +25,10 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
   onGenerateOverallReport, onDeleteOverallReport, onDeleteDiagnostic,
   overallReportLabel = 'consult report', overallReportPdfPath = 'report-pdf', reportsError,
   assignableStaff = [] }) {
-  const [summaries, setSummaries] = useState({});
-  const [summarizing, setSummarizing] = useState({});
-  const [summaryErrors, setSummaryErrors] = useState({});
-  // AI interpretation (see interpretResult below) is a separate, on-demand
-  // action from "Summarize abnormalities": it reads the attached photo/PDF
-  // itself rather than already-typed text, and — same as summarize — only
-  // ever runs when staff press the button, never automatically on upload.
+  // AI interpretation (see interpretResult below) reads the attached
+  // photo/PDF directly, and — same as everywhere else AI touches a
+  // diagnostic — only ever runs when staff press the button, never
+  // automatically on upload.
   const [interpreting, setInterpreting] = useState({});
   const [interpretErrors, setInterpretErrors] = useState({});
   const [deletingId, setDeletingId] = useState(null);
@@ -62,21 +59,6 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
     setAssigningId(null);
     group.reload();
   }
-  async function summarize(diagnostic) {
-    setSummarizing((prev) => ({ ...prev, [diagnostic.id]: true }));
-    setSummaryErrors((prev) => ({ ...prev, [diagnostic.id]: null }));
-    try {
-      const response = await fetch(`/api/diagnostics/${diagnostic.id}/summarize-result`, { method: 'POST' });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Could not summarize results.');
-      setSummaries((prev) => ({ ...prev, [diagnostic.id]: { text: data.summary, source: diagnostic.result } }));
-    } catch (error) {
-      setSummaryErrors((prev) => ({ ...prev, [diagnostic.id]: error.message }));
-    } finally {
-      setSummarizing((prev) => ({ ...prev, [diagnostic.id]: false }));
-    }
-  }
-
   // Reads the diagnostic's attached photo/PDF and reports ONLY abnormal or
   // positive findings straight from the document — never normal values,
   // never patient or client details (see DIAGNOSTIC_ABNORMALITIES_FROM_
@@ -178,45 +160,27 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
             <textarea rows={2} value={resultDrafts[diagnostic.id] ?? diagnostic.result ?? ''}
               onChange={(event) => onResultChange(diagnostic.id, event.target.value)} />
           </label>
-          <button type="button" onClick={() => onSaveResult(diagnostic.id)} disabled={savingResultId === diagnostic.id}>
-            {savingResultId === diagnostic.id ? 'Saving…' : 'Save results'}
-          </button>
-          {onDeleteDiagnostic && <button type="button" disabled={deletingId === diagnostic.id}
-            onClick={async () => { if (!confirm('Delete this test and its result? This cannot be undone.')) return; setDeletingId(diagnostic.id); await onDeleteDiagnostic(diagnostic.id); setDeletingId(null); }}>
-            {deletingId === diagnostic.id ? 'Deleting…' : 'Delete'}
-          </button>}
-          {resultError?.id === diagnostic.id && <p className="error" role="alert">{resultError.message}</p>}
-          {!isImagingDiagnostic(diagnostic, name) && <>
-            <p className="visit-meta">Save pasted results first. For a biopsy/histopathology/cytology report this gives just the conclusion; for a numeric panel, just the abnormal values. No clinical interpretation is added.</p>
-            <button type="button" onClick={() => summarize(diagnostic)}
-              disabled={summarizing[diagnostic.id] || !diagnostic.result || (resultDrafts[diagnostic.id] !== undefined && resultDrafts[diagnostic.id] !== diagnostic.result)}>
-              {summarizing[diagnostic.id] ? 'Summarizing…' : 'Summarize abnormalities'}
+          <div className="diagnostic-card-actions">
+            <button type="button" onClick={() => onSaveResult(diagnostic.id)} disabled={savingResultId === diagnostic.id}>
+              {savingResultId === diagnostic.id ? 'Saving…' : 'Save results'}
             </button>
-            {summaryErrors[diagnostic.id] && <p className="error" role="alert">{summaryErrors[diagnostic.id]}</p>}
-            {summaries[diagnostic.id] && <div>
-              <p style={{ whiteSpace: 'pre-wrap' }}>{summaries[diagnostic.id].text}</p>
-              <button type="button" disabled={summaries[diagnostic.id].source !== (resultDrafts[diagnostic.id] ?? diagnostic.result)}
-                onClick={() => {
-                  onResultChange(diagnostic.id, diagnostic.result + '\n\n' + summaries[diagnostic.id].text);
-                  setSummaries((prev) => ({ ...prev, [diagnostic.id]: null }));
-                }}>Add to results for review</button>
-            </div>}
-          </>}
+            {onDeleteDiagnostic && <button type="button" disabled={deletingId === diagnostic.id}
+              onClick={async () => { if (!confirm('Delete this test and its result? This cannot be undone.')) return; setDeletingId(diagnostic.id); await onDeleteDiagnostic(diagnostic.id); setDeletingId(null); }}>
+              {deletingId === diagnostic.id ? 'Deleting…' : 'Delete'}
+            </button>}
+          </div>
+          {resultError?.id === diagnostic.id && <p className="error" role="alert">{resultError.message}</p>}
           <AttachmentSection entityType="diagnostic" entityId={diagnostic.id} refreshKey={attachmentVersions[diagnostic.id]}
             onUploaded={() => onUploaded(diagnostic.id)}
             onAttachmentsChange={(count) => setHasAttachment((prev) => ({ ...prev, [diagnostic.id]: count > 0 }))} />
-          {!isImagingDiagnostic(diagnostic, name) && hasAttachment[diagnostic.id] && <>
-            {/* Never automatic — AI only ever reads this document when
-                pressed here, and even then only reports the conclusion (for
-                a biopsy/histopathology/cytology report) or abnormal/positive
-                findings (for a numeric panel): no normal values, no patient
-                or client details. */}
-            <button type="button" onClick={() => interpretResult(diagnostic, name)} disabled={interpreting[diagnostic.id]}>
-              {interpreting[diagnostic.id] ? 'Interpreting…' : '🤖 AI interpretation'}
-            </button>
-            <p className="visit-meta">Reads the attached file — just the conclusion for a biopsy/histopathology/cytology report, just the abnormal or positive results for a numeric panel. No normal values, no patient or client details.</p>
-            {interpretErrors[diagnostic.id] && <p className="error" role="alert">{interpretErrors[diagnostic.id]}</p>}
-          </>}
+          {!isImagingDiagnostic(diagnostic, name) && hasAttachment[diagnostic.id] && (
+            <div className="diagnostic-card-actions">
+              <button type="button" onClick={() => interpretResult(diagnostic, name)} disabled={interpreting[diagnostic.id]}>
+                {interpreting[diagnostic.id] ? 'Interpreting…' : '🤖 AI interpretation'}
+              </button>
+            </div>
+          )}
+          {interpretErrors[diagnostic.id] && <p className="error" role="alert">{interpretErrors[diagnostic.id]}</p>}
         </details>;
       })}
     </section>}

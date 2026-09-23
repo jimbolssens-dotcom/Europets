@@ -1519,6 +1519,20 @@ button.secondary:hover {
   font-size: 0.8rem;
 }
 
+/* A diagnostic result card's own action rows (Save/Delete, AI
+   interpretation) — plain sibling <button>s otherwise wrap as inline-
+   block, which reads as crowded/overlapping once a card holds several
+   (Save, Delete, an attachment's own Photo/File row, AI interpretation)
+   — a proper flex row with a gap and consistent spacing from whatever's
+   above it fixes that, same idea as .attachment-actions just above. */
+.diagnostic-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
 /* Case-wide photos/files on the hospitalization page — collapsed by
    default and tucked above the Add Worksheet Entry form instead of a full
    section at the top, so the day-to-day worksheet (the main workflow)
