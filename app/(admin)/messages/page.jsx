@@ -224,6 +224,8 @@ export default function MessagesInboxPage() {
   const [firstContactResult, setFirstContactResult] = useState(null); // { ok: boolean, message: string } | null
   const [submittingBookingTemplate, setSubmittingBookingTemplate] = useState(false);
   const [bookingTemplateResult, setBookingTemplateResult] = useState(null); // { ok: boolean, message: string } | null
+  const [submittingHospitalizationTemplate, setSubmittingHospitalizationTemplate] = useState(false);
+  const [hospitalizationTemplateResult, setHospitalizationTemplateResult] = useState(null); // { ok: boolean, message: string } | null
 
   const load = () =>
     fetch('/api/client-messages')
@@ -300,6 +302,24 @@ export default function MessagesInboxPage() {
     setSubmittingBookingTemplate(false);
   }
 
+  async function submitHospitalizationPortalTemplate() {
+    setSubmittingHospitalizationTemplate(true);
+    setHospitalizationTemplateResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/create-hospitalization-portal-template', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setHospitalizationTemplateResult({
+        ok: true,
+        message:
+          'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
+      });
+    } catch (err) {
+      setHospitalizationTemplateResult({ ok: false, message: err.message });
+    }
+    setSubmittingHospitalizationTemplate(false);
+  }
+
   return (
     <>
       <div className="page-header">
@@ -361,6 +381,24 @@ export default function MessagesInboxPage() {
           </button>
           {bookingTemplateResult && (
             <span className={bookingTemplateResult.ok ? '' : 'error'}> {bookingTemplateResult.message}</span>
+          )}
+        </p>
+
+        {/* One-time setup so sending a hospitalized patient's client-portal
+            link (the "Share" button on the hospitalization page) goes out
+            from the clinic's own WhatsApp Business number automatically,
+            instead of opening staff's own personal WhatsApp for them to
+            send by hand — see the auto-send in POST
+            /api/hospitalizations/:id/send-portal-link and that page's
+            shareViaWhatsApp for the manual fallback when this template
+            isn't approved yet. */}
+        <p className="visit-meta">
+          Set up the hospitalization portal-link WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
+          <button type="button" onClick={submitHospitalizationPortalTemplate} disabled={submittingHospitalizationTemplate}>
+            {submittingHospitalizationTemplate ? 'Submitting…' : 'Submit hospitalization portal-link WhatsApp template'}
+          </button>
+          {hospitalizationTemplateResult && (
+            <span className={hospitalizationTemplateResult.ok ? '' : 'error'}> {hospitalizationTemplateResult.message}</span>
           )}
         </p>
       </details>

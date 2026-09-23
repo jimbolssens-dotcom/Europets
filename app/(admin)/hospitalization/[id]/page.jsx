@@ -632,7 +632,19 @@ export default function HospitalizationDetailPage() {
     }).catch(() => {});
   }
 
-  function shareViaWhatsApp() {
+  // Sent automatically from the clinic's own WhatsApp Business number
+  // (POST /api/hospitalizations/:id/send-portal-link), not staff's own
+  // personal WhatsApp — openWhatsApp below only runs as a fallback when
+  // that fails (template not approved yet, no phone on file, send error),
+  // same safety-net pattern as the booking-confirmation auto-send.
+  async function shareViaWhatsApp() {
+    try {
+      const res = await fetch(`/api/hospitalizations/${id}/send-portal-link`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.sent) return;
+    } catch {
+      // fall through to the manual-share fallback below
+    }
     const clientLabel = `${admission.clients?.full_name || 'there'}${
       admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''
     }`;
