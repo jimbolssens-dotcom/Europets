@@ -64,6 +64,14 @@ function extractBody(message) {
   if (message.type === 'interactive') {
     return message.interactive?.button_reply?.title || message.interactive?.list_reply?.title || '[interactive reply]';
   }
+  // A tap-and-hold emoji reaction on one of our own messages, not a new
+  // message of its own — Meta still delivers it as a full inbound message
+  // (its own id, its own timestamp), just with no text/image, and
+  // message.reaction.emoji empty means the client removed a reaction
+  // rather than added one.
+  if (message.type === 'reaction') {
+    return message.reaction?.emoji ? `Reacted ${message.reaction.emoji}` : 'Removed a reaction';
+  }
   return `[${message.type || 'unsupported'} message — not viewable here yet]`;
 }
 
