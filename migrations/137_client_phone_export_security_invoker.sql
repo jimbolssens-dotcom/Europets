@@ -1,0 +1,26 @@
+-- Migration 137: fix client_phone_export's SECURITY DEFINER exposure
+--
+-- public.client_phone_export is a view (client_number, full_name,
+-- primary_phone, phone_on_file, label, is_whatsapp — a joined clients +
+-- client_phones contact list, likely built for a WhatsApp outreach/export
+-- use) that was created directly in the Supabase dashboard at some point,
+-- outside this repo's migration history — this is the first mention of it
+-- anywhere in the codebase.
+--
+-- Flagged by Supabase's security linter as a "Security Definer View": by
+-- default a view runs its underlying query as the view's OWNER (often a
+-- high-privilege role), not as the querying user, which can silently
+-- bypass RLS on the tables it reads — regardless of what policies exist
+-- on them. In this specific case that's not actually escalating anything
+-- (clients/client_phones already grant an unconditional SELECT to
+-- everyone — see migrations/093_clients_patients_rls.sql — so this view
+-- returns identical rows either way), but leaving the flag unaddressed is
+-- still bad practice and worth closing properly rather than dismissing.
+--
+-- security_invoker makes the view run as the querying user instead,
+-- Postgres's documented fix for exactly this lint — no change to the
+-- view's own SELECT, no functional change to what it returns.
+--
+-- Run this in your Supabase SQL editor. Safe to run more than once.
+
+alter view client_phone_export set (security_invoker = true);
