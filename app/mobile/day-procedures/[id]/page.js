@@ -14,9 +14,11 @@
 //                     dictate.
 //   - Other surgery -> auto-creates the (empty) surgical report and opens
 //                     the mobile dictation screen for it.
-//   - Blood test / generic diagnostic -> opens the camera directly, then
-//                     uploads and AI-reads the result the same way the
-//                     desktop Reports section does.
+//   - Blood test / generic diagnostic -> opens the camera directly and
+//                     attaches the photo; it is never AI-read here — use
+//                     the "AI interpretation" button in the desktop
+//                     Reports section for a compact abnormalities-only
+//                     summary.
 //   - X-ray / Ultrasound -> auto-creates the diagnostic + report and opens
 //                     a mobile dictation screen (new — dental/surgery
 //                     already had one, x-ray/ultrasound didn't).
@@ -177,16 +179,10 @@ export default function MobileDayProcedurePage() {
     setItemError((prev) => ({ ...prev, [item.id]: null }));
     try {
       const diagnostic = await findOrCreateDiagnostic(item.goods_service_id);
+      // Attach only — never AI-read here. AI interpretation is a deliberate,
+      // staff-pressed action in the desktop Reports section, not something
+      // that runs on its own the moment a photo lands.
       await uploadAttachment({ entityType: 'diagnostic', entityId: diagnostic.id, file, uploadedBy: staffId || null });
-
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('test_name', item.label);
-      const res = await fetch(`/api/diagnostics/${diagnostic.id}/extract-result`, { method: 'POST', body: formData });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok && !data.skipped) {
-        setItemError((prev) => ({ ...prev, [item.id]: `${data.error || 'Could not read the result'} — photo saved, log it manually on desktop.` }));
-      }
       await logDone(item);
     } catch (err) {
       setItemError((prev) => ({ ...prev, [item.id]: err.message || 'Failed to log the test' }));

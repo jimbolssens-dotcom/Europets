@@ -19,7 +19,6 @@ import DentalChart from './DentalChart';
 import RecordReports from './RecordReports';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import { isXrayTest } from '@/lib/xrayProduct';
-import { isBloodTest } from '@/lib/bloodTestProduct';
 import { ensureSurgicalReport } from '@/lib/surgicalReportAuto';
 import { resolveCaseScope, loadCaseReports } from '@/lib/caseReportScope';
 
@@ -43,8 +42,6 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   const [savingResultId, setSavingResultId] = useState(null);
   const [resultError, setResultError] = useState(null);
   const [reportsError, setReportsError] = useState({});
-  const [extractingResultId, setExtractingResultId] = useState(null);
-  const [extractResultError, setExtractResultError] = useState({});
   const [diagPhotoVersion, setDiagPhotoVersion] = useState({});
 
   const [surgicalReports, setSurgicalReports] = useState([]);
@@ -196,29 +193,13 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
     }
   }
 
-  async function handleDiagnosticPhotoUploaded(diagId, testName, file, attachment) {
+  // Just records that a new file landed — never reads it. AI interpretation
+  // of a diagnostic document (biopsy, blood test, PCR, hematology, etc.) is
+  // never automatic; it only runs when staff press "AI interpretation" in
+  // Reports (see RecordReports.jsx's interpretResult and
+  // POST /api/diagnostics/:id/extract-result).
+  function handleDiagnosticPhotoUploaded(diagId) {
     setDiagPhotoVersion((prev) => ({ ...prev, [diagId]: (prev[diagId] || 0) + 1 }));
-    if (isUltrasoundTest(testName) || isXrayTest(testName) || isBloodTest(testName)) return;
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') return;
-    setExtractingResultId(diagId);
-    setExtractResultError((prev) => ({ ...prev, [diagId]: null }));
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('test_name', testName || '');
-      const res = await fetch(`/api/diagnostics/${diagId}/extract-result`, { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) {
-        setExtractResultError((prev) => ({ ...prev, [diagId]: data.error || 'Failed to read result from photo' }));
-        return;
-      }
-      setResultDrafts((prev) => ({ ...prev, [diagId]: data.result }));
-      loadDiagnostics();
-    } catch (err) {
-      setExtractResultError((prev) => ({ ...prev, [diagId]: err.message || 'Could not read the test result.' }));
-    } finally {
-      setExtractingResultId(null);
-    }
   }
 
   async function addSurgicalReport(e) {
@@ -508,8 +489,7 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
         generationError={generateReportError} generationErrorId={generateReportErrorId}
         resultDrafts={resultDrafts} onResultChange={(diagId, text) => setResultDrafts((prev) => ({ ...prev, [diagId]: text }))}
         onSaveResult={saveDiagnosticResult} savingResultId={savingResultId} resultError={resultError}
-        onUploaded={handleDiagnosticPhotoUploaded} extractingResultId={extractingResultId}
-        extractResultError={extractResultError} attachmentVersions={diagPhotoVersion}
+        onUploaded={handleDiagnosticPhotoUploaded} attachmentVersions={diagPhotoVersion}
         reportsError={Object.values(reportsError).filter(Boolean).join(' ')}
       />
 

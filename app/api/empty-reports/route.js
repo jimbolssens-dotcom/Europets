@@ -5,11 +5,11 @@
 // dental/surgical/ultrasound/x-ray, or a diagnostic test with no result
 // logged — the same "empty shell doesn't count" distinction GET
 // /api/xray-reports (and its siblings) already draw for the SAVED-reports
-// views, just inverted. A record with a photo/PDF attached (e.g. a blood
-// test whose lab PDF was uploaded — see lib/bloodTestProduct.js, which
-// deliberately stopped auto-transcribing those into text) is NOT empty:
-// the original file on the attachment is the record, so it's excluded
-// here even with no result text. Powers the Empty Reports page linked
+// views, just inverted. A record with a photo/PDF attached (e.g. a
+// diagnostic report whose lab PDF was uploaded — AI never auto-reads
+// these, see lib/diagnosticReportPolicy.js) is NOT empty: the original
+// file on the attachment is the record, so it's excluded here even with
+// no result text. Powers the Empty Reports page linked
 // from Settings, so a report that was started and then never finished
 // (no dictation, no result, no file at all) can be traced back and
 // completed instead of quietly staying blank on the patient's record.

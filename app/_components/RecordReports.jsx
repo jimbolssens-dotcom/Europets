@@ -16,19 +16,24 @@ import AttachmentSection from './AttachmentSection';
 import AudioRecorder from './AudioRecorder';
 import { useState } from 'react';
 import { isImagingDiagnostic } from '@/lib/diagnosticReportPolicy';
-import { isBloodTest } from '@/lib/bloodTestProduct';
 import { formatDateTime } from '@/lib/formatTimestamp';
 
 export default function RecordReports({ record, recordApiBase, showOverallReport, diagnostics, catalog, groups, onRecordSaved,
   onGenerate, generatingId, generationError, generationErrorId,
   resultDrafts, onResultChange, onSaveResult, savingResultId, resultError,
-  onUploaded, extractingResultId, extractResultError, attachmentVersions, onOpenSource,
+  onUploaded, attachmentVersions, onOpenSource,
   onGenerateOverallReport, onDeleteOverallReport, onDeleteDiagnostic,
   overallReportLabel = 'consult report', overallReportPdfPath = 'report-pdf', reportsError,
   assignableStaff = [] }) {
   const [summaries, setSummaries] = useState({});
   const [summarizing, setSummarizing] = useState({});
   const [summaryErrors, setSummaryErrors] = useState({});
+  // AI interpretation (see interpretResult below) is a separate, on-demand
+  // action from "Summarize abnormalities": it reads the attached photo/PDF
+  // itself rather than already-typed text, and — same as summarize — only
+  // ever runs when staff press the button, never automatically on upload.
+  const [interpreting, setInterpreting] = useState({});
+  const [interpretErrors, setInterpretErrors] = useState({});
   const [deletingId, setDeletingId] = useState(null);
   const [assigningId, setAssigningId] = useState(null);
   // A diagnostic with a file attached (a lab PDF/photo) counts as done on
@@ -69,6 +74,31 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
       setSummaryErrors((prev) => ({ ...prev, [diagnostic.id]: error.message }));
     } finally {
       setSummarizing((prev) => ({ ...prev, [diagnostic.id]: false }));
+    }
+  }
+
+  // Reads the diagnostic's attached photo/PDF and reports ONLY abnormal or
+  // positive findings straight from the document — never normal values,
+  // never patient or client details (see DIAGNOSTIC_ABNORMALITIES_FROM_
+  // DOCUMENT_INSTRUCTIONS). The server already saves the merged result;
+  // reflect that in the visible draft immediately via onResultChange rather
+  // than waiting on a full diagnostics reload.
+  async function interpretResult(diagnostic, name) {
+    setInterpreting((prev) => ({ ...prev, [diagnostic.id]: true }));
+    setInterpretErrors((prev) => ({ ...prev, [diagnostic.id]: null }));
+    try {
+      const response = await fetch(`/api/diagnostics/${diagnostic.id}/extract-result`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ test_name: name }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not interpret the attached document.');
+      onResultChange(diagnostic.id, data.result);
+    } catch (error) {
+      setInterpretErrors((prev) => ({ ...prev, [diagnostic.id]: error.message }));
+    } finally {
+      setInterpreting((prev) => ({ ...prev, [diagnostic.id]: false }));
     }
   }
   const count = diagnostics.length + groups.reduce((n, group) => n + group.reports.length, 0);
@@ -156,7 +186,7 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
             {deletingId === diagnostic.id ? 'Deleting…' : 'Delete'}
           </button>}
           {resultError?.id === diagnostic.id && <p className="error" role="alert">{resultError.message}</p>}
-          {!isImagingDiagnostic(diagnostic, name) && !isBloodTest(name) && <>
+          {!isImagingDiagnostic(diagnostic, name) && <>
             <p className="visit-meta">Save pasted laboratory results first, then create a factual list of abnormalities. No clinical interpretation is added.</p>
             <button type="button" onClick={() => summarize(diagnostic)}
               disabled={summarizing[diagnostic.id] || !diagnostic.result || (resultDrafts[diagnostic.id] !== undefined && resultDrafts[diagnostic.id] !== diagnostic.result)}>
@@ -172,11 +202,19 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
                 }}>Add to results for review</button>
             </div>}
           </>}
-          {extractingResultId === diagnostic.id && <p role="status">Reading test results…</p>}
-          {extractResultError[diagnostic.id] && <p className="error" role="alert">{extractResultError[diagnostic.id]}</p>}
           <AttachmentSection entityType="diagnostic" entityId={diagnostic.id} refreshKey={attachmentVersions[diagnostic.id]}
-            onUploaded={(file, attachment) => onUploaded(diagnostic.id, name, file, attachment)}
+            onUploaded={() => onUploaded(diagnostic.id)}
             onAttachmentsChange={(count) => setHasAttachment((prev) => ({ ...prev, [diagnostic.id]: count > 0 }))} />
+          {!isImagingDiagnostic(diagnostic, name) && hasAttachment[diagnostic.id] && <>
+            {/* Never automatic — AI only ever reads this document when
+                pressed here, and even then only reports abnormal/positive
+                findings: no normal values, no patient or client details. */}
+            <button type="button" onClick={() => interpretResult(diagnostic, name)} disabled={interpreting[diagnostic.id]}>
+              {interpreting[diagnostic.id] ? 'Interpreting…' : '🤖 AI interpretation'}
+            </button>
+            <p className="visit-meta">Reads the attached file and lists abnormal or positive results only — no normal values, no patient or client details.</p>
+            {interpretErrors[diagnostic.id] && <p className="error" role="alert">{interpretErrors[diagnostic.id]}</p>}
+          </>}
         </details>;
       })}
     </section>}

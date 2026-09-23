@@ -19,7 +19,6 @@ import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import { isXrayTest } from '@/lib/xrayProduct';
-import { isBloodTest } from '@/lib/bloodTestProduct';
 import RecordReports from '@/app/_components/RecordReports';
 import { ADMINISTRATION_METHOD_LABELS, ADMINISTRATION_METHOD_CODES } from '@/lib/administrationMethods';
 import { subcategoryName, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
@@ -78,8 +77,6 @@ export default function ConsultDetailPage() {
   const [savingResultId, setSavingResultId] = useState(null);
   const [resultError, setResultError] = useState(null);
   const [reportsError, setReportsError] = useState({});
-  const [extractingResultId, setExtractingResultId] = useState(null);
-  const [extractResultError, setExtractResultError] = useState({});
   const [diagPhotoVersion, setDiagPhotoVersion] = useState({}); // bumped per-diagnostic to force its AttachmentSection to reload after an external delete
 
   const [treatmentItems, setTreatmentItems] = useState([]);
@@ -482,33 +479,13 @@ export default function ConsultDetailPage() {
     }
   }
 
-  // Read lab documents only. Keep originals attached for review in Reports.
-  async function handleDiagnosticPhotoUploaded(diagId, testName, file, attachment) {
+  // Just records that a new file landed — never reads it. AI interpretation
+  // of a diagnostic document (biopsy, blood test, PCR, hematology, etc.) is
+  // never automatic; it only runs when staff press "AI interpretation" in
+  // Reports (see RecordReports.jsx's interpretResult and
+  // POST /api/diagnostics/:id/extract-result).
+  function handleDiagnosticPhotoUploaded(diagId) {
     setDiagPhotoVersion((prev) => ({ ...prev, [diagId]: (prev[diagId] || 0) + 1 }));
-    if (isUltrasoundTest(testName) || isXrayTest(testName) || isBloodTest(testName)) return;
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') return;
-    setExtractingResultId(diagId);
-    setExtractResultError((prev) => ({ ...prev, [diagId]: null }));
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('test_name', testName || '');
-      const res = await fetch(`/api/diagnostics/${diagId}/extract-result`, {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setExtractResultError((prev) => ({ ...prev, [diagId]: data.error || 'Failed to read result from photo' }));
-        return;
-      }
-      setResultDrafts((prev) => ({ ...prev, [diagId]: data.result }));
-      loadDiagnostics();
-    } catch (err) {
-      setExtractResultError((prev) => ({ ...prev, [diagId]: err.message || 'Could not read the test result.' }));
-    } finally {
-      setExtractingResultId(null);
-    }
   }
 
   async function deleteDiagnostic(diagId) {
@@ -1158,11 +1135,7 @@ export default function ConsultDetailPage() {
               {d.description && <p>{d.description}</p>}
               <div className="diagnostic-result-row">
                 <textarea
-                  placeholder={
-                    isBloodTest(testName)
-                      ? "Result (attach the lab PDF/photo below — it's kept on file, not auto-read)"
-                      : "Result (add once it's back, or attach a photo below to have it read automatically)"
-                  }
+                  placeholder="Result (attach the lab PDF/photo below — it's kept on file, not auto-read; use AI interpretation in Reports for a compact abnormalities-only summary)"
                   rows={3}
                   value={resultDrafts[d.id] ?? d.result ?? ''}
                   onChange={(e) => setResultDrafts({ ...resultDrafts, [d.id]: e.target.value })}
@@ -1176,13 +1149,11 @@ export default function ConsultDetailPage() {
                 </button>
               </div>
               {resultError?.id === d.id && <p className="error">{resultError.message}</p>}
-              {extractingResultId === d.id && <p className="visit-meta">🔎 Reading result from photo...</p>}
-              {extractResultError[d.id] && <p className="error">{extractResultError[d.id]}</p>}
               <AttachmentSection
                 entityType="diagnostic"
                 entityId={d.id}
                 refreshKey={diagPhotoVersion[d.id]}
-                onUploaded={(file, attachment) => handleDiagnosticPhotoUploaded(d.id, testName, file, attachment)}
+                onUploaded={() => handleDiagnosticPhotoUploaded(d.id)}
               />
 
               {isUltrasoundTest(testName) && (
@@ -1546,8 +1517,7 @@ export default function ConsultDetailPage() {
           onDeleteOverallReport={deleteConsultReport} onDeleteDiagnostic={deleteDiagnostic}
           resultDrafts={resultDrafts} onResultChange={(diagId, text) => setResultDrafts((prev) => ({ ...prev, [diagId]: text }))}
           onSaveResult={saveDiagnosticResult} savingResultId={savingResultId} resultError={resultError}
-          onUploaded={handleDiagnosticPhotoUploaded} extractingResultId={extractingResultId}
-          extractResultError={extractResultError} attachmentVersions={diagPhotoVersion}
+          onUploaded={handleDiagnosticPhotoUploaded} attachmentVersions={diagPhotoVersion}
           reportsError={Object.values(reportsError).filter(Boolean).join(' ')}
         />
       </div>

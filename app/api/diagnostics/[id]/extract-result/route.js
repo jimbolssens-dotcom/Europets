@@ -1,14 +1,19 @@
 // app/api/diagnostics/[id]/extract-result/route.js
-// Transcribe a laboratory document into its diagnostic result, including
-// factual abnormalities. Original files remain attached. Reports reads this
-// diagnostic directly; do not duplicate the text into visits.test_results.
-// Block imaging using the stored diagnostic identity before reading bytes.
+// POST /api/diagnostics/:id/extract-result -> staff-triggered "AI
+// interpretation" only (see the button in app/_components/RecordReports.jsx)
+// — this never runs automatically on upload. Reads the diagnostic's most
+// recently attached document/photo and reports ONLY the abnormal (or, for
+// a PCR/pathogen panel, positive) findings: no normal values, no patient
+// details, no client details. Reports reads this diagnostic directly; do
+// not duplicate the text into visits.test_results. Imaging stays entirely
+// out of scope — block it using the stored diagnostic identity before
+// reading any bytes.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { extractDiagnosticResult } from '@/lib/anthropicClient';
+import { fetchAttachmentBytes } from '@/lib/pdfAttachments';
+import { extractDiagnosticAbnormalities } from '@/lib/anthropicClient';
 import { isImagingDiagnostic } from '@/lib/diagnosticReportPolicy';
-import { isBloodTest } from '@/lib/bloodTestProduct';
 import { NextResponse } from 'next/server';
 import convert from 'heic-convert';
 
@@ -19,8 +24,8 @@ export const maxDuration = 60;
 // app/api/clients/scan-id/route.js.
 const HEIC_RE = /hei[cf]/i;
 
-function looksLikeHeic(file, buffer) {
-  if (HEIC_RE.test(file.type) || HEIC_RE.test(file.name || '')) return true;
+function looksLikeHeic(contentType, fileName, buffer) {
+  if (HEIC_RE.test(contentType || '') || HEIC_RE.test(fileName || '')) return true;
   if (buffer.length > 12 && buffer.toString('ascii', 4, 8) === 'ftyp') {
     const brand = buffer.toString('ascii', 8, 12).toLowerCase();
     if (/^(heic|heix|heim|heis|hevc|hevx|mif1|msf1)$/.test(brand)) return true;
@@ -29,13 +34,8 @@ function looksLikeHeic(file, buffer) {
 }
 
 export async function POST(request, { params }) {
-  const formData = await request.formData();
-  const image = formData.get('image');
-  const testName = formData.get('test_name') || '';
-
-  if (!image || typeof image === 'string') {
-    return NextResponse.json({ error: 'image file is required' }, { status: 400 });
-  }
+  const body = await request.json().catch(() => ({}));
+  const testNameHint = typeof body.test_name === 'string' ? body.test_name : '';
 
   // Hard safety boundary for diagnostic imaging: the image has already been
   // uploaded as an attachment before this endpoint is called. Do not read,
@@ -48,42 +48,50 @@ export async function POST(request, { params }) {
   if (fetchError || !diagnostic) {
     return NextResponse.json({ error: 'diagnostic not found' }, { status: 404 });
   }
-  if (isImagingDiagnostic(diagnostic, testName)) {
+  if (isImagingDiagnostic(diagnostic, testNameHint)) {
     return NextResponse.json(
       {
-        error:
-          'Imaging image saved. AI interpretation is disabled for X-rays and ultrasound; use dictation or typed findings for the report.',
+        error: 'AI interpretation is disabled for X-rays and ultrasound; use dictation or typed findings for the report.',
         skipped: true,
       },
       { status: 409 }
     );
   }
-  if (isBloodTest(diagnostic.goods_services?.name || testName)) {
-    return NextResponse.json(
-      {
-        error: 'Document saved. AI transcription is disabled for blood tests — review the attached file directly.',
-        skipped: true,
-      },
-      { status: 409 }
-    );
+
+  const { data: attachments, error: attachmentsError } = await supabaseAdmin
+    .from('attachments')
+    .select('file_path, file_name, content_type, created_at')
+    .eq('entity_type', 'diagnostic')
+    .eq('entity_id', params.id)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (attachmentsError) {
+    return NextResponse.json({ error: attachmentsError.message }, { status: 500 });
+  }
+  const attachment = attachments?.[0];
+  if (!attachment) {
+    return NextResponse.json({ error: 'Attach the test result document first.' }, { status: 400 });
   }
 
   try {
-    if (image.size > 20 * 1024 * 1024) return NextResponse.json({ error: 'Upload a document smaller than 20 MB.' }, { status: 400 });
-    let buffer = Buffer.from(await image.arrayBuffer());
-    let mediaType = image.type || 'image/jpeg';
+    const fetched = await fetchAttachmentBytes(attachment);
+    if (!fetched) {
+      return NextResponse.json({ error: 'Could not read the attached file.' }, { status: 500 });
+    }
+    let buffer = fetched.bytes;
+    let mediaType = fetched.contentType || 'image/jpeg';
 
-    if (looksLikeHeic(image, buffer)) {
+    if (looksLikeHeic(mediaType, attachment.file_name, buffer)) {
       const jpegBytes = await convert({ buffer, format: 'JPEG', quality: 0.92 });
       buffer = Buffer.from(jpegBytes);
       mediaType = 'image/jpeg';
     }
 
     if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'].includes(mediaType)) {
-      return NextResponse.json({ error: 'Use a lab document in PDF, JPEG, PNG, GIF or WebP format.' }, { status: 400 });
+      return NextResponse.json({ error: 'The attached file must be a lab document in PDF, JPEG, PNG, GIF or WebP format.' }, { status: 400 });
     }
-    const extracted = await extractDiagnosticResult(buffer, mediaType, diagnostic.goods_services?.name || testName);
-    const mergedResult = diagnostic.result?.trim() ? `${diagnostic.result.trim()}\n\n${extracted}` : extracted;
+    const abnormalities = await extractDiagnosticAbnormalities(buffer, mediaType, diagnostic.goods_services?.name || testNameHint);
+    const mergedResult = diagnostic.result?.trim() ? `${diagnostic.result.trim()}\n\n${abnormalities}` : abnormalities;
 
     const { data, error } = await supabaseAdmin
       .from('diagnostics')
