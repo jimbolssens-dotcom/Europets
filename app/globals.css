@@ -4208,6 +4208,11 @@ button.secondary:hover {
   color: rgba(255, 255, 255, 0.8);
 }
 
+.portal-chat-bubble-failed {
+  color: #ffd400;
+  font-weight: 600;
+}
+
 .portal-chat-bubble-theirs {
   align-self: flex-start;
   background: #eee;

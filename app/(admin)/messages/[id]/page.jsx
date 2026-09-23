@@ -200,6 +200,25 @@ export default function ClientMessageThreadPage() {
             <span className="portal-chat-bubble-meta">
               {m.sender === 'staff' ? m.staff?.full_name || 'Staff' : m.sender === 'ai' ? '🤖 AI concierge' : client?.full_name || 'Client'} ·{' '}
               {formatDateTime(m.created_at)} · {m.channel === 'whatsapp' ? '💬 WhatsApp' : '📱 App'}
+              {/* Delivery status only applies to our own outbound WhatsApp
+                  sends — Meta's send API can accept a message and only
+                  report async, moments later, that it actually never
+                  reached the client (most often: sent outside the 24-hour
+                  window their own message opens) — this is the only place
+                  that ever surfaces, so a 'failed' send needs to stand out. */}
+              {m.channel === 'whatsapp' && m.sender !== 'client' && m.status && (
+                <span className={m.status === 'failed' ? 'portal-chat-bubble-failed' : ''}>
+                  {' '}
+                  ·{' '}
+                  {m.status === 'failed'
+                    ? `⚠️ Not delivered${m.wa_error ? ` (${m.wa_error})` : ''}`
+                    : m.status === 'read'
+                      ? '✓✓ Read'
+                      : m.status === 'delivered'
+                        ? '✓✓ Delivered'
+                        : '✓ Sent'}
+                </span>
+              )}
             </span>
           </div>
         ))}

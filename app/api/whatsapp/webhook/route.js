@@ -159,10 +159,17 @@ async function handleInboundMessage(message, contactPhone) {
 }
 
 async function handleStatusUpdate(status) {
-  const { error } = await supabaseAdmin
-    .from('client_messages')
-    .update({ status: status.status })
-    .eq('wa_message_id', status.id);
+  // A 'failed' status carries a real reason in `errors` (see migration
+  // 134) — most commonly Meta's "Re-engagement message" when a free-form
+  // reply was sent outside the 24-hour window a client's own message
+  // opens. Meta's own send API can accept the request and only report
+  // this async, once delivery actually fails, so this is often the only
+  // place that reason ever surfaces.
+  const update = { status: status.status };
+  if (status.status === 'failed' && status.errors?.[0]) {
+    update.wa_error = status.errors[0].title || status.errors[0].message || null;
+  }
+  const { error } = await supabaseAdmin.from('client_messages').update(update).eq('wa_message_id', status.id);
   if (error) {
     console.error('Failed to update WhatsApp message status', status.id, error);
   }

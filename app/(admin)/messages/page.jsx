@@ -200,6 +200,8 @@ export default function MessagesInboxPage() {
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeResult, setSubscribeResult] = useState(null); // { ok: boolean, message: string } | null
+  const [submittingFirstContact, setSubmittingFirstContact] = useState(false);
+  const [firstContactResult, setFirstContactResult] = useState(null); // { ok: boolean, message: string } | null
 
   const load = () =>
     fetch('/api/client-messages')
@@ -240,6 +242,24 @@ export default function MessagesInboxPage() {
     setSubscribing(false);
   }
 
+  async function submitFirstContactTemplate() {
+    setSubmittingFirstContact(true);
+    setFirstContactResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/create-first-contact-template', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setFirstContactResult({
+        ok: true,
+        message:
+          'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
+      });
+    } catch (err) {
+      setFirstContactResult({ ok: false, message: err.message });
+    }
+    setSubmittingFirstContact(false);
+  }
+
   return (
     <>
       <div className="page-header">
@@ -258,6 +278,22 @@ export default function MessagesInboxPage() {
         </button>
         {subscribeResult && (
           <span className={subscribeResult.ok ? '' : 'error'}> {subscribeResult.message}</span>
+        )}
+      </p>
+
+      {/* One-time setup so a text reply to a client with no open WhatsApp
+          window (never messaged this number, or not in the last 24h)
+          actually reaches them — a plain reply can otherwise be silently
+          accepted by Meta's API and then never delivered (see POST
+          /api/clients/:id/messages and the ⚠️ Not delivered status shown
+          in a thread when that happens). */}
+      <p className="visit-meta">
+        Set up the first-contact WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
+        <button type="button" onClick={submitFirstContactTemplate} disabled={submittingFirstContact}>
+          {submittingFirstContact ? 'Submitting…' : 'Submit first-contact WhatsApp template'}
+        </button>
+        {firstContactResult && (
+          <span className={firstContactResult.ok ? '' : 'error'}> {firstContactResult.message}</span>
         )}
       </p>
 

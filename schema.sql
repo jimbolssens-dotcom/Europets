@@ -84,20 +84,38 @@ create index client_phones_phone_idx on client_phones (phone);
 
 -- A general client<->staff chat, not tied to any one hospitalization —
 -- mirrors hospitalization_messages below but scoped to a client instead of
--- an admission (migration 120). Surfaced in the client app (app/client-app/
--- messages) and a staff inbox (app/(admin)/messages). Whether a client is
--- "waiting on a reply" is derived (their latest message has sender =
--- 'client'), not stored as its own flag — same one-shared-flag-for-everyone
--- model as the hospitalization thread, just computed on read.
+-- an admission (migration 120), and carries both the client app's own chat
+-- and WhatsApp (migration 130) as one unified thread. Surfaced in the
+-- client app (app/client-app/messages) and a staff inbox
+-- (app/(admin)/messages). Whether a client is "waiting on a reply" is
+-- derived (their latest message has sender = 'client'), not stored as its
+-- own flag — same one-shared-flag-for-everyone model as the
+-- hospitalization thread, just computed on read. sender 'ai' (migration
+-- 132) is the WhatsApp concierge's own replies. channel/phone/
+-- wa_message_id/status track an outbound WhatsApp message's delivery
+-- state (sent/delivered/read/failed, fed by Meta's status webhooks) and
+-- let a WhatsApp message arrive from a number not yet linked to any
+-- client — all meaningless for an 'app' row, left null there. wa_error
+-- (migration 134) is the human-readable reason a 'failed' status carries,
+-- e.g. Meta's "Re-engagement message" when a free-form reply is sent
+-- outside the 24-hour customer-service window.
 create table client_messages (
     id uuid primary key default gen_random_uuid(),
-    client_id uuid references clients(id) on delete cascade not null,
-    sender text not null check (sender in ('client', 'staff')),
-    staff_id uuid references staff(id),   -- set when sender = 'staff'; null for a client message
+    client_id uuid references clients(id) on delete cascade,
+    sender text not null check (sender in ('client', 'staff', 'ai')),
+    staff_id uuid references staff(id),   -- set when sender = 'staff'; null for a client/ai message
     body text not null,
+    channel text not null default 'app' check (channel in ('app', 'whatsapp')),
+    phone text,
+    wa_message_id text unique,
+    status text check (status in ('sent', 'delivered', 'read', 'failed')),
+    wa_error text,
+    media_url text,
+    media_type text,
     created_at timestamptz default now()
 );
 create index client_messages_client_id_idx on client_messages (client_id, created_at);
+create index client_messages_phone_idx on client_messages (phone) where phone is not null;
 
 -- ============ PATIENTS ============
 create table patients (

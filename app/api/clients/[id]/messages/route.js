@@ -13,7 +13,19 @@
 //      photo or file (see lib/attachments.js's uploadClientMessageMedia,
 //      already uploaded to Storage client-side before this is called)
 //      sends as WhatsApp media instead of text when media_url is set,
-//      with body used as its caption if present. The client's own side of
+//      with body used as its caption if present.
+//
+//      A free-form WhatsApp send only works within the 24-hour window the
+//      client's own last WhatsApp message opened — outside it (most
+//      commonly: this is the first time anyone's messaging them on this
+//      number at all), a plain reply can get accepted by Meta's API and
+//      then silently fail delivery moments later. So a text-only send
+//      first checks whether that window is actually open (hasOpenWhatsAppWindow
+//      below) and falls back to sendFirstContactMessage's pre-approved
+//      template when it isn't — media has no such fallback (Meta templates
+//      can't carry arbitrary media), so that combination is refused
+//      outright with an explicit error instead of risking the same silent
+//      failure. The client's own side of
 //      the app conversation goes through POST /api/clients/:id/request-
 //      message instead — same client-send vs. staff-reply split as the
 //      hospitalization chat (see /api/hospitalizations/:id/messages and
@@ -26,12 +38,28 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { sendWhatsAppText, sendWhatsAppMedia } from '@/lib/metaWhatsapp';
+import { sendWhatsAppText, sendWhatsAppMedia, sendFirstContactMessage } from '@/lib/metaWhatsapp';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
 
 export const dynamic = 'force-dynamic';
+
+const WHATSAPP_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+async function hasOpenWhatsAppWindow(clientId) {
+  const { data } = await supabase
+    .from('client_messages')
+    .select('created_at')
+    .eq('client_id', clientId)
+    .eq('sender', 'client')
+    .eq('channel', 'whatsapp')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return false;
+  return Date.now() - new Date(data.created_at).getTime() < WHATSAPP_WINDOW_MS;
+}
 
 export async function GET(request, { params }) {
   // Reachable without the staff PIN now (the client app's own chat tab —
@@ -89,7 +117,11 @@ export async function POST(request, { params }) {
   }
 
   if (channel === 'whatsapp') {
-    const { data: client } = await supabase.from('clients').select('phone').eq('id', params.id).maybeSingle();
+    const { data: client } = await supabase
+      .from('clients')
+      .select('full_name, phone')
+      .eq('id', params.id)
+      .maybeSingle();
     const digits = (client?.phone || '').replace(/\D/g, '');
     if (!digits) {
       return NextResponse.json(
@@ -97,15 +129,31 @@ export async function POST(request, { params }) {
         { status: 400 }
       );
     }
+
+    const windowOpen = await hasOpenWhatsAppWindow(params.id);
+    if (mediaUrl && !windowOpen) {
+      return NextResponse.json(
+        {
+          error:
+            "This client has no open WhatsApp conversation (they haven't messaged this number in the last 24 hours) — a photo or file can only be sent as a free-form reply within that window. Send a text message instead, which will use the first-contact template.",
+        },
+        { status: 409 }
+      );
+    }
+
     try {
-      row.wa_message_id = mediaUrl
-        ? await sendWhatsAppMedia(digits, {
-            url: mediaUrl,
-            contentType: mediaType === 'image' ? 'image/*' : 'application/octet-stream',
-            caption: text || undefined,
-            filename: mediaName,
-          })
-        : await sendWhatsAppText(digits, text);
+      if (mediaUrl) {
+        row.wa_message_id = await sendWhatsAppMedia(digits, {
+          url: mediaUrl,
+          contentType: mediaType === 'image' ? 'image/*' : 'application/octet-stream',
+          caption: text || undefined,
+          filename: mediaName,
+        });
+      } else if (windowOpen) {
+        row.wa_message_id = await sendWhatsAppText(digits, text);
+      } else {
+        row.wa_message_id = await sendFirstContactMessage(digits, { clientName: client?.full_name, clientMessage: text });
+      }
       row.status = 'sent';
       row.phone = digits;
     } catch (err) {
