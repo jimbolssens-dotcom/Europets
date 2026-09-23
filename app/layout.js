@@ -1,4 +1,5 @@
 import './globals.css';
+import NumberInputWheelGuard from './_components/NumberInputWheelGuard';
 
 // manifest.json (display: "standalone") + these icons/meta tags are what let
 // a device "install" this as its own app — via the browser's install
@@ -36,7 +37,10 @@ export default function RootLayout({ children }) {
     // order. Not guaranteed on every browser (Firefox/Safari mostly key off
     // OS locale instead), but it's the only lever a page has over that.
     <html lang="en-GB">
-      <body>{children}</body>
+      <body>
+        <NumberInputWheelGuard />
+        {children}
+      </body>
     </html>
   );
 }
