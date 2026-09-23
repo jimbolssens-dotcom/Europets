@@ -234,16 +234,32 @@ export default function PatientDetailPage() {
     }
   }
 
+  // deceased and rehomed are mutually exclusive (see the check constraint
+  // in migrations/141) — marking one always clears the other, sent
+  // together in the same PATCH rather than as two separate requests.
   async function toggleDeceased() {
     const nextDeceased = !patient.deceased;
     if (nextDeceased && !confirm(`Mark ${patient.name} as deceased (RIP)?`)) return;
     const res = await fetch(`/api/patients/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deceased: nextDeceased }),
+      body: JSON.stringify({ deceased: nextDeceased, rehomed: nextDeceased ? false : patient.rehomed }),
     });
     if (res.ok) {
-      setPatient((prev) => ({ ...prev, deceased: nextDeceased }));
+      setPatient((prev) => ({ ...prev, deceased: nextDeceased, rehomed: nextDeceased ? false : prev.rehomed }));
+    }
+  }
+
+  async function toggleRehomed() {
+    const nextRehomed = !patient.rehomed;
+    if (nextRehomed && !confirm(`Mark ${patient.name} as rehomed (no longer with this owner)?`)) return;
+    const res = await fetch(`/api/patients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rehomed: nextRehomed, deceased: nextRehomed ? false : patient.deceased }),
+    });
+    if (res.ok) {
+      setPatient((prev) => ({ ...prev, rehomed: nextRehomed, deceased: nextRehomed ? false : prev.deceased }));
     }
   }
 
@@ -322,6 +338,7 @@ export default function PatientDetailPage() {
           )}
           {patient.name} <span>(Patient #{patient.patient_number})</span>
           {patient.deceased && <span className="error"> · Deceased</span>}
+          {patient.rehomed && <span className="error"> · Rehomed</span>}
         </h1>
         <details className="patient-alerts-panel" open={patientAlerts.alerts.length > 0}>
           <summary>
@@ -356,6 +373,9 @@ export default function PatientDetailPage() {
               Mark as RIP <span style={{ fontSize: '0.8em' }}>🐾</span>
             </>
           )}
+        </button>
+        <button type="button" className="button-link" onClick={toggleRehomed}>
+          {patient.rehomed ? 'Undo Rehomed' : 'Mark as Rehomed'}
         </button>
         {/* Same color-coded pattern as the Consult/Hospitalization/Invoice
             pages' own cross-record links: colored + linked straight to the

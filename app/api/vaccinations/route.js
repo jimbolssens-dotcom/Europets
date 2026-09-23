@@ -72,7 +72,7 @@ export async function GET(request) {
   const patientIds = [...new Set(data.map((v) => v.patient_id))];
   const { data: patientsData, error: patientsError } = await supabase
     .from('patients')
-    .select('id, name, species, deceased, clients(id, full_name, phone, email)')
+    .select('id, name, species, deceased, rehomed, clients(id, full_name, phone, email)')
     .in('id', patientIds);
 
   if (patientsError) {

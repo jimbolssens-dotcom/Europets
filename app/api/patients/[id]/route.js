@@ -20,6 +20,7 @@ const EDITABLE_FIELDS = [
   'microchip_number',
   'microchip_implanted_at',
   'deceased',
+  'rehomed',
   'notes',
   'dental_chart',
   'profile_photo_url',
@@ -28,8 +29,11 @@ const EDITABLE_FIELDS = [
 // All a non-staff caller (a logged-in client, editing their own pet from
 // the client app) is ever allowed to touch — everything else in
 // EDITABLE_FIELDS stays staff-only, even though this route is reachable
-// without the staff PIN now (see middleware.js).
-const CLIENT_EDITABLE_FIELDS = ['profile_photo_url'];
+// without the staff PIN now (see middleware.js). deceased/rehomed: an
+// owner marking their own pet as RIP or rehomed (see
+// app/client-app/pets/[id]/page.js) — the same flags staff can already
+// set, reused rather than a separate owner-facing status.
+const CLIENT_EDITABLE_FIELDS = ['profile_photo_url', 'deceased', 'rehomed'];
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase

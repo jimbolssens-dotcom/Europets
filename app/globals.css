@@ -7316,6 +7316,12 @@ form.card.admit-patient-form {
   display: block;
 }
 
+.client-app-pet-status-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
 /* A standalone confirmation icon sitting above a heading (the consent
    sign flow's "already signed"/"thank you" states) — same hex-plate
    device, sized down to an icon rather than the bare .client-app-hex-plate

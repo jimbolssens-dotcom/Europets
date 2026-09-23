@@ -51,6 +51,8 @@ export default function ClientAppPetHistoryPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState(null);
   const [showPhotoChoice, setShowPhotoChoice] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusError, setStatusError] = useState(null);
   const cameraInputRef = useRef(null);
   const libraryInputRef = useRef(null);
 
@@ -109,6 +111,32 @@ export default function ClientAppPetHistoryPage() {
       setPhotoError(err.message);
     } finally {
       setUploadingPhoto(false);
+    }
+  }
+
+  // deceased/rehomed are mutually exclusive (migrations/141's check
+  // constraint) — setting one always clears the other, sent together in
+  // one PATCH. Confirmed first since both hide the pet from the main My
+  // Pets list (see app/client-app/pets/page.js) — not something to flip
+  // by an accidental tap.
+  async function setPetStatus(next) {
+    const label = next.deceased ? 'passed away' : next.rehomed ? 'no longer with you' : 'active again';
+    if (!confirm(`Mark ${pet.name} as ${label}?`)) return;
+    setStatusError(null);
+    setStatusSaving(true);
+    try {
+      const res = await fetch(`/api/patients/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deceased: false, rehomed: false, ...next }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not update this pet.');
+      setPet((prev) => ({ ...prev, deceased: data.deceased, rehomed: data.rehomed }));
+    } catch (err) {
+      setStatusError(err.message);
+    } finally {
+      setStatusSaving(false);
     }
   }
 
@@ -305,6 +333,35 @@ export default function ClientAppPetHistoryPage() {
           })}
         </ul>
       )}
+
+      <p className="mobile-section-header">Pet Status</p>
+      {pet.deceased ? (
+        <p className="mobile-subtitle">🕊️ Marked as passed away.</p>
+      ) : pet.rehomed ? (
+        <p className="mobile-subtitle">{pet.name} is marked as no longer with you.</p>
+      ) : (
+        <p className="mobile-subtitle">
+          If {pet.name} has passed away or is no longer with you (rehomed, lost, etc.), you can note that here —
+          {pet.name} moves out of your main pet list but stays here if you want to look back.
+        </p>
+      )}
+      {statusError && <p className="client-app-login-error">{statusError}</p>}
+      <div className="client-app-pet-status-actions">
+        {pet.deceased || pet.rehomed ? (
+          <button type="button" onClick={() => setPetStatus({})} disabled={statusSaving}>
+            {statusSaving ? 'Updating…' : `Undo — ${pet.name} is still with me`}
+          </button>
+        ) : (
+          <>
+            <button type="button" onClick={() => setPetStatus({ deceased: true })} disabled={statusSaving}>
+              🕊️ RIP
+            </button>
+            <button type="button" onClick={() => setPetStatus({ rehomed: true })} disabled={statusSaving}>
+              Rehomed
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -134,8 +134,10 @@ create table patients (
     microchip_number text unique,    -- ISO microchip number, if chipped
     microchip_implanted_at date,
     deceased boolean not null default false,
+    rehomed boolean not null default false,  -- no longer with the owner but not deceased — adopted out, lost, etc. (migration 141)
     notes text,
-    created_at timestamptz default now()
+    created_at timestamptz default now(),
+    constraint patients_not_deceased_and_rehomed check (not (deceased and rehomed))
 );
 
 -- A client's first-ever patient reuses the client's own number rather

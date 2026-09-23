@@ -584,7 +584,7 @@ export default function ClientDetailPage() {
               <td>
                 <a
                   href={`/patients/${p.id}`}
-                  style={p.deceased ? { textDecoration: 'line-through' } : undefined}
+                  style={p.deceased || p.rehomed ? { textDecoration: 'line-through' } : undefined}
                 >
                   {p.name}
                 </a>

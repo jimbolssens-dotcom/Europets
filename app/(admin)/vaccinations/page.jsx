@@ -82,7 +82,7 @@ export default function VaccinationsDuePage() {
     fetch(`/api/vaccinations?due=true&within_days=${windowDays}`)
       .then((res) => res.json())
       .then((data) => {
-        setRows(Array.isArray(data) ? data.filter((r) => !r.patients?.deceased) : []);
+        setRows(Array.isArray(data) ? data.filter((r) => !r.patients?.deceased && !r.patients?.rehomed) : []);
         setLoading(false);
       });
 
