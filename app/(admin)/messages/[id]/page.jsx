@@ -97,9 +97,19 @@ export default function ClientMessageThreadPage() {
     // already set moments earlier in the same load — same reference, so this
     // effect wouldn't otherwise rerun on the one render where the ref first
     // becomes non-null, and the page would silently open scrolled to the top.
-    if (threadRef.current) {
-      threadRef.current.scrollTop = threadRef.current.scrollHeight;
-    }
+    const el = threadRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    // The thread now fills the remaining window height (.content-fill)
+    // instead of a fixed max-height, so its final size can depend on a
+    // layout pass (flex sizing, fonts) that hasn't settled yet on this
+    // first paint — scrollHeight read right away can be a beat too small.
+    // A follow-up scroll on the next frame catches that without visibly
+    // jumping, since it's a no-op once the first one was already correct.
+    const raf = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(raf);
   }, [messages, loading]);
 
   // A client only counts as an app user if they've actually opened it

@@ -372,8 +372,13 @@ button:disabled {
    reply bar. Here .content stops sizing to its natural content height
    (flex-basis 0, shrinkable) and instead exactly fills the space below
    the nav, so .messages-thread-page can give the message list the rest
-   (flex: 1) and pin the reply bar at the true bottom of the window. */
-.content:has(.messages-thread-page) {
+   (flex: 1) and pin the reply bar at the true bottom of the window.
+   .content-fill is set on <main> from app/(admin)/layout.js by pathname
+   (not a CSS :has() selector — a browser/webview without :has() support
+   would silently skip this rule while .messages-thread-page's own
+   max-height:none below still applied, leaving the message list
+   unbounded instead of filled — worse than doing nothing). */
+.content.content-fill {
   display: flex;
   flex-direction: column;
   flex: 1 1 0;

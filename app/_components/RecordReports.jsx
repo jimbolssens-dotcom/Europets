@@ -187,7 +187,7 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
           </button>}
           {resultError?.id === diagnostic.id && <p className="error" role="alert">{resultError.message}</p>}
           {!isImagingDiagnostic(diagnostic, name) && <>
-            <p className="visit-meta">Save pasted laboratory results first, then create a factual list of abnormalities. No clinical interpretation is added.</p>
+            <p className="visit-meta">Save pasted results first. For a biopsy/histopathology/cytology report this gives just the conclusion; for a numeric panel, just the abnormal values. No clinical interpretation is added.</p>
             <button type="button" onClick={() => summarize(diagnostic)}
               disabled={summarizing[diagnostic.id] || !diagnostic.result || (resultDrafts[diagnostic.id] !== undefined && resultDrafts[diagnostic.id] !== diagnostic.result)}>
               {summarizing[diagnostic.id] ? 'Summarizing…' : 'Summarize abnormalities'}
@@ -207,12 +207,14 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
             onAttachmentsChange={(count) => setHasAttachment((prev) => ({ ...prev, [diagnostic.id]: count > 0 }))} />
           {!isImagingDiagnostic(diagnostic, name) && hasAttachment[diagnostic.id] && <>
             {/* Never automatic — AI only ever reads this document when
-                pressed here, and even then only reports abnormal/positive
-                findings: no normal values, no patient or client details. */}
+                pressed here, and even then only reports the conclusion (for
+                a biopsy/histopathology/cytology report) or abnormal/positive
+                findings (for a numeric panel): no normal values, no patient
+                or client details. */}
             <button type="button" onClick={() => interpretResult(diagnostic, name)} disabled={interpreting[diagnostic.id]}>
               {interpreting[diagnostic.id] ? 'Interpreting…' : '🤖 AI interpretation'}
             </button>
-            <p className="visit-meta">Reads the attached file and lists abnormal or positive results only — no normal values, no patient or client details.</p>
+            <p className="visit-meta">Reads the attached file — just the conclusion for a biopsy/histopathology/cytology report, just the abnormal or positive results for a numeric panel. No normal values, no patient or client details.</p>
             {interpretErrors[diagnostic.id] && <p className="error" role="alert">{interpretErrors[diagnostic.id]}</p>}
           </>}
         </details>;

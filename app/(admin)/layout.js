@@ -226,7 +226,16 @@ export default function AdminLayout({ children }) {
         </div>
       </nav>
       <CultureReminderBanner />
-      <main className="content">{children}</main>
+      {/* The Messenger thread page is a full-page chat, not a document — it
+          needs .content to fill the space below the nav instead of sizing
+          to its own content, so the message list can take the leftover
+          height and the reply bar sits at the true bottom of the window
+          (see .content.content-fill in globals.css). A plain pathname
+          check, not a CSS :has() selector, so it doesn't silently stop
+          applying on a browser/webview that doesn't support :has() — that
+          failure mode is worse than no fill at all, since it also drops
+          the message list's max-height cap, leaving a very tall page. */}
+      <main className={pathname?.startsWith('/messages/') ? 'content content-fill' : 'content'}>{children}</main>
     </>
   );
 }
