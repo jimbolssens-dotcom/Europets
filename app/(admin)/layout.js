@@ -135,6 +135,22 @@ export default function AdminLayout({ children }) {
     window.location.href = '/login';
   }
 
+  // .content-fill (below) needs <body> to have a genuinely fixed height,
+  // not just a floor — body's own base rule only sets min-height: 100vh
+  // (deliberately, so every other page still grows past 100vh and scrolls
+  // the document normally for a long list/table). min-height doesn't cap:
+  // it only stretches body to fill unused space, and does nothing once
+  // content wants to be taller — which a long Messenger thread reliably
+  // is. Toggling a rigid-height class on body imperatively (rather than
+  // reworking body's own CSS rule, which is shared by every page) is what
+  // actually stops body from growing past the window on this one page, so
+  // the message list is what scrolls instead of the whole document.
+  useEffect(() => {
+    const isMessageThread = pathname?.startsWith('/messages/');
+    document.body.classList.toggle('body-fill', isMessageThread);
+    return () => document.body.classList.remove('body-fill');
+  }, [pathname]);
+
   if (pathname === '/hospitalization/wall' || pathname === '/day-procedures/wall') {
     return <><AppVersionWatcher /><main>{children}</main></>;
   }

@@ -20,10 +20,9 @@ html {
 
 /* A flex column (nav / banner / .content stacked top to bottom) rather
    than plain block flow so a page can opt its .content into filling the
-   exact leftover viewport height below the nav (see
-   .content:has(.messages-thread-page)) — min-height, not height, so every
-   other page still just grows past 100vh and scrolls the document as
-   before. */
+   exact leftover viewport height below the nav (see .content.content-fill
+   below) — min-height, not height, so every other page still just grows
+   past 100vh and scrolls the document as before. */
 body {
   margin: 0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -32,6 +31,26 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+}
+
+/* .content-fill's whole point is to cap the message list to the window
+   and scroll inside it instead of the page — but min-height above is a
+   floor, not a ceiling: on a long conversation, body's natural content
+   height (every message stacked at full size) exceeds 100vh, and since
+   min-height never stops a flex container growing past it, body just
+   grows to fit everything and the *document* scrolls instead, exactly
+   as if .content-fill were never applied. Confirmed via computed styles
+   on the live page: every element in the chain had offsetHeight roughly
+   equal to its own scrollHeight — nothing was ever actually overflowing
+   its box, because nothing ever got capped in the first place. A rigid
+   height (not min-height) is what actually stops that, so this class is
+   toggled onto <body> only while a Messenger thread is open (see
+   app/(admin)/layout.js) rather than changing body's own rule above,
+   which every other page depends on staying a floor. */
+body.body-fill {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 a {
@@ -4221,7 +4240,7 @@ button.secondary:hover {
 
 /* The full-page thread (.messages-thread-page) gets the actual remaining
    window height instead of the 300px cap meant for a chat panel embedded
-   in a longer page — see .content:has(.messages-thread-page) above. */
+   in a longer page — see body.body-fill and .content.content-fill above. */
 .messages-thread-page .staff-chat-thread {
   flex: 1;
   min-height: 0;
