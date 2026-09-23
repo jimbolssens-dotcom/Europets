@@ -76,6 +76,21 @@ const nextConfig = {
         source: '/client-app/:path*',
         headers: NO_STORE_HEADERS,
       },
+      {
+        // The main staff app — /messages, /clients, /consults,
+        // /appointments, and everything else under app/(admin) — is
+        // installable as a standalone PWA too (public/manifest.json,
+        // display: "standalone"; see the comment in app/layout.js). It has
+        // the exact same "installed icon caching risk" as /mobile and
+        // /client-app above, but never got the same protection: an
+        // installed staff window kept serving whatever page it first
+        // loaded — a Messenger layout fix included — no matter how many
+        // deploys shipped after, since nothing told the browser to always
+        // refetch the document. Everything except static assets and API
+        // routes, which don't need it (or set their own caching already).
+        source: '/:path((?!api|_next).*)',
+        headers: NO_STORE_HEADERS,
+      },
     ];
   },
 };
