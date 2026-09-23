@@ -77,8 +77,19 @@ async function resolveInvoiceId({ hospitalizationId, visitId, clientId } = {}) {
   return null;
 }
 
-async function addInvoiceLine(invoiceId, item, quantity, description) {
-  if (!item) return; // catalog item missing — skip this line rather than fail the whole visit's billing
+// A catalog item not found by name (renamed, retyped, or never added —
+// see CORE_VACCINE_NAME/RABIES_VACCINE_NAME above) used to just silently
+// skip that one line rather than fail the whole visit's billing — which
+// meant a missing item vanished a real charge with zero indication
+// anywhere, exactly what happened to a rabies dose when its catalog entry
+// didn't match. Still doesn't abort the other lines, but now collects the
+// miss into `missing` (itemName, the human label to report by) so the
+// caller can warn staff once everything else has gone through.
+async function addInvoiceLine(invoiceId, item, itemName, quantity, description, missing) {
+  if (!item) {
+    missing.push(itemName);
+    return;
+  }
   await fetch(`/api/invoices/${invoiceId}/line-items`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -95,8 +106,11 @@ async function addInvoiceLine(invoiceId, item, quantity, description) {
 // POST /api/visits/:id/invoice already runs (see lib/invoicing.js
 // #syncInvoiceTreatmentItems) — this just needs to run first, so that
 // sync has something new to pick up.
-async function addTreatmentItem(visitId, item, quantity, instructions) {
-  if (!item) return;
+async function addTreatmentItem(visitId, item, itemName, quantity, instructions, missing) {
+  if (!item) {
+    missing.push(itemName);
+    return;
+  }
   await fetch('/api/treatment-items', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -189,8 +203,17 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
       fetch('/api/goods-services?main_category=product').then((res) => res.json()),
       fetch('/api/goods-services?main_category=service').then((res) => res.json()),
     ]);
-    const coreItem = findByName(productCatalog, CORE_VACCINE_NAME[speciesClass]);
+    const coreItemName = CORE_VACCINE_NAME[speciesClass];
+    const coreItem = findByName(productCatalog, coreItemName);
     const rabiesItem = findByName(productCatalog, RABIES_VACCINE_NAME);
+    const primaryConsultName = CONSULT_PRIMARY_NAME;
+    const annualConsultName = CONSULT_ANNUAL_NAME;
+
+    // Collects any catalog item that couldn't be found by name — see
+    // addInvoiceLine/addTreatmentItem above — so a genuinely missing
+    // catalog entry surfaces as a clear warning instead of a charge that
+    // just silently never happened.
+    const missing = [];
 
     const { visitId } = invoiceContext;
 
@@ -201,19 +224,22 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
       // picks up these new items the same way it picks up everything
       // else on the plan (see POST /api/visits/:id/invoice).
       if (isPrimary) {
-        await addTreatmentItem(visitId, findByName(serviceCatalog, CONSULT_PRIMARY_NAME), 1);
+        await addTreatmentItem(visitId, findByName(serviceCatalog, primaryConsultName), primaryConsultName, 1, undefined, missing);
         await addTreatmentItem(
           visitId,
           coreItem,
+          coreItemName,
           2,
-          coreItem ? `today's dose plus the booster due ${formatDate(boosterDue)} (already paid)` : undefined
+          coreItem ? `today's dose plus the booster due ${formatDate(boosterDue)} (already paid)` : undefined,
+          missing
         );
-        await addTreatmentItem(visitId, rabiesItem, 1, rabiesItem ? 'primary course' : undefined);
+        await addTreatmentItem(visitId, rabiesItem, RABIES_VACCINE_NAME, 1, rabiesItem ? 'primary course' : undefined, missing);
       } else {
         const coreChecked = coreProtocol && checkedProtocols.some((p) => p.id === coreProtocol.id);
-        if (coreChecked) await addTreatmentItem(visitId, coreItem, 1);
-        if (rabiesGiven) await addTreatmentItem(visitId, rabiesItem, 1);
-        if (coreChecked || rabiesGiven) await addTreatmentItem(visitId, findByName(serviceCatalog, CONSULT_ANNUAL_NAME), 1);
+        if (coreChecked) await addTreatmentItem(visitId, coreItem, coreItemName, 1, undefined, missing);
+        if (rabiesGiven) await addTreatmentItem(visitId, rabiesItem, RABIES_VACCINE_NAME, 1, undefined, missing);
+        if (coreChecked || rabiesGiven)
+          await addTreatmentItem(visitId, findByName(serviceCatalog, annualConsultName), annualConsultName, 1, undefined, missing);
       }
       await resolveInvoiceId(invoiceContext);
       // Realtime will eventually pick these up too, but the staff member
@@ -221,6 +247,7 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
       // vaccination shouldn't have to wait on that round-trip — refresh
       // both right away, same as every other action that adds to the plan.
       invoiceContext.onBilled?.();
+      if (missing.length > 0) throw new Error(`Vaccination saved, but couldn't bill ${missing.join(', ')} — missing from the catalog (check Settings > Catalog).`);
       return;
     }
 
@@ -231,20 +258,31 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     if (!invoiceId) return; // no hospitalization/client to attach the bill to
 
     if (isPrimary) {
-      await addInvoiceLine(invoiceId, findByName(serviceCatalog, CONSULT_PRIMARY_NAME), 1);
+      await addInvoiceLine(invoiceId, findByName(serviceCatalog, primaryConsultName), primaryConsultName, 1, undefined, missing);
       await addInvoiceLine(
         invoiceId,
         coreItem,
+        coreItemName,
         2,
-        coreItem ? `${coreItem.name} — today's dose plus the booster due ${formatDate(boosterDue)} (already paid)` : undefined
+        coreItem ? `${coreItem.name} — today's dose plus the booster due ${formatDate(boosterDue)} (already paid)` : undefined,
+        missing
       );
-      await addInvoiceLine(invoiceId, rabiesItem, 1, rabiesItem ? `${rabiesItem.name} — primary course` : undefined);
+      await addInvoiceLine(
+        invoiceId,
+        rabiesItem,
+        RABIES_VACCINE_NAME,
+        1,
+        rabiesItem ? `${rabiesItem.name} — primary course` : undefined,
+        missing
+      );
     } else {
       const coreChecked = coreProtocol && checkedProtocols.some((p) => p.id === coreProtocol.id);
-      if (coreChecked) await addInvoiceLine(invoiceId, coreItem, 1);
-      if (rabiesGiven) await addInvoiceLine(invoiceId, rabiesItem, 1);
-      if (coreChecked || rabiesGiven) await addInvoiceLine(invoiceId, findByName(serviceCatalog, CONSULT_ANNUAL_NAME), 1);
+      if (coreChecked) await addInvoiceLine(invoiceId, coreItem, coreItemName, 1, undefined, missing);
+      if (rabiesGiven) await addInvoiceLine(invoiceId, rabiesItem, RABIES_VACCINE_NAME, 1, undefined, missing);
+      if (coreChecked || rabiesGiven)
+        await addInvoiceLine(invoiceId, findByName(serviceCatalog, annualConsultName), annualConsultName, 1, undefined, missing);
     }
+    if (missing.length > 0) throw new Error(`Vaccination saved, but couldn't bill ${missing.join(', ')} — missing from the catalog (check Settings > Catalog).`);
   }
 
   // Annual: next_due_date is left for the server to compute from each
