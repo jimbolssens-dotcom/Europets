@@ -18,11 +18,20 @@ html {
   scroll-behavior: smooth;
 }
 
+/* A flex column (nav / banner / .content stacked top to bottom) rather
+   than plain block flow so a page can opt its .content into filling the
+   exact leftover viewport height below the nav (see
+   .content:has(.messages-thread-page)) — min-height, not height, so every
+   other page still just grows past 100vh and scrolls the document as
+   before. */
 body {
   margin: 0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color: var(--ink);
   background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 a {
@@ -350,9 +359,38 @@ button:disabled {
 }
 
 .content {
+  flex: 1 0 auto;
   padding: 0.75rem 2rem 2rem;
   max-width: 1440px;
   margin: 0 auto;
+}
+
+/* The Messenger thread page (app/(admin)/messages/[id]) is a full-page
+   chat, not a document — it used to sit in normal block flow with the
+   message list capped at a fixed 300px (.staff-chat-thread) regardless of
+   how tall the viewport was, leaving most of the screen blank below the
+   reply bar. Here .content stops sizing to its natural content height
+   (flex-basis 0, shrinkable) and instead exactly fills the space below
+   the nav, so .messages-thread-page can give the message list the rest
+   (flex: 1) and pin the reply bar at the true bottom of the window. */
+.content:has(.messages-thread-page) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.messages-thread-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.messages-thread-page .page-header,
+.messages-thread-page .hospitalization-chat {
+  flex-shrink: 0;
 }
 
 /* Two-column layout: a wide main area (list/table) beside a narrower
@@ -4174,6 +4212,15 @@ button.secondary:hover {
   border: 1px solid #eee;
   border-radius: 8px;
   padding: 0.75rem;
+}
+
+/* The full-page thread (.messages-thread-page) gets the actual remaining
+   window height instead of the 300px cap meant for a chat panel embedded
+   in a longer page — see .content:has(.messages-thread-page) above. */
+.messages-thread-page .staff-chat-thread {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
 }
 
 .portal-chat-bubble {

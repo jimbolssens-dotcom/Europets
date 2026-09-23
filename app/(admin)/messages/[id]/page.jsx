@@ -30,6 +30,7 @@ export default function ClientMessageThreadPage() {
   const [sendingReply, setSendingReply] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [channelOverride, setChannelOverride] = useState(null); // 'app' | 'whatsapp' | null (auto)
+  const [flagged, setFlagged] = useState(false);
   const [error, setError] = useState(null);
   const threadRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -62,6 +63,33 @@ export default function ClientMessageThreadPage() {
       .subscribe();
     return () => supabase.removeChannel(channel);
   }, [id]);
+
+  // Opening this thread clears the inbox's 🔔 alarm for it on its own —
+  // "closing it again without replying" used to leave the alarm on
+  // forever, since nothing recorded that staff had actually looked at it.
+  // Fires once per visit (not on every realtime message tick after that)
+  // so it matches "I opened this conversation", not "I'm still staring at
+  // it" — see PATCH/GET /api/client-messages/thread-state.
+  useEffect(() => {
+    fetch('/api/client-messages/thread-state', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thread_key: id, mark_read: true }),
+    });
+    fetch(`/api/client-messages/thread-state?thread_key=${encodeURIComponent(id)}`)
+      .then((res) => res.json())
+      .then((data) => setFlagged(Boolean(data?.flagged)));
+  }, [id]);
+
+  async function toggleFlagged() {
+    const next = !flagged;
+    setFlagged(next);
+    await fetch('/api/client-messages/thread-state', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thread_key: id, flagged: next }),
+    });
+  }
 
   useEffect(() => {
     // Also depends on `loading`, not just `messages`: the thread <div> (and
@@ -166,7 +194,7 @@ export default function ClientMessageThreadPage() {
   if (loading) return <p>Loading...</p>;
 
   return (
-    <>
+    <div className="messages-thread-page">
       <div className="page-header">
         <button type="button" className="button-link" onClick={() => router.push('/messages')}>
           ← Messages
@@ -177,6 +205,13 @@ export default function ClientMessageThreadPage() {
             {client?.client_number ? ` (Client #${client.client_number})` : ''}
           </a>
         </h1>
+        {/* Opening this thread already cleared its alarm automatically —
+            this is the explicit override for "no, keep this flagged" (or
+            to re-flag something already read/replied to as still needing
+            follow-up). Independent of read status either way. */}
+        <button type="button" onClick={toggleFlagged} className={flagged ? 'button-link' : ''} title={flagged ? 'Clear the needs-attention flag' : 'Flag this conversation as still needing attention'}>
+          {flagged ? '🔔 Flagged' : '🏳️ Flag as needing attention'}
+        </button>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -284,6 +319,6 @@ export default function ClientMessageThreadPage() {
         />
         <input ref={fileInputRef} type="file" onChange={handleFileChange} hidden />
       </div>
-    </>
+    </div>
   );
 }

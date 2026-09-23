@@ -57,6 +57,14 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
     setLoading(true);
     loadMessages().finally(() => setLoading(false));
 
+    // Opening this row clears its 🔔 alarm on its own, same as opening a
+    // matched client's thread page — see PATCH /api/client-messages/thread-state.
+    fetch('/api/client-messages/thread-state', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thread_key: `phone:${phone}`, mark_read: true }),
+    }).then(onLinked);
+
     const channel = supabase
       .channel(`unmatched-whatsapp-${phone}`)
       .on(
@@ -68,6 +76,15 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded, phone]);
+
+  async function toggleFlagged() {
+    await fetch('/api/client-messages/thread-state', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thread_key: `phone:${phone}`, flagged: !conv.flagged }),
+    });
+    onLinked();
+  }
 
   async function sendReply(e) {
     e.preventDefault();
@@ -125,6 +142,9 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
         <td>
           <button type="button" onClick={() => setExpanded((v) => !v)}>
             {expanded ? 'Close' : 'Open'}
+          </button>{' '}
+          <button type="button" onClick={toggleFlagged} title={conv.flagged ? 'Clear the needs-attention flag' : 'Flag as still needing attention'}>
+            {conv.flagged ? '🔔' : '🏳️'}
           </button>
         </td>
       </tr>
