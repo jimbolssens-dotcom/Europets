@@ -227,6 +227,21 @@ export default function IntakePage() {
         </p>
       </details>
 
+      <details className="intake-qr-section">
+        <summary>📲 Client App QR Code (install the app)</summary>
+        <p className="visit-meta">
+          Print this alongside the one above — scanning it opens the Europets client app straight
+          to the login screen, ready to add to their home screen. For an already-registered
+          client, not a new-client form (see the QR code above for that).
+        </p>
+        <img src="/api/client-app-qr" alt="QR code linking to the Europets client app" className="intake-qr-image" />
+        <p>
+          <a href="/api/client-app-qr" download="europets-client-app-qr.png">
+            ⬇️ Download QR Code
+          </a>
+        </p>
+      </details>
+
       {pending.length > 0 && (
         <>
           <h2>Sent, Awaiting Submission</h2>

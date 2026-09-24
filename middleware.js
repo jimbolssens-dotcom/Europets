@@ -30,6 +30,7 @@ const PUBLIC_PATTERNS = [
   /^\/api\/login$/,
   /^\/portal(\/.*)?$/,
   /^\/api\/new-client-qr$/,
+  /^\/api\/client-app-qr$/,
   /^\/api\/intake-requests\/[^/]+$/, // by id only — the public form's own GET/PATCH (PATCH's staff-only actions re-check the cookie themselves — see isStaffRequest in that route)
   /^\/api\/consent-form-requests\/[^/]+$/, // by id only — the remote-signing page's own GET/POST
   /^\/api\/hospitalizations\/[^/]+\/request-update$/,
