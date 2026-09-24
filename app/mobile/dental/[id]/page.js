@@ -2,10 +2,16 @@
 // Record a dental report from a phone: the same interactive dental chart
 // desktop uses (tap a tooth to mark extracted/missing), dictation (tap
 // Start Recording when ready — this page is reached right after creating
-// a blank report via the picker, same as desktop's "Dictate New Dental
-// Report", but doesn't start listening on its own), and photos. Nothing
-// to type by hand; review/edit the fuller record on the desktop consult
-// page afterward.
+// a blank report from app/mobile/day-procedures/[id], same as desktop's
+// "Dictate New Dental Report", but doesn't start listening on its own),
+// and photos. Nothing to type by hand; review/edit the fuller record on
+// the desktop hospitalization page afterward.
+//
+// A dental report used to also start from its own standalone mobile
+// picker (pick today's consult patient directly, no day procedure
+// involved) — retired once the clinic confirmed a dental is now never
+// done without a Day Procedure booking, so this page is only ever
+// reached via a day procedure now.
 
 'use client';
 

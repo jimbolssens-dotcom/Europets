@@ -3,14 +3,16 @@
 // recording (consult / hospitalization), scanning a receipt straight into
 // the accounting system, self-service scheduling, and the Messenger tab
 // (app/mobile/messages) for replying to clients on the go. Dental Report/
-// Surgery Report used to live here as their own tiles — by request,
-// dropped in favor of giving Schedule (previously only reachable via the
-// small greeting link above) and Messages proper home-screen visibility
-// instead. app/mobile/dental and app/mobile/surgery (the "pick a patient,
-// start dictating" pickers those tiles opened) still exist and still work
-// if linked to directly, but as of this change have no in-app link
-// pointing at them anymore — nothing else in the mobile app currently
-// starts a dental/surgical report.
+// Surgery Report used to live here as their own tiles, opening a
+// standalone "pick today's consult patient" picker — retired along with
+// those tiles once the clinic confirmed a dental/surgery is now never
+// done without a Day Procedure booking, making that whole consult-based
+// path dead. app/mobile/dental/[id] and app/mobile/surgery/[id] (the
+// actual dictation/recording pages) are still very much alive — that's
+// what app/mobile/day-procedures/[id] routes into once a day procedure's
+// own dental/surgical report is started — only their old standalone
+// pickers (app/mobile/dental/page.js, app/mobile/surgery/page.js) are
+// gone.
 //
 // Gated behind picking who you are first (remembered on this phone via
 // localStorage — this app has no login system, same everywhere else in

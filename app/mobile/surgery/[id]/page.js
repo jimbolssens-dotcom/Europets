@@ -1,10 +1,16 @@
 // app/mobile/surgery/[id]/page.js
 // Record a surgical report from a phone: dictation (tap Start Recording
 // when ready — this page is reached right after creating a blank report
-// via the picker, same as desktop's "Dictate New Surgical Report", but
-// doesn't start listening on its own) plus photos. Nothing to type by
-// hand; review/edit the fuller record on the desktop consult page
-// afterward.
+// from app/mobile/day-procedures/[id], same as desktop's "Dictate New
+// Surgical Report", but doesn't start listening on its own) plus photos.
+// Nothing to type by hand; review/edit the fuller record on the desktop
+// hospitalization page afterward.
+//
+// A surgical report used to also start from its own standalone mobile
+// picker (pick today's consult patient directly, no day procedure
+// involved) — retired once the clinic confirmed a surgery is now never
+// done without a Day Procedure booking, so this page is only ever
+// reached via a day procedure now.
 
 'use client';
 
