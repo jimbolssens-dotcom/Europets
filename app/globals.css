@@ -53,6 +53,86 @@ body.body-fill {
   overflow: hidden;
 }
 
+/* Same idea, for the mobile Messenger thread (app/mobile/messages/[id]) —
+   see MobileBodyFillToggle.jsx. .mobile-app's own padding (set once for
+   every other mobile page, which are meant to grow past the viewport and
+   scroll normally) has to come off too, or it just reintroduces the same
+   "body grows to fit everything" failure mode one level down. */
+body.mobile-body-fill {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body.mobile-body-fill .mobile-app {
+  height: 100vh;
+  height: 100dvh;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* app/mobile/messages/[id] — the thread fills whatever's left below the
+   header, and reply bar always sits at the true bottom of the screen
+   (env(safe-area-inset-bottom) keeps it clear of the home-indicator strip
+   on an iPhone) instead of drifting off after a long conversation — same
+   idea as .messages-thread-page's desktop equivalent above, reusing the
+   exact same .portal-chat-thread/.portal-chat-bubble markup and styling. */
+.mobile-messages-thread-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.mobile-messages-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #eee;
+  flex-shrink: 0;
+  background: white;
+}
+
+.mobile-messages-header-name {
+  font-weight: 700;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-messages-thread-page .staff-chat-thread {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0;
+}
+
+.mobile-messages-composer {
+  flex-shrink: 0;
+  padding: 0.6rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  border-top: 1px solid #eee;
+  background: white;
+}
+
+/* A pending conversation's row on the mobile inbox list — same amber
+   highlight as the desktop inbox's own .cage-update-requested row. */
+.mobile-messages-row-pending {
+  border-color: var(--pink) !important;
+}
+
+/* The thread page's own "Loading..." state renders before staffId/
+   messages are ready — .mobile-body-fill has already stripped .mobile-app's
+   padding by then (it toggles on pathname alone, not on load completion),
+   so this needs its own to avoid sitting flush against the screen edges. */
+.mobile-loading {
+  padding: 1.25rem 1rem;
+}
+
 a {
   color: var(--pink-dark);
 }

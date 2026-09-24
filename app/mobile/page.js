@@ -1,7 +1,16 @@
 // app/mobile/page.js
 // Landing page for the phone-first staff app: big taps in for voice
 // recording (consult / hospitalization), scanning a receipt straight into
-// the accounting system, and self-service scheduling.
+// the accounting system, self-service scheduling, and the Messenger tab
+// (app/mobile/messages) for replying to clients on the go. Dental Report/
+// Surgery Report used to live here as their own tiles — by request,
+// dropped in favor of giving Schedule (previously only reachable via the
+// small greeting link above) and Messages proper home-screen visibility
+// instead. app/mobile/dental and app/mobile/surgery (the "pick a patient,
+// start dictating" pickers those tiles opened) still exist and still work
+// if linked to directly, but as of this change have no in-app link
+// pointing at them anymore — nothing else in the mobile app currently
+// starts a dental/surgical report.
 //
 // Gated behind picking who you are first (remembered on this phone via
 // localStorage — this app has no login system, same everywhere else in
@@ -16,6 +25,7 @@ import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
 import CleanerLanguageToggle from '@/app/_components/CleanerLanguageToggle';
 import { useCleanerLanguage } from '@/app/_components/useCleanerLanguage';
 import { useHospitalizationUpdatePending } from '@/app/_components/useHospitalizationUpdatePending';
+import { useClientMessagesPending } from '@/app/_components/useClientMessagesPending';
 import { cageAlarmClass } from '@/lib/hospitalizationAttention';
 import { t } from '@/lib/cleanerTranslations';
 
@@ -38,6 +48,7 @@ export default function MobileHomePage() {
   const alarmClass = cageAlarmClass(alarmLevel);
   const dayProcedureAlarmLevel = useHospitalizationUpdatePending({ kind: 'day_procedure' });
   const dayProcedureAlarmClass = cageAlarmClass(dayProcedureAlarmLevel);
+  const pendingMessageCount = useClientMessagesPending();
   const { language } = useCleanerLanguage();
 
   useEffect(() => {
@@ -135,13 +146,16 @@ export default function MobileHomePage() {
                   {dayProcedureAlarmLevel === 'red' || dayProcedureAlarmLevel === 'both' ? ' 🩺' : dayProcedureAlarmLevel === 'yellow' ? ' 🔔' : ''}
                 </span>
               </a>
-              <a href="/mobile/dental" className="mobile-square-tile">
-                <span className="mobile-square-tile-icon">🦷</span>
-                <span>Dental Report</span>
+              <a href="/mobile/schedule" className="mobile-square-tile">
+                <span className="mobile-square-tile-icon">📅</span>
+                <span>Schedule</span>
               </a>
-              <a href="/mobile/surgery" className="mobile-square-tile">
-                <span className="mobile-square-tile-icon">🔪</span>
-                <span>Surgery Report</span>
+              <a
+                href="/mobile/messages"
+                className={`mobile-square-tile${pendingMessageCount > 0 ? ' cage-update-requested' : ''}`}
+              >
+                <span className="mobile-square-tile-icon">💬</span>
+                <span>Messages{pendingMessageCount > 0 ? ' 🔔' : ''}</span>
               </a>
               <a href="/mobile/scan-receipt" className="mobile-square-tile">
                 <span className="mobile-square-tile-icon">🧾</span>

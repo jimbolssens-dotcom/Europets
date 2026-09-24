@@ -14,6 +14,7 @@
 
 import AppVersionWatcher from '@/app/_components/AppVersionWatcher';
 import CultureReminderBanner from '@/app/_components/CultureReminderBanner';
+import MobileBodyFillToggle from '@/app/_components/MobileBodyFillToggle';
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -40,6 +41,7 @@ export default function MobileLayout({ children }) {
     <div className="mobile-app">
       <AppVersionWatcher />
       <CultureReminderBanner />
+      <MobileBodyFillToggle />
       {children}
     </div>
   );
