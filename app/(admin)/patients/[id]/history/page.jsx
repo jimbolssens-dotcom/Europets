@@ -1,7 +1,7 @@
 // app/patients/[id]/history/page.jsx
 // Full Patient History: every consult/hospitalization AI summary, every
-// procedure report (dental/surgical/ultrasound/x-ray), and every test
-// ever recorded for this patient, in one place, newest first, full text
+// procedure report (dental/surgical/ultrasound/x-ray/gastroscopy), and
+// every test ever recorded for this patient, in one place, newest first, full text
 // (not the truncated preview PatientReportOverview shows elsewhere) —
 // built from the same GET /api/patients/:id/report-overview this repo
 // already uses for that shorter widget.

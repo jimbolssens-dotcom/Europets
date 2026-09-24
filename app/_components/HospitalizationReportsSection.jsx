@@ -1,12 +1,12 @@
 // app/_components/HospitalizationReportsSection.jsx
 // The hospitalization page's single "Reports" section — replaces the old
 // HospitalizationTestReports. Orders tests off the catalog and dictates
-// dental/surgical/ultrasound/x-ray reports the same way the consult page
-// does (see app/(admin)/consults/[id]/page.jsx's Exam & Notes / Procedures
-// tabs), scoped to this hospitalization instead of a visit, then hands
-// everything to RecordReports for the actual review/generate/share view —
-// kept to one consolidated section instead of consult's separate tabs,
-// since this page has no tab bar.
+// dental/surgical/ultrasound/x-ray/gastroscopy reports the same way the
+// consult page does (see app/(admin)/consults/[id]/page.jsx's Exam & Notes
+// / Procedures tabs), scoped to this hospitalization instead of a visit,
+// then hands everything to RecordReports for the actual
+// review/generate/share view — kept to one consolidated section instead of
+// consult's separate tabs, since this page has no tab bar.
 
 'use client';
 
@@ -19,6 +19,7 @@ import DentalChart from './DentalChart';
 import RecordReports from './RecordReports';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import { isXrayTest } from '@/lib/xrayProduct';
+import { isGastroscopyTest } from '@/lib/gastroscopyProduct';
 import { ensureSurgicalReport } from '@/lib/surgicalReportAuto';
 import { resolveCaseScope, loadCaseReports } from '@/lib/caseReportScope';
 
@@ -67,6 +68,10 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   const [dictatingXrayFor, setDictatingXrayFor] = useState(null);
   const [autoRecordXrayId, setAutoRecordXrayId] = useState(null);
 
+  const [gastroscopyReports, setGastroscopyReports] = useState([]);
+  const [dictatingGastroscopyFor, setDictatingGastroscopyFor] = useState(null);
+  const [autoRecordGastroscopyId, setAutoRecordGastroscopyId] = useState(null);
+
   const [generatingReportId, setGeneratingReportId] = useState(null);
   const [generateReportError, setGenerateReportError] = useState(null);
   const [generateReportErrorId, setGenerateReportErrorId] = useState(null);
@@ -81,14 +86,14 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   const startReportDetailsRef = useRef(null);
   useEffect(() => {
     if (
-      !autoRecordDentalId && !autoRecordSurgicalId && !autoRecordUltrasoundId && !autoRecordXrayId &&
+      !autoRecordDentalId && !autoRecordSurgicalId && !autoRecordUltrasoundId && !autoRecordXrayId && !autoRecordGastroscopyId &&
       !photoRecordDentalId && !photoRecordSurgicalId
     ) return;
     const el = startReportDetailsRef.current;
     if (!el) return;
     el.open = true;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [autoRecordDentalId, autoRecordSurgicalId, autoRecordUltrasoundId, autoRecordXrayId, photoRecordDentalId, photoRecordSurgicalId]);
+  }, [autoRecordDentalId, autoRecordSurgicalId, autoRecordUltrasoundId, autoRecordXrayId, autoRecordGastroscopyId, photoRecordDentalId, photoRecordSurgicalId]);
 
   // A "case" can be more than just this one hospitalizations row — the
   // consult it started from (originating_visit_id), and/or a parallel
@@ -124,6 +129,7 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   const loadDentalReports = () => loadReportList('dental-reports', setDentalReports);
   const loadUltrasoundReports = () => loadReportList('ultrasound-reports', setUltrasoundReports);
   const loadXrayReports = () => loadReportList('xray-reports', setXrayReports);
+  const loadGastroscopyReports = () => loadReportList('gastroscopy-reports', setGastroscopyReports);
 
   const scopeKey = `${caseScope.hospitalizationIds.join(',')}|${caseScope.visitIds.join(',')}`;
 
@@ -133,6 +139,7 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
     loadDentalReports();
     loadUltrasoundReports();
     loadXrayReports();
+    loadGastroscopyReports();
 
     let channel = supabase.channel(`hospitalization-reports-${hospitalizationId}`);
     const tableLoaders = [
@@ -141,6 +148,7 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
       ['dental_reports', loadDentalReports],
       ['ultrasound_reports', loadUltrasoundReports],
       ['xray_reports', loadXrayReports],
+      ['gastroscopy_reports', loadGastroscopyReports],
     ];
     for (const [table, reload] of tableLoaders) {
       for (const id of caseScope.hospitalizationIds) {
@@ -430,6 +438,21 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
     }
   }
 
+  async function startDictateGastroscopyReport(diagnosticId) {
+    setDictatingGastroscopyFor(diagnosticId);
+    const res = await fetch('/api/gastroscopy-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hospitalization_id: hospitalizationId, diagnostic_id: diagnosticId }),
+    });
+    const data = await res.json();
+    setDictatingGastroscopyFor(null);
+    if (res.ok) {
+      setAutoRecordGastroscopyId(data.id);
+      loadGastroscopyReports();
+    }
+  }
+
   async function deleteDiagnostic(diagId) {
     await fetch(`/api/diagnostics/${diagId}`, { method: 'DELETE' });
     loadDiagnostics();
@@ -468,6 +491,7 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   const vets = (staff || []).filter((s) => s.role === 'vet' || s.role === 'tech');
   const ultrasoundByDiagnostic = Object.fromEntries(ultrasoundReports.map((r) => [r.diagnostic_id, r]));
   const xrayByDiagnostic = Object.fromEntries(xrayReports.map((r) => [r.diagnostic_id, r]));
+  const gastroscopyByDiagnostic = Object.fromEntries(gastroscopyReports.map((r) => [r.diagnostic_id, r]));
 
   return (
     <div className="hospitalization-reports-section">
@@ -483,6 +507,7 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
           { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', staffField: 'surgeon_id', anchorId: 'report-surgical', reload: loadSurgicalReports },
           { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', staffField: 'performed_by', anchorId: 'report-ultrasound', reload: loadUltrasoundReports, hasClientSummary: true },
           { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', staffField: 'performed_by', anchorId: 'report-xray', reload: loadXrayReports, hasClientSummary: true },
+          { label: 'Gastroscopy report', reports: gastroscopyReports, apiBase: '/api/gastroscopy-reports', entityType: 'gastroscopy_report', staffField: 'performed_by', anchorId: 'report-gastroscopy', reload: loadGastroscopyReports, hasClientSummary: true },
         ]}
         assignableStaff={vets}
         onGenerate={generateAiReport} generatingId={generatingReportId}
@@ -542,6 +567,21 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
                 ) : (
                   <button type="button" onClick={() => startDictateXrayReport(d.id)} disabled={dictatingXrayFor === d.id}>
                     🎤 {dictatingXrayFor === d.id ? 'Starting...' : 'Dictate X-ray Report'}
+                  </button>
+                )}
+              </p>
+            );
+          }
+          if (isGastroscopyTest(testName)) {
+            const report = gastroscopyByDiagnostic[d.id];
+            return (
+              <p key={d.id} className="visit-meta">
+                🔬 {testName}:{' '}
+                {report ? (
+                  'Report started — see Reports above'
+                ) : (
+                  <button type="button" onClick={() => startDictateGastroscopyReport(d.id)} disabled={dictatingGastroscopyFor === d.id}>
+                    🎤 {dictatingGastroscopyFor === d.id ? 'Starting...' : 'Dictate Gastroscopy Report'}
                   </button>
                 )}
               </p>
@@ -635,6 +675,12 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
           <div className="card">
             <p className="visit-meta">X-ray report — dictate now</p>
             <AudioRecorder entityType="xray_report" entityId={autoRecordXrayId} onRefresh={loadXrayReports} />
+          </div>
+        )}
+        {autoRecordGastroscopyId && (
+          <div className="card">
+            <p className="visit-meta">Gastroscopy report — dictate now</p>
+            <AudioRecorder entityType="gastroscopy_report" entityId={autoRecordGastroscopyId} onRefresh={loadGastroscopyReports} />
           </div>
         )}
       </details>

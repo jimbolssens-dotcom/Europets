@@ -27,6 +27,7 @@ const ENTITY_TYPE_BY_REPORT_TYPE = {
   surgical: 'surgical_report',
   ultrasound: 'ultrasound_report',
   xray: 'xray_report',
+  gastroscopy: 'gastroscopy_report',
   diagnostic: 'diagnostic',
 };
 
@@ -40,7 +41,7 @@ function patientClientFor(row) {
 }
 
 export async function GET() {
-  const [dental, surgical, ultrasound, xray, diagnostics] = await Promise.all([
+  const [dental, surgical, ultrasound, xray, gastroscopy, diagnostics] = await Promise.all([
     supabase
       .from('dental_reports')
       .select(`id, visit_id, hospitalization_id, performed_at, created_at, ${RELATIONS}`)
@@ -55,6 +56,10 @@ export async function GET() {
       .is('ai_summary', null),
     supabase
       .from('xray_reports')
+      .select(`id, visit_id, hospitalization_id, performed_at, created_at, ${RELATIONS}`)
+      .is('ai_summary', null),
+    supabase
+      .from('gastroscopy_reports')
       .select(`id, visit_id, hospitalization_id, performed_at, created_at, ${RELATIONS}`)
       .is('ai_summary', null),
     supabase
@@ -73,6 +78,7 @@ export async function GET() {
     })),
     ...(ultrasound.data || []).map((r) => ({ ...r, kind: 'Ultrasound report', date: r.performed_at || r.created_at, reportType: 'ultrasound' })),
     ...(xray.data || []).map((r) => ({ ...r, kind: 'X-ray report', date: r.performed_at || r.created_at, reportType: 'xray' })),
+    ...(gastroscopy.data || []).map((r) => ({ ...r, kind: 'Gastroscopy report', date: r.performed_at || r.created_at, reportType: 'gastroscopy' })),
     ...(diagnostics.data || []).map((r) => ({
       ...r,
       kind: r.goods_services?.name || r.type || 'Diagnostic test',

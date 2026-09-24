@@ -1,12 +1,18 @@
 // app/imaging-reports/page.jsx
-// Every saved ultrasound and x-ray report across the clinic, newest first —
-// "saved" meaning actually dictated and written up (ai_summary set), not
-// just the empty shell created the moment "Dictate Report" is clicked on a
-// consult's Diagnostics tab. That distinction matters because the source
-// recording gets deleted automatically once its contents are captured here
-// (see AudioRecorder's delete-on-done cleanup) — this page is where staff
-// can confirm a report actually made it onto the record before trusting
-// that the audio is safe to have lost.
+// Every saved ultrasound, x-ray, and gastroscopy report across the clinic,
+// newest first — "saved" meaning actually dictated and written up
+// (ai_summary set), not just the empty shell created the moment "Dictate
+// Report" is clicked on a consult's Diagnostics tab. That distinction
+// matters because the source recording gets deleted automatically once its
+// contents are captured here (see AudioRecorder's delete-on-done cleanup)
+// — this page is where staff can confirm a report actually made it onto
+// the record before trusting that the audio is safe to have lost.
+//
+// Gastroscopy isn't radiology, but it's the same "attach images + dictate
+// findings" report shape as ultrasound/x-ray — folded into this page as a
+// third type rather than renaming it or splitting out a separate page,
+// to avoid disturbing the existing "Imaging Reports" link staff already
+// know (see Settings/nav).
 
 'use client';
 
@@ -26,10 +32,12 @@ export default function ImagingReportsPage() {
     Promise.all([
       fetch('/api/ultrasound-reports').then((res) => res.json()),
       fetch('/api/xray-reports').then((res) => res.json()),
-    ]).then(([ultrasound, xray]) => {
+      fetch('/api/gastroscopy-reports').then((res) => res.json()),
+    ]).then(([ultrasound, xray, gastroscopy]) => {
       const tagged = [
         ...(Array.isArray(ultrasound) ? ultrasound : []).map((r) => ({ ...r, type: 'ultrasound' })),
         ...(Array.isArray(xray) ? xray : []).map((r) => ({ ...r, type: 'xray' })),
+        ...(Array.isArray(gastroscopy) ? gastroscopy : []).map((r) => ({ ...r, type: 'gastroscopy' })),
       ].sort((a, b) => new Date(b.performed_at) - new Date(a.performed_at));
       setReports(tagged);
       setLoading(false);
@@ -41,6 +49,7 @@ export default function ImagingReportsPage() {
       .channel('imaging-reports')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ultrasound_reports' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'xray_reports' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'gastroscopy_reports' }, load)
       .subscribe();
     return () => supabase.removeChannel(channel);
   }, []);
@@ -52,9 +61,9 @@ export default function ImagingReportsPage() {
       <h1>
         Imaging Reports{' '}
         <InfoHint>
-          Every saved ultrasound and x-ray report, across every patient — a report only shows up
-          here once it&apos;s actually been dictated and written up, not the moment &quot;Dictate
-          Report&quot; is clicked on a consult.
+          Every saved ultrasound, x-ray, and gastroscopy report, across every patient — a report
+          only shows up here once it&apos;s actually been dictated and written up, not the moment
+          &quot;Dictate Report&quot; is clicked on a consult.
         </InfoHint>
       </h1>
 
@@ -74,13 +83,14 @@ export default function ImagingReportsPage() {
           </thead>
           <tbody>
             {reports.map((r) => {
-              const apiBase = r.type === 'ultrasound' ? '/api/ultrasound-reports' : '/api/xray-reports';
+              const apiBase =
+                r.type === 'ultrasound' ? '/api/ultrasound-reports' : r.type === 'xray' ? '/api/xray-reports' : '/api/gastroscopy-reports';
               const patient = r.visits?.patients || r.hospitalizations?.patients;
               const client = r.visits?.clients || r.hospitalizations?.clients;
               const recordHref = r.visit_id ? `/consults/${r.visit_id}` : `/hospitalization/${r.hospitalization_id}`;
               return (
                 <tr key={`${r.type}-${r.id}`}>
-                  <td>{r.type === 'ultrasound' ? '🔊 Ultrasound' : '🩻 X-ray'}</td>
+                  <td>{r.type === 'ultrasound' ? '🔊 Ultrasound' : r.type === 'xray' ? '🩻 X-ray' : '🔬 Gastroscopy'}</td>
                   <td>
                     <a href={`/patients/${patient?.id}`}>{patient?.name || '—'}</a>
                   </td>

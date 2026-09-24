@@ -19,6 +19,7 @@ import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import { isXrayTest } from '@/lib/xrayProduct';
+import { isGastroscopyTest } from '@/lib/gastroscopyProduct';
 import RecordReports from '@/app/_components/RecordReports';
 import { ADMINISTRATION_METHOD_LABELS, ADMINISTRATION_METHOD_CODES } from '@/lib/administrationMethods';
 import { subcategoryName, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
@@ -102,7 +103,11 @@ export default function ConsultDetailPage() {
   const [dictatingXrayFor, setDictatingXrayFor] = useState(null); // diagnostic id currently starting a report
   const [xrayForm, setXrayForm] = useState({}); // diagnostic id -> { performed_by, findings, notes }
 
-  // Shared across all four report types' "Generate AI Report" button — only
+  const [gastroscopyReports, setGastroscopyReports] = useState([]);
+  const [dictatingGastroscopyFor, setDictatingGastroscopyFor] = useState(null); // diagnostic id currently starting a report
+  const [gastroscopyForm, setGastroscopyForm] = useState({}); // diagnostic id -> { performed_by, findings, notes }
+
+  // Shared across all five report types' "Generate AI Report" button — only
   // one generation runs at a time, so one set of state is enough to track
   // which report (by id) is in flight or last errored.
   const [generatingReportId, setGeneratingReportId] = useState(null);
@@ -214,6 +219,8 @@ export default function ConsultDetailPage() {
 
   const loadXrayReports = () => loadReportList('xray-reports', setXrayReports);
 
+  const loadGastroscopyReports = () => loadReportList('gastroscopy-reports', setGastroscopyReports);
+
   const loadInvoiceInfo = () =>
     fetch(`/api/invoices?visit_id=${id}`)
       .then((res) => res.json())
@@ -295,6 +302,7 @@ export default function ConsultDetailPage() {
     loadDentalReports();
     loadUltrasoundReports();
     loadXrayReports();
+    loadGastroscopyReports();
     loadInvoiceInfo();
 
     Promise.all([
@@ -332,6 +340,7 @@ export default function ConsultDetailPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dental_reports', filter: `visit_id=eq.${id}` }, loadDentalReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ultrasound_reports', filter: `visit_id=eq.${id}` }, loadUltrasoundReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'xray_reports', filter: `visit_id=eq.${id}` }, loadXrayReports)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'gastroscopy_reports', filter: `visit_id=eq.${id}` }, loadGastroscopyReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices', filter: `visit_id=eq.${id}` }, loadInvoiceInfo)
       .subscribe();
 
@@ -644,9 +653,21 @@ export default function ConsultDetailPage() {
     if (res.ok) loadXrayReports();
   }
 
-  // Alternative to "Dictate Report" for ultrasound/x-ray — types findings
-  // straight in instead, same shape as the dental/surgical "Or add
-  // manually" forms below.
+  // Same pattern, for a Gastroscopy diagnostic entry.
+  async function startDictateGastroscopyReport(diagnosticId) {
+    setDictatingGastroscopyFor(diagnosticId);
+    const res = await fetch('/api/gastroscopy-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId }),
+    });
+    setDictatingGastroscopyFor(null);
+    if (res.ok) loadGastroscopyReports();
+  }
+
+  // Alternative to "Dictate Report" for ultrasound/x-ray/gastroscopy —
+  // types findings straight in instead, same shape as the dental/surgical
+  // "Or add manually" forms below.
   async function addUltrasoundReport(e, diagnosticId) {
     e.preventDefault();
     const form = ultrasoundForm[diagnosticId] || { performed_by: '', findings: '', notes: '' };
@@ -669,6 +690,18 @@ export default function ConsultDetailPage() {
     });
     setXrayForm((prev) => ({ ...prev, [diagnosticId]: { performed_by: '', findings: '', notes: '' } }));
     loadXrayReports();
+  }
+
+  async function addGastroscopyReport(e, diagnosticId) {
+    e.preventDefault();
+    const form = gastroscopyForm[diagnosticId] || { performed_by: '', findings: '', notes: '' };
+    await fetch('/api/gastroscopy-reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId, ...form }),
+    });
+    setGastroscopyForm((prev) => ({ ...prev, [diagnosticId]: { performed_by: '', findings: '', notes: '' } }));
+    loadGastroscopyReports();
   }
 
   // Runs the same AI report generation a dictation triggers (see
@@ -1123,6 +1156,7 @@ export default function ConsultDetailPage() {
             : LEGACY_DIAGNOSTIC_TYPE_LABELS[d.type] || d.type;
           const ultrasoundReport = ultrasoundReports.find((r) => r.diagnostic_id === d.id);
           const xrayReport = xrayReports.find((r) => r.diagnostic_id === d.id);
+          const gastroscopyReport = gastroscopyReports.find((r) => r.diagnostic_id === d.id);
 
           return (
             <div key={d.id} className="visit-card">
@@ -1341,6 +1375,99 @@ export default function ConsultDetailPage() {
                   )}
                 </div>
               )}
+
+              {isGastroscopyTest(testName) && (
+                <div className="postop-panel">
+                  <h4>Gastroscopy Report</h4>
+                  {!gastroscopyReport ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => startDictateGastroscopyReport(d.id)}
+                        disabled={dictatingGastroscopyFor === d.id}
+                      >
+                        🎤 {dictatingGastroscopyFor === d.id ? 'Starting...' : 'Dictate Report'}
+                      </button>
+                      <details>
+                        <summary>Or add manually</summary>
+                        <form className="form-grid" onSubmit={(e) => addGastroscopyReport(e, d.id)}>
+                          <select
+                            value={gastroscopyForm[d.id]?.performed_by || ''}
+                            onChange={(e) =>
+                              setGastroscopyForm({
+                                ...gastroscopyForm,
+                                [d.id]: { ...(gastroscopyForm[d.id] || {}), performed_by: e.target.value },
+                              })
+                            }
+                          >
+                            <option value="">Performed by...</option>
+                            {reportStaff.map((v) => (
+                              <option key={v.id} value={v.id}>
+                                {v.full_name}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            placeholder="Findings"
+                            value={gastroscopyForm[d.id]?.findings || ''}
+                            onChange={(e) =>
+                              setGastroscopyForm({
+                                ...gastroscopyForm,
+                                [d.id]: { ...(gastroscopyForm[d.id] || {}), findings: e.target.value },
+                              })
+                            }
+                          />
+                          <textarea
+                            rows={2}
+                            placeholder="Notes"
+                            value={gastroscopyForm[d.id]?.notes || ''}
+                            onChange={(e) =>
+                              setGastroscopyForm({
+                                ...gastroscopyForm,
+                                [d.id]: { ...(gastroscopyForm[d.id] || {}), notes: e.target.value },
+                              })
+                            }
+                          />
+                          <button type="submit">Add</button>
+                        </form>
+                      </details>
+                    </>
+                  ) : (
+                    <>
+                      <p className="visit-meta">
+                        {gastroscopyReport.staff?.full_name || 'unassigned'} ·{' '}
+                        {gastroscopyReport.performed_at ? formatDateTime(gastroscopyReport.performed_at) : ''}
+                      </p>
+                      <AudioRecorder
+                        entityType="gastroscopy_report"
+                        entityId={gastroscopyReport.id}
+                        onRefresh={loadGastroscopyReports}
+                      />
+                      <AttachmentSection entityType="gastroscopy_report" entityId={gastroscopyReport.id} />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          generateAiReport(
+                            '/api/gastroscopy-reports',
+                            gastroscopyReport.id,
+                            !!gastroscopyReport.ai_summary,
+                            loadGastroscopyReports
+                          )
+                        }
+                        disabled={generatingReportId === gastroscopyReport.id || !(gastroscopyReport.findings || gastroscopyReport.notes)}
+                      >
+                        {generatingReportId === gastroscopyReport.id
+                          ? 'Generating...'
+                          : gastroscopyReport.ai_summary
+                            ? '🔄 Regenerate AI Report'
+                            : '✨ Generate AI Report'}
+                      </button>
+                      {generateReportErrorId === gastroscopyReport.id && <p className="error">{generateReportError}</p>}
+                      <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -1508,6 +1635,7 @@ export default function ConsultDetailPage() {
             { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', staffField: 'surgeon_id', reload: loadSurgicalReports },
             { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', staffField: 'performed_by', sourceTab: 'exam', reload: loadUltrasoundReports, hasClientSummary: true },
             { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', staffField: 'performed_by', sourceTab: 'exam', reload: loadXrayReports, hasClientSummary: true },
+            { label: 'Gastroscopy report', reports: gastroscopyReports, apiBase: '/api/gastroscopy-reports', entityType: 'gastroscopy_report', staffField: 'performed_by', sourceTab: 'exam', reload: loadGastroscopyReports, hasClientSummary: true },
           ]}
           assignableStaff={reportStaff}
           onRecordSaved={loadConsult} onOpenSource={setActiveTab}

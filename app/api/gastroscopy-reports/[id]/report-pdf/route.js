@@ -1,0 +1,80 @@
+// app/api/gastroscopy-reports/[id]/report-pdf/route.js
+// GET /api/gastroscopy-reports/:id/report-pdf -> the AI-elaborated
+// gastroscopy report as a PDF — for staff to download/print, or linked
+// directly in the WhatsApp/email "send to owner" buttons on the consult
+// page (this route needs no auth, same as the other report-pdf routes,
+// since there's no staff auth to begin with).
+
+import { supabase } from '@/lib/supabaseClient';
+import { buildProcedureReportPdf } from '@/lib/procedureReportPdf';
+import { isImageAttachment, fetchAttachmentBytes } from '@/lib/pdfAttachments';
+import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
+// Keeps the PDF (and this request) from ballooning if a report has a lot of photos.
+const MAX_PHOTOS = 12;
+
+export async function GET(request, { params }) {
+  const { data: report, error } = await supabase
+    .from('gastroscopy_reports')
+    .select('ai_summary, client_summary, performed_at, visit_id, hospitalization_id, staff(full_name)')
+    .eq('id', params.id)
+    .single();
+
+  if (error || !report) {
+    return NextResponse.json({ error: 'gastroscopy report not found' }, { status: 404 });
+  }
+
+  // Two separate queries rather than one nested visits(...)/hospitalizations(...)
+  // embed off gastroscopy_reports — see the dental-reports version of this
+  // route for why.
+  let patient = null;
+  let client = null;
+  if (report.visit_id) {
+    const { data: visit } = await supabase
+      .from('visits')
+      .select('patients(name, species, patient_number), clients(full_name, client_number)')
+      .eq('id', report.visit_id)
+      .single();
+    patient = visit?.patients || null;
+    client = visit?.clients || null;
+  } else if (report.hospitalization_id) {
+    const { data: hospitalization } = await supabase
+      .from('hospitalizations')
+      .select('patients(name, species, patient_number), clients(full_name, client_number)')
+      .eq('id', report.hospitalization_id)
+      .single();
+    patient = hospitalization?.patients || null;
+    client = hospitalization?.clients || null;
+  }
+
+  const [{ data: clinic }, { data: attachments }] = await Promise.all([
+    supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
+    supabase.from('attachments').select('*').eq('entity_type', 'gastroscopy_report').eq('entity_id', params.id),
+  ]);
+
+  const imageAttachments = (attachments || []).filter(isImageAttachment).slice(0, MAX_PHOTOS);
+  const photos = (await Promise.all(imageAttachments.map(fetchAttachmentBytes))).filter(Boolean);
+
+  const pdfBytes = await buildProcedureReportPdf({
+    procedureType: 'gastroscopy',
+    procedureTitle: 'Gastroscopy Report',
+    patient,
+    client,
+    clinic,
+    performedAt: report.performed_at,
+    staffName: report.staff?.full_name,
+    sections: [{ text: report.client_summary || report.ai_summary }],
+    photos,
+  });
+
+  return new NextResponse(Buffer.from(pdfBytes), {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="gastroscopy-report-${params.id}.pdf"`,
+      'Cache-Control': 'no-store, must-revalidate',
+    },
+  });
+}

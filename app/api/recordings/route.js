@@ -51,6 +51,7 @@ export async function POST(request) {
       'dental_report',
       'ultrasound_report',
       'xray_report',
+      'gastroscopy_report',
       'hospitalization',
       'hospitalization_plan',
     ].includes(entity_type)

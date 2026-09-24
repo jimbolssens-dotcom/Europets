@@ -19,9 +19,10 @@
 //                     the "AI interpretation" button in the desktop
 //                     Reports section for a compact abnormalities-only
 //                     summary.
-//   - X-ray / Ultrasound -> auto-creates the diagnostic + report and opens
-//                     a mobile dictation screen (new — dental/surgery
-//                     already had one, x-ray/ultrasound didn't).
+//   - X-ray / Ultrasound / Gastroscopy -> auto-creates the diagnostic +
+//                     report and opens a mobile dictation screen (new —
+//                     dental/surgery already had one, x-ray/ultrasound/
+//                     gastroscopy didn't).
 //   - Anything else (Microchip, Ear Clean, ...) -> plain tap to mark done.
 
 'use client';
@@ -42,7 +43,14 @@ const ACTION_HINTS = {
   surgery: 'Tap to dictate the surgical report',
   xray: 'Tap to dictate the X-ray report',
   ultrasound: 'Tap to dictate the ultrasound report',
+  gastroscopy: 'Tap to dictate the gastroscopy report',
   test: 'Tap to photograph and log the result',
+};
+
+const IMAGING_REPORT_API_BASE = {
+  xray: '/api/xray-reports',
+  ultrasound: '/api/ultrasound-reports',
+  gastroscopy: '/api/gastroscopy-reports',
 };
 
 function todayISODate() {
@@ -159,7 +167,7 @@ export default function MobileDayProcedurePage() {
   }
 
   async function findOrCreateImagingReport(reportType, diagnosticId) {
-    const apiBase = reportType === 'xray' ? '/api/xray-reports' : '/api/ultrasound-reports';
+    const apiBase = IMAGING_REPORT_API_BASE[reportType];
     const list = await fetch(`${apiBase}?hospitalization_id=${id}`).then((res) => res.json());
     const existing = Array.isArray(list) ? list.find((r) => r.diagnostic_id === diagnosticId) : null;
     if (existing) return existing;
@@ -229,7 +237,7 @@ export default function MobileDayProcedurePage() {
         if (action === 'surgery') router.push(`/mobile/surgery/${report.id}`);
         return;
       }
-      if (action === 'xray' || action === 'ultrasound') {
+      if (action === 'xray' || action === 'ultrasound' || action === 'gastroscopy') {
         const diagnostic = await findOrCreateDiagnostic(item.goods_service_id);
         const report = await findOrCreateImagingReport(action, diagnostic.id);
         if (!alreadyLogged) await logDone(item);

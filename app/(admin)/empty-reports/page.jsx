@@ -15,6 +15,7 @@ const KIND_LABEL = {
   surgical: 'Surgical',
   ultrasound: 'Ultrasound',
   xray: 'X-ray',
+  gastroscopy: 'Gastroscopy',
   diagnostic: 'Diagnostic',
 };
 
@@ -50,6 +51,7 @@ export default function EmptyReportsPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'surgical_reports' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ultrasound_reports' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'xray_reports' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'gastroscopy_reports' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'diagnostics' }, load)
       .subscribe();
     return () => supabase.removeChannel(channel);

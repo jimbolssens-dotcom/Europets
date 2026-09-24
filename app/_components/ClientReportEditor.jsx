@@ -9,8 +9,8 @@
 // shows up here without needing a page reload.
 //
 // `field`/`title` default to the original ai_summary/"Client Report"
-// behavior; ultrasound/x-ray reports render a second instance of this
-// pointed at `client_summary`/"Client Summary" — see RecordReports.
+// behavior; ultrasound/x-ray/gastroscopy reports render a second instance
+// of this pointed at `client_summary`/"Client Summary" — see RecordReports.
 
 'use client';
 

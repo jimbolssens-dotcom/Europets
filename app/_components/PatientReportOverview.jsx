@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react';
 import { formatDateTime } from '@/lib/formatTimestamp';
 
 // Cross-record summary of every report on file for a patient (dental,
-// surgical, ultrasound, x-ray, diagnostics, plus the consult/hospitalization
-// AI summary itself) — most of these belong to a DIFFERENT record than the
-// one currently open, so "Open record" is still how you navigate there.
+// surgical, ultrasound, x-ray, gastroscopy, diagnostics, plus the
+// consult/hospitalization AI summary itself) — most of these belong to a
+// DIFFERENT record than the one currently open, so "Open record" is still
+// how you navigate there.
 // Edit/delete happen right here too, using the same PATCH/DELETE endpoints
 // each record's own Reports section already calls (see RecordReports.jsx) —
 // staff shouldn't have to leave the current page just to fix a typo or

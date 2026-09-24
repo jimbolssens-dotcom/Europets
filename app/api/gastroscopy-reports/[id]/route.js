@@ -1,0 +1,82 @@
+// app/api/gastroscopy-reports/[id]/route.js
+// GET    /api/gastroscopy-reports/:id  -> one gastroscopy report, with the
+//                                  visit's patient/client joined (needed for
+//                                  the report PDF/share links).
+// PATCH  /api/gastroscopy-reports/:id  -> edit any of its fields — including
+//                                  ai_summary, the AI-elaborated client
+//                                  report (see ClientReportEditor),
+//                                  which a vet can correct before it's
+//                                  shared with the owner.
+// DELETE /api/gastroscopy-reports/:id  -> remove the report entirely — the
+//                                  underlying diagnostic/test order it's
+//                                  attached to (diagnostic_id) is
+//                                  untouched, only the write-up.
+
+import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { NextResponse } from 'next/server';
+
+const EDITABLE_FIELDS = ['performed_by', 'findings', 'notes', 'ai_summary', 'client_summary'];
+
+export async function GET(request, { params }) {
+  const { data, error } = await supabase
+    .from('gastroscopy_reports')
+    .select('*, staff(full_name)')
+    .eq('id', params.id)
+    .single();
+
+  if (error || !data) {
+    return NextResponse.json({ error: 'gastroscopy report not found' }, { status: 404 });
+  }
+
+  // Two separate queries rather than one nested visits(...)/hospitalizations(...)
+  // embed off gastroscopy_reports — see dental-reports/[id]/route.js for why.
+  if (data.visit_id) {
+    const { data: visit } = await supabase
+      .from('visits')
+      .select('patient_id, client_id, patients(name, species, patient_number), clients(full_name, phone, email, client_number)')
+      .eq('id', data.visit_id)
+      .single();
+    data.visits = visit || null;
+  } else if (data.hospitalization_id) {
+    const { data: hospitalization } = await supabase
+      .from('hospitalizations')
+      .select('patient_id, client_id, patients(name, species, patient_number), clients(full_name, phone, email, client_number)')
+      .eq('id', data.hospitalization_id)
+      .single();
+    data.hospitalizations = hospitalization || null;
+  }
+  return NextResponse.json(data);
+}
+
+export async function PATCH(request, { params }) {
+  const body = await request.json();
+  const update = {};
+  for (const field of EDITABLE_FIELDS) {
+    if (body[field] !== undefined) update[field] = body[field] === '' ? null : body[field];
+  }
+
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('gastroscopy_reports')
+    .update(update)
+    .eq('id', params.id)
+    .select('*, staff(full_name)')
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json(data);
+}
+
+export async function DELETE(request, { params }) {
+  const { error } = await supabaseAdmin.from('gastroscopy_reports').delete().eq('id', params.id);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
+}

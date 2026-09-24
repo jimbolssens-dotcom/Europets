@@ -6,8 +6,8 @@
 // invoice) but restyled for a single same-day visit rather than a
 // multi-day stay: no "today" framing, no Cage Cleaned/Walked-style
 // recurring-care chips, and each row links straight to whichever report
-// or input it belongs to (Dental/Surgical/X-ray/Ultrasound report,
-// Vaccination, or Test Results) so nothing needs to be found separately —
+// or input it belongs to (Dental/Surgical/X-ray/Ultrasound/Gastroscopy
+// report, Vaccination, or Test Results) so nothing needs to be found separately —
 // see the Day Procedure Report section below this on the page.
 
 'use client';
@@ -30,6 +30,7 @@ const ACTION_LINKS = {
   surgery: { href: '#report-surgical', label: 'Open Surgical Report' },
   xray: { href: '#report-xray', label: 'Open X-ray Report' },
   ultrasound: { href: '#report-ultrasound', label: 'Open Ultrasound Report' },
+  gastroscopy: { href: '#report-gastroscopy', label: 'Open Gastroscopy Report' },
   vaccine: { href: '#vaccination', label: 'Open Vaccination' },
   test: { href: '#report-test-results', label: 'Enter Test Result' },
 };
@@ -464,8 +465,8 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
   }
 
   // Dental/surgical/test reports need more than a scroll — unlike xray/
-  // ultrasound/vaccine (still a plain anchor below, since those already
-  // auto-create their diagnostic the moment the item is added), nothing
+  // ultrasound/gastroscopy/vaccine (still a plain anchor below, since those
+  // already auto-create their diagnostic the moment the item is added), nothing
   // auto-creates a plain test's diagnostic row ahead of time, so the link
   // would otherwise land on an empty section with no result field in
   // sight (see HospitalizationReportsSection, which owns the actual
