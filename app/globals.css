@@ -6522,6 +6522,39 @@ form.card.admit-patient-form {
   line-height: 1;
 }
 
+/* The language toggle sits right under the two cleaner tabs above — see
+   app/_components/CleanerLanguageToggle.jsx. Two big flag taps rather than
+   a select/dropdown, matching the rest of this app's thumb-first mobile
+   controls; the active language gets the same pink-border treatment as
+   .mobile-cleaner-tab so it reads as "on" without needing a label. */
+.cleaner-language-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.cleaner-language-flag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: white;
+  font-size: 1.6rem;
+  line-height: 1;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  opacity: 0.55;
+}
+
+.cleaner-language-flag.active {
+  border-color: var(--pink-tint);
+  opacity: 1;
+}
+
 /* Quick Check-In (app/mobile/hospitalization/[id]/checkin) — one category
    at a time, big self-explanatory icon tiles instead of selects/inputs.
    Sized for a thumb tap, not a click. */

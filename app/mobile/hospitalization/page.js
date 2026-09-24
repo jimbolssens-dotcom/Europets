@@ -22,11 +22,12 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { byGroup } from '@/app/_components/CageFloorPlan';
 import { useMobileStaff } from '@/app/_components/useMobileStaff';
+import { useCleanerLanguage } from '@/app/_components/useCleanerLanguage';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 import { t } from '@/lib/cleanerTranslations';
 
-function MobileCageTile({ cage, hosp, checkinOnly, isCleaner }) {
+function MobileCageTile({ cage, hosp, checkinOnly, useSinhala }) {
   if (hosp) {
     const href = checkinOnly ? `/mobile/hospitalization/${hosp.id}/checkin` : `/mobile/hospitalization/${hosp.id}`;
     const { yellow, red } = hospitalizationAttentionReasons(hosp);
@@ -58,7 +59,7 @@ function MobileCageTile({ cage, hosp, checkinOnly, isCleaner }) {
         <span className="cage-name">{cage.name}</span>
         {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
       </div>
-      <span className="cage-status">{t('Empty', isCleaner)}</span>
+      <span className="cage-status">{t('Empty', useSinhala)}</span>
     </div>
   );
 }
@@ -75,11 +76,11 @@ function Cluster({ label, cages, cols, renderTile }) {
   );
 }
 
-function IsoCluster({ cages, renderTile, isCleaner }) {
+function IsoCluster({ cages, renderTile, useSinhala }) {
   if (cages.length === 0) return null;
   return (
     <div>
-      <h3 className="cage-cluster-label">{t('Isolation Cages', isCleaner)}</h3>
+      <h3 className="cage-cluster-label">{t('Isolation Cages', useSinhala)}</h3>
       <div className="cage-cluster-flex">
         <div className="cage-cluster" style={{ '--cols': 1 }}>
           {cages.slice(0, 2).map((cage) => renderTile(cage))}
@@ -113,7 +114,7 @@ function reorderForMobileHospitalizationCages(cages) {
   return reordered;
 }
 
-function MobileCageColumns({ cages, renderTile, isCleaner }) {
+function MobileCageColumns({ cages, renderTile, useSinhala }) {
   const standardCages = reorderForMobileHospitalizationCages(byGroup(cages, 'standard'));
   const ltCages = byGroup(cages, 'long_term');
   const ltLower = ltCages.slice(0, 3); // LT 1-3, at the bottom of the right column
@@ -127,20 +128,20 @@ function MobileCageColumns({ cages, renderTile, isCleaner }) {
     <>
       <div className="mobile-cage-columns">
         <div className="mobile-cage-col">
-          <Cluster label={t('Recovery Cages', isCleaner)} cages={recoveryCages} cols={1} renderTile={renderTile} />
-          <IsoCluster cages={isoCages} renderTile={renderTile} isCleaner={isCleaner} />
-          <Cluster label={t('Dog Cages', isCleaner)} cages={dogCages} cols={2} renderTile={renderTile} />
+          <Cluster label={t('Recovery Cages', useSinhala)} cages={recoveryCages} cols={1} renderTile={renderTile} />
+          <IsoCluster cages={isoCages} renderTile={renderTile} useSinhala={useSinhala} />
+          <Cluster label={t('Dog Cages', useSinhala)} cages={dogCages} cols={2} renderTile={renderTile} />
         </div>
         <div className="mobile-cage-col mobile-cage-col-right">
-          <Cluster label={t('LT', isCleaner)} cages={ltUpper} cols={ltUpper.length} renderTile={renderTile} />
-          <Cluster label={t('Hospitalization Cages', isCleaner)} cages={standardCages} cols={2} renderTile={renderTile} />
-          <Cluster label={t('LT', isCleaner)} cages={ltLower} cols={ltLower.length} renderTile={renderTile} />
+          <Cluster label={t('LT', useSinhala)} cages={ltUpper} cols={ltUpper.length} renderTile={renderTile} />
+          <Cluster label={t('Hospitalization Cages', useSinhala)} cages={standardCages} cols={2} renderTile={renderTile} />
+          <Cluster label={t('LT', useSinhala)} cages={ltLower} cols={ltLower.length} renderTile={renderTile} />
         </div>
       </div>
       {/* Full width, not squeezed into either column above — see the
           file-header comment on why Post-Op needs 3 per row like desktop. */}
       <div className="mobile-cage-postop-row">
-        <Cluster label={t('Post-Op Cages', isCleaner)} cages={postOpCages} cols={3} renderTile={renderTile} />
+        <Cluster label={t('Post-Op Cages', useSinhala)} cages={postOpCages} cols={3} renderTile={renderTile} />
       </div>
     </>
   );
@@ -151,6 +152,8 @@ export default function MobileHospitalizationListPage() {
   const [admitted, setAdmitted] = useState([]);
   const [loading, setLoading] = useState(true);
   const { isCleaner } = useMobileStaff();
+  const { language } = useCleanerLanguage();
+  const useSinhala = isCleaner && language === 'si';
 
   // kind=admission matches the desktop Cage Layout page — day procedures
   // have their own separate mobile list (app/mobile/day-procedures), same
@@ -185,16 +188,16 @@ export default function MobileHospitalizationListPage() {
   return (
     <div className="mobile-page">
       <MobileHomeButton />
-      <h1>{t('Hospitalization', isCleaner)}</h1>
+      <h1>{t('Hospitalization', useSinhala)}</h1>
 
       {loading ? (
-        <p>{t('Loading...', isCleaner)}</p>
+        <p>{t('Loading...', useSinhala)}</p>
       ) : (
         <MobileCageColumns
           cages={cages}
-          isCleaner={isCleaner}
+          useSinhala={useSinhala}
           renderTile={(cage) => (
-            <MobileCageTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} checkinOnly={isCleaner} isCleaner={isCleaner} />
+            <MobileCageTile key={cage.id} cage={cage} hosp={occupancy[cage.id]} checkinOnly={isCleaner} useSinhala={useSinhala} />
           )}
         />
       )}

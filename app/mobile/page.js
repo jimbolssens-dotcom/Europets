@@ -13,6 +13,8 @@
 
 import { useEffect, useState } from 'react';
 import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
+import CleanerLanguageToggle from '@/app/_components/CleanerLanguageToggle';
+import { useCleanerLanguage } from '@/app/_components/useCleanerLanguage';
 import { useHospitalizationUpdatePending } from '@/app/_components/useHospitalizationUpdatePending';
 import { cageAlarmClass } from '@/lib/hospitalizationAttention';
 import { t } from '@/lib/cleanerTranslations';
@@ -36,6 +38,7 @@ export default function MobileHomePage() {
   const alarmClass = cageAlarmClass(alarmLevel);
   const dayProcedureAlarmLevel = useHospitalizationUpdatePending({ kind: 'day_procedure' });
   const dayProcedureAlarmClass = cageAlarmClass(dayProcedureAlarmLevel);
+  const { language } = useCleanerLanguage();
 
   useEffect(() => {
     setStaffId(localStorage.getItem(MOBILE_STAFF_STORAGE_KEY));
@@ -58,6 +61,7 @@ export default function MobileHomePage() {
   const me = staff.find((s) => s.id === staffId);
   const firstName = firstNameOf(me?.full_name);
   const isCleaner = me?.role === 'cleaner';
+  const useSinhala = isCleaner && language === 'si';
 
   return (
     <div className="mobile-home">
@@ -91,17 +95,23 @@ export default function MobileHomePage() {
               <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
             </a>
             <a href="/mobile/schedule" className="mobile-greeting" title="Go to your schedule">
-              {t('Hello,', isCleaner)} {firstName || 'there'}!
+              {t('Hello,', useSinhala)} {firstName || 'there'}!
             </a>
           </div>
           <button type="button" className="mobile-link-btn" onClick={switchStaff}>
-            {t('Switch', isCleaner)}
+            {t('Switch', useSinhala)}
           </button>
 
           {isCleaner ? (
             // A cleaner's whole job on this phone is these two things —
-            // no Consults, Scan Receipt, or anything clinical/admin.
-            <MobileCleanerTabs />
+            // no Consults, Scan Receipt, or anything clinical/admin. The
+            // language toggle sits right under them rather than up top,
+            // since it's a once-in-a-while switch, not something to reach
+            // for before the actual work tiles.
+            <>
+              <MobileCleanerTabs />
+              <CleanerLanguageToggle />
+            </>
           ) : (
             <div className="mobile-square-tiles">
               <a href="/mobile/consults" className="mobile-square-tile">
