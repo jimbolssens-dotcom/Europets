@@ -23,6 +23,7 @@ import { attachCages } from '@/lib/attachCages';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
 import { seedVitalsFromOrigin, seedVitalsFromVisit } from '@/lib/hospitalizationVitalsSync';
 import { createConsentFormRequest } from '@/lib/consentForms';
+import { detectWeightLossAlarm } from '@/lib/weightLossAlarm';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
@@ -49,6 +50,7 @@ async function attachScheduledUpdateStatus(rows) {
       scheduled_updates_expected: 0,
       scheduled_updates_done: 0,
       vitals_weight_overdue: false,
+      weight_loss_alarm: null,
     }));
   }
 
@@ -64,7 +66,27 @@ async function attachScheduledUpdateStatus(rows) {
   // ever fails; the normal admission data is more important than an alarm.
   if (error) return rows;
 
+  // A wider window, just for the weight-loss alarm below — it compares
+  // today's weight against a reading from ~3 days ago, which today's-notes-
+  // only query above doesn't have. Only actively hospitalized cases ever
+  // have enough history for this to mean anything (see lib/weightLossAlarm.js);
+  // a day procedure's admitted_at is always today, so it naturally never
+  // finds a 3-day-old baseline and never triggers, with no separate kind
+  // filter needed here.
+  const { data: recentWeights, error: weightsError } = await supabase
+    .from('hospitalization_notes')
+    .select('hospitalization_id, created_at, weight_kg')
+    .in('hospitalization_id', ids)
+    .not('weight_kg', 'is', null)
+    .gte('created_at', new Date(nowMs - 5 * 24 * 60 * 60 * 1000).toISOString());
+  if (weightsError) return rows;
+
   const notesByHospitalization = (todayNotes || []).reduce((groups, note) => {
+    (groups[note.hospitalization_id] ||= []).push(note);
+    return groups;
+  }, {});
+
+  const weightsByHospitalization = (recentWeights || []).reduce((groups, note) => {
     (groups[note.hospitalization_id] ||= []).push(note);
     return groups;
   }, {});
@@ -78,10 +100,12 @@ async function attachScheduledUpdateStatus(rows) {
         scheduled_updates_expected: 0,
         scheduled_updates_done: 0,
         vitals_weight_overdue: false,
+        weight_loss_alarm: null,
       };
     }
 
     const notes = notesByHospitalization[h.id] || [];
+    const weightLossAlarm = detectWeightLossAlarm(weightsByHospitalization[h.id] || []);
     const admittedMs = new Date(h.admitted_at).getTime();
 
     const morningExpected = nowMs >= noonUtcMs && admittedMs < noonUtcMs;
@@ -117,6 +141,7 @@ async function attachScheduledUpdateStatus(rows) {
       scheduled_updates_expected: expected,
       scheduled_updates_done: done,
       vitals_weight_overdue: weightOverdue,
+      weight_loss_alarm: weightLossAlarm,
     };
   });
 }
