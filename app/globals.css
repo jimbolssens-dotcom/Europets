@@ -184,6 +184,21 @@ body.mobile-body-fill .mobile-app {
   text-decoration: none;
 }
 
+/* The deliberate bypass — visually secondary (plain text, no fill) so the
+   real action (go log the roster) still reads as the obvious next step,
+   not a coin-flip between two equal buttons. */
+.mobile-roster-gate-bypass {
+  display: block;
+  width: 100%;
+  margin-top: 0.85rem;
+  background: none;
+  border: none;
+  color: #777;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 a {
   color: var(--pink-dark);
 }
