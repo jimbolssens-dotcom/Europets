@@ -4,3 +4,7 @@ node_modules/
 .env*.local
 npm-debug.log*
 .DS_Store
+
+# Claude Code agent worktrees — isolated checkouts for background subagents,
+# not part of this repo's own history.
+.claude/worktrees/
