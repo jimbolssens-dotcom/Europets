@@ -21,7 +21,7 @@ const SHIFT_LABELS = { morning: 'AM', afternoon: 'PM' };
 // Row order for the roster grid — vets first (who's actually seeing
 // patients matters most for at-a-glance coverage), then the rest of the
 // clinical/admin chain. Anyone with an unrecognized role sorts last.
-const ROLE_ORDER = ['vet', 'tech', 'admin', 'reception', 'cleaner'];
+const ROLE_ORDER = ['vet', 'tech', 'admin', 'reception', 'cleaner', 'driver'];
 
 function pad(n) {
   return String(n).padStart(2, '0');

@@ -190,6 +190,7 @@ export default function StaffPage() {
                     <option value="tech">Tech</option>
                     <option value="reception">Reception</option>
                     <option value="cleaner">Cleaner</option>
+                    <option value="driver">Driver</option>
                     <option value="admin">Admin</option>
                   </select>
                 </td>
@@ -318,6 +319,7 @@ export default function StaffPage() {
           <option value="tech">Tech</option>
           <option value="reception">Reception</option>
           <option value="cleaner">Cleaner</option>
+          <option value="driver">Driver</option>
           <option value="admin">Admin</option>
         </select>
         <input

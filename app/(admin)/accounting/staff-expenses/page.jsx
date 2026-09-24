@@ -45,7 +45,7 @@ const CATEGORY_LABELS = {
   other: 'Other',
 };
 
-const ROLE_ORDER = ['vet', 'tech', 'reception', 'cleaner', 'admin'];
+const ROLE_ORDER = ['vet', 'tech', 'reception', 'cleaner', 'driver', 'admin'];
 
 const emptySalaryForm = { expense_date: today(), amount: '', payment_method: '' };
 const emptyExpenseForm = {

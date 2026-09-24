@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
-const VALID_ROLES = ['vet', 'tech', 'reception', 'cleaner', 'admin'];
+const VALID_ROLES = ['vet', 'tech', 'reception', 'cleaner', 'driver', 'admin'];
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase.from('staff').select('*').eq('id', params.id).single();
