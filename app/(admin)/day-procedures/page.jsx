@@ -6,6 +6,15 @@
 // overnight stays. Started from a patient file, a consult ("Start Day
 // Procedure"), or a surgery-type appointment check-in — never from here;
 // this page is purely a running list to find one again.
+//
+// The In Progress/Completed Today/Still Open sections below only ever
+// look at today — a day procedure completed on any earlier day used to
+// just vanish from this page for good the moment the day changed, with
+// no way to find it again (and, in practice, no reminder to ever invoice
+// it before it disappeared). The Past Day Procedures section at the
+// bottom is the fix: every discharged case, searchable, forever — the
+// API already returned this data unfiltered by date, this was purely a
+// missing view of it.
 
 'use client';
 
@@ -23,6 +32,7 @@ export default function DayProceduresPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [historySearch, setHistorySearch] = useState('');
 
   const load = () =>
     fetch('/api/hospitalizations?kind=day_procedure')
@@ -78,6 +88,26 @@ export default function DayProceduresPage() {
   const inProgress = todaysDayProcedures.filter((d) => d.status === 'admitted');
   const completed = todaysDayProcedures.filter((d) => d.status === 'discharged');
   const carriedOver = dayProcedures.filter((d) => d.status === 'admitted' && d.admitted_at?.slice(0, 10) !== today);
+
+  // Every day procedure completed on a day before today — "Completed
+  // Today" above only ever shows today's, so without this a discharged
+  // case just silently drops off the page for good the moment the day
+  // changes, with no way to find it again (see migrations/nothing — this
+  // was a pure frontend gap, the API already returns everything). Already
+  // sorted newest-first by the API itself (order('admitted_at', {
+  // ascending: false })).
+  const pastDayProcedures = dayProcedures.filter((d) => d.status === 'discharged' && d.admitted_at?.slice(0, 10) !== today);
+  const historyQuery = historySearch.trim().toLowerCase();
+  const filteredHistory = historyQuery
+    ? pastDayProcedures.filter(
+        (d) => d.patients?.name?.toLowerCase().includes(historyQuery) || d.clients?.full_name?.toLowerCase().includes(historyQuery)
+      )
+    : pastDayProcedures;
+  // With no search typed, cap what actually renders — the list only grows
+  // over time and a search should always still reach anything older than
+  // this, so nothing is ever truly hidden, just not shown by default.
+  const HISTORY_DEFAULT_LIMIT = 50;
+  const visibleHistory = historyQuery ? filteredHistory : filteredHistory.slice(0, HISTORY_DEFAULT_LIMIT);
 
   return (
     <div>
@@ -229,6 +259,68 @@ export default function DayProceduresPage() {
           </tbody>
         </table>
       )}
+
+      <details className="day-procedure-history">
+        <summary>
+          <h2 style={{ display: 'inline' }}>📖 Past Day Procedures ({pastDayProcedures.length})</h2>
+        </summary>
+        <p className="visit-meta">
+          Every day procedure completed before today — search by patient or owner to trace one back, no
+          matter how long ago it was.
+        </p>
+        <input
+          type="text"
+          placeholder="Search by patient or owner..."
+          value={historySearch}
+          onChange={(e) => setHistorySearch(e.target.value)}
+        />
+        {pastDayProcedures.length === 0 ? (
+          <p>No past day procedures yet.</p>
+        ) : filteredHistory.length === 0 ? (
+          <p>No past day procedures match &quot;{historySearch}&quot;.</p>
+        ) : (
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>Patient</th>
+                  <th>Owner</th>
+                  <th>Started</th>
+                  <th>Completed</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleHistory.map((d) => (
+                  <tr key={d.id}>
+                    <td>
+                      {d.patients?.name}
+                      {d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}
+                    </td>
+                    <td>
+                      {d.clients?.full_name}
+                      {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
+                    </td>
+                    <td>{formatShortDate(d.admitted_at)}</td>
+                    <td>{d.discharged_at ? formatDateTime(d.discharged_at) : '—'}</td>
+                    <td>
+                      <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>{' '}
+                      <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
+                        {deletingId === d.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!historyQuery && filteredHistory.length > HISTORY_DEFAULT_LIMIT && (
+              <p className="visit-meta">
+                Showing the {HISTORY_DEFAULT_LIMIT} most recent — search above to find an older one.
+              </p>
+            )}
+          </>
+        )}
+      </details>
     </div>
   );
 }
