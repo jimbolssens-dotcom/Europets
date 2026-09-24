@@ -11,10 +11,15 @@
 // chrome), instead of just bookmarking whatever page the phone happened
 // to be on. Scoped to this layout (not the root one) so it only applies
 // under /mobile, not the desktop admin site or the client portal.
+//
+// MobileRosterGate sits here (not on any one page) so it blocks every
+// mobile route, not just the home screen — see that component for what
+// triggers it and its one deliberate escape hatch (My Schedule itself).
 
 import AppVersionWatcher from '@/app/_components/AppVersionWatcher';
 import CultureReminderBanner from '@/app/_components/CultureReminderBanner';
 import MobileBodyFillToggle from '@/app/_components/MobileBodyFillToggle';
+import MobileRosterGate from '@/app/_components/MobileRosterGate';
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -42,6 +47,7 @@ export default function MobileLayout({ children }) {
       <AppVersionWatcher />
       <CultureReminderBanner />
       <MobileBodyFillToggle />
+      <MobileRosterGate />
       {children}
     </div>
   );

@@ -133,6 +133,57 @@ body.mobile-body-fill .mobile-app {
   padding: 1.25rem 1rem;
 }
 
+/* MobileRosterGate's full-screen, non-dismissable prompt — sits above
+   everything (including .mobile-body-fill's own fixed-height Messenger
+   thread) since it can trigger on any mobile route. No close button by
+   design; the only way out is the one link it offers. */
+.mobile-roster-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(20, 12, 16, 0.75);
+}
+
+.mobile-roster-gate-card {
+  max-width: 360px;
+  width: 100%;
+  background: white;
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.mobile-roster-gate-icon {
+  font-size: 3rem;
+  line-height: 1;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.mobile-roster-gate-card h2 {
+  margin: 0 0 0.5rem;
+}
+
+.mobile-roster-gate-card p {
+  color: #555;
+  margin: 0 0 1.5rem;
+}
+
+.mobile-roster-gate-btn {
+  display: inline-block;
+  background: var(--pink);
+  color: white;
+  font-weight: 700;
+  padding: 0.8rem 1.5rem;
+  border-radius: 10px;
+  text-decoration: none;
+}
+
 a {
   color: var(--pink-dark);
 }
