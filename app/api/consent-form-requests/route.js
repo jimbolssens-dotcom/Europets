@@ -12,10 +12,8 @@
 // of this feature is GET/POST /api/consent-form-requests/[id].
 
 import { supabase } from '@/lib/supabaseClient';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { CONSENT_FORM_TYPES, CONSENT_FORM_ATTACHMENT, CONSENT_FORM_LABELS } from '@/lib/consentTemplates';
-import { resolveConsentFormContext } from '@/lib/consentForms';
-import { sendConsentFormRequest } from '@/lib/metaWhatsapp';
+import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS } from '@/lib/consentTemplates';
+import { createConsentFormRequest } from '@/lib/consentForms';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
@@ -93,85 +91,16 @@ export async function POST(request) {
     );
   }
 
-  const attachment = CONSENT_FORM_ATTACHMENT[form_type];
-  if (attachment === 'visit' && !visit_id) {
-    return NextResponse.json({ error: `${form_type} must be requested against a visit_id` }, { status: 400 });
-  }
-  if (attachment === 'hospitalization' && !hospitalization_id) {
-    return NextResponse.json(
-      { error: `${form_type} must be requested against a hospitalization_id` },
-      { status: 400 }
-    );
-  }
+  const result = await createConsentFormRequest({
+    visitId: visit_id,
+    hospitalizationId: hospitalization_id,
+    formType: form_type,
+    sentToPhone: sent_to_phone,
+  });
 
-  const { data, error } = await supabaseAdmin
-    .from('consent_form_requests')
-    .insert([
-      {
-        visit_id: attachment === 'visit' ? visit_id : null,
-        hospitalization_id: attachment === 'hospitalization' ? hospitalization_id : null,
-        form_type,
-        sent_to_phone: sent_to_phone || null,
-      },
-    ])
-    .select()
-    .single();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
-  // Best-effort: the request itself is already created above regardless of
-  // whether this send succeeds — a WhatsApp/template failure (no phone on
-  // file, template not yet approved, outside Meta's rate limits, ...) must
-  // never block staff from generating the link and sharing it another way.
-  // See lib/metaWhatsapp.js's sendConsentFormRequest — this is deliberately
-  // a push to ANY client regardless of an existing WhatsApp conversation
-  // (per the clinic's decision to use consent forms to introduce clients to
-  // the WhatsApp number), which is exactly why it needs a pre-approved
-  // template rather than the free-form send used for replies.
-  const whatsapp = { sent: false, reason: 'not attempted' };
-  try {
-    const context = await resolveConsentFormContext({ visitId: visit_id, hospitalizationId: hospitalization_id, formType: form_type });
-    if (context.error) {
-      whatsapp.reason = context.error;
-    } else {
-      const { data: client } = await supabase
-        .from('clients')
-        .select('full_name, phone')
-        .eq('id', context.clientId)
-        .maybeSingle();
-      const digits = (client?.phone || '').replace(/\D/g, '');
-      if (!digits) {
-        whatsapp.reason = 'no phone number on file for this client';
-      } else if (!process.env.APP_URL) {
-        whatsapp.reason = 'APP_URL is not configured';
-      } else {
-        const consentUrl = `${process.env.APP_URL}/portal/consent/${data.id}`;
-        const waMessageId = await sendConsentFormRequest(digits, {
-          clientName: client.full_name,
-          patientName: context.patient?.name,
-          formLabel: CONSENT_FORM_LABELS[form_type] || form_type,
-          consentUrl,
-        });
-        await supabaseAdmin.from('client_messages').insert([
-          {
-            client_id: context.clientId,
-            phone: digits,
-            channel: 'whatsapp',
-            sender: 'staff',
-            body: `Consent form sent: ${CONSENT_FORM_LABELS[form_type] || form_type} — ${consentUrl}`,
-            wa_message_id: waMessageId,
-            status: 'sent',
-          },
-        ]);
-        whatsapp.sent = true;
-        whatsapp.reason = null;
-      }
-    }
-  } catch (err) {
-    whatsapp.reason = err.message;
-  }
-
-  return NextResponse.json({ ...data, whatsapp }, { status: 201 });
+  return NextResponse.json({ ...result.data, whatsapp: result.whatsapp }, { status: 201 });
 }

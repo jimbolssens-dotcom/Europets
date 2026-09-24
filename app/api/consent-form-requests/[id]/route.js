@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { createSignedConsentForm, resolveConsentFormContext } from '@/lib/consentForms';
+import { sendHospitalizationPortalLinkForAdmission } from '@/lib/hospitalizationPortalLink';
 import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
@@ -87,6 +88,18 @@ export async function POST(request, { params }) {
     .from('consent_form_requests')
     .update({ status: 'submitted', submitted_at: new Date().toISOString(), consent_form_id: result.data.id })
     .eq('id', params.id);
+
+  // The moment a consent form for an admission comes back signed, send the
+  // client their live care-update portal link — no staff click needed.
+  // Surgery/dental forms (attached to a visit, not a hospitalization) have
+  // no portal to link to, so this only fires for hospitalization/
+  // day_procedure forms. Awaited (rather than truly fire-and-forget) so it
+  // isn't cut short by the serverless function exiting right after the
+  // response — a failure here still never turns into an error for the
+  // client signing the form; it's swallowed below.
+  if (existing.hospitalization_id) {
+    await sendHospitalizationPortalLinkForAdmission(existing.hospitalization_id).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true });
 }

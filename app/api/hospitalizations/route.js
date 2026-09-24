@@ -22,6 +22,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { attachCages } from '@/lib/attachCages';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
 import { seedVitalsFromOrigin, seedVitalsFromVisit } from '@/lib/hospitalizationVitalsSync';
+import { createConsentFormRequest } from '@/lib/consentForms';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
@@ -332,6 +333,18 @@ export async function POST(request) {
 
   if (appointment_id) {
     await supabaseAdmin.from('appointments').update({ status: 'checked_in' }).eq('id', appointment_id);
+  }
+
+  // Auto-send the hospitalization consent form the moment an admission
+  // starts, instead of waiting on a staff click ("Sign a Consent Form"
+  // panel's WhatsApp button) — same send, just fired here instead. Never
+  // blocks the admission itself: a failed send (no phone on file yet,
+  // template not approved, ...) just leaves the request pending, and staff
+  // can still resend or sign it in person. Day procedures don't get this —
+  // their consent form's wording depends on the day's checklist, which
+  // isn't known yet at drop-off, so that one stays a manual, per-case send.
+  if (resolvedKind === 'admission') {
+    await createConsentFormRequest({ hospitalizationId: data.id, formType: 'hospitalization' }).catch(() => {});
   }
 
   // Every hospitalization — admission or day procedure — gets these two

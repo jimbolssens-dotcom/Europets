@@ -633,15 +633,19 @@ export default function HospitalizationDetailPage() {
   }
 
   // Sent automatically from the clinic's own WhatsApp Business number
-  // (POST /api/hospitalizations/:id/send-portal-link), not staff's own
-  // personal WhatsApp — openWhatsApp below only runs as a fallback when
-  // that fails (template not approved yet, no phone on file, send error),
-  // same safety-net pattern as the booking-confirmation auto-send.
+  // (POST /api/hospitalizations/:id/send-portal-link) — this button is now
+  // mostly a manual resend/fallback, since the same send already fires on
+  // its own the moment a consent form comes back signed (see POST
+  // /api/consent-form-requests/[id]). Not staff's own personal WhatsApp —
+  // openWhatsApp below only runs as a fallback for a real failure (template
+  // not approved yet, no phone on file, send error) — "already sent"
+  // (the automatic send beat this click to it) counts as done, not a
+  // failure, so it's treated the same as sent:true here.
   async function shareViaWhatsApp() {
     try {
       const res = await fetch(`/api/hospitalizations/${id}/send-portal-link`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data.sent) return;
+      if (res.ok && (data.sent || data.reason === 'already sent')) return;
     } catch {
       // fall through to the manual-share fallback below
     }
@@ -1211,23 +1215,6 @@ export default function HospitalizationDetailPage() {
         <button type="button" className="button-link" onClick={copyPortalLink} title="Copy the live care-update link">
           {linkCopied ? 'Copied!' : 'Copy'}
         </button>
-        {/* A consent came back signed but nobody's ever actually sent this
-            client the portal link yet (see portal_link_shared_at) — a
-            WhatsApp send always needs a staff click somewhere (see
-            shareViaWhatsApp), so this is that one click, front and center
-            right when it's most likely to be needed. Disappears for good
-            once the link's been shared any way (this, or the plain
-            Share/Copy buttons above). */}
-        {consentForms.length > 0 && !admission.portal_link_shared_at && (
-          <button
-            type="button"
-            className="doctor-checkup-pill"
-            onClick={shareViaWhatsApp}
-            title="A consent form came back signed — send the client their live care-update link"
-          >
-            🔗 Consent Signed — Send Portal Link
-          </button>
-        )}
         <button type="button" className="button-link report-overview-pill" onClick={() => setReportsOpen((v) => !v)}>
           📑 {reportsOpen ? 'Hide Reports' : 'Reports'}
         </button>
