@@ -1,9 +1,11 @@
 // app/portal/hospitalization/[id]/page.jsx
 // Client-facing, read-only, live view of one hospitalization: status,
-// case photos, and the day-to-day worksheet (with each entry's own
-// photos). No staff nav, no edit controls — shared as a link via
-// WhatsApp from the staff hospitalization page ("Share Client Portal
-// Link"). Updates live as staff add worksheet entries or photos.
+// case photos, any dental/surgical/ultrasound/x-ray/gastroscopy reports
+// (each with its own photos — see GET /api/hospitalizations/:id/reports),
+// and the day-to-day worksheet (with each entry's own photos). No staff
+// nav, no edit controls — shared as a link via WhatsApp from the staff
+// hospitalization page ("Share Client Portal Link"). Updates live as
+// staff add worksheet entries, generate/edit a report, or add photos.
 
 'use client';
 
@@ -37,6 +39,7 @@ export default function HospitalizationPortalPage() {
   const [admission, setAdmission] = useState(null);
   const [notes, setNotes] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
@@ -60,10 +63,16 @@ export default function HospitalizationPortalPage() {
       .then((res) => res.json())
       .then((data) => setMessages(Array.isArray(data) ? data : []));
 
+  const loadReports = () =>
+    fetch(`/api/hospitalizations/${id}/reports`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => setReports(Array.isArray(data) ? data : []));
+
   useEffect(() => {
     loadAdmission();
     loadNotes();
     loadMessages();
+    loadReports();
 
     const channel = supabase
       .channel(`portal-hospitalization-${id}`)
@@ -82,6 +91,11 @@ export default function HospitalizationPortalPage() {
         { event: '*', schema: 'public', table: 'hospitalization_messages', filter: `hospitalization_id=eq.${id}` },
         loadMessages
       )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dental_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'surgical_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ultrasound_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'xray_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'gastroscopy_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
       .subscribe();
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -202,6 +216,21 @@ export default function HospitalizationPortalPage() {
           emptyText="No photos shared yet."
         />
       </div>
+
+      {reports.length > 0 && (
+        <div className="portal-card">
+          <h2>Reports</h2>
+          {reports.map((r) => (
+            <div key={r.id} className="portal-note">
+              <div className="portal-note-date">
+                {r.label} · {formatDateTime(r.performed_at)}
+              </div>
+              <p>{r.text}</p>
+              <AttachmentGallery entityType={r.entityType} entityId={r.id} />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="portal-card">
         <h2>Daily Updates</h2>
