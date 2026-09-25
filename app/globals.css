@@ -1645,6 +1645,16 @@ button.secondary:hover {
   font-size: 0.75rem;
 }
 
+.attachment-move-select {
+  padding: 0.15rem 0.4rem;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  color: var(--ink);
+  background: white;
+  max-width: 9rem;
+}
+
 .attachment-thumb {
   width: 3rem;
   height: 3rem;

@@ -3,6 +3,15 @@
 // and dental reports, hospitalization notes/cases, etc. Offers a dedicated
 // "Take Photo" button (opens the camera directly on phones/tablets) next
 // to a regular file picker, and shows a thumbnail for image attachments.
+//
+// moveTargets (optional): [{ label, entityType, entityId }] — when passed,
+// each attachment gets a "Move to..." picker to re-tag it onto one of
+// those targets (e.g. the consult's general Photos list offers moving a
+// photo onto one of this visit's diagnostics, once it's clear which test
+// it belongs to). Moving just re-tags the row (see PATCH /api/attachments/
+// :id) — the file itself never moves, so it disappears from this list and
+// picks up wherever that target's own AttachmentSection is mounted, via
+// the same realtime subscription below.
 
 'use client';
 
@@ -16,7 +25,14 @@ function isImage(attachment) {
   );
 }
 
-export default function AttachmentSection({ entityType, entityId, onUploaded, refreshKey, onAttachmentsChange }) {
+export default function AttachmentSection({
+  entityType,
+  entityId,
+  onUploaded,
+  refreshKey,
+  onAttachmentsChange,
+  moveTargets,
+}) {
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -92,6 +108,15 @@ export default function AttachmentSection({ entityType, entityId, onUploaded, re
     load();
   }
 
+  async function handleMove(id, target) {
+    await fetch(`/api/attachments/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entity_type: target.entityType, entity_id: target.entityId }),
+    });
+    load();
+  }
+
   return (
     <div className="attachments">
       {error && <p className="error">{error}</p>}
@@ -111,6 +136,26 @@ export default function AttachmentSection({ entityType, entityId, onUploaded, re
               <button type="button" onClick={() => handleDelete(a.id)}>
                 Remove
               </button>
+              {moveTargets?.length > 0 && (
+                <select
+                  className="attachment-move-select"
+                  defaultValue=""
+                  onChange={(e) => {
+                    const target = moveTargets[Number(e.target.value)];
+                    e.target.value = '';
+                    if (target) handleMove(a.id, target);
+                  }}
+                >
+                  <option value="" disabled>
+                    Move to...
+                  </option>
+                  {moveTargets.map((t, i) => (
+                    <option key={`${t.entityType}-${t.entityId}`} value={i}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </li>
           ))}
         </ul>

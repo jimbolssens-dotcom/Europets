@@ -40,6 +40,12 @@ const LEGACY_DIAGNOSTIC_TYPE_LABELS = {
   other: 'Other',
 };
 
+function diagnosticLabel(d, catalog) {
+  return d.goods_service_id
+    ? catalog.find((c) => c.id === d.goods_service_id)?.name || 'Test'
+    : LEGACY_DIAGNOSTIC_TYPE_LABELS[d.type] || d.type;
+}
+
 // Groups the consult record into the workflow stages a vet actually moves
 // through, instead of the old side-by-side column layout — see the
 // activeTab state below for why the inactive tabs stay mounted.
@@ -898,7 +904,15 @@ export default function ConsultDetailPage() {
         <details className="consult-action-toggle">
           <summary className="button-link">📷 Photos</summary>
           <div className="consult-action-dropdown">
-            <AttachmentSection entityType="visit" entityId={id} />
+            <AttachmentSection
+              entityType="visit"
+              entityId={id}
+              moveTargets={diagnostics.map((d) => ({
+                label: diagnosticLabel(d, catalog),
+                entityType: 'diagnostic',
+                entityId: d.id,
+              }))}
+            />
           </div>
         </details>
         <details className="consult-action-toggle">
@@ -1151,9 +1165,7 @@ export default function ConsultDetailPage() {
         </form>
 
         {diagnostics.map((d) => {
-          const testName = d.goods_service_id
-            ? catalog.find((c) => c.id === d.goods_service_id)?.name || 'Test'
-            : LEGACY_DIAGNOSTIC_TYPE_LABELS[d.type] || d.type;
+          const testName = diagnosticLabel(d, catalog);
           const ultrasoundReport = ultrasoundReports.find((r) => r.diagnostic_id === d.id);
           const xrayReport = xrayReports.find((r) => r.diagnostic_id === d.id);
           const gastroscopyReport = gastroscopyReports.find((r) => r.diagnostic_id === d.id);
