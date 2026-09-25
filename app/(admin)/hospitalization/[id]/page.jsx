@@ -784,11 +784,16 @@ export default function HospitalizationDetailPage() {
   // logged afterward is new information nobody's seen yet, so it
   // re-evaluates and can fire again rather than staying quiet for good.
   async function acknowledgeWeightLossAlarm() {
-    await fetch(`/api/hospitalizations/${id}`, {
+    const res = await fetch(`/api/hospitalizations/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ acknowledge_weight_loss_alarm: true }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      alert(data?.error || 'Failed to mark the weight loss alarm attended — please try again.');
+      return;
+    }
     loadAdmission();
   }
 
