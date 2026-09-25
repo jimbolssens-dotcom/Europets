@@ -6640,6 +6640,13 @@ form.card.admit-patient-form {
   cursor: not-allowed;
 }
 
+/* Cancelled/no-show rows on the mobile Appointments overview — same dimmed
+   treatment as the desktop Appointments list, just without the drag/edit
+   affordances this read-only page doesn't have. */
+.mobile-appt-inactive {
+  opacity: 0.5;
+}
+
 .mobile-list-title {
   font-weight: 700;
 }

@@ -148,9 +148,9 @@ export default function MobileHomePage() {
                   {dayProcedureAlarmLevel === 'red' || dayProcedureAlarmLevel === 'both' ? ' 🩺' : dayProcedureAlarmLevel === 'yellow' ? ' 🔔' : ''}
                 </span>
               </a>
-              <a href="/mobile/schedule" className="mobile-square-tile">
+              <a href="/mobile/appointments" className="mobile-square-tile">
                 <span className="mobile-square-tile-icon">📅</span>
-                <span>Schedule</span>
+                <span>Appointments</span>
               </a>
               <a
                 href="/mobile/messages"
