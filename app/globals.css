@@ -119,6 +119,28 @@ body.mobile-body-fill .mobile-app {
   background: white;
 }
 
+/* Photo/Attach as small round icon buttons and a tighter Send, so the
+   message box (already flex: 1 on .portal-chat-form textarea) gets back
+   the width the full-size pill buttons were taking. Scoped to this one
+   composer — the client portal's own chat form reuses the same
+   .portal-chat-form base and keeps its full-size buttons. */
+.mobile-messages-composer .portal-chat-form button[type='button'] {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.85rem;
+}
+
+.mobile-messages-composer .portal-chat-form button[type='submit'] {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+}
+
 /* A pending conversation's row on the mobile inbox list — same amber
    highlight as the desktop inbox's own .cage-update-requested row. */
 .mobile-messages-row-pending {
