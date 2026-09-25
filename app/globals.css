@@ -5085,7 +5085,13 @@ button.secondary:hover {
   background: var(--pink-tint);
   border-color: var(--pink);
   cursor: grab;
-  touch-action: none;
+  /* Was `none`, which blocked native scrolling outright — every touch on
+     an occupied tile, scroll swipes included, got captured by the drag
+     JS from the first pixel of movement. `pan-y` lets a vertical scroll
+     swipe start normally; the long-press gate in handleDragStart (see
+     hospitalization/page.jsx) is what actually keeps a quick swipe from
+     being mistaken for a drag. */
+  touch-action: pan-y;
   user-select: none;
 }
 

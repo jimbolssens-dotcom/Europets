@@ -26,6 +26,17 @@ import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmCl
 import { formatDateTime } from '@/lib/formatTimestamp';
 
 const DRAG_THRESHOLD = 6;
+// Touch only: staff scrolling the cage wall on an iPad/phone kept
+// accidentally dragging patients between cages, since a scroll swipe
+// starting on an occupied tile looks identical to a drag for the first
+// few pixels. A touch drag now only "arms" after holding still for this
+// long — a normal scroll swipe cancels out well before it fires (see
+// LONG_PRESS_MOVE_CANCEL below), while a genuine long-press to pick a
+// patient up still works. Mouse/pen drags are unaffected — desktop staff
+// weren't the ones hitting this, and requiring a held click there would
+// just make dragging feel sluggish.
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_CANCEL = 10;
 const emptyAdmitForm = { client_id: '', patient_id: '', cage_id: '', reason: '' };
 
 function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDragStart, dragSourceId, dropTargetId }) {
@@ -52,8 +63,8 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
         onPointerDown={(e) => onDragStart(e, cage, hosp)}
         title={
           needsAttention
-            ? `${hosp.patients?.name}${hosp.patients?.patient_number ? ` (Patient #${hosp.patients.patient_number})` : ''} needs attention: ${attention.join(' • ')} — drag to move, or tap to open`
-            : 'Drag to move to another cage, or tap to open'
+            ? `${hosp.patients?.name}${hosp.patients?.patient_number ? ` (Patient #${hosp.patients.patient_number})` : ''} needs attention: ${attention.join(' • ')} — press and hold to move, or tap to open`
+            : 'Press and hold to move to another cage, or tap to open'
         }
       >
         <button
@@ -234,7 +245,10 @@ export default function HospitalizationPage() {
 
   function handleDragStart(e, cage, hosp, occupancy) {
     if (e.target.closest('button, select')) return; // let the unassign button handle its own click
-    e.currentTarget.setPointerCapture(e.pointerId);
+    const el = e.currentTarget;
+    const isTouch = e.pointerType === 'touch';
+    el.setPointerCapture(e.pointerId);
+
     const state = {
       pointerId: e.pointerId,
       hospId: hosp.id,
@@ -246,16 +260,39 @@ export default function HospitalizationPage() {
       x: e.clientX,
       y: e.clientY,
       moved: false,
+      // Mouse/pen drags are armed immediately (unchanged feel); touch
+      // waits out the long-press timer below before it can start a drag.
+      armed: !isTouch,
       overCageId: null,
       occupancy,
     };
     dragRef.current = state;
     setDrag(state);
 
-    const el = e.currentTarget;
+    let longPressTimer = null;
+    if (isTouch) {
+      longPressTimer = setTimeout(() => {
+        const s = dragRef.current;
+        if (!s || s.armed) return;
+        const next = { ...s, armed: true };
+        dragRef.current = next;
+        setDrag(next);
+      }, LONG_PRESS_MS);
+    }
+
     function onMove(ev) {
       const s = dragRef.current;
       if (!s) return;
+      if (!s.armed) {
+        // Still waiting out the long-press — real movement this early is
+        // a scroll swipe, not a held finger, so bail out without ever
+        // entering drag mode and let the page keep scrolling normally.
+        if (Math.hypot(ev.clientX - s.startX, ev.clientY - s.startY) > LONG_PRESS_MOVE_CANCEL) {
+          clearTimeout(longPressTimer);
+          cleanup();
+        }
+        return;
+      }
       const moved = s.moved || Math.hypot(ev.clientX - s.startX, ev.clientY - s.startY) > DRAG_THRESHOLD;
       const under = document.elementFromPoint(ev.clientX, ev.clientY);
       const tileEl = under?.closest('[data-cage-id]');
@@ -264,13 +301,17 @@ export default function HospitalizationPage() {
       dragRef.current = next;
       setDrag(next);
     }
-    function onUp() {
-      const s = dragRef.current;
+    function cleanup() {
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerup', onUp);
-      el.removeEventListener('pointercancel', onUp);
+      el.removeEventListener('pointercancel', onCancel);
       dragRef.current = null;
       setDrag(null);
+    }
+    function onUp() {
+      const s = dragRef.current;
+      clearTimeout(longPressTimer);
+      cleanup();
       if (!s) return;
       if (!s.moved) {
         router.push(`/hospitalization/${s.hospId}`);
@@ -280,9 +321,13 @@ export default function HospitalizationPage() {
         dropOnCage(s.hospId, s.fromCageId, s.overCageId, s.occupancy);
       }
     }
+    function onCancel() {
+      clearTimeout(longPressTimer);
+      cleanup();
+    }
     el.addEventListener('pointermove', onMove);
     el.addEventListener('pointerup', onUp);
-    el.addEventListener('pointercancel', onUp);
+    el.addEventListener('pointercancel', onCancel);
   }
 
   function openAdmit() {
