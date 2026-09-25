@@ -80,10 +80,26 @@ export default function IntakePage() {
       : `Hi! Thanks for calling Europets Clinic. Please fill in your details and your pet's details here before your visit: ${portalUrl(id)}`;
   }
 
+  // Sent automatically from the clinic's own WhatsApp Business number
+  // (POST /api/intake-requests/:id/send-whatsapp) — never staff's own
+  // personal WhatsApp. openWhatsApp only runs as a fallback for a real
+  // failure (template not approved yet, no phone on file, send error),
+  // same pattern as the hospitalization portal link's own "Share" button.
+  async function sendIntakeWhatsApp(id, phone, isExistingClient) {
+    try {
+      const res = await fetch(`/api/intake-requests/${id}/send-whatsapp`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.sent) return;
+    } catch {
+      // fall through to the manual-share fallback below
+    }
+    openWhatsApp(phone, intakeMessage(id, isExistingClient));
+  }
+
   // One click does both steps: generate a fresh link (each is single-use —
-  // the client fills it in once and it moves to Needs Review) and open it
-  // pre-drafted in WhatsApp to the number just typed in. The number alone
-  // decides new-client vs existing-client — see POST /api/intake-requests.
+  // the client fills it in once and it moves to Needs Review) and send it.
+  // The number alone decides new-client vs existing-client — see POST
+  // /api/intake-requests.
   async function sendNewLink() {
     const phone = quickPhone.replace(/\D/g, '');
     if (phone.length <= 3) {
@@ -104,7 +120,7 @@ export default function IntakePage() {
       return;
     }
     const data = await res.json();
-    openWhatsApp(phone, intakeMessage(data.id, Boolean(data.client_id)));
+    await sendIntakeWhatsApp(data.id, phone, Boolean(data.client_id));
     setQuickPhone('+971 ');
     setSending(false);
     load();
@@ -112,16 +128,29 @@ export default function IntakePage() {
 
   // Unlike the intake links above, there's no per-send record to create —
   // /client-app is a standing page any existing client can log into
-  // themselves (phone number + WhatsApp code, see app/client-app/page.js),
-  // so this just drafts the WhatsApp message straight away.
-  function sendClientAppLink() {
+  // themselves (phone number + WhatsApp code, see app/client-app/page.js).
+  // Sent from the clinic's own WhatsApp Business number (POST
+  // /api/client-app-link/send); openWhatsApp only runs as a fallback.
+  async function sendClientAppLink() {
     const phone = clientAppPhone.replace(/\D/g, '');
     if (phone.length <= 3) {
       setError('Enter a phone number first');
       return;
     }
     const url = `${window.location.origin}/client-app`;
-    openWhatsApp(phone, `Hi! You can now view your pet(s), invoices, and appointments anytime here: ${url}`);
+    let sent = false;
+    try {
+      const res = await fetch('/api/client-app-link/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json().catch(() => ({}));
+      sent = res.ok && data.sent;
+    } catch {
+      sent = false;
+    }
+    if (!sent) openWhatsApp(phone, `Hi! You can now view your pet(s), invoices, and appointments anytime here: ${url}`);
     setClientAppPhone('+971 ');
   }
 
@@ -146,7 +175,7 @@ export default function IntakePage() {
         body: JSON.stringify({ action: 'update_phone', sent_to_phone: normalized }),
       });
     }
-    openWhatsApp(phone, intakeMessage(r.id, Boolean(r.client_id)));
+    await sendIntakeWhatsApp(r.id, phone, Boolean(r.client_id));
     load();
   }
 

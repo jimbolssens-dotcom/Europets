@@ -226,6 +226,10 @@ export default function MessagesInboxPage() {
   const [bookingTemplateResult, setBookingTemplateResult] = useState(null); // { ok: boolean, message: string } | null
   const [submittingHospitalizationTemplate, setSubmittingHospitalizationTemplate] = useState(false);
   const [hospitalizationTemplateResult, setHospitalizationTemplateResult] = useState(null); // { ok: boolean, message: string } | null
+  const [submittingIntakeTemplate, setSubmittingIntakeTemplate] = useState(false);
+  const [intakeTemplateResult, setIntakeTemplateResult] = useState(null); // { ok: boolean, message: string } | null
+  const [submittingClientAppLinkTemplate, setSubmittingClientAppLinkTemplate] = useState(false);
+  const [clientAppLinkTemplateResult, setClientAppLinkTemplateResult] = useState(null); // { ok: boolean, message: string } | null
 
   const load = () =>
     fetch('/api/client-messages')
@@ -320,6 +324,42 @@ export default function MessagesInboxPage() {
     setSubmittingHospitalizationTemplate(false);
   }
 
+  async function submitIntakeTemplate() {
+    setSubmittingIntakeTemplate(true);
+    setIntakeTemplateResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/create-intake-template', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setIntakeTemplateResult({
+        ok: true,
+        message:
+          'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
+      });
+    } catch (err) {
+      setIntakeTemplateResult({ ok: false, message: err.message });
+    }
+    setSubmittingIntakeTemplate(false);
+  }
+
+  async function submitClientAppLinkTemplate() {
+    setSubmittingClientAppLinkTemplate(true);
+    setClientAppLinkTemplateResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/create-client-app-link-template', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setClientAppLinkTemplateResult({
+        ok: true,
+        message:
+          'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
+      });
+    } catch (err) {
+      setClientAppLinkTemplateResult({ ok: false, message: err.message });
+    }
+    setSubmittingClientAppLinkTemplate(false);
+  }
+
   return (
     <>
       <div className="page-header">
@@ -399,6 +439,39 @@ export default function MessagesInboxPage() {
           </button>
           {hospitalizationTemplateResult && (
             <span className={hospitalizationTemplateResult.ok ? '' : 'error'}> {hospitalizationTemplateResult.message}</span>
+          )}
+        </p>
+
+        {/* One-time setup so the Invite page's "New Patient Intake" send
+            and resend buttons go out from the clinic's own WhatsApp
+            Business number automatically, instead of opening staff's own
+            personal WhatsApp for them to send by hand — see the auto-send
+            in POST /api/intake-requests/:id/send-whatsapp and that page's
+            sendIntakeWhatsApp for the manual fallback when this template
+            isn't approved yet. */}
+        <p className="visit-meta">
+          Set up the new-patient-intake WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
+          <button type="button" onClick={submitIntakeTemplate} disabled={submittingIntakeTemplate}>
+            {submittingIntakeTemplate ? 'Submitting…' : 'Submit intake-link WhatsApp template'}
+          </button>
+          {intakeTemplateResult && (
+            <span className={intakeTemplateResult.ok ? '' : 'error'}> {intakeTemplateResult.message}</span>
+          )}
+        </p>
+
+        {/* One-time setup so the Invite page's "Client App Link" button
+            goes out from the clinic's own WhatsApp Business number
+            automatically — see the auto-send in POST
+            /api/client-app-link/send and that page's sendClientAppLink
+            for the manual fallback when this template isn't approved
+            yet. */}
+        <p className="visit-meta">
+          Set up the client-app-link WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
+          <button type="button" onClick={submitClientAppLinkTemplate} disabled={submittingClientAppLinkTemplate}>
+            {submittingClientAppLinkTemplate ? 'Submitting…' : 'Submit client-app-link WhatsApp template'}
+          </button>
+          {clientAppLinkTemplateResult && (
+            <span className={clientAppLinkTemplateResult.ok ? '' : 'error'}> {clientAppLinkTemplateResult.message}</span>
           )}
         </p>
       </details>
