@@ -33,9 +33,7 @@
 // same-session local fallback, since not every page that renders this
 // component refreshes its own admission state on a realtime update) marks
 // the prompt done — transferred or explicitly skipped — so it never comes
-// back for this stay. Every tile also keeps a manual "🚫 log without
-// charging" button as a general escape hatch unrelated to this flow (e.g.
-// the client already has this medication at home).
+// back for this stay.
 
 'use client';
 
@@ -235,10 +233,7 @@ export default function DayTreatmentPlan({
   // previous tap's result (via lastNoteRef, updated synchronously) is
   // already there to merge into.
   //
-  // billableOverride (true/false/undefined) comes from the consult-
-  // duplicate prompt below, or the tile's own "log without charging"
-  // button — undefined just falls through to the normal default (true).
-  function logTask(item, billableOverride) {
+  function logTask(item) {
     setError(null);
     setLoggingIds((prev) => new Set(prev).add(item.id));
 
@@ -246,9 +241,9 @@ export default function DayTreatmentPlan({
       try {
         const mergeInto = findMergeableNote();
         if (mergeInto) {
-          await mergeTaskIntoNote(mergeInto, item, billableOverride);
+          await mergeTaskIntoNote(mergeInto, item);
         } else {
-          await createTaskNote(item, billableOverride);
+          await createTaskNote(item);
         }
       } catch (err) {
         setError(err.message || 'Failed to log task');
@@ -343,7 +338,7 @@ export default function DayTreatmentPlan({
     }
   }
 
-  async function createTaskNote(item, billableOverride) {
+  async function createTaskNote(item) {
     const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -359,7 +354,6 @@ export default function DayTreatmentPlan({
                 quantity: item.quantity || 1,
                 administration_method: item.administration_method,
                 plan_item_id: item.id,
-                ...(billableOverride === false ? { billable: false } : {}),
               },
             ]
           : [],
@@ -370,7 +364,7 @@ export default function DayTreatmentPlan({
     lastNoteRef.current = data;
   }
 
-  async function mergeTaskIntoNote(note, item, billableOverride) {
+  async function mergeTaskIntoNote(note, item) {
     const patchRes = await fetch(`/api/hospitalizations/${hospitalizationId}/notes/${note.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -393,7 +387,6 @@ export default function DayTreatmentPlan({
         quantity: item.quantity || 1,
         administration_method: item.administration_method,
         plan_item_id: item.id,
-        ...(billableOverride === false ? { billable: false } : {}),
       }),
     });
     if (!itemRes.ok) {
@@ -949,17 +942,6 @@ export default function DayTreatmentPlan({
                 </span>
                 {freqStatus.label && <span className="day-plan-task-warning">⚠ {freqStatus.label}</span>}
               </button>
-              {item.goods_service_id && (
-                <button
-                  type="button"
-                  className="day-plan-no-charge"
-                  onClick={() => logTask(item, false)}
-                  disabled={loggingIds.has(item.id)}
-                  title="Log this as given, without charging the invoice — e.g. already billed elsewhere"
-                >
-                  🚫
-                </button>
-              )}
               {isTest && onOpenReport && (
                 <button
                   type="button"
