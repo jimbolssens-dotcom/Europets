@@ -5617,27 +5617,19 @@ button.secondary:hover {
   margin-bottom: 0.2rem;
 }
 
-.day-plan-duplicate-check {
-  background: #fff4f0;
-  border: 1px solid #f3c9b8;
-  border-radius: 10px;
-  padding: 0.75rem;
-  margin-bottom: 1rem;
+.day-plan-consult-help {
+  margin: 0.5rem 0 0.6rem;
+  font-size: 0.78rem;
+  color: #8a6a1f;
 }
 
-.day-plan-duplicate-check p {
-  margin: 0 0 0.6rem;
-  font-size: 0.85rem;
-  color: #7a3b24;
-}
-
-.day-plan-duplicate-check-actions {
+.day-plan-consult-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.day-plan-duplicate-check-actions button {
+.day-plan-consult-actions button {
   padding: 0.4rem 0.8rem;
   border-radius: 999px;
   font-weight: 700;
@@ -5647,7 +5639,7 @@ button.secondary:hover {
   cursor: pointer;
 }
 
-.day-plan-duplicate-check-actions button:hover {
+.day-plan-consult-actions button:hover {
   border-color: var(--pink-dark);
   color: var(--pink-dark);
 }

@@ -19,14 +19,23 @@
 // two completely disconnected billing trails — nothing carried a consult's
 // meds across when it became an admission, so the exact same drug given at
 // consult and then logged again on the plan billed twice for one real
-// administration. originatingVisitId (when the admission came from a
-// consult) fixes that three ways: the consult's own items show as a
-// read-only reference list below (so "it's on the plan that this was
-// given" no longer requires re-logging it), the very first tap of a plan
-// item matching one of them prompts "new dose, or the same one?" instead
-// of silently billing again (see needsConsultDuplicateCheck), and every
-// tile also gets a manual "🚫 log without charging" button as the general
-// escape hatch for anything the automatic check doesn't catch.
+// administration.
+//
+// Fixed with a one-off transfer instead of a permanent fixture: when this
+// admission came from a consult (originatingVisitId) and that consult has
+// its own medications on file, a dismissible panel offers to add each one
+// to the plan as an already-logged, unbilled one-time task in a single
+// action (see transferConsultMedsToPlan) — "it happened at consult, it's
+// now on record here too, and it's not charged again." From there each
+// transferred task is a normal plan item: long-press it to bump its
+// schedule from one-time to once/twice-daily if the vet wants it
+// continued, same as any other task. consultMedsTransferHandledAt (plus a
+// same-session local fallback, since not every page that renders this
+// component refreshes its own admission state on a realtime update) marks
+// the prompt done — transferred or explicitly skipped — so it never comes
+// back for this stay. Every tile also keeps a manual "🚫 log without
+// charging" button as a general escape hatch unrelated to this flow (e.g.
+// the client already has this medication at home).
 
 'use client';
 
@@ -49,20 +58,31 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function DayTreatmentPlan({ hospitalizationId, admittedAt, originatingVisitId, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport, onFileWeightKg }) {
+export default function DayTreatmentPlan({
+  hospitalizationId,
+  admittedAt,
+  originatingVisitId,
+  consultMedsTransferHandledAt,
+  staff = [],
+  catalog,
+  subcategories,
+  onCatalogItemCreated,
+  onOpenReport,
+  onFileWeightKg,
+}) {
   const [planItems, setPlanItems] = useState([]);
   // Everything already given (and billed) during the consult this
-  // admission started from, if any — shown as its own read-only section
-  // below and cross-checked against the first tap of a matching plan item
-  // (see needsConsultDuplicateCheck) so the exact bug that prompted this —
-  // a medication given at consult getting billed a second time the moment
-  // it's also logged on the Day Treatment Plan — has both a visible record
-  // that it already happened, and a prompt at the one moment it'd
-  // otherwise double-charge silently.
+  // admission started from, if any — offered as a one-off transfer onto
+  // the plan below (see transferConsultMedsToPlan) rather than kept as a
+  // permanent fixture.
   const [consultTreatmentItems, setConsultTreatmentItems] = useState([]);
-  // The plan item currently waiting on the "already given at consult —
-  // new dose, or the same one?" choice, instead of logging immediately.
-  const [duplicateCheckItem, setDuplicateCheckItem] = useState(null);
+  const [transferring, setTransferring] = useState(false);
+  // Optimistic fallback for consultMedsTransferHandledAt: set the instant
+  // a transfer/skip completes so the panel closes immediately even on a
+  // page (e.g. the mobile hospitalization page) that doesn't refresh its
+  // own admission state from a realtime update.
+  const [transferHandledLocally, setTransferHandledLocally] = useState(false);
+  const transferHandled = !!consultMedsTransferHandledAt || transferHandledLocally;
   // Every plan-tagged note for the whole stay, not just today — a
   // 'one_time' item (see migration 105) needs to know if it was EVER
   // logged, not just today, so it can stop asking once it's done for
@@ -205,20 +225,6 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, origin
     return todayNotes.filter(isValid).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
   }
 
-  // True only the very first time this plan item would be logged (later
-  // taps are clearly an intentional repeat dose, not a fresh double-count
-  // of something the consult already covered) and only when its catalog
-  // item matches something already given — and billed — at the consult
-  // this admission started from. Scoped this tightly on purpose: it's
-  // meant to catch exactly the Blacky-style case (a medication given at
-  // consult logged again the moment the stay's own plan takes over), not
-  // second-guess every legitimate recurring dose after that.
-  function needsConsultDuplicateCheck(item) {
-    if (!item.goods_service_id || consultTreatmentItems.length === 0) return false;
-    if (doneEver(item.id).length > 0) return false;
-    return consultTreatmentItems.some((t) => t.goods_service_id === item.goods_service_id);
-  }
-
   // Taps fire off fetches without waiting for each other, so two tasks
   // tapped closer together than one round-trip would otherwise both call
   // findMergeableNote() before either's create/merge has actually
@@ -259,21 +265,82 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, origin
     logQueueRef.current = logQueueRef.current.then(run, run);
   }
 
-  // The main tap target for a task tile — routes through the consult-
-  // duplicate prompt first when needed, otherwise logs immediately exactly
-  // as before.
-  function handleTaskTap(item) {
-    if (needsConsultDuplicateCheck(item)) {
-      setDuplicateCheckItem(item);
-      return;
-    }
-    logTask(item);
+  async function markConsultMedsTransferHandled() {
+    await fetch(`/api/hospitalizations/${hospitalizationId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mark_consult_meds_transfer_handled: true }),
+    });
+    setTransferHandledLocally(true);
   }
 
-  function resolveDuplicateCheck(billable) {
-    const item = duplicateCheckItem;
-    setDuplicateCheckItem(null);
-    if (item) logTask(item, billable);
+  // One-off action: every medication given during the originating consult
+  // becomes a plan item (defaulting to one-time — staff can bump it to
+  // once/twice-daily afterward via the normal edit panel if the vet wants
+  // it continued) plus a single worksheet entry logging all of them as
+  // already given, billable: false throughout since they were already
+  // charged on the consult's own invoice.
+  async function transferConsultMedsToPlan() {
+    setTransferring(true);
+    setError(null);
+    try {
+      const createdItems = [];
+      for (const t of consultTreatmentItems) {
+        const res = await fetch(`/api/hospitalizations/${hospitalizationId}/plan-items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            label: t.goods_services?.name || 'Item',
+            goods_service_id: t.goods_service_id,
+            instructions: t.instructions || null,
+            frequency: 'one_time',
+            quantity: t.quantity || 1,
+          }),
+        });
+        const created = await res.json();
+        if (!res.ok) throw new Error(created.error || 'Failed to add task to the plan');
+        createdItems.push(created);
+      }
+
+      const noteRes = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          author_id: authorId || null,
+          note_date: todayISODate(),
+          notes: `Transferred from consult: ${createdItems.map((i) => i.label).join(', ')}`,
+          plan_item_ids: createdItems.map((i) => i.id),
+          treatment_items: createdItems.map((i) => ({
+            goods_service_id: i.goods_service_id,
+            quantity: i.quantity || 1,
+            plan_item_id: i.id,
+            billable: false,
+          })),
+        }),
+      });
+      const noteData = await noteRes.json();
+      if (!noteRes.ok) throw new Error(noteData.error || 'Failed to log the transferred medications');
+
+      await markConsultMedsTransferHandled();
+      loadPlanItems();
+      loadPlanNotes();
+    } catch (err) {
+      setError(err.message || 'Failed to transfer consult medications');
+    } finally {
+      setTransferring(false);
+    }
+  }
+
+  async function skipConsultMedsTransfer() {
+    setTransferring(true);
+    setError(null);
+    try {
+      await markConsultMedsTransferHandled();
+    } catch (err) {
+      setError(err.message || 'Failed to dismiss');
+    } finally {
+      setTransferring(false);
+    }
   }
 
   async function createTaskNote(item, billableOverride) {
@@ -729,9 +796,9 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, origin
         </select>
       </div>
 
-      {consultTreatmentItems.length > 0 && (
+      {!transferHandled && consultTreatmentItems.length > 0 && (
         <div className="day-plan-consult-items">
-          <p className="day-plan-consult-heading">🩺 Given during the consult (already billed there — reference only)</p>
+          <p className="day-plan-consult-heading">🩺 Given during the consult this stay started from</p>
           <ul className="day-plan-consult-list">
             {consultTreatmentItems.map((t) => (
               <li key={t.id}>
@@ -741,24 +808,16 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, origin
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {duplicateCheckItem && (
-        <div className="day-plan-duplicate-check">
-          <p>
-            <strong>{duplicateCheckItem.label}</strong> was already given during the consult this stay started from —
-            is this a new dose, or the same one being noted on the plan?
+          <p className="day-plan-consult-help">
+            Add these to the plan as already given (not charged again — they're already on the consult's invoice).
+            Continue any of them daily afterward by long-pressing its tile.
           </p>
-          <div className="day-plan-duplicate-check-actions">
-            <button type="button" onClick={() => resolveDuplicateCheck(true)}>
-              🆕 New dose — bill it
+          <div className="day-plan-consult-actions">
+            <button type="button" onClick={transferConsultMedsToPlan} disabled={transferring}>
+              {transferring ? 'Adding…' : '+ Add to Day Treatment Plan'}
             </button>
-            <button type="button" onClick={() => resolveDuplicateCheck(false)}>
-              ♻️ Same one — don't bill again
-            </button>
-            <button type="button" className="day-plan-cancel-action" onClick={() => setDuplicateCheckItem(null)}>
-              Cancel
+            <button type="button" className="day-plan-cancel-action" onClick={skipConsultMedsTransfer} disabled={transferring}>
+              Skip
             </button>
           </div>
         </div>
@@ -868,7 +927,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, origin
                     longPressFired.current = false;
                     return;
                   }
-                  handleTaskTap(item);
+                  logTask(item);
                 }}
                 onPointerDown={() => startLongPress(() => openEditItem(item))}
                 onPointerUp={cancelLongPress}

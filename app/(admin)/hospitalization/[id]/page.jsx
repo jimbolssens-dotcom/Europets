@@ -1316,6 +1316,7 @@ export default function HospitalizationDetailPage() {
         hospitalizationId={id}
         admittedAt={admission.admitted_at}
         originatingVisitId={admission.originating_visit_id}
+        consultMedsTransferHandledAt={admission.consult_meds_transfer_handled_at}
         staff={staff}
         catalog={catalog}
         subcategories={subcategories}

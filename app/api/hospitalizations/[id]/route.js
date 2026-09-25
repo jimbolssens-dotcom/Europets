@@ -79,6 +79,7 @@ export async function PATCH(request, { params }) {
     originating_visit_id,
     hospitalization_rate_override_id,
     acknowledge_weight_loss_alarm,
+    mark_consult_meds_transfer_handled,
   } = body;
 
   const update = {};
@@ -183,6 +184,13 @@ export async function PATCH(request, { params }) {
       .limit(1)
       .maybeSingle();
     update.weight_loss_ack_reading_at = latestWeight?.created_at || new Date().toISOString();
+  }
+  // The Day Treatment Plan's one-off "transfer consult meds" prompt (see
+  // DayTreatmentPlan.jsx) sets this once handled — either the transfer
+  // actually ran, or staff explicitly skipped it — so it never asks again
+  // for this stay.
+  if (mark_consult_meds_transfer_handled === true) {
+    update.consult_meds_transfer_handled_at = new Date().toISOString();
   }
   // Set once, the first time staff actually sends the portal link (Share/
   // Copy buttons, or the one-click prompt after a consent form comes back
