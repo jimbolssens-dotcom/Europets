@@ -10,7 +10,13 @@
 // marked 'checked_in') or as a walk-in (pass patient_id, room_id directly).
 // Rejects with 409 (+ existingVisitId) if that patient already has an
 // in_progress visit — every check-in screen redirects there instead of
-// creating a second, parallel consult for the same patient.
+// creating a second, parallel consult for the same patient. When that
+// blocking visit was started some other way (patient file, walk-in) and
+// an appointment_id was passed here, the appointment is still marked
+// checked in and the visit backfilled onto it (if it wasn't already
+// linked elsewhere) — see app/(admin)/appointments/page.jsx, which also
+// cross-checks open visits by patient_id so the list reflects a
+// check-in that happened outside its own Checkin button in the first place.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -114,6 +120,23 @@ export async function POST(request) {
     .maybeSingle();
 
   if (existingVisit) {
+    // The open visit blocking this check-in may have been started some
+    // other way entirely (the patient file directly, a walk-in) rather
+    // than through this appointment — left alone, the appointment stays
+    // 'booked' forever and this same 409 (and the silent dead-end it used
+    // to be on the appointments list) repeats every time. Backfill both
+    // sides here, the same way a successful check-in below would: mark
+    // the appointment checked in, and — only if this visit isn't already
+    // claimed by a different appointment — link it back so future lookups
+    // by appointment_id find it directly.
+    if (appointment_id) {
+      await supabaseAdmin.from('appointments').update({ status: 'checked_in' }).eq('id', appointment_id);
+      await supabaseAdmin
+        .from('visits')
+        .update({ appointment_id })
+        .eq('id', existingVisit.id)
+        .is('appointment_id', null);
+    }
     return NextResponse.json(
       { error: 'This patient already has an open consult', existingVisitId: existingVisit.id },
       { status: 409 }
