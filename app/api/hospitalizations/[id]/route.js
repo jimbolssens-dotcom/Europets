@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { attachCages } from '@/lib/attachCages';
 import { runHospitalizationDischargeEffects } from '@/lib/hospitalizationDischarge';
+import { detectWeightLossAlarm } from '@/lib/weightLossAlarm';
 import { NextResponse } from 'next/server';
 
 export const maxDuration = 60;
@@ -43,6 +44,23 @@ export async function GET(request, { params }) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 404 });
   }
+
+  // Same computation as GET /api/hospitalizations' list version (see
+  // lib/weightLossAlarm.js) — the list route can't be reused here since
+  // this is a single-record fetch, so it's duplicated rather than shared
+  // through an extra round trip.
+  if (data.status === 'admitted') {
+    const { data: recentWeights } = await supabase
+      .from('hospitalization_notes')
+      .select('created_at, weight_kg')
+      .eq('hospitalization_id', params.id)
+      .not('weight_kg', 'is', null)
+      .gte('created_at', new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString());
+    data.weight_loss_alarm = detectWeightLossAlarm(recentWeights || [], data.weight_loss_ack_reading_at);
+  } else {
+    data.weight_loss_alarm = null;
+  }
+
   return NextResponse.json(await attachCages(data));
 }
 
@@ -60,6 +78,7 @@ export async function PATCH(request, { params }) {
     kind,
     originating_visit_id,
     hospitalization_rate_override_id,
+    acknowledge_weight_loss_alarm,
   } = body;
 
   const update = {};
@@ -147,6 +166,23 @@ export async function PATCH(request, { params }) {
     update.doctor_checkup_requested_at = new Date().toISOString();
   } else if (doctor_checkup_requested === false) {
     update.doctor_checkup_requested_at = null;
+  }
+  // "Mark attended" for the rapid-weight-loss alarm (see lib/weightLossAlarm.js)
+  // — looks up the actual latest weight reading itself rather than trusting
+  // whatever the client claims is current, same reasoning as the doctor-
+  // checkup flag above. Suppresses the alarm only as long as that stays the
+  // newest reading; a fresh weight logged afterward is unacknowledged by
+  // definition and re-triggers it.
+  if (acknowledge_weight_loss_alarm === true) {
+    const { data: latestWeight } = await supabase
+      .from('hospitalization_notes')
+      .select('created_at')
+      .eq('hospitalization_id', params.id)
+      .not('weight_kg', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    update.weight_loss_ack_reading_at = latestWeight?.created_at || new Date().toISOString();
   }
   // Set once, the first time staff actually sends the portal link (Share/
   // Copy buttons, or the one-click prompt after a consent form comes back

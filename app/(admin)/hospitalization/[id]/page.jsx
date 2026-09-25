@@ -779,6 +779,19 @@ export default function HospitalizationDetailPage() {
     loadAdmission();
   }
 
+  // Silences the rapid-weight-loss alarm (see lib/weightLossAlarm.js) as
+  // long as the reading it fired on stays the newest one — a fresh weight
+  // logged afterward is new information nobody's seen yet, so it
+  // re-evaluates and can fire again rather than staying quiet for good.
+  async function acknowledgeWeightLossAlarm() {
+    await fetch(`/api/hospitalizations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ acknowledge_weight_loss_alarm: true }),
+    });
+    loadAdmission();
+  }
+
   // Same fixed-height scroll box as the portal's thread — keep it pinned
   // to the latest message instead of the top. Also depends on `loading`:
   // the whole page renders nothing but "Loading admission..." (see the
@@ -970,6 +983,17 @@ export default function HospitalizationDetailPage() {
             >
               {admission.doctor_checkup_requested_at ? '🩺 Doctor Checkup Requested — Mark Checked' : '🩺 Request Doctor Checkup'}
             </button>
+            {admission.weight_loss_alarm && (
+              <button
+                type="button"
+                className="doctor-checkup-pill doctor-checkup-pending"
+                onClick={acknowledgeWeightLossAlarm}
+                title="Silences the alarm until a newer weight reading comes in"
+              >
+                ⚖️ Lost {admission.weight_loss_alarm.percent}% in {admission.weight_loss_alarm.days} days (
+                {admission.weight_loss_alarm.fromWeight}kg → {admission.weight_loss_alarm.toWeight}kg) — Mark Attended
+              </button>
+            )}
             <button
               type="button"
               className={`chat-toggle-pill${admission.update_requested_at ? ' chat-toggle-pending' : ''}`}

@@ -105,7 +105,7 @@ async function attachScheduledUpdateStatus(rows) {
     }
 
     const notes = notesByHospitalization[h.id] || [];
-    const weightLossAlarm = detectWeightLossAlarm(weightsByHospitalization[h.id] || []);
+    const weightLossAlarm = detectWeightLossAlarm(weightsByHospitalization[h.id] || [], h.weight_loss_ack_reading_at);
     const admittedMs = new Date(h.admitted_at).getTime();
 
     const morningExpected = nowMs >= noonUtcMs && admittedMs < noonUtcMs;
