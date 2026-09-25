@@ -13,6 +13,20 @@
 // within CONSOLIDATE_WINDOW_MS of the same author's last entry merges into
 // it (see logTask): the note's text and plan_item_ids grow, and a
 // catalog-linked task also gets its own treatment_item on that same note.
+//
+// A consult's own medications (visit-linked treatment_items) and a stay's
+// Day Treatment Plan (hospitalization-linked treatment_items) used to be
+// two completely disconnected billing trails — nothing carried a consult's
+// meds across when it became an admission, so the exact same drug given at
+// consult and then logged again on the plan billed twice for one real
+// administration. originatingVisitId (when the admission came from a
+// consult) fixes that three ways: the consult's own items show as a
+// read-only reference list below (so "it's on the plan that this was
+// given" no longer requires re-logging it), the very first tap of a plan
+// item matching one of them prompts "new dose, or the same one?" instead
+// of silently billing again (see needsConsultDuplicateCheck), and every
+// tile also gets a manual "🚫 log without charging" button as the general
+// escape hatch for anything the automatic check doesn't catch.
 
 'use client';
 
@@ -35,8 +49,20 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport, onFileWeightKg }) {
+export default function DayTreatmentPlan({ hospitalizationId, admittedAt, originatingVisitId, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport, onFileWeightKg }) {
   const [planItems, setPlanItems] = useState([]);
+  // Everything already given (and billed) during the consult this
+  // admission started from, if any — shown as its own read-only section
+  // below and cross-checked against the first tap of a matching plan item
+  // (see needsConsultDuplicateCheck) so the exact bug that prompted this —
+  // a medication given at consult getting billed a second time the moment
+  // it's also logged on the Day Treatment Plan — has both a visible record
+  // that it already happened, and a prompt at the one moment it'd
+  // otherwise double-charge silently.
+  const [consultTreatmentItems, setConsultTreatmentItems] = useState([]);
+  // The plan item currently waiting on the "already given at consult —
+  // new dose, or the same one?" choice, instead of logging immediately.
+  const [duplicateCheckItem, setDuplicateCheckItem] = useState(null);
   // Every plan-tagged note for the whole stay, not just today — a
   // 'one_time' item (see migration 105) needs to know if it was EVER
   // logged, not just today, so it can stop asking once it's done for
@@ -92,6 +118,16 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
         setPlanNotes(Array.isArray(data) ? data.filter((n) => n.plan_item_ids?.length > 0) : []);
       });
   }
+
+  useEffect(() => {
+    if (!originatingVisitId) {
+      setConsultTreatmentItems([]);
+      return;
+    }
+    fetch(`/api/treatment-items?visit_id=${originatingVisitId}`)
+      .then((res) => res.json())
+      .then((data) => setConsultTreatmentItems(Array.isArray(data) ? data.filter((t) => t.goods_service_id) : []));
+  }, [originatingVisitId]);
 
   useEffect(() => {
     loadPlanItems();
@@ -169,6 +205,20 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     return todayNotes.filter(isValid).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
   }
 
+  // True only the very first time this plan item would be logged (later
+  // taps are clearly an intentional repeat dose, not a fresh double-count
+  // of something the consult already covered) and only when its catalog
+  // item matches something already given — and billed — at the consult
+  // this admission started from. Scoped this tightly on purpose: it's
+  // meant to catch exactly the Blacky-style case (a medication given at
+  // consult logged again the moment the stay's own plan takes over), not
+  // second-guess every legitimate recurring dose after that.
+  function needsConsultDuplicateCheck(item) {
+    if (!item.goods_service_id || consultTreatmentItems.length === 0) return false;
+    if (doneEver(item.id).length > 0) return false;
+    return consultTreatmentItems.some((t) => t.goods_service_id === item.goods_service_id);
+  }
+
   // Taps fire off fetches without waiting for each other, so two tasks
   // tapped closer together than one round-trip would otherwise both call
   // findMergeableNote() before either's create/merge has actually
@@ -178,7 +228,11 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
   // another, so by the time a tap checks for a mergeable note, the
   // previous tap's result (via lastNoteRef, updated synchronously) is
   // already there to merge into.
-  function logTask(item) {
+  //
+  // billableOverride (true/false/undefined) comes from the consult-
+  // duplicate prompt below, or the tile's own "log without charging"
+  // button — undefined just falls through to the normal default (true).
+  function logTask(item, billableOverride) {
     setError(null);
     setLoggingIds((prev) => new Set(prev).add(item.id));
 
@@ -186,9 +240,9 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
       try {
         const mergeInto = findMergeableNote();
         if (mergeInto) {
-          await mergeTaskIntoNote(mergeInto, item);
+          await mergeTaskIntoNote(mergeInto, item, billableOverride);
         } else {
-          await createTaskNote(item);
+          await createTaskNote(item, billableOverride);
         }
       } catch (err) {
         setError(err.message || 'Failed to log task');
@@ -205,7 +259,24 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     logQueueRef.current = logQueueRef.current.then(run, run);
   }
 
-  async function createTaskNote(item) {
+  // The main tap target for a task tile — routes through the consult-
+  // duplicate prompt first when needed, otherwise logs immediately exactly
+  // as before.
+  function handleTaskTap(item) {
+    if (needsConsultDuplicateCheck(item)) {
+      setDuplicateCheckItem(item);
+      return;
+    }
+    logTask(item);
+  }
+
+  function resolveDuplicateCheck(billable) {
+    const item = duplicateCheckItem;
+    setDuplicateCheckItem(null);
+    if (item) logTask(item, billable);
+  }
+
+  async function createTaskNote(item, billableOverride) {
     const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -215,7 +286,15 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
         notes: taskLine(item),
         plan_item_ids: [item.id],
         treatment_items: item.goods_service_id
-          ? [{ goods_service_id: item.goods_service_id, quantity: item.quantity || 1, administration_method: item.administration_method, plan_item_id: item.id }]
+          ? [
+              {
+                goods_service_id: item.goods_service_id,
+                quantity: item.quantity || 1,
+                administration_method: item.administration_method,
+                plan_item_id: item.id,
+                ...(billableOverride === false ? { billable: false } : {}),
+              },
+            ]
           : [],
       }),
     });
@@ -224,7 +303,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
     lastNoteRef.current = data;
   }
 
-  async function mergeTaskIntoNote(note, item) {
+  async function mergeTaskIntoNote(note, item, billableOverride) {
     const patchRes = await fetch(`/api/hospitalizations/${hospitalizationId}/notes/${note.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -247,6 +326,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
         quantity: item.quantity || 1,
         administration_method: item.administration_method,
         plan_item_id: item.id,
+        ...(billableOverride === false ? { billable: false } : {}),
       }),
     });
     if (!itemRes.ok) {
@@ -649,6 +729,41 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
         </select>
       </div>
 
+      {consultTreatmentItems.length > 0 && (
+        <div className="day-plan-consult-items">
+          <p className="day-plan-consult-heading">🩺 Given during the consult (already billed there — reference only)</p>
+          <ul className="day-plan-consult-list">
+            {consultTreatmentItems.map((t) => (
+              <li key={t.id}>
+                {t.goods_services?.name || 'Item'}
+                {t.administration_method && ` (${ADMINISTRATION_METHOD_LABELS[t.administration_method]})`}
+                {t.instructions && ` — ${t.instructions}`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {duplicateCheckItem && (
+        <div className="day-plan-duplicate-check">
+          <p>
+            <strong>{duplicateCheckItem.label}</strong> was already given during the consult this stay started from —
+            is this a new dose, or the same one being noted on the plan?
+          </p>
+          <div className="day-plan-duplicate-check-actions">
+            <button type="button" onClick={() => resolveDuplicateCheck(true)}>
+              🆕 New dose — bill it
+            </button>
+            <button type="button" onClick={() => resolveDuplicateCheck(false)}>
+              ♻️ Same one — don't bill again
+            </button>
+            <button type="button" className="day-plan-cancel-action" onClick={() => setDuplicateCheckItem(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {vitalsItems.length > 0 && (
         <div className="day-plan-vitals">
           {vitalsItems.map((item) => {
@@ -753,7 +868,7 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
                     longPressFired.current = false;
                     return;
                   }
-                  logTask(item);
+                  handleTaskTap(item);
                 }}
                 onPointerDown={() => startLongPress(() => openEditItem(item))}
                 onPointerUp={cancelLongPress}
@@ -775,6 +890,17 @@ export default function DayTreatmentPlan({ hospitalizationId, admittedAt, staff 
                 </span>
                 {freqStatus.label && <span className="day-plan-task-warning">⚠ {freqStatus.label}</span>}
               </button>
+              {item.goods_service_id && (
+                <button
+                  type="button"
+                  className="day-plan-no-charge"
+                  onClick={() => logTask(item, false)}
+                  disabled={loggingIds.has(item.id)}
+                  title="Log this as given, without charging the invoice — e.g. already billed elsewhere"
+                >
+                  🚫
+                </button>
+              )}
               {isTest && onOpenReport && (
                 <button
                   type="button"

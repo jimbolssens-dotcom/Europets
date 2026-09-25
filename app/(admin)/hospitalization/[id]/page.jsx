@@ -1310,6 +1310,7 @@ export default function HospitalizationDetailPage() {
         key={`${id}-${noteDeleteVersion}`}
         hospitalizationId={id}
         admittedAt={admission.admitted_at}
+        originatingVisitId={admission.originating_visit_id}
         staff={staff}
         catalog={catalog}
         subcategories={subcategories}

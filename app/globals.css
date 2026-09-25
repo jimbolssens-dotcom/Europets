@@ -5536,6 +5536,84 @@ button.secondary:hover {
   color: var(--pink-dark);
 }
 
+.day-plan-no-charge {
+  position: absolute;
+  top: 0.3rem;
+  right: 1.5rem;
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.15rem 0.3rem;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.day-plan-no-charge:hover {
+  opacity: 1;
+}
+
+.day-plan-consult-items {
+  background: #fff8ec;
+  border: 1px solid #f0dfb8;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.day-plan-consult-heading {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #8a6a1f;
+}
+
+.day-plan-consult-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+  color: #5a4a1f;
+}
+
+.day-plan-consult-list li {
+  margin-bottom: 0.2rem;
+}
+
+.day-plan-duplicate-check {
+  background: #fff4f0;
+  border: 1px solid #f3c9b8;
+  border-radius: 10px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.day-plan-duplicate-check p {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  color: #7a3b24;
+}
+
+.day-plan-duplicate-check-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.day-plan-duplicate-check-actions button {
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  border: 1px solid #ddd;
+  background: white;
+  cursor: pointer;
+}
+
+.day-plan-duplicate-check-actions button:hover {
+  border-color: var(--pink-dark);
+  color: var(--pink-dark);
+}
+
 .day-plan-edit-task {
   width: 100%;
   padding-top: 0.6rem;

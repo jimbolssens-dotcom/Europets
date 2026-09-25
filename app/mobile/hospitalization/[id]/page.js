@@ -221,6 +221,7 @@ export default function MobileHospitalizationPage() {
           <DayTreatmentPlan
             hospitalizationId={id}
             admittedAt={admission.admitted_at}
+            originatingVisitId={admission.originating_visit_id}
             staff={staff}
             catalog={catalog}
             subcategories={subcategories}
