@@ -8197,12 +8197,18 @@ form.card.admit-patient-form {
 /* The patient name + mini weight sparkline sit together as one group at
    the start of .page-header (which is space-between with the chat toggle
    pill), so the sparkline reads as "next to the name" instead of
-   competing with that button for the row's other end. */
+   competing with that button for the row's other end. Reused as-is on
+   the consult page's own header, which has no .page-header wrapper — the
+   margin reset below covers both. */
 .hospitalization-header-name {
   display: flex;
   align-items: center;
   gap: 0.85rem;
   flex-wrap: wrap;
+}
+
+.hospitalization-header-name h1 {
+  margin: 0;
 }
 
 /* WeightHistoryChart — a minimalist bright-pink line+dot chart. The mini

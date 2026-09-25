@@ -27,6 +27,7 @@ import InfoHint from '@/app/_components/InfoHint';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
+import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
@@ -65,6 +66,7 @@ export default function ConsultDetailPage() {
   const [rooms, setRooms] = useState([]);
   const [catalog, setCatalog] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
+  const [weightHistory, setWeightHistory] = useState([]);
 
   const [videoConsult, setVideoConsult] = useState(null);
   const [videoConsultError, setVideoConsultError] = useState(null);
@@ -171,6 +173,15 @@ export default function ConsultDetailPage() {
         setConsult(data);
         patientIdRef.current = data.patient_id;
         loadLinkedHospitalization(data.patient_id);
+        // Same lifetime chart as the patient page and the hospitalization
+        // page's mini sparkline — refetched on every loadConsult (mount,
+        // this visit's own realtime updates, a saved weight) rather than
+        // its own subscription, since it's already piggybacking on those.
+        if (data.patient_id) {
+          fetch(`/api/patients/${data.patient_id}/weight-history`)
+            .then((res) => res.json())
+            .then((wh) => setWeightHistory(Array.isArray(wh) ? wh : []));
+        }
         const serverRecord = {
           weight_kg: data.weight_kg ?? data.patients?.current_weight_kg ?? '',
           temperature_c: data.temperature_c ?? '',
@@ -822,13 +833,16 @@ export default function ConsultDetailPage() {
 
   return (
     <div>
-      <h1>
-        {consult.patients?.name}
-        {consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''}{' '}
-        <span>
-          ({consult.patients?.species}) — {consult.status}
-        </span>
-      </h1>
+      <div className="hospitalization-header-name">
+        <h1>
+          {consult.patients?.name}
+          {consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''}{' '}
+          <span>
+            ({consult.patients?.species}) — {consult.status}
+          </span>
+        </h1>
+        <WeightHistoryChart data={weightHistory} mini />
+      </div>
       {vetChangeError && <p className="error">{vetChangeError}</p>}
       <p>
         Owner:{' '}
