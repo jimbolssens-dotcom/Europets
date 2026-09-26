@@ -104,7 +104,7 @@ export default function HomePage() {
             <p>
               {CONTACT.address.join(', ')}
             </p>
-            <a href={`https://wa.me/${CONTACT.mobileHref}`} className="btn btn-primary" style={{ marginTop: '1rem' }}>
+            <a href={`https://wa.me/${CONTACT.whatsappHref}`} className="btn btn-primary" style={{ marginTop: '1rem' }}>
               Message us on WhatsApp
             </a>
           </div>

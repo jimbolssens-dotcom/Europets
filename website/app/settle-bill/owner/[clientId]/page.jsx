@@ -90,7 +90,7 @@ export default function SettleBillOwnerPage() {
           <h1 className="page-title">Link not found</h1>
           <p className="page-lede">
             This payment link doesn&apos;t look right. Please check the link we sent you, or{' '}
-            <a href={`https://wa.me/${CONTACT.mobileHref}`}>message us on WhatsApp</a>.
+            <a href={`https://wa.me/${CONTACT.whatsappHref}`}>message us on WhatsApp</a>.
           </p>
         </div>
       </div>

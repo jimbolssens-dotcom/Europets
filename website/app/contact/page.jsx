@@ -25,7 +25,10 @@ export default function ContactPage() {
           <div className="contact-block">
             <h3>Phone &amp; Email</h3>
             <p>
-              <a href={`https://wa.me/${CONTACT.mobileHref}`}>WhatsApp / Mobile: {CONTACT.mobile}</a>
+              <a href={`https://wa.me/${CONTACT.whatsappHref}`}>WhatsApp: {CONTACT.whatsapp}</a>
+            </p>
+            <p>
+              <a href={`tel:+${CONTACT.mobileHref}`}>Mobile: {CONTACT.mobile}</a>
             </p>
             <p>Landline: {CONTACT.landline}</p>
             <p>
@@ -43,7 +46,7 @@ export default function ContactPage() {
         </div>
 
         <a
-          href={`https://wa.me/${CONTACT.mobileHref}`}
+          href={`https://wa.me/${CONTACT.whatsappHref}`}
           className="card whatsapp-card"
         >
           <span className="whatsapp-icon" aria-hidden="true">

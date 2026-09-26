@@ -11,6 +11,14 @@ export const CLIENT_PORTAL_URL = `${APP_URL}/client-app`;
 
 export const CONTACT = {
   email: 'info@epc.vet',
+  // The Meta WhatsApp Business Cloud API number (see lib/metaWhatsapp.js in
+  // the main app) — every wa.me link on the site should point here. Locked
+  // into the Cloud API, so it can't take a normal phone call; that's what
+  // `mobile` below is for.
+  whatsapp: '058 575 8856',
+  whatsappHref: '971585758856',
+  // A real, callable mobile number — separate from `whatsapp` above. Use
+  // this for tel: links; never wa.me.
   mobile: '050 860 6857',
   mobileHref: '971508606857',
   landline: '06 522 8193',

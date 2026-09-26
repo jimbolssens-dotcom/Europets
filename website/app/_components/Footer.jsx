@@ -24,7 +24,10 @@ export default function Footer() {
             <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>
           </p>
           <p>
-            <a href={`https://wa.me/${CONTACT.mobileHref}`}>{CONTACT.mobile}</a>
+            <a href={`https://wa.me/${CONTACT.whatsappHref}`}>WhatsApp: {CONTACT.whatsapp}</a>
+          </p>
+          <p>
+            <a href={`tel:+${CONTACT.mobileHref}`}>Call: {CONTACT.mobile}</a>
           </p>
           <p>{CONTACT.landline}</p>
         </div>
