@@ -263,8 +263,6 @@ export default function MessagesInboxPage() {
   const [hospitalizationTemplateResult, setHospitalizationTemplateResult] = useState(null); // { ok: boolean, message: string } | null
   const [submittingIntakeTemplate, setSubmittingIntakeTemplate] = useState(false);
   const [intakeTemplateResult, setIntakeTemplateResult] = useState(null); // { ok: boolean, message: string } | null
-  const [submittingClientAppLinkTemplate, setSubmittingClientAppLinkTemplate] = useState(false);
-  const [clientAppLinkTemplateResult, setClientAppLinkTemplateResult] = useState(null); // { ok: boolean, message: string } | null
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
   const [submittingDischargeFollowupTemplate, setSubmittingDischargeFollowupTemplate] = useState(false);
   const [dischargeFollowupTemplateResult, setDischargeFollowupTemplateResult] = useState(null); // { ok: boolean, message: string } | null
@@ -441,25 +439,6 @@ export default function MessagesInboxPage() {
     setSubmittingIntakeTemplate(false);
   }
 
-  async function submitClientAppLinkTemplate() {
-    setSubmittingClientAppLinkTemplate(true);
-    setClientAppLinkTemplateResult(null);
-    try {
-      const res = await fetch('/api/whatsapp/create-client-app-link-template', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed');
-      setClientAppLinkTemplateResult({
-        ok: true,
-        message:
-          'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
-      });
-      loadTemplateStatuses();
-    } catch (err) {
-      setClientAppLinkTemplateResult({ ok: false, message: err.message });
-    }
-    setSubmittingClientAppLinkTemplate(false);
-  }
-
   async function submitDischargeFollowupTemplate() {
     setSubmittingDischargeFollowupTemplate(true);
     setDischargeFollowupTemplateResult(null);
@@ -557,7 +536,6 @@ export default function MessagesInboxPage() {
             { key: 'bookingConfirmation', label: 'Booking-confirmation', onSubmit: submitBookingConfirmationTemplate, submitting: submittingBookingTemplate, result: bookingTemplateResult },
             { key: 'hospitalizationPortal', label: 'Hospitalization portal-link', onSubmit: submitHospitalizationPortalTemplate, submitting: submittingHospitalizationTemplate, result: hospitalizationTemplateResult },
             { key: 'intakeLink', label: 'New-patient-intake', onSubmit: submitIntakeTemplate, submitting: submittingIntakeTemplate, result: intakeTemplateResult },
-            { key: 'clientAppLink', label: 'Client-app-link', onSubmit: submitClientAppLinkTemplate, submitting: submittingClientAppLinkTemplate, result: clientAppLinkTemplateResult },
             { key: 'dischargeFollowup', label: 'Discharge follow-up', onSubmit: submitDischargeFollowupTemplate, submitting: submittingDischargeFollowupTemplate, result: dischargeFollowupTemplateResult },
           ];
           const needsAttention = (t) => {

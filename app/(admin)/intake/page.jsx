@@ -129,28 +129,18 @@ export default function IntakePage() {
   // Unlike the intake links above, there's no per-send record to create —
   // /client-app is a standing page any existing client can log into
   // themselves (phone number + WhatsApp code, see app/client-app/page.js).
-  // Sent from the clinic's own WhatsApp Business number (POST
-  // /api/client-app-link/send); openWhatsApp only runs as a fallback.
-  async function sendClientAppLink() {
+  // Sent from staff's own WhatsApp, not the clinic's Meta Business API
+  // number — a one-off, staff-triggered send, so there's no upside to a
+  // template Meta categorizes as Marketing (per-recipient throttling,
+  // higher cost, quality-rating risk to the whole number) for this.
+  function sendClientAppLink() {
     const phone = clientAppPhone.replace(/\D/g, '');
     if (phone.length <= 3) {
       setError('Enter a phone number first');
       return;
     }
     const url = `${window.location.origin}/client-app`;
-    let sent = false;
-    try {
-      const res = await fetch('/api/client-app-link/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
-      });
-      const data = await res.json().catch(() => ({}));
-      sent = res.ok && data.sent;
-    } catch {
-      sent = false;
-    }
-    if (!sent) openWhatsApp(phone, `Hi! You can now view your pet(s), invoices, and appointments anytime here: ${url}`);
+    openWhatsApp(phone, `Hi! You can now view your pet(s), invoices, and appointments anytime here: ${url}`);
     setClientAppPhone('+971 ');
   }
 
