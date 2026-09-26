@@ -29,6 +29,7 @@ export default function ClientDetailPage() {
   const [reviewLinkError, setReviewLinkError] = useState(null);
   const [paymentLinkError, setPaymentLinkError] = useState(null);
   const [clientAppLinkError, setClientAppLinkError] = useState(null);
+  const [sendingClientAppLink, setSendingClientAppLink] = useState(false);
 
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
@@ -160,20 +161,36 @@ export default function ClientDetailPage() {
     }
   }
 
-  // Same pattern as sendPaymentLink above — no link to generate, /client-app
-  // is a standing page any existing client can log into themselves (phone
-  // number + WhatsApp code, see app/client-app/page.js).
-  function sendClientAppLink() {
+  // Sent from the clinic's own WhatsApp Business number (POST
+  // /api/client-app-link/send, same pre-approved template as the Invite
+  // page's "Client App Link" quick-send) — openWhatsApp only runs as a
+  // fallback if that send fails (template not approved yet, send error).
+  async function sendClientAppLink() {
     setClientAppLinkError(null);
     const url = `${window.location.origin}/client-app`;
     const digits = (client.phone || '').replace(/\D/g, '');
-    const message = `Hi ${client.full_name}! You can now view your pet(s), invoices, and appointments anytime here: ${url}`;
-    if (digits.length > 3) {
-      openWhatsApp(client.phone, message);
-    } else {
+    if (digits.length <= 3) {
       navigator.clipboard.writeText(url);
       setClientAppLinkError('No phone number on file — link copied to clipboard instead.');
+      return;
     }
+    setSendingClientAppLink(true);
+    let sent = false;
+    try {
+      const res = await fetch('/api/client-app-link/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: client.phone }),
+      });
+      const data = await res.json().catch(() => ({}));
+      sent = res.ok && data.sent;
+    } catch {
+      sent = false;
+    }
+    if (!sent) {
+      openWhatsApp(client.phone, `Hi ${client.full_name}! You can now view your pet(s), invoices, and appointments anytime here: ${url}`);
+    }
+    setSendingClientAppLink(false);
   }
 
   // Cache-busting param, on top of the route's own no-store headers, so a
@@ -555,8 +572,8 @@ export default function ClientDetailPage() {
         <button type="button" onClick={sendReviewLink} disabled={sendingReviewLink}>
           {sendingReviewLink ? 'Sending...' : '⭐ Review'}
         </button>{' '}
-        <button type="button" onClick={sendClientAppLink}>
-          📱 Client App
+        <button type="button" onClick={sendClientAppLink} disabled={sendingClientAppLink}>
+          {sendingClientAppLink ? 'Sending…' : '📱 Client App'}
         </button>
       </p>
       {bookingLinkError && <p className="error">{bookingLinkError}</p>}
