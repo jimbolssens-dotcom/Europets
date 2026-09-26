@@ -37,6 +37,7 @@ import AppVersionWatcher from '@/app/_components/AppVersionWatcher';
 import ClientAppNav from '@/app/_components/ClientAppNav';
 import ClientAppSidebar from '@/app/_components/ClientAppSidebar';
 import { ClientAppThemeProvider } from '@/app/_components/ClientAppThemeContext';
+import { ClientAppSessionProvider } from '@/app/_components/useClientAppSession';
 import ClientAppShell from '@/app/_components/ClientAppShell';
 
 // The three faces of the site's "Hexfield" brand direction — Fraunces for
@@ -92,12 +93,14 @@ export default async function ClientAppLayout({ children }) {
   return (
     <div className={`${fraunces.variable} ${karla.variable} ${azeretMono.variable}`}>
       <ClientAppThemeProvider initialTheme={theme}>
-        <ClientAppShell>
-          <AppVersionWatcher />
-          <ClientAppSidebar />
-          <div className="client-app-content">{children}</div>
-          <ClientAppNav />
-        </ClientAppShell>
+        <ClientAppSessionProvider>
+          <ClientAppShell>
+            <AppVersionWatcher />
+            <ClientAppSidebar />
+            <div className="client-app-content">{children}</div>
+            <ClientAppNav />
+          </ClientAppShell>
+        </ClientAppSessionProvider>
       </ClientAppThemeProvider>
     </div>
   );

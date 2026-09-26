@@ -4,17 +4,26 @@
 // app/api/client-app/auth/{verify-code,select-account} once a WhatsApp
 // one-time code checks out (see lib/clientAppAuth.js) — this hook just
 // asks the server who that cookie belongs to on mount, and mirrors it in
-// local state so pages don't all have to await that fetch themselves.
-// `login()` doesn't set the cookie itself (the auth routes already did,
-// via their response) — it just lets the page that just finished the OTP
-// flow update this state immediately instead of waiting on a fresh
-// GET .../session round trip.
+// context so every page and the layout-level chrome (ClientAppNav,
+// ClientAppSidebar) see the same state instead of each fetching and
+// tracking it independently.
+//
+// Session state lives in ClientAppSessionProvider (mounted once in
+// app/client-app/layout.js) rather than in this hook directly: with one
+// fetch per call site, logging in on the page only updated *that*
+// component's own copy of clientId — the layout's own ClientAppNav (and
+// now ClientAppSidebar) kept their stale pre-login state indefinitely,
+// since layout.js doesn't remount on client-side navigation within
+// /client-app. A shared context means `login()` from anywhere updates
+// every consumer at once.
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
-export function useClientAppSession() {
+const ClientAppSessionContext = createContext(null);
+
+export function ClientAppSessionProvider({ children }) {
   const [clientId, setClientId] = useState(null);
   const [ready, setReady] = useState(false);
 
@@ -35,10 +44,8 @@ export function useClientAppSession() {
     };
   }, []);
 
-  // Fire-and-forget "still using the app" signal — every client-app page
-  // mounts this hook, so this fires once per page view. Lets staff tell,
-  // e.g. when deciding how to send a consent form, whether this client
-  // actually has the app rather than just having it in their history once.
+  // Fire-and-forget "still using the app" signal — fires once per client
+  // per session (not once per page view now that this state is shared).
   useEffect(() => {
     if (!ready || !clientId) return;
     fetch(`/api/clients/${clientId}/app-seen`, { method: 'POST' }).catch(() => {});
@@ -53,5 +60,17 @@ export function useClientAppSession() {
     setClientId(null);
   }, []);
 
-  return { clientId, ready, login, logout };
+  return (
+    <ClientAppSessionContext.Provider value={{ clientId, ready, login, logout }}>
+      {children}
+    </ClientAppSessionContext.Provider>
+  );
+}
+
+export function useClientAppSession() {
+  const ctx = useContext(ClientAppSessionContext);
+  if (!ctx) {
+    throw new Error('useClientAppSession must be used within ClientAppSessionProvider');
+  }
+  return ctx;
 }
