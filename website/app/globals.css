@@ -680,6 +680,80 @@ p {
   color: var(--ink-soft);
 }
 
+/* ---- Team flip cards (hover/tap to the funny photo) ---- */
+.flip-card {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.flip-stage {
+  width: 4rem;
+  height: 4rem;
+  perspective: 600px;
+  margin-bottom: 0.4rem;
+}
+
+.flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
+}
+
+/* Hover flips it on devices that truly support hover (a real mouse) — a
+   tap also toggles .is-flipped via JS, since :hover never fires on a
+   phone, which is how most people will actually see this page. */
+@media (hover: hover) {
+  .flip-card:hover .flip-inner {
+    transform: rotateY(180deg);
+  }
+}
+.flip-card.is-flipped .flip-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  backface-visibility: hidden;
+  background: #000;
+}
+
+.flip-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.flip-face-back {
+  transform: rotateY(180deg);
+}
+
+.bg-hint {
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--pink-dark);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.flip-card.is-flipped .bg-hint,
+.flip-card:hover .bg-hint {
+  opacity: 1;
+}
+
+.team-bio {
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  text-align: left;
+}
+
 /* ---- New patients page ---- */
 .new-patients-grid {
   display: grid;

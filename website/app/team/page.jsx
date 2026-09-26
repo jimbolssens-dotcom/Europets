@@ -1,4 +1,5 @@
 import { VETS, TEAM } from '@/lib/content';
+import TeamFlipCard from '../_components/TeamFlipCard';
 
 export const metadata = { title: 'Our Team - Europets Clinic' };
 
@@ -16,17 +17,21 @@ function initials(name) {
 function TeamRow({ people }) {
   return (
     <div className="team-grid">
-      {people.map((p) => (
-        <div key={p.name} className="card team-card">
-          {p.photo ? (
-            <img src={p.photo} alt={p.name} className="avatar-circle avatar-circle-lg avatar-photo" />
-          ) : (
-            <span className="avatar-circle avatar-circle-lg">{initials(p.name)}</span>
-          )}
-          <strong>{p.name}</strong>
-          <span>{p.role}</span>
-        </div>
-      ))}
+      {people.map((p) =>
+        p.photo && p.photoFunny ? (
+          <TeamFlipCard key={p.name} name={p.name} role={p.role} photo={p.photo} photoFunny={p.photoFunny} bio={p.bio} />
+        ) : (
+          <div key={p.name} className="card team-card">
+            {p.photo ? (
+              <img src={p.photo} alt={p.name} className="avatar-circle avatar-circle-lg avatar-photo" />
+            ) : (
+              <span className="avatar-circle avatar-circle-lg">{initials(p.name)}</span>
+            )}
+            <strong>{p.name}</strong>
+            <span>{p.role}</span>
+          </div>
+        )
+      )}
     </div>
   );
 }
