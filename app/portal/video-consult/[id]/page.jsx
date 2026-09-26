@@ -41,7 +41,8 @@ export default function VideoConsultPortalPage() {
 
   if (!visit || visit.error || !visit.is_video) {
     return (
-      <div className="portal-page client-app">
+      <div className="client-app">
+      <div className="portal-page">
         <header className="portal-header">
           <img src="/logo.png" alt="Europets Clinic" />
         </header>
@@ -50,6 +51,7 @@ export default function VideoConsultPortalPage() {
           <p>This video consult link doesn&apos;t look right. Please check the link we sent you, or get in touch.</p>
         </div>
       </div>
+      </div>
     );
   }
 
@@ -57,7 +59,8 @@ export default function VideoConsultPortalPage() {
   const patientName = visit.patients?.name || 'your pet';
 
   return (
-    <div className="portal-page client-app">
+    <div className="client-app">
+    <div className="portal-page">
       <header className="portal-header">
         <img src="/logo.png" alt="Europets Clinic" />
         <p className="tagline">Kind, caring, and compassionate veterinary care</p>
@@ -90,6 +93,7 @@ export default function VideoConsultPortalPage() {
           />
         )}
       </div>
+    </div>
     </div>
   );
 }

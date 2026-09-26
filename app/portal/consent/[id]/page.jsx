@@ -60,7 +60,8 @@ export default function ConsentSigningPage() {
 
   if (state === 'not_found') {
     return (
-      <div className="portal-page client-app">
+      <div className="client-app">
+      <div className="portal-page">
         <header className="portal-header">
           <img src="/logo.png" alt="Europets Clinic" />
         </header>
@@ -69,12 +70,14 @@ export default function ConsentSigningPage() {
           <p>This consent form link doesn&apos;t look right. Please check the link we sent you, or get in touch.</p>
         </div>
       </div>
+      </div>
     );
   }
 
   if (state === 'already') {
     return (
-      <div className="portal-page client-app">
+      <div className="client-app">
+      <div className="portal-page">
         <header className="portal-header">
           <img src="/logo.png" alt="Europets Clinic" />
         </header>
@@ -83,12 +86,14 @@ export default function ConsentSigningPage() {
           <p>This consent form has already been signed — thank you!</p>
         </div>
       </div>
+      </div>
     );
   }
 
   if (state === 'done') {
     return (
-      <div className="portal-page client-app">
+      <div className="client-app">
+      <div className="portal-page">
         <header className="portal-header">
           <img src="/logo.png" alt="Europets Clinic" />
         </header>
@@ -97,11 +102,13 @@ export default function ConsentSigningPage() {
           <p>Your signature has been received — our team has it on file.</p>
         </div>
       </div>
+      </div>
     );
   }
 
   return (
-    <div className="portal-page client-app">
+    <div className="client-app">
+    <div className="portal-page">
       <header className="portal-header">
         <img src="/logo.png" alt="Europets Clinic" />
         <p className="tagline">Kind, caring, and compassionate veterinary care</p>
@@ -140,6 +147,7 @@ export default function ConsentSigningPage() {
       </div>
 
       <p className="portal-footer">Your signature is recorded securely and shared only with the clinic.</p>
+    </div>
     </div>
   );
 }

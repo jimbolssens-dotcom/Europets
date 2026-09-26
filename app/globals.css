@@ -4872,127 +4872,212 @@ button.secondary:hover {
   margin: 0.5rem 0;
 }
 
-/* Client-app-embedded portal pages (?app=1 — see app/portal/intake/[id]
-   and app/portal/hospitalization/[id]) — the .client-app class those pages
-   add themselves picks up the same dark "Hexfield" tokens/background as
-   the rest of the client app (see the CLIENT APP section below), so the
-   trip out to these shared public pages doesn't look like a different
-   site, and the "← Home" link (.portal-home-link) gets them back in. A
-   link sent straight from the desktop to someone with no client-app
-   account renders these same pages with neither — .portal-page alone, no
-   .client-app class — since there's nowhere for that person to go "home"
-   to. */
-.portal-page.client-app {
+/* Every /portal/* page (intake, hospitalization, consent, video consult)
+   always renders inside a .client-app wrapper now, picking up the same
+   dark "Hexfield" tokens/background as the rest of the client app (see
+   the CLIENT APP section below) regardless of how the link was opened —
+   see each page's own component for why. .client-app is the OUTER,
+   full-viewport-width element (it carries the background); .portal-page
+   is the INNER, width-capped content column — keeping those as two nested
+   elements rather than one div with both classes matters: a single
+   capped-width element can't also paint a full-bleed background outside
+   its own width, which is exactly what left plain white margins down
+   either side of every portal page at any width wider than the column.
+   The "← Home" link (.portal-home-link) only renders when the page was
+   reached from inside the app (?app=1) — see fromApp in intake/
+   hospitalization — since a cold/public link has nowhere to send someone
+   "home" to. */
+.client-app .portal-page {
   padding: 1.5rem 1rem 3rem;
 }
 
-.portal-page.client-app .portal-home-link {
+/* Desktop-only hero + 2-column field layout for the intake page
+   (app/portal/intake/[id]) — this is most people's actual first contact
+   with the clinic (every "Book an Appointment"/"New Patients" link on the
+   website funnels here), and it's the one portal page busy enough (owner
+   details + pet details + an optional booking step) to earn a wider,
+   properly-designed desktop treatment rather than just the shared
+   .portal-page width bump below. Mobile is completely untouched — same
+   plain header, same single-column form. */
+.portal-intake-hero-wrap {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .portal-intake-page {
+    max-width: 960px;
+  }
+
+  .portal-intake-header-mobile {
+    display: none;
+  }
+
+  .portal-intake-hero-wrap {
+    display: block;
+  }
+
+  /* Cancels .portal-page's own top/side padding so the terrain bleeds to
+     the edges, same technique as .client-app-hero on the login screen —
+     just matched to this page's own padding values instead of that one's. */
+  .portal-intake-hero {
+    margin: -2.5rem -1rem 2rem;
+    min-height: 19rem;
+  }
+
+  .portal-intake-hero-heading {
+    margin: 0.4rem 0;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 2.1rem;
+    color: var(--chalk);
+  }
+
+  /* .tagline's base color (var(--pink-dark), see globals.css above) is
+     tuned for the light staff app — unreadably muddy on this hero's dark
+     background. Same fix as .client-app .mobile-subtitle elsewhere. */
+  .portal-intake-hero .tagline {
+    color: var(--ash);
+  }
+
+  /* .intake-form's own "max-width: 100%" (see .intake-form above) has
+     always lost to the base `form.card { max-width: 480px }` rule — a
+     class selector can't outrank an element+class one on specificity,
+     whatever order they're declared in. Harmless everywhere this page was
+     narrow anyway, but it's exactly what kept the form pinned to 480px
+     here even once .portal-page itself grew to 960px above. */
+  .client-app .portal-page .intake-form {
+    max-width: none;
+  }
+
+  .client-app .portal-page .intake-existing-check {
+    max-width: 560px;
+  }
+
+  .client-app .portal-page .intake-form,
+  .client-app .portal-page .intake-pet {
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 1.25rem;
+  }
+
+  .client-app .portal-page .intake-form > h2,
+  .client-app .portal-page .intake-form > .error,
+  .client-app .portal-page .intake-form > button,
+  .client-app .portal-page .intake-form > .intake-pet-choice,
+  .client-app .portal-page .intake-form > .intake-pet,
+  .client-app .portal-page .intake-form > .intake-appointment,
+  .client-app .portal-page .intake-form > .intake-form-notes,
+  .client-app .portal-page .intake-pet > .intake-pet-remove {
+    grid-column: 1 / -1;
+  }
+}
+
+.client-app .portal-page .portal-home-link {
   display: inline-block;
   margin-bottom: 1rem;
 }
 
-.portal-page.client-app .portal-header .tagline,
-.portal-page.client-app .visit-meta,
-.portal-page.client-app .portal-footer,
-.portal-page.client-app .intake-filter-label {
+.client-app .portal-page .portal-header .tagline,
+.client-app .portal-page .visit-meta,
+.client-app .portal-page .portal-footer,
+.client-app .portal-page .intake-filter-label {
   color: var(--ash);
 }
 
-.portal-page.client-app .portal-card,
-.portal-page.client-app .card,
-.portal-page.client-app .intake-pet,
-.portal-page.client-app .intake-appointment {
+.client-app .portal-page .portal-card,
+.client-app .portal-page .card,
+.client-app .portal-page .intake-pet,
+.client-app .portal-page .intake-appointment {
   background: linear-gradient(165deg, var(--carbon-hi), var(--void-2));
   border: 1px solid var(--hair);
   border-top: 1px solid var(--hair);
   color: var(--chalk);
 }
 
-.portal-page.client-app .portal-card h1,
-.portal-page.client-app .portal-card h2,
-.portal-page.client-app h1,
-.portal-page.client-app h2 {
+.client-app .portal-page .portal-card h1,
+.client-app .portal-page .portal-card h2,
+.client-app .portal-page h1,
+.client-app .portal-page h2 {
   color: var(--chalk);
   font-family: var(--display);
 }
 
-.portal-page.client-app .portal-status-admitted {
+.client-app .portal-page .portal-status-admitted {
   background: rgba(230, 24, 109, 0.2);
   color: var(--hot);
 }
 
-.portal-page.client-app .portal-status-discharged {
+.client-app .portal-page .portal-status-discharged {
   background: var(--hair);
   color: var(--ash);
 }
 
-.portal-page.client-app .portal-note {
+.client-app .portal-page .portal-note {
   border-top-color: var(--hair);
 }
 
-.portal-page.client-app .portal-note-date {
+.client-app .portal-page .portal-note-date {
   color: var(--hot);
 }
 
-.portal-page.client-app .portal-note-author {
+.client-app .portal-page .portal-note-author {
   color: var(--ash-dim);
 }
 
-.portal-page.client-app .portal-chat-bubble-theirs {
+.client-app .portal-page .portal-chat-bubble-theirs {
   background: var(--carbon);
   color: var(--chalk);
 }
 
-.portal-page.client-app .portal-chat-bubble-theirs .portal-chat-bubble-meta {
+.client-app .portal-page .portal-chat-bubble-theirs .portal-chat-bubble-meta {
   color: var(--ash);
 }
 
-.portal-page.client-app input,
-.portal-page.client-app select,
-.portal-page.client-app textarea {
+.client-app .portal-page input,
+.client-app .portal-page select,
+.client-app .portal-page textarea {
   background: var(--carbon);
   border: 1px solid var(--hair);
   color: var(--chalk);
 }
 
-.portal-page.client-app form.card label {
+.client-app .portal-page form.card label {
   color: var(--chalk);
 }
 
-.portal-page.client-app .intake-slot-button {
+.client-app .portal-page .intake-slot-button {
   background: var(--carbon);
   border-color: var(--hair);
   color: var(--chalk);
 }
 
-.portal-page.client-app .intake-slot-button:hover {
+.client-app .portal-page .intake-slot-button:hover {
   border-color: var(--hot);
   color: var(--hot);
 }
 
-.portal-page.client-app .intake-slot-selected,
-.portal-page.client-app .intake-slot-selected:hover {
+.client-app .portal-page .intake-slot-selected,
+.client-app .portal-page .intake-slot-selected:hover {
   background: var(--magenta);
   border-color: var(--magenta);
   color: white;
 }
 
-.portal-page.client-app .intake-slot-available {
+.client-app .portal-page .intake-slot-available {
   background: rgba(230, 24, 109, 0.15);
   border-color: var(--hair-hot);
 }
 
-.portal-page.client-app .error {
+.client-app .portal-page .error {
   color: var(--hot);
 }
 
-.portal-page.client-app button.secondary {
+.client-app .portal-page button.secondary {
   background: transparent;
   border: 1px solid var(--hair-hot);
   color: var(--hot);
 }
 
-.portal-page.client-app button.secondary:hover {
+.client-app .portal-page button.secondary:hover {
   background: var(--hair-hot);
 }
 

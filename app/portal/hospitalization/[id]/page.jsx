@@ -146,7 +146,8 @@ export default function HospitalizationPortalPage() {
     return <div className="client-app"><p className="portal-loading">We couldn&apos;t find that page.</p></div>;
 
   return (
-    <div className="portal-page client-app">
+    <div className="client-app">
+    <div className="portal-page">
       {fromApp && (
         <Link href="/client-app" className="mobile-link-btn portal-home-link">
           ← Home
@@ -274,6 +275,7 @@ export default function HospitalizationPortalPage() {
       </div>
 
       <p className="portal-footer">This page updates automatically — no need to refresh.</p>
+    </div>
     </div>
   );
 }

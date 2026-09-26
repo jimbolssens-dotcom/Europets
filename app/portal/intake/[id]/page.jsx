@@ -33,6 +33,8 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import SpeciesField from '@/app/_components/SpeciesField';
 import PetAttributeField from '@/app/_components/PetAttributeField';
+import HexfieldCanvas from '@/app/_components/HexfieldCanvas';
+import EcgLine from '@/app/_components/EcgLine';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
 import { EMIRATES } from '@/lib/emirates';
 import { classifySpecies } from '@/lib/species';
@@ -454,16 +456,45 @@ export default function IntakePortalPage() {
   const hasAppointmentRequest = wantsAppointment && (isCustomSurgery ? Boolean(customSurgeryReason.trim()) : Boolean(selectedSlot));
 
   return (
-    <div className="portal-page client-app">
+    <div className="client-app">
+    <div className="portal-page">
       {fromApp && (
         <Link href="/client-app" className="mobile-link-btn portal-home-link">
           ← Home
         </Link>
       )}
-      <header className="portal-header">
+      {/* Mobile: the plain logo/tagline header, unchanged. Hidden at
+          desktop in favor of the real hero below — see
+          .portal-intake-header-mobile / .portal-intake-hero-wrap in
+          globals.css. */}
+      <header className="portal-header portal-intake-header-mobile">
         <img src="/logo.png" alt="Europets Clinic" />
         <p className="tagline">Kind, caring, and compassionate veterinary care</p>
       </header>
+
+      {/* Desktop only: this is most people's actual first contact with the
+          clinic (booking/registration links from every "Book an
+          Appointment" button on the website funnel here) — worth a real
+          hero, same terrain/pulse language as the client-app login screen,
+          not the phone header just stretched wide. */}
+      <div className="portal-intake-hero-wrap">
+        <div className="client-app-hero portal-intake-hero">
+          <HexfieldCanvas />
+          <div className="client-app-hero-content">
+            <img src="/logo.png" alt="Europets Clinic" className="mobile-home-logo" />
+            <p className="client-app-login-eyebrow">
+              {isExistingClient ? 'Welcome Back' : 'New Patient Registration'}
+            </p>
+            <h1 className="portal-intake-hero-heading">
+              {isExistingClient
+                ? `Hello, ${request.clients?.full_name?.split(' ')[0] || 'there'}`
+                : 'Welcome to Europets Clinic'}
+            </h1>
+            <p className="tagline">Kind, caring, and compassionate veterinary care</p>
+          </div>
+        </div>
+        <EcgLine />
+      </div>
 
       {submitted || alreadyHandled ? (
         <div className="portal-card">
@@ -953,7 +984,7 @@ export default function IntakePortalPage() {
               </div>
             )}
 
-            <label>
+            <label className="intake-form-notes">
               Anything else we should know? (optional)
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
             </label>
@@ -966,6 +997,7 @@ export default function IntakePortalPage() {
       )}
 
       <p className="portal-footer">Europets Clinic</p>
+    </div>
     </div>
   );
 }
