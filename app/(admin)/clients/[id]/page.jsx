@@ -356,8 +356,20 @@ export default function ClientDetailPage() {
             "💬 WhatsApp" wording for something that behaves differently. */}
         <a href={`/messages/${client.id}`} className="button-link" title="Open this client's message thread — the clinic's own WhatsApp number and app chat, unified">
           💬 App/WhatsApp Chat
-        </a>
+        </a>{' '}
+        <button type="button" className="button-link" onClick={sendBookingLink} disabled={sendingLink}>
+          {sendingLink ? 'Sending...' : '📅 Invite'}
+        </button>{' '}
+        <button type="button" className="button-link" onClick={sendReviewLink} disabled={sendingReviewLink}>
+          {sendingReviewLink ? 'Sending...' : '⭐ Review'}
+        </button>{' '}
+        <button type="button" className="button-link" onClick={sendClientAppLink} disabled={sendingClientAppLink}>
+          {sendingClientAppLink ? 'Sending…' : '📱 Client App'}
+        </button>
       </p>
+      {bookingLinkError && <p className="error">{bookingLinkError}</p>}
+      {reviewLinkError && <p className="error">{reviewLinkError}</p>}
+      {clientAppLinkError && <p className="error">{clientAppLinkError}</p>}
 
       {editing ? (
         <form className="card" onSubmit={saveEdit}>
@@ -450,15 +462,15 @@ export default function ClientDetailPage() {
       )}
 
       {client.legacy_outstanding_balance > 0 && (
-        <div className="legacy-balance-note">
-          <p>
+        <details className="legacy-balance-note">
+          <summary>
             ⚠️ Old system balance: AED {money(client.legacy_outstanding_balance)}{' '}
             <InfoHint>
               Carried over from the previous clinic software at import — not reflected in any
               invoice here. Record what they pay off below as it comes in, or clear it from
               Edit once fully reconciled.
             </InfoHint>
-          </p>
+          </summary>
           <form className="legacy-balance-payment-form" onSubmit={recordLegacyPayment}>
             {legacyPaymentError && <p className="error">{legacyPaymentError}</p>}
             <label>
@@ -476,7 +488,7 @@ export default function ClientDetailPage() {
               {recordingLegacyPayment ? 'Saving...' : 'Record Payment'}
             </button>
           </form>
-        </div>
+        </details>
       )}
 
       <div className="card financial-overview">
@@ -564,21 +576,6 @@ export default function ClientDetailPage() {
           <p className="visit-meta">No outstanding invoices.</p>
         )}
       </div>
-
-      <p>
-        <button type="button" onClick={sendBookingLink} disabled={sendingLink}>
-          {sendingLink ? 'Sending...' : '📅 Invite'}
-        </button>{' '}
-        <button type="button" onClick={sendReviewLink} disabled={sendingReviewLink}>
-          {sendingReviewLink ? 'Sending...' : '⭐ Review'}
-        </button>{' '}
-        <button type="button" onClick={sendClientAppLink} disabled={sendingClientAppLink}>
-          {sendingClientAppLink ? 'Sending…' : '📱 Client App'}
-        </button>
-      </p>
-      {bookingLinkError && <p className="error">{bookingLinkError}</p>}
-      {reviewLinkError && <p className="error">{reviewLinkError}</p>}
-      {clientAppLinkError && <p className="error">{clientAppLinkError}</p>}
 
       <h2>Emirates ID</h2>
       {!client.emirates_id && <ScanIdButton onScanned={handleScanned} />}

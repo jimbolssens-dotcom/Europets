@@ -4947,10 +4947,18 @@ button.secondary:hover {
   margin: 0.75rem 0;
 }
 
-.legacy-balance-note > p {
-  margin: 0 0 0.5rem;
+/* Collapsed by default — the payment form only shows once someone
+   deliberately clicks the balance line, rather than sitting permanently
+   open on every client page that happens to carry an old-system balance. */
+.legacy-balance-note > summary {
+  margin: 0;
   font-weight: 600;
   color: #8a6116;
+  cursor: pointer;
+}
+
+.legacy-balance-note[open] > summary {
+  margin-bottom: 0.5rem;
 }
 
 .legacy-balance-payment-form {
