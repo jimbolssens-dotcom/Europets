@@ -46,6 +46,7 @@ export default function MobileMessageThreadPage() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [channelOverride, setChannelOverride] = useState(null); // matched threads only
   const [error, setError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const threadRef = useRef(null);
   const cameraInputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -139,6 +140,22 @@ export default function MobileMessageThreadPage() {
     return true;
   }
 
+  // Clears a failed send out of the thread — matched (client-linked)
+  // threads only, since the DELETE route needs a client id. Server-side
+  // scoped to status='failed' only (see DELETE /api/clients/:id/messages),
+  // so this can never touch a real sent/delivered/read message.
+  async function deleteFailedMessage(messageId) {
+    if (!confirm('Remove this failed message from the thread? It was never delivered — this just clears it from the record.')) return;
+    setDeletingId(messageId);
+    setError(null);
+    const res = await fetch(`/api/clients/${id}/messages?message_id=${messageId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || 'Failed to remove');
+    }
+    setDeletingId(null);
+  }
+
   async function sendReply(e) {
     e?.preventDefault();
     const text = draft.trim();
@@ -225,6 +242,20 @@ export default function MobileMessageThreadPage() {
                       : m.status === 'delivered'
                         ? '✓✓ Delivered'
                         : '✓ Sent'}
+                  {m.status === 'failed' && isMatched && (
+                    <>
+                      {' '}
+                      ·{' '}
+                      <button
+                        type="button"
+                        className="portal-chat-bubble-remove"
+                        onClick={() => deleteFailedMessage(m.id)}
+                        disabled={deletingId === m.id}
+                      >
+                        {deletingId === m.id ? 'Removing…' : 'Remove'}
+                      </button>
+                    </>
+                  )}
                 </span>
               )}
             </span>

@@ -4511,6 +4511,17 @@ button.secondary:hover {
   font-weight: 600;
 }
 
+.portal-chat-bubble-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .portal-chat-bubble-theirs {
   align-self: flex-start;
   background: #eee;

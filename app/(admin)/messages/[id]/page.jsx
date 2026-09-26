@@ -32,6 +32,7 @@ export default function ClientMessageThreadPage() {
   const [channelOverride, setChannelOverride] = useState(null); // 'app' | 'whatsapp' | null (auto)
   const [flagged, setFlagged] = useState(false);
   const [error, setError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const threadRef = useRef(null);
   const cameraInputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -156,6 +157,23 @@ export default function ClientMessageThreadPage() {
     return true;
   }
 
+  // Clears a failed send out of the thread (see DELETE /api/clients/:id/
+  // messages — server-side scoped to status='failed' only, so this can
+  // never touch a real sent/delivered/read message). Doesn't manually
+  // reload; the thread's own postgres_changes subscription (above) picks
+  // up the delete and refreshes on its own.
+  async function deleteFailedMessage(messageId) {
+    if (!confirm('Remove this failed message from the thread? It was never delivered — this just clears it from the record.')) return;
+    setDeletingId(messageId);
+    setError(null);
+    const res = await fetch(`/api/clients/${id}/messages?message_id=${messageId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || 'Failed to remove');
+    }
+    setDeletingId(null);
+  }
+
   // e is undefined when called from the Enter-to-send keydown handler
   // rather than an actual form submit.
   async function sendReply(e) {
@@ -262,6 +280,20 @@ export default function ClientMessageThreadPage() {
                       : m.status === 'delivered'
                         ? '✓✓ Delivered'
                         : '✓ Sent'}
+                  {m.status === 'failed' && (
+                    <>
+                      {' '}
+                      ·{' '}
+                      <button
+                        type="button"
+                        className="portal-chat-bubble-remove"
+                        onClick={() => deleteFailedMessage(m.id)}
+                        disabled={deletingId === m.id}
+                      >
+                        {deletingId === m.id ? 'Removing…' : 'Remove'}
+                      </button>
+                    </>
+                  )}
                 </span>
               )}
             </span>

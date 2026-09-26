@@ -1,4 +1,7 @@
 // app/api/clients/[id]/messages/route.js
+// DELETE /api/clients/:id/messages?message_id=X -> removes one FAILED
+//      message from the thread (see the handler below for why it's
+//      scoped that way).
 // GET  /api/clients/:id/messages  -> the full two-way chat thread for this
 //      client (both 'client' and 'staff' rows, oldest first, app and
 //      WhatsApp channels both — see migrations/130). Used by both the
@@ -171,4 +174,35 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json(data, { status: 201 });
+}
+
+// DELETE /api/clients/:id/messages?message_id=X -> removes one message row
+// from this thread. Scoped to status='failed' only (a message Meta's API
+// accepted but never actually delivered, per the async status webhook) —
+// staff can clear these out of a thread since they were never real
+// history, but this deliberately can't touch a sent/delivered/read message:
+// there's no way to un-send something a client may have actually received,
+// so real conversation history always stays intact.
+export async function DELETE(request, { params }) {
+  const { searchParams } = new URL(request.url);
+  const messageId = searchParams.get('message_id');
+  if (!messageId) {
+    return NextResponse.json({ error: 'message_id is required' }, { status: 400 });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('client_messages')
+    .delete()
+    .eq('id', messageId)
+    .eq('client_id', params.id)
+    .eq('status', 'failed')
+    .select('id');
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: 'No matching failed message found to remove' }, { status: 404 });
+  }
+  return NextResponse.json({ ok: true });
 }
