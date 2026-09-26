@@ -1,4 +1,4 @@
-import { APP_URL, BOOKING_URL } from '@/lib/content';
+import { APP_URL, BOOKING_URL, CLIENT_PORTAL_URL } from '@/lib/content';
 
 export const metadata = { title: 'New Patients - Europets Clinic' };
 
@@ -31,6 +31,16 @@ export default function NewPatientsPage() {
               <div>
                 <strong>We confirm it</strong>
                 <span>Our team reviews and confirms your booking, and you&apos;re all set.</span>
+              </div>
+            </li>
+            <li>
+              <div>
+                <strong>Log in any time after</strong>
+                <span>
+                  The same WhatsApp number you registered with gets you into the{' '}
+                  <a href={CLIENT_PORTAL_URL}>client portal</a> — your pet&apos;s records, invoices, and
+                  appointments, whenever you need them.
+                </span>
               </div>
             </li>
           </ol>

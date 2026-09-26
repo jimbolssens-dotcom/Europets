@@ -19,6 +19,7 @@ const DETAILS = {
   Surgery: ['Spay & neuter', 'Abdominal & intestinal surgery', 'Orthopedic surgery', 'Occasional hematologic surgery'],
   Hospitalization: ['IV pumps', 'Heat lamps', 'Oxygen cages', 'Daily updates for owners'],
   Rehabilitation: ['Laser therapy', 'Hydrotherapy', 'Post-op & orthopedic recovery plans'],
+  'Video Consults': ['Booked through the client portal', 'No travel needed', 'Great for quick follow-ups and advice'],
 };
 
 export default function ServicesPage() {

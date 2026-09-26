@@ -1,4 +1,4 @@
-import { CONTACT, HOURS } from '@/lib/content';
+import { CONTACT, HOURS, CLIENT_PORTAL_URL } from '@/lib/content';
 
 export const metadata = { title: 'Contact - Europets Clinic' };
 
@@ -56,6 +56,16 @@ export default function ContactPage() {
             <span>Usually the fastest way to reach us</span>
           </span>
         </a>
+      </div>
+
+      <div className="container">
+        <p className="page-lede" style={{ marginTop: '2rem', marginBottom: 0 }}>
+          That&apos;s the same WhatsApp number that texts you a login code for the{' '}
+          <a href={CLIENT_PORTAL_URL} className="text-link" style={{ marginTop: 0, display: 'inline' }}>
+            client portal
+          </a>
+          , where you can see your pet&apos;s records, invoices, and appointments any time.
+        </p>
       </div>
     </div>
   );

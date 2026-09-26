@@ -7,6 +7,7 @@
 
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://europets-r4mx3sbiv-jimbolssens-dotcom.vercel.app';
 export const BOOKING_URL = `${APP_URL}/portal/intake/new`;
+export const CLIENT_PORTAL_URL = `${APP_URL}/client-app`;
 
 export const CONTACT = {
   email: 'info@epc.vet',
@@ -50,6 +51,10 @@ export const SERVICES = [
   {
     name: 'Rehabilitation',
     description: 'Laser therapy and hydrotherapy to support recovery after surgery, especially orthopedic procedures.',
+  },
+  {
+    name: 'Video Consults',
+    description: 'A quick concern that doesn’t need a visit? Book a video consult through the client portal and talk to a vet from wherever you are.',
   },
 ];
 
@@ -128,6 +133,7 @@ export const NAV_LINKS = [
   { href: '/services', label: 'Services' },
   { href: '/team', label: 'Our Team' },
   { href: '/new-patients', label: 'New Patients' },
+  { href: CLIENT_PORTAL_URL, label: 'Client Portal' },
   { href: '/reviews', label: 'Reviews' },
   { href: '/contact', label: 'Contact' },
 ];

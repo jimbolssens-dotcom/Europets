@@ -1,4 +1,4 @@
-import { BOOKING_URL, SERVICES, VETS, HOURS, CONTACT, STORY } from '@/lib/content';
+import { BOOKING_URL, CLIENT_PORTAL_URL, SERVICES, VETS, HOURS, CONTACT, STORY } from '@/lib/content';
 import HexField from './_components/HexField';
 import HexLattice from './_components/HexLattice';
 import HeroDoc from './_components/HeroDoc';
@@ -29,6 +29,9 @@ export default function HomePage() {
                 New Patient? Start here
               </a>
             </div>
+            <a href={CLIENT_PORTAL_URL} className="text-link">
+              Already a client? Log in to your pet&apos;s portal &rarr;
+            </a>
           </div>
           <div className="docs">
             {VETS.slice(0, 4).map((v) => (
