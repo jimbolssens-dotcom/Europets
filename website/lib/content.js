@@ -60,20 +60,20 @@ export const VETS = [
     photo: '/team/jim-bolssens.jpg',
     photoFunny: '/team/jim-bolssens-funny.jpg',
   },
-  { name: 'Dr. Nada', role: 'DVM' },
+  { name: 'Dr. Nada', role: 'DVM', photo: '/team/nada.jpg', photoFunny: '/team/nada-funny.jpg' },
   { name: 'Dr. Greta', role: 'DVM' },
-  { name: 'Dr. Dalma', role: 'DVM' },
-  { name: 'Dr. Eva', role: 'DVM' },
+  { name: 'Dr. Dalma', role: 'DVM', photo: '/team/dalma.jpg', photoFunny: '/team/dalma-funny.jpg' },
+  { name: 'Dr. Eva', role: 'DVM', photo: '/team/eva.jpg', photoFunny: '/team/eva-funny.jpg' },
 ];
 
 export const TEAM = [
   { name: 'Arlyn', role: 'Accounts & Admin Manager' },
-  { name: 'Tyke', role: 'Vet Assistant' },
-  { name: 'Emman', role: 'Vet Assistant' },
+  { name: 'Tyke', role: 'Vet Assistant', photo: '/team/tyke.jpg', photoFunny: '/team/tyke-funny.jpg' },
+  { name: 'Emman', role: 'Vet Assistant', photo: '/team/emman.jpg', photoFunny: '/team/emman-funny.jpg' },
   { name: 'Genie', role: 'Receptionist' },
   { name: 'Pam', role: 'Receptionist' },
-  { name: 'Niluka', role: 'Staff' },
-  { name: 'Kamala', role: 'Staff' },
+  { name: 'Niluka', role: 'Staff', photo: '/team/niluka.jpg', photoFunny: '/team/niluka-funny.jpg' },
+  { name: 'Kamala', role: 'Staff', photo: '/team/kamala.jpg', photoFunny: '/team/kamala-funny.jpg' },
 ];
 
 export const NAV_LINKS = [
