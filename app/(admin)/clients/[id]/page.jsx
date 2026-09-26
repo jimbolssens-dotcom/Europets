@@ -7,10 +7,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import ScanIdButton from '@/app/_components/ScanIdButton';
 import ClientPhonesEditor, { initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
 import InfoHint from '@/app/_components/InfoHint';
-import { uploadAttachment } from '@/lib/attachments';
 import { EMIRATES } from '@/lib/emirates';
 import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder, openEmailReminder } from '@/lib/paymentReminders';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
@@ -227,23 +225,6 @@ export default function ClientDetailPage() {
     const subject = `Europets Clinic — Statement of Account`;
     const body = `Hi ${client.full_name},\n\nHere is your statement of account from Europets Clinic: ${url}\n\nPlease don't hesitate to reach out if you have any questions.`;
     window.open(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
-  }
-
-  async function handleScanned({ full_name, emirates_id, file }) {
-    const update = {};
-    if (full_name && !client.full_name) update.full_name = full_name;
-    if (emirates_id) update.emirates_id = emirates_id;
-    if (Object.keys(update).length > 0) {
-      await fetch(`/api/clients/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(update),
-      });
-    }
-    if (file) {
-      await uploadAttachment({ entityType: 'client', entityId: id, file }).catch(() => {});
-    }
-    load();
   }
 
   function startEdit() {
@@ -576,9 +557,6 @@ export default function ClientDetailPage() {
           <p className="visit-meta">No outstanding invoices.</p>
         )}
       </div>
-
-      <h2>Emirates ID</h2>
-      {!client.emirates_id && <ScanIdButton onScanned={handleScanned} />}
 
       <h2>Patients</h2>
       <table>
