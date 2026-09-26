@@ -6886,6 +6886,19 @@ form.card.admit-patient-form {
   width: 100%;
 }
 
+/* The editable drafted message on the Follow-ups page
+   (app/(admin)/follow-ups) — sits inside a plain .mobile-list-item, which
+   has no textarea styling of its own. */
+.mobile-list-item textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  margin-top: 0.3rem;
+}
+
 .mobile-saved {
   color: #1a7a1a;
   font-weight: 600;

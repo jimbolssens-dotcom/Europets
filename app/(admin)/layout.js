@@ -203,6 +203,7 @@ export default function AdminLayout({ children }) {
           </a>
           <a href="/vaccinations">Vaccinations</a>
           <a href="/invoices">Invoices</a>
+          <a href="/follow-ups">Follow-ups</a>
           <a href="/hospitalization/wall" title="Hospitalization wall display" aria-label="Hospitalization wall display" className="settings-link">
             🗺️
           </a>
