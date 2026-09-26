@@ -231,6 +231,8 @@ export default function MessagesInboxPage() {
   const [submittingClientAppLinkTemplate, setSubmittingClientAppLinkTemplate] = useState(false);
   const [clientAppLinkTemplateResult, setClientAppLinkTemplateResult] = useState(null); // { ok: boolean, message: string } | null
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
+  const [submittingDischargeFollowupTemplate, setSubmittingDischargeFollowupTemplate] = useState(false);
+  const [dischargeFollowupTemplateResult, setDischargeFollowupTemplateResult] = useState(null); // { ok: boolean, message: string } | null
 
   const load = () =>
     fetch('/api/client-messages')
@@ -383,6 +385,24 @@ export default function MessagesInboxPage() {
     setSubmittingClientAppLinkTemplate(false);
   }
 
+  async function submitDischargeFollowupTemplate() {
+    setSubmittingDischargeFollowupTemplate(true);
+    setDischargeFollowupTemplateResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/create-discharge-followup-template', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setDischargeFollowupTemplateResult({
+        ok: true,
+        message:
+          'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
+      });
+    } catch (err) {
+      setDischargeFollowupTemplateResult({ ok: false, message: err.message });
+    }
+    setSubmittingDischargeFollowupTemplate(false);
+  }
+
   return (
     <>
       <div className="page-header">
@@ -512,6 +532,21 @@ export default function MessagesInboxPage() {
           </button>
           {clientAppLinkTemplateResult && (
             <span className={clientAppLinkTemplateResult.ok ? '' : 'error'}> {clientAppLinkTemplateResult.message}</span>
+          )}
+        </p>
+
+        {/* One-time setup so the post-discharge "how's recovery going?"
+            check-ins (see app/(admin)/follow-ups and
+            lib/dischargeFollowups.js) go out under their own branded
+            template instead of the generic first-contact one — see the
+            auto-send in lib/dischargeFollowups.js's sendDischargeFollowup. */}
+        <p className="visit-meta">
+          Set up the discharge follow-up WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
+          <button type="button" onClick={submitDischargeFollowupTemplate} disabled={submittingDischargeFollowupTemplate}>
+            {submittingDischargeFollowupTemplate ? 'Submitting…' : 'Submit discharge follow-up WhatsApp template'}
+          </button>
+          {dischargeFollowupTemplateResult && (
+            <span className={dischargeFollowupTemplateResult.ok ? '' : 'error'}> {dischargeFollowupTemplateResult.message}</span>
           )}
         </p>
       </details>
