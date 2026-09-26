@@ -141,11 +141,12 @@ export default function HospitalizationPortalPage() {
     .filter((n) => n.temperature_c != null)
     .map((n) => ({ date: n.created_at, temperature_c: n.temperature_c }));
 
-  if (loading) return <p className="portal-loading">Loading...</p>;
-  if (!admission || admission.error) return <p className="portal-loading">We couldn&apos;t find that page.</p>;
+  if (loading) return <div className="client-app"><p className="portal-loading">Loading...</p></div>;
+  if (!admission || admission.error)
+    return <div className="client-app"><p className="portal-loading">We couldn&apos;t find that page.</p></div>;
 
   return (
-    <div className={`portal-page${fromApp ? ' client-app' : ''}`}>
+    <div className="portal-page client-app">
       {fromApp && (
         <Link href="/client-app" className="mobile-link-btn portal-home-link">
           ← Home

@@ -4337,6 +4337,21 @@ button.secondary:hover {
   padding: 1.5rem 1rem 3rem;
 }
 
+/* These are one-off form/status pages (intake, consent, hospitalization
+   status, video consult), not dashboards — so "desktop version" here is a
+   wider centered column with room to breathe, not a multi-panel redesign
+   like the client-app Home overview. */
+@media (min-width: 720px) {
+  .portal-page {
+    max-width: 700px;
+    padding-top: 2.5rem;
+  }
+
+  .portal-card {
+    padding: 1.75rem 2.25rem;
+  }
+}
+
 .portal-loading {
   text-align: center;
   padding: 3rem 1rem;

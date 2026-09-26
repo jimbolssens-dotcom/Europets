@@ -55,12 +55,12 @@ export default function ConsentSigningPage() {
   }
 
   if (state === 'loading') {
-    return <p className="portal-loading">Loading...</p>;
+    return <div className="client-app"><p className="portal-loading">Loading...</p></div>;
   }
 
   if (state === 'not_found') {
     return (
-      <div className="portal-page">
+      <div className="portal-page client-app">
         <header className="portal-header">
           <img src="/logo.png" alt="Europets Clinic" />
         </header>
@@ -74,7 +74,7 @@ export default function ConsentSigningPage() {
 
   if (state === 'already') {
     return (
-      <div className="portal-page">
+      <div className="portal-page client-app">
         <header className="portal-header">
           <img src="/logo.png" alt="Europets Clinic" />
         </header>
@@ -88,7 +88,7 @@ export default function ConsentSigningPage() {
 
   if (state === 'done') {
     return (
-      <div className="portal-page">
+      <div className="portal-page client-app">
         <header className="portal-header">
           <img src="/logo.png" alt="Europets Clinic" />
         </header>
@@ -101,7 +101,7 @@ export default function ConsentSigningPage() {
   }
 
   return (
-    <div className="portal-page">
+    <div className="portal-page client-app">
       <header className="portal-header">
         <img src="/logo.png" alt="Europets Clinic" />
         <p className="tagline">Kind, caring, and compassionate veterinary care</p>

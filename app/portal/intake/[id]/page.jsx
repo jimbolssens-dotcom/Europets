@@ -446,14 +446,15 @@ export default function IntakePortalPage() {
     setSubmitted(true);
   }
 
-  if (loading) return <p className="portal-loading">Loading...</p>;
-  if (!request || request.error) return <p className="portal-loading">We couldn&apos;t find that page.</p>;
+  if (loading) return <div className="client-app"><p className="portal-loading">Loading...</p></div>;
+  if (!request || request.error)
+    return <div className="client-app"><p className="portal-loading">We couldn&apos;t find that page.</p></div>;
 
   const alreadyHandled = request.status !== 'pending';
   const hasAppointmentRequest = wantsAppointment && (isCustomSurgery ? Boolean(customSurgeryReason.trim()) : Boolean(selectedSlot));
 
   return (
-    <div className={`portal-page${fromApp ? ' client-app' : ''}`}>
+    <div className="portal-page client-app">
       {fromApp && (
         <Link href="/client-app" className="mobile-link-btn portal-home-link">
           ← Home
