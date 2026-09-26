@@ -416,15 +416,17 @@ p {
   gap: 1rem;
 }
 
-/* ---- Hero team honeycomb (2x2) ---- */
+/* ---- Hero team honeycomb (2x2) ----
+   True hex tessellation math: adjacent rows are offset by half a hex
+   width and 3/4 a hex height, so the bottom row's points nest into the
+   top row's flat side gaps instead of just sitting underneath them. */
 .docs {
   position: relative;
   width: 100%;
-  max-width: 24rem;
+  max-width: 27rem;
+  aspect-ratio: 1.2372;
   margin-inline: auto;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 2rem 1.75rem;
+  --gap: 3.5%;
 }
 
 .docs::before {
@@ -436,9 +438,10 @@ p {
 }
 
 .doc {
-  position: relative;
+  position: absolute;
   margin: 0;
-  width: 100%;
+  translate: -50% -50%;
+  width: calc(40% - var(--gap));
   aspect-ratio: 0.866;
   clip-path: var(--hex);
   padding: 2.5px;
@@ -448,6 +451,11 @@ p {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+
+.doc:nth-child(1) { left: 20%; top: 28.571%; }
+.doc:nth-child(2) { left: 60%; top: 28.571%; }
+.doc:nth-child(3) { left: 40%; top: 71.429%; }
+.doc:nth-child(4) { left: 80%; top: 71.429%; }
 
 .doc-inner {
   position: relative;
@@ -888,6 +896,9 @@ p {
   height: 4rem;
   perspective: 600px;
   margin-bottom: 0.4rem;
+  padding: 2px;
+  clip-path: var(--hex);
+  background: linear-gradient(152deg, #ffe3ef 0%, var(--hot) 32%, var(--magenta) 62%, #8c0b45 100%);
 }
 
 .flip-inner {
