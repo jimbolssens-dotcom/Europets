@@ -41,7 +41,10 @@ export async function POST(request) {
   if (matches.length === 0) {
     recordFailedAttempt(ipKey);
     recordFailedAttempt(phoneKey);
-    return NextResponse.json({ error: "We couldn't find that number on file — please contact the clinic." }, { status: 404 });
+    return NextResponse.json(
+      { error: "We couldn't find that number on file — please contact the clinic to confirm or update the WhatsApp number on your account." },
+      { status: 404 }
+    );
   }
 
   const code = generateOtpCode();

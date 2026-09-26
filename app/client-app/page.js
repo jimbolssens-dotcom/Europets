@@ -300,6 +300,13 @@ export default function ClientAppHomePage() {
                 ? `Enter the code sent to your WhatsApp.`
                 : 'Enter the phone number on file with the clinic to see your pets, invoices, and appointments.'}
             </p>
+            {step === 'phone' && (
+              <p className="client-app-login-note">
+                This must be the WhatsApp number the clinic has on file for you — that&apos;s where your
+                code goes. Can&apos;t log in? Contact the clinic to confirm or update the number on your
+                account.
+              </p>
+            )}
             {step === 'code' && devCode && (
               <p className="client-app-dev-code-hint">
                 WhatsApp sending isn&apos;t configured yet — your code is <strong>{devCode}</strong>
@@ -326,6 +333,13 @@ export default function ClientAppHomePage() {
                     ? `Enter the code sent to your WhatsApp.`
                     : 'Enter the phone number on file with the clinic to see your pets, invoices, and appointments.'}
                 </p>
+                {step === 'phone' && (
+                  <p className="client-app-login-note">
+                    This must be the WhatsApp number the clinic has on file for you — that&apos;s where
+                    your code goes. Can&apos;t log in? Contact the clinic to confirm or update the number
+                    on your account.
+                  </p>
+                )}
                 {step === 'code' && devCode && (
                   <p className="client-app-dev-code-hint">
                     WhatsApp sending isn&apos;t configured yet — your code is <strong>{devCode}</strong>
