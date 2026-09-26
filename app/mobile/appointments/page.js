@@ -8,10 +8,11 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import { formatTime, formatDayHeader } from '@/lib/formatTimestamp';
+import { buildStaffColorMap, colorForAppointment, INACTIVE_APPOINTMENT_COLOR } from '@/lib/staffColors';
 
 const TYPE_ICONS = { consult: '🩺', video: '🎥', surgery: '📋', meeting: '👥' };
 const SWIPE_MIN_DISTANCE = 60;
@@ -31,8 +32,20 @@ function shiftISODate(iso, delta) {
 export default function MobileAppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(() => toISODate(new Date()));
   const [appointments, setAppointments] = useState([]);
+  const [vets, setVets] = useState([]);
   const [loading, setLoading] = useState(true);
   const swipeRef = useRef({ x: 0, y: 0, active: false });
+
+  // Same per-doctor colors already shown on the desktop Appointments
+  // schedule and Staff Roster (lib/staffColors.js) — a subtle left-border
+  // accent here, not a full recolor, so it reads as "which doctor" at a
+  // glance without competing with the list's own content.
+  useEffect(() => {
+    fetch('/api/staff?role=vet')
+      .then((res) => res.json())
+      .then((data) => setVets(Array.isArray(data) ? data : []));
+  }, []);
+  const vetColor = useMemo(() => buildStaffColorMap(vets), [vets]);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,9 +124,15 @@ export default function MobileAppointmentsPage() {
           <ul className="mobile-list">
             {appointments.map((a) => {
               const inactive = a.status === 'cancelled' || a.status === 'no_show';
+              const borderColor = inactive
+                ? INACTIVE_APPOINTMENT_COLOR.fg
+                : colorForAppointment(vetColor, a.vet_id, a.type).fg;
               return (
                 <li key={a.id}>
-                  <div className={`mobile-list-item${inactive ? ' mobile-appt-inactive' : ''}`}>
+                  <div
+                    className={`mobile-list-item mobile-appt-dr-accent${inactive ? ' mobile-appt-inactive' : ''}`}
+                    style={{ borderLeftColor: borderColor }}
+                  >
                     <span className="mobile-list-title">
                       {formatTime(a.start_time)} · {TYPE_ICONS[a.type] || ''}{' '}
                       {a.type === 'meeting' ? a.reason || 'Staff Meeting' : a.patients?.name || '(unlinked)'}

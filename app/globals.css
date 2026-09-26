@@ -6673,6 +6673,14 @@ form.card.admit-patient-form {
   opacity: 0.5;
 }
 
+/* Subtle per-doctor accent (see lib/staffColors.js) on the mobile
+   Appointments overview — borderLeftColor is set inline per row, this just
+   makes room for it as a thicker left edge instead of the plain 1px border. */
+.mobile-appt-dr-accent {
+  border-left-width: 4px;
+  padding-left: calc(1rem - 3px);
+}
+
 .mobile-list-title {
   font-weight: 700;
 }
