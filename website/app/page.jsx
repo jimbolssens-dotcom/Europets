@@ -1,17 +1,7 @@
 import { BOOKING_URL, SERVICES, VETS, HOURS, CONTACT, STORY } from '@/lib/content';
 import HexField from './_components/HexField';
 import HexLattice from './_components/HexLattice';
-
-function initials(name) {
-  return name
-    .replace('Dr.', '')
-    .trim()
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-}
+import HeroDoc from './_components/HeroDoc';
 
 export default function HomePage() {
   return (
@@ -41,22 +31,8 @@ export default function HomePage() {
             </div>
           </div>
           <div className="docs">
-            {VETS.slice(0, 5).map((v) => (
-              <figure className="doc" key={v.name}>
-                <span className="doc-face">
-                  {v.photo ? (
-                    <img src={v.photo} alt={v.name} />
-                  ) : (
-                    <span className="doc-ph" aria-hidden="true">
-                      {initials(v.name).charAt(0)}
-                    </span>
-                  )}
-                  <span className="doc-tag">
-                    <b>{v.name}</b>
-                    <i>{v.role}</i>
-                  </span>
-                </span>
-              </figure>
+            {VETS.slice(0, 4).map((v) => (
+              <HeroDoc key={v.name} name={v.name} role={v.role} photo={v.photo} photoFunny={v.photoFunny} />
             ))}
           </div>
         </div>
@@ -101,31 +77,6 @@ export default function HomePage() {
           </div>
           <a href="/services" className="text-link">
             See all services &rarr;
-          </a>
-        </div>
-      </section>
-
-      {/* Team teaser */}
-      <section className="section section-tint">
-        <HexLattice />
-        <div className="container" style={{ position: 'relative' }}>
-          <span className="eyebrow">Who you&apos;ll meet</span>
-          <h2 className="section-title">A team that knows your pet by name</h2>
-          <div className="team-teaser-row">
-            {VETS.map((v) => (
-              <div key={v.name} className="team-avatar">
-                {v.photo ? (
-                  <img src={v.photo} alt={v.name} className="avatar-circle avatar-photo" />
-                ) : (
-                  <span className="avatar-circle">{initials(v.name)}</span>
-                )}
-                <strong>{v.name}</strong>
-                <span>{v.role}</span>
-              </div>
-            ))}
-          </div>
-          <a href="/team" className="text-link">
-            Meet the whole team &rarr;
           </a>
         </div>
       </section>
