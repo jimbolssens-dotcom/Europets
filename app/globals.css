@@ -7890,6 +7890,150 @@ form.card.admit-patient-form {
   box-shadow: 0 8px 18px -10px rgba(255, 61, 140, 0.75);
 }
 
+/* ---- Desktop sidebar (ClientAppSidebar.jsx) ----
+   Always rendered; hidden below the desktop breakpoint via the media
+   query further down, which also hides .client-app-nav and widens
+   .client-app-content/.mobile-page so the swap is CSS-only, no layout
+   flash while JS reads the viewport. Positioned exactly like
+   .client-app-nav (fixed, own stacking context) rather than folded into
+   a flex layout, so this whole feature is additive and nothing about the
+   existing mobile DOM/CSS had to change. */
+.client-app-sidebar {
+  display: none;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 10;
+  width: 15rem;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1.5rem 1rem;
+  border-right: 1px solid var(--hair);
+}
+
+.client-app[data-theme='dark'] .client-app-sidebar {
+  background: rgba(11, 9, 16, 0.92);
+}
+
+.client-app[data-theme='light'] .client-app-sidebar {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.client-app-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.5rem 1.5rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--hair);
+}
+
+.client-app-sidebar-brand .client-app-hex-plate {
+  width: 2.2rem;
+  height: 2.55rem;
+}
+
+.client-app-sidebar-brand-name {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--chalk);
+}
+
+.client-app-sidebar-brand-label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+
+.client-app-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+}
+
+.client-app-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.6rem 0.5rem;
+  border-radius: 12px;
+  color: var(--ash);
+  text-decoration: none;
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.client-app-sidebar-item .client-app-hex-plate {
+  width: 1.9rem;
+  height: 2.2rem;
+  background: linear-gradient(155deg, var(--ash-dim), var(--carbon-hi));
+  box-shadow: none;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.client-app-sidebar-item .client-app-hex-face {
+  font-size: 0.95rem;
+}
+
+.client-app-sidebar-item-active {
+  color: var(--chalk);
+  background: var(--hair);
+}
+
+.client-app-sidebar-item-active .client-app-hex-plate {
+  background: linear-gradient(155deg, var(--hot), var(--magenta) 60%, var(--deep));
+  box-shadow: 0 8px 18px -10px rgba(255, 61, 140, 0.75);
+}
+
+.client-app-sidebar-logout {
+  margin: 0.5rem 0.5rem 0;
+  padding: 0.6rem 0;
+  background: none;
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+  color: var(--ash);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* ---- Desktop breakpoint ----
+   Swaps the fixed bottom tab bar for the fixed left sidebar and gives the
+   dashboard room to breathe. Only .client-app content is touched — the
+   staff app's own .mobile-page/.mobile-square-tiles (no .client-app
+   ancestor) are untouched at any width. */
+@media (min-width: 880px) {
+  .client-app-nav {
+    display: none;
+  }
+
+  .client-app-sidebar {
+    display: flex;
+  }
+
+  .client-app {
+    padding-left: calc(15rem + 2.5rem);
+    padding-bottom: 2.5rem;
+  }
+
+  .client-app .mobile-page,
+  .client-app .mobile-home {
+    max-width: 56rem;
+  }
+
+  .client-app .mobile-square-tiles {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
 .mobile-app .cage-cluster {
   grid-template-columns: repeat(var(--cols), 58px);
   gap: 0.35rem;

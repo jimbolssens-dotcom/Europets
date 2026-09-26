@@ -10,7 +10,10 @@ import { usePathname } from 'next/navigation';
 import { useClientAppSession } from './useClientAppSession';
 import HexIcon from './HexIcon';
 
-const TABS = [
+// Shared with ClientAppSidebar (the desktop-width nav) so the two never
+// drift apart — the sidebar just uses longer labels for the wider space
+// it has (see its own LABELS override).
+export const TABS = [
   { href: '/client-app', label: 'Home', icon: '🏠' },
   { href: '/client-app/pets', label: 'Pets', icon: '🐾' },
   { href: '/client-app/reports', label: 'Reports', icon: '🩻' },

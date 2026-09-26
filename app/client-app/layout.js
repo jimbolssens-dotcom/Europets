@@ -35,6 +35,7 @@ import { Fraunces, Karla, Azeret_Mono } from 'next/font/google';
 import { supabase } from '@/lib/supabaseClient';
 import AppVersionWatcher from '@/app/_components/AppVersionWatcher';
 import ClientAppNav from '@/app/_components/ClientAppNav';
+import ClientAppSidebar from '@/app/_components/ClientAppSidebar';
 import { ClientAppThemeProvider } from '@/app/_components/ClientAppThemeContext';
 import ClientAppShell from '@/app/_components/ClientAppShell';
 
@@ -93,6 +94,7 @@ export default async function ClientAppLayout({ children }) {
       <ClientAppThemeProvider initialTheme={theme}>
         <ClientAppShell>
           <AppVersionWatcher />
+          <ClientAppSidebar />
           <div className="client-app-content">{children}</div>
           <ClientAppNav />
         </ClientAppShell>
