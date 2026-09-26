@@ -5,8 +5,9 @@
 //   -> runs the AI concierge (lib/whatsappConcierge.js) against a client's
 //      REAL current conversation history exactly as the webhook would,
 //      but as a true dry run: nothing is sent over WhatsApp, nothing is
-//      logged to client_messages, and book_consult is stubbed out so no
-//      real appointment can be created (see runTool's dryRun check).
+//      logged to client_messages, and book_consult/book_procedure are both
+//      stubbed out so no real appointment can be created (see runTool's
+//      dryRun check).
 //      Replays against the last real CLIENT message, trimming off any of
 //      the concierge's own later replies — otherwise there's usually
 //      nothing new to "respond to" as-is, since its own last reply is
