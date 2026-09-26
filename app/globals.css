@@ -4903,9 +4903,9 @@ button.secondary:hover {
   display: none;
 }
 
-@media (min-width: 960px) {
+@media (min-width: 720px) {
   .portal-intake-page {
-    max-width: 960px;
+    max-width: 860px;
   }
 
   .portal-intake-header-mobile {
@@ -4916,12 +4916,30 @@ button.secondary:hover {
     display: block;
   }
 
-  /* Cancels .portal-page's own top/side padding so the terrain bleeds to
-     the edges, same technique as .client-app-hero on the login screen —
-     just matched to this page's own padding values instead of that one's. */
-  .portal-intake-hero {
-    margin: -2.5rem -1rem 2rem;
-    min-height: 19rem;
+  /* True viewport-edge full-bleed (left:50% + translateX), not a negative
+     margin sized to guess at .portal-page's own padding — that guess is
+     exactly what EcgLine's own CSS (below) already flags as unreliable
+     once a hero sits behind more than one level of padded ancestor, which
+     is exactly this page's case (.portal-intake-page is itself centered
+     and width-capped, so a plain negative margin only ever cancels
+     .portal-page's own padding, never actually reaching the real
+     viewport edge). Also a compound selector (both classes), not just
+     .portal-intake-hero alone: .client-app-hero's own min-height further
+     down this file is declared later in the stylesheet and would win a
+     same-specificity tie-break otherwise, silently keeping the taller
+     login-screen height here too. */
+  .portal-intake-hero.client-app-hero {
+    position: relative;
+    left: 50%;
+    width: 100vw;
+    transform: translateX(-50%);
+    margin: -2.5rem 0 2rem;
+    min-height: 9rem;
+    align-items: center;
+  }
+
+  .portal-intake-hero .client-app-hero-content {
+    padding: 0.75rem 1.5rem;
   }
 
   .portal-intake-hero-heading {
