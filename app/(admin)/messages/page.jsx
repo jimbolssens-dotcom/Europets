@@ -308,6 +308,8 @@ export default function MessagesInboxPage() {
 
   useEffect(() => {
     loadTemplateStatuses();
+    checkPhoneQuality();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Invite's own pending-review bell, now that Invite lives on a pill here
@@ -500,13 +502,12 @@ export default function MessagesInboxPage() {
         </div>
       </div>
 
-      {/* All three below are one-time setup actions (fix the subscription,
-          submit a template) — done once and rarely touched again, so they
-          sat as permanent clutter above the inbox everyone actually reads
-          daily. Tucked into a closed disclosure instead of removed
-          outright: the subscription fix may be needed again if it ever
-          drops, and a template can need resubmitting after Meta rejects
-          it or its wording changes. */}
+      {/* One-time/rarely-touched setup actions, collapsed by default so
+          they don't compete with the inbox everyone reads daily. Within
+          it, a template already ✅ Approved with no MARKETING flag needs
+          no attention day-to-day — those collapse into their own nested
+          group below, so only what's actually pending/rejected/flagged
+          stays visible at a glance. */}
       <details className="messages-setup-toggle">
         <summary>⚙️ WhatsApp setup</summary>
 
@@ -515,140 +516,84 @@ export default function MessagesInboxPage() {
             isn't receiving anything — the phone number itself also has to be
             explicitly subscribed, a step Meta's dashboard gives no indication
             of missing. Safe to click more than once. */}
-        <p className="visit-meta">
-          Not receiving WhatsApp messages here even though the webhook looks configured in Meta?{' '}
-          <button type="button" onClick={fixWhatsAppSubscription} disabled={subscribing}>
-            {subscribing ? 'Fixing…' : 'Fix WhatsApp subscription'}
-          </button>
-          {subscribeResult && (
-            <span className={subscribeResult.ok ? '' : 'error'}> {subscribeResult.message}</span>
-          )}
-        </p>
+        <div className="whatsapp-setup-row">
+          <span>Not receiving WhatsApp messages here even though the webhook looks configured in Meta?</span>
+          <span>
+            <button type="button" onClick={fixWhatsAppSubscription} disabled={subscribing}>
+              {subscribing ? 'Fixing…' : 'Fix subscription'}
+            </button>
+            {subscribeResult && <span className={subscribeResult.ok ? '' : 'error'}> {subscribeResult.message}</span>}
+          </span>
+        </div>
 
         {/* Diagnostic for a "failed" send whose ⚠️ Not delivered reason
             doesn't point at template approval or the 24h window — Meta
             throttles/blocks a number whose Quality Rating has dropped,
-            independent of any one template's own approval status. */}
-        <p className="visit-meta">
-          A message failed for an unclear reason?{' '}
-          <button type="button" onClick={checkPhoneQuality} disabled={checkingQuality}>
-            {checkingQuality ? 'Checking…' : 'Check number quality rating'}
-          </button>
-          {qualityResult && qualityResult.ok && (
-            <span>
-              {' '}
-              {qualityResult.data.display_phone_number || 'This number'} — Quality:{' '}
-              <strong>{qualityResult.data.quality_rating || 'unknown'}</strong>, Messaging limit:{' '}
-              <strong>{qualityResult.data.messaging_limit_tier || 'unknown'}</strong>
-            </span>
-          )}
-          {qualityResult && !qualityResult.ok && <span className="error"> {qualityResult.message}</span>}
-        </p>
+            independent of any one template's own approval status. Loaded
+            automatically (see the useEffect above) rather than behind a
+            button — it's one Graph API call, cheap enough to always show. */}
+        <div className="whatsapp-setup-row">
+          <span>Number quality</span>
+          <span>
+            {checkingQuality && 'Checking…'}
+            {qualityResult && qualityResult.ok && (
+              <>
+                <strong>{qualityResult.data.quality_rating || 'unknown'}</strong>
+                {qualityResult.data.messaging_limit_tier && ` · limit ${qualityResult.data.messaging_limit_tier}`}
+              </>
+            )}
+            {qualityResult && !qualityResult.ok && <span className="error">{qualityResult.message}</span>}
+          </span>
+        </div>
 
-        {/* One-time setup so a text reply to a client with no open WhatsApp
-            window (never messaged this number, or not in the last 24h)
-            actually reaches them — a plain reply can otherwise be silently
-            accepted by Meta's API and then never delivered (see POST
-            /api/clients/:id/messages and the ⚠️ Not delivered status shown
-            in a thread when that happens). */}
-        <p className="visit-meta">
-          Set up the first-contact WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
-          <button type="button" onClick={submitFirstContactTemplate} disabled={submittingFirstContact}>
-            {submittingFirstContact ? 'Submitting…' : 'Submit first-contact WhatsApp template'}
-          </button>{' '}
-          <TemplateStatusMark status={templateStatuses.firstContact} />
-          {firstContactResult && (
-            <span className={firstContactResult.ok ? '' : 'error'}> {firstContactResult.message}</span>
-          )}
-        </p>
+        {(() => {
+          // Each template's one-time "submit for Meta review" setup — see
+          // the individual submit* handlers above for what each unlocks
+          // and what manual fallback it replaces. Split below into what
+          // still needs a look (never submitted, pending, rejected, or
+          // approved but MARKETING-flagged) vs. fully done.
+          const templates = [
+            { key: 'firstContact', label: 'First-contact', onSubmit: submitFirstContactTemplate, submitting: submittingFirstContact, result: firstContactResult },
+            { key: 'bookingConfirmation', label: 'Booking-confirmation', onSubmit: submitBookingConfirmationTemplate, submitting: submittingBookingTemplate, result: bookingTemplateResult },
+            { key: 'hospitalizationPortal', label: 'Hospitalization portal-link', onSubmit: submitHospitalizationPortalTemplate, submitting: submittingHospitalizationTemplate, result: hospitalizationTemplateResult },
+            { key: 'intakeLink', label: 'New-patient-intake', onSubmit: submitIntakeTemplate, submitting: submittingIntakeTemplate, result: intakeTemplateResult },
+            { key: 'clientAppLink', label: 'Client-app-link', onSubmit: submitClientAppLinkTemplate, submitting: submittingClientAppLinkTemplate, result: clientAppLinkTemplateResult },
+            { key: 'dischargeFollowup', label: 'Discharge follow-up', onSubmit: submitDischargeFollowupTemplate, submitting: submittingDischargeFollowupTemplate, result: dischargeFollowupTemplateResult },
+          ];
+          const needsAttention = (t) => {
+            const s = templateStatuses[t.key];
+            return !s || s.status !== 'APPROVED' || (s.category && s.category !== 'UTILITY');
+          };
+          const attention = templates.filter(needsAttention);
+          const done = templates.filter((t) => !needsAttention(t));
 
-        {/* One-time setup so approving a client's booking request (submitted
-            via the client app or an Invite link) sends its confirmation from
-            the clinic's own WhatsApp Business number automatically, instead
-            of staff having to send it by hand from their own personal
-            WhatsApp — see the auto-send in POST /api/intake-requests/:id
-            and lib/useIntakeReview.js's manual fallback for when this
-            template isn't approved yet. */}
-        <p className="visit-meta">
-          Set up the booking-confirmation WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
-          <button type="button" onClick={submitBookingConfirmationTemplate} disabled={submittingBookingTemplate}>
-            {submittingBookingTemplate ? 'Submitting…' : 'Submit booking-confirmation WhatsApp template'}
-          </button>{' '}
-          <TemplateStatusMark status={templateStatuses.bookingConfirmation} />
-          {bookingTemplateResult && (
-            <span className={bookingTemplateResult.ok ? '' : 'error'}> {bookingTemplateResult.message}</span>
-          )}
-        </p>
+          const row = (t) => (
+            <div className="whatsapp-setup-row" key={t.key}>
+              <span>{t.label}</span>
+              <span>
+                <TemplateStatusMark status={templateStatuses[t.key]} />{' '}
+                <button type="button" onClick={t.onSubmit} disabled={t.submitting}>
+                  {t.submitting ? 'Submitting…' : 'Submit'}
+                </button>
+                {t.result && <span className={t.result.ok ? '' : 'error'}> {t.result.message}</span>}
+              </span>
+            </div>
+          );
 
-        {/* One-time setup so sending a hospitalized patient's client-portal
-            link (the "Share" button on the hospitalization page) goes out
-            from the clinic's own WhatsApp Business number automatically,
-            instead of opening staff's own personal WhatsApp for them to
-            send by hand — see the auto-send in POST
-            /api/hospitalizations/:id/send-portal-link and that page's
-            shareViaWhatsApp for the manual fallback when this template
-            isn't approved yet. */}
-        <p className="visit-meta">
-          Set up the hospitalization portal-link WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
-          <button type="button" onClick={submitHospitalizationPortalTemplate} disabled={submittingHospitalizationTemplate}>
-            {submittingHospitalizationTemplate ? 'Submitting…' : 'Submit hospitalization portal-link WhatsApp template'}
-          </button>{' '}
-          <TemplateStatusMark status={templateStatuses.hospitalizationPortal} />
-          {hospitalizationTemplateResult && (
-            <span className={hospitalizationTemplateResult.ok ? '' : 'error'}> {hospitalizationTemplateResult.message}</span>
-          )}
-        </p>
-
-        {/* One-time setup so the Invite page's "New Patient Intake" send
-            and resend buttons go out from the clinic's own WhatsApp
-            Business number automatically, instead of opening staff's own
-            personal WhatsApp for them to send by hand — see the auto-send
-            in POST /api/intake-requests/:id/send-whatsapp and that page's
-            sendIntakeWhatsApp for the manual fallback when this template
-            isn't approved yet. */}
-        <p className="visit-meta">
-          Set up the new-patient-intake WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
-          <button type="button" onClick={submitIntakeTemplate} disabled={submittingIntakeTemplate}>
-            {submittingIntakeTemplate ? 'Submitting…' : 'Submit intake-link WhatsApp template'}
-          </button>{' '}
-          <TemplateStatusMark status={templateStatuses.intakeLink} />
-          {intakeTemplateResult && (
-            <span className={intakeTemplateResult.ok ? '' : 'error'}> {intakeTemplateResult.message}</span>
-          )}
-        </p>
-
-        {/* One-time setup so the Invite page's "Client App Link" button
-            goes out from the clinic's own WhatsApp Business number
-            automatically — see the auto-send in POST
-            /api/client-app-link/send and that page's sendClientAppLink
-            for the manual fallback when this template isn't approved
-            yet. */}
-        <p className="visit-meta">
-          Set up the client-app-link WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
-          <button type="button" onClick={submitClientAppLinkTemplate} disabled={submittingClientAppLinkTemplate}>
-            {submittingClientAppLinkTemplate ? 'Submitting…' : 'Submit client-app-link WhatsApp template'}
-          </button>{' '}
-          <TemplateStatusMark status={templateStatuses.clientAppLink} />
-          {clientAppLinkTemplateResult && (
-            <span className={clientAppLinkTemplateResult.ok ? '' : 'error'}> {clientAppLinkTemplateResult.message}</span>
-          )}
-        </p>
-
-        {/* One-time setup so the post-discharge "how's recovery going?"
-            check-ins (see app/(admin)/follow-ups and
-            lib/dischargeFollowups.js) go out under their own branded
-            template instead of the generic first-contact one — see the
-            auto-send in lib/dischargeFollowups.js's sendDischargeFollowup. */}
-        <p className="visit-meta">
-          Set up the discharge follow-up WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
-          <button type="button" onClick={submitDischargeFollowupTemplate} disabled={submittingDischargeFollowupTemplate}>
-            {submittingDischargeFollowupTemplate ? 'Submitting…' : 'Submit discharge follow-up WhatsApp template'}
-          </button>{' '}
-          <TemplateStatusMark status={templateStatuses.dischargeFollowup} />
-          {dischargeFollowupTemplateResult && (
-            <span className={dischargeFollowupTemplateResult.ok ? '' : 'error'}> {dischargeFollowupTemplateResult.message}</span>
-          )}
-        </p>
+          return (
+            <>
+              {attention.map(row)}
+              {done.length > 0 && (
+                <details className="whatsapp-setup-done-group">
+                  <summary>
+                    ✅ {done.length} template{done.length === 1 ? '' : 's'} approved, no action needed
+                  </summary>
+                  {done.map(row)}
+                </details>
+              )}
+            </>
+          );
+        })()}
       </details>
 
       {loading ? (

@@ -3035,6 +3035,46 @@ button.secondary:hover {
   color: var(--pink-dark);
 }
 
+/* One compact line per WhatsApp setup item (subscription fix, quality
+   rating, a template's submit+status) — replaces what used to be a full
+   sentence + button per item, so a panel of mostly-done one-time actions
+   doesn't read as a wall of text. */
+.whatsapp-setup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.85rem;
+}
+
+.whatsapp-setup-row:last-child {
+  border-bottom: none;
+}
+
+.whatsapp-setup-row button {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+/* The fully-approved, non-flagged templates — collapsed by default so
+   only what actually needs a look (pending, rejected, or MARKETING-
+   flagged) sits above the fold. */
+.whatsapp-setup-done-group {
+  margin-top: 0.4rem;
+}
+
+.whatsapp-setup-done-group summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.whatsapp-setup-done-group .whatsapp-setup-row {
+  margin-top: 0.3rem;
+}
+
 /* The ✅/⏳/❌ mark next to a "Submit ... WhatsApp template" button,
    reflecting Meta's own status for that template (see GET
    /api/whatsapp/template-statuses) rather than a locally-remembered click. */
