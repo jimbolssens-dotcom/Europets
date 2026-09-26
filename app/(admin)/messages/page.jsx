@@ -35,6 +35,19 @@ function preview(text) {
   return text.length > 90 ? `${text.slice(0, 90)}…` : text;
 }
 
+// The little mark next to each "Submit ... WhatsApp template" button below
+// — reflects Meta's own status for that template (see GET
+// /api/whatsapp/template-statuses), not just "was this clicked before".
+// Nothing renders for a template never submitted, so a bare button still
+// reads as "not done yet" with no mark needed.
+function TemplateStatusMark({ status }) {
+  if (!status) return null;
+  if (status === 'APPROVED') return <span className="template-status template-status-approved">✅ Approved</span>;
+  if (status === 'PENDING') return <span className="template-status template-status-pending">⏳ Pending Meta review</span>;
+  if (status === 'REJECTED') return <span className="template-status template-status-rejected">❌ Rejected — resubmit</span>;
+  return <span className="template-status">{status}</span>;
+}
+
 function UnmatchedThreadRow({ conv, staff, onLinked }) {
   const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -233,6 +246,7 @@ export default function MessagesInboxPage() {
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
   const [submittingDischargeFollowupTemplate, setSubmittingDischargeFollowupTemplate] = useState(false);
   const [dischargeFollowupTemplateResult, setDischargeFollowupTemplateResult] = useState(null); // { ok: boolean, message: string } | null
+  const [templateStatuses, setTemplateStatuses] = useState({}); // { [purpose]: 'APPROVED' | 'PENDING' | 'REJECTED' | null }
 
   const load = () =>
     fetch('/api/client-messages')
@@ -254,6 +268,22 @@ export default function MessagesInboxPage() {
       .subscribe();
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ground truth for the little ✅/⏳/❌ mark next to each "Submit ...
+  // template" button below — asks Meta directly rather than remembering
+  // "was clicked" locally, so it's still right after a reload or for a
+  // different staff member, and reflects a later rejection too. Best-effort:
+  // silently leaves every mark blank if this fails (e.g. WABA ID not set
+  // yet) rather than blocking the page.
+  const loadTemplateStatuses = () =>
+    fetch('/api/whatsapp/template-statuses')
+      .then((res) => (res.ok ? res.json() : {}))
+      .then((data) => setTemplateStatuses(data && !data.error ? data : {}))
+      .catch(() => {});
+
+  useEffect(() => {
+    loadTemplateStatuses();
   }, []);
 
   // Invite's own pending-review bell, now that Invite lives on a pill here
@@ -307,6 +337,7 @@ export default function MessagesInboxPage() {
         message:
           'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
       });
+      loadTemplateStatuses();
     } catch (err) {
       setFirstContactResult({ ok: false, message: err.message });
     }
@@ -325,6 +356,7 @@ export default function MessagesInboxPage() {
         message:
           'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
       });
+      loadTemplateStatuses();
     } catch (err) {
       setBookingTemplateResult({ ok: false, message: err.message });
     }
@@ -343,6 +375,7 @@ export default function MessagesInboxPage() {
         message:
           'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
       });
+      loadTemplateStatuses();
     } catch (err) {
       setHospitalizationTemplateResult({ ok: false, message: err.message });
     }
@@ -361,6 +394,7 @@ export default function MessagesInboxPage() {
         message:
           'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
       });
+      loadTemplateStatuses();
     } catch (err) {
       setIntakeTemplateResult({ ok: false, message: err.message });
     }
@@ -379,6 +413,7 @@ export default function MessagesInboxPage() {
         message:
           'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
       });
+      loadTemplateStatuses();
     } catch (err) {
       setClientAppLinkTemplateResult({ ok: false, message: err.message });
     }
@@ -397,6 +432,7 @@ export default function MessagesInboxPage() {
         message:
           'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
       });
+      loadTemplateStatuses();
     } catch (err) {
       setDischargeFollowupTemplateResult({ ok: false, message: err.message });
     }
@@ -461,7 +497,8 @@ export default function MessagesInboxPage() {
           Set up the first-contact WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
           <button type="button" onClick={submitFirstContactTemplate} disabled={submittingFirstContact}>
             {submittingFirstContact ? 'Submitting…' : 'Submit first-contact WhatsApp template'}
-          </button>
+          </button>{' '}
+          <TemplateStatusMark status={templateStatuses.firstContact} />
           {firstContactResult && (
             <span className={firstContactResult.ok ? '' : 'error'}> {firstContactResult.message}</span>
           )}
@@ -478,7 +515,8 @@ export default function MessagesInboxPage() {
           Set up the booking-confirmation WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
           <button type="button" onClick={submitBookingConfirmationTemplate} disabled={submittingBookingTemplate}>
             {submittingBookingTemplate ? 'Submitting…' : 'Submit booking-confirmation WhatsApp template'}
-          </button>
+          </button>{' '}
+          <TemplateStatusMark status={templateStatuses.bookingConfirmation} />
           {bookingTemplateResult && (
             <span className={bookingTemplateResult.ok ? '' : 'error'}> {bookingTemplateResult.message}</span>
           )}
@@ -496,7 +534,8 @@ export default function MessagesInboxPage() {
           Set up the hospitalization portal-link WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
           <button type="button" onClick={submitHospitalizationPortalTemplate} disabled={submittingHospitalizationTemplate}>
             {submittingHospitalizationTemplate ? 'Submitting…' : 'Submit hospitalization portal-link WhatsApp template'}
-          </button>
+          </button>{' '}
+          <TemplateStatusMark status={templateStatuses.hospitalizationPortal} />
           {hospitalizationTemplateResult && (
             <span className={hospitalizationTemplateResult.ok ? '' : 'error'}> {hospitalizationTemplateResult.message}</span>
           )}
@@ -513,7 +552,8 @@ export default function MessagesInboxPage() {
           Set up the new-patient-intake WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
           <button type="button" onClick={submitIntakeTemplate} disabled={submittingIntakeTemplate}>
             {submittingIntakeTemplate ? 'Submitting…' : 'Submit intake-link WhatsApp template'}
-          </button>
+          </button>{' '}
+          <TemplateStatusMark status={templateStatuses.intakeLink} />
           {intakeTemplateResult && (
             <span className={intakeTemplateResult.ok ? '' : 'error'}> {intakeTemplateResult.message}</span>
           )}
@@ -529,7 +569,8 @@ export default function MessagesInboxPage() {
           Set up the client-app-link WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
           <button type="button" onClick={submitClientAppLinkTemplate} disabled={submittingClientAppLinkTemplate}>
             {submittingClientAppLinkTemplate ? 'Submitting…' : 'Submit client-app-link WhatsApp template'}
-          </button>
+          </button>{' '}
+          <TemplateStatusMark status={templateStatuses.clientAppLink} />
           {clientAppLinkTemplateResult && (
             <span className={clientAppLinkTemplateResult.ok ? '' : 'error'}> {clientAppLinkTemplateResult.message}</span>
           )}
@@ -544,7 +585,8 @@ export default function MessagesInboxPage() {
           Set up the discharge follow-up WhatsApp template (one-time, needs Meta's approval before it goes live):{' '}
           <button type="button" onClick={submitDischargeFollowupTemplate} disabled={submittingDischargeFollowupTemplate}>
             {submittingDischargeFollowupTemplate ? 'Submitting…' : 'Submit discharge follow-up WhatsApp template'}
-          </button>
+          </button>{' '}
+          <TemplateStatusMark status={templateStatuses.dischargeFollowup} />
           {dischargeFollowupTemplateResult && (
             <span className={dischargeFollowupTemplateResult.ok ? '' : 'error'}> {dischargeFollowupTemplateResult.message}</span>
           )}

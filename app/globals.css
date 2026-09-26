@@ -3035,6 +3035,27 @@ button.secondary:hover {
   color: var(--pink-dark);
 }
 
+/* The ✅/⏳/❌ mark next to a "Submit ... WhatsApp template" button,
+   reflecting Meta's own status for that template (see GET
+   /api/whatsapp/template-statuses) rather than a locally-remembered click. */
+.template-status {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.template-status-approved {
+  color: #1a7f37;
+}
+
+.template-status-pending {
+  color: #9a6700;
+}
+
+.template-status-rejected {
+  color: #b00020;
+}
+
 .info-hint {
   position: relative;
   display: inline-block;
