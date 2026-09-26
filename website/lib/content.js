@@ -61,7 +61,6 @@ export const VETS = [
     photoFunny: '/team/jim-bolssens-funny.jpg',
   },
   { name: 'Dr. Nada', role: 'DVM', photo: '/team/nada.jpg', photoFunny: '/team/nada-funny.jpg' },
-  { name: 'Dr. Greta', role: 'DVM' },
   { name: 'Dr. Dalma', role: 'DVM', photo: '/team/dalma.jpg', photoFunny: '/team/dalma-funny.jpg' },
   { name: 'Dr. Eva', role: 'DVM', photo: '/team/eva.jpg', photoFunny: '/team/eva-funny.jpg' },
 ];
@@ -71,7 +70,6 @@ export const TEAM = [
   { name: 'Tyke', role: 'Vet Assistant', photo: '/team/tyke.jpg', photoFunny: '/team/tyke-funny.jpg' },
   { name: 'Emman', role: 'Vet Assistant', photo: '/team/emman.jpg', photoFunny: '/team/emman-funny.jpg' },
   { name: 'Genie', role: 'Receptionist', photo: '/team/genie.jpg', photoFunny: '/team/genie-funny.jpg' },
-  { name: 'Pam', role: 'Receptionist' },
   { name: 'Niluka', role: 'Staff', photo: '/team/niluka.jpg', photoFunny: '/team/niluka-funny.jpg' },
   { name: 'Kamala', role: 'Staff', photo: '/team/kamala.jpg', photoFunny: '/team/kamala-funny.jpg' },
 ];
