@@ -1,17 +1,46 @@
+/* ============================================================
+   EUROPETS CLINIC — "Hexfield" direction
+   A committed single-theme dark world: the honeycomb is the clinic
+   (cells under the lab microscope, the pads of a paw, the facets of
+   the brand cross). Ported from the approved design mockup.
+   ============================================================ */
+
 :root {
-  --pink: #e6186d;
-  --pink-dark: #b91257;
-  --pink-tint: #fce8f1;
+  color-scheme: dark;
+
+  --void: #07060a;
+  --void-2: #0b0910;
+  --carbon: #121017;
+  --carbon-hi: #1a1620;
+
+  --magenta: #e6186d; /* the brand pink, unchanged */
+  --hot: #ff3d8c;
+  --blush: #ffc5dd;
+  --deep: #78083b;
   --gold: #e0932f;
-  --ink: #1c1a1d;
-  --ink-soft: #5c565a;
-  --bg: #fbf8f6;
-  --paper: #ffffff;
-  --line: #ece1e4;
+
+  --chalk: #f6eef2;
+  --ash: #a79ba3;
+  --ash-dim: #6f6570;
+  --hair: rgba(255, 168, 205, 0.14);
+  --hair-hot: rgba(255, 61, 140, 0.42);
+
+  /* kept under their original names so every existing rule below still
+     resolves — just pointed at the dark palette above */
+  --pink: var(--hot);
+  --pink-dark: var(--magenta);
+  --pink-tint: rgba(255, 61, 140, 0.09);
+  --ink: var(--chalk);
+  --ink-soft: var(--ash);
+  --bg: var(--void);
+  --paper: var(--carbon);
+  --line: var(--hair);
 
   --font-display: var(--font-display);
   --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
   --max-width: 72rem;
+  --hex: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 
 * {
@@ -58,28 +87,45 @@ p {
 
 .section {
   padding: 4.5rem 0;
+  position: relative;
 }
 
 .section-tint {
   background: var(--pink-tint);
 }
 
+/* faint hex-grid line pattern used as an accent behind a handful of
+   dark sections — see app/_components/HexLattice.jsx */
+.lattice {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.5;
+  mask-image: radial-gradient(120% 90% at 50% 0%, #000 10%, transparent 75%);
+}
+
 .eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--pink-dark);
+  color: var(--hot);
 }
 
 .eyebrow::before {
   content: '';
-  width: 1.5rem;
-  height: 2px;
-  background: var(--pink);
+  width: 9px;
+  height: 10px;
+  flex: none;
+  background: var(--hot);
+  clip-path: var(--hex);
+  box-shadow: 0 0 12px rgba(255, 61, 140, 0.85);
 }
 
 .btn {
@@ -94,33 +140,33 @@ p {
   text-decoration: none;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .btn:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .btn-primary {
-  background: var(--pink);
-  color: white;
-  box-shadow: 0 10px 24px -12px rgba(230, 24, 109, 0.55);
+  background: linear-gradient(140deg, #ff4f97 0%, var(--magenta) 52%, #c20f57 100%);
+  color: #fff;
+  box-shadow: 0 14px 32px -14px rgba(255, 61, 140, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .btn-primary:hover {
-  background: var(--pink-dark);
-  box-shadow: 0 14px 28px -12px rgba(230, 24, 109, 0.6);
+  box-shadow: 0 18px 40px -14px rgba(255, 61, 140, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 
 .btn-ghost {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.035);
   color: var(--ink);
-  border-color: var(--line);
+  border-color: var(--hair-hot);
+  backdrop-filter: blur(6px);
 }
 
 .btn-ghost:hover {
-  border-color: var(--pink);
-  color: var(--pink-dark);
+  border-color: var(--hot);
+  color: var(--blush);
 }
 
 .card {
@@ -134,9 +180,9 @@ p {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(251, 248, 246, 0.92);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--line);
+  background: rgba(7, 6, 10, 0.75);
+  backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid var(--hair);
 }
 
 .nav-row {
@@ -167,11 +213,11 @@ p {
   font-weight: 700;
   font-size: 0.92rem;
   text-decoration: none;
-  color: var(--ink-soft);
+  color: var(--ash);
 }
 
 .nav-links a:hover {
-  color: var(--pink-dark);
+  color: var(--blush);
 }
 
 .nav-actions {
@@ -221,7 +267,8 @@ p {
     flex-direction: column;
     gap: 1rem;
     padding: 1rem 1.5rem 1.75rem;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--hair);
+    background: rgba(7, 6, 10, 0.96);
   }
   .nav-links-mobile a:not(.btn) {
     font-weight: 700;
@@ -236,8 +283,9 @@ p {
 
 /* ---- Footer ---- */
 .footer {
-  background: var(--ink);
-  color: #d8d3d5;
+  background: #050409;
+  color: var(--ash);
+  border-top: 1px solid var(--hair);
   padding: 4rem 0 1.5rem;
 }
 
@@ -247,7 +295,7 @@ p {
 }
 
 .footer a:hover {
-  color: var(--pink);
+  color: var(--blush);
 }
 
 .footer-grid {
@@ -273,16 +321,16 @@ p {
   font-size: 0.88rem;
   line-height: 1.6;
   max-width: 20rem;
-  color: #a8a2a5;
+  color: var(--ash-dim);
 }
 
 .footer-heading {
-  font-family: var(--font-body), sans-serif;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--pink);
+  color: var(--hot);
   margin-bottom: 0.9rem;
 }
 
@@ -294,9 +342,9 @@ p {
 .footer-bottom {
   margin-top: 3rem;
   padding-top: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid var(--hair);
   font-size: 0.8rem;
-  color: #8a8487;
+  color: var(--ash-dim);
 }
 
 @media (max-width: 780px) {
@@ -307,10 +355,33 @@ p {
 
 /* ---- Hero ---- */
 .hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   padding: 4.5rem 0 3rem;
 }
 
+.hexfield {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(100deg, rgba(7, 6, 10, 0.88) 0%, rgba(7, 6, 10, 0.6) 36%, rgba(7, 6, 10, 0.06) 66%, transparent 100%),
+    linear-gradient(180deg, rgba(7, 6, 10, 0.72) 0%, transparent 26%, transparent 62%, var(--void) 100%);
+}
+
 .hero-grid {
+  position: relative;
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   gap: 3rem;
@@ -318,18 +389,23 @@ p {
 }
 
 .hero-title {
-  font-size: clamp(2.4rem, 4.5vw, 3.4rem);
+  font-size: clamp(2.2rem, 4.2vw, 3.2rem);
   margin: 1rem 0 1.25rem;
+  max-width: 17ch;
 }
 
 .hero-title em {
-  color: var(--pink);
   font-style: italic;
+  font-weight: 600;
+  color: transparent;
+  background: linear-gradient(96deg, var(--blush) 0%, var(--hot) 55%, var(--magenta) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
 .hero-lede {
-  font-size: 1.1rem;
-  color: var(--ink-soft);
+  font-size: 1.05rem;
+  color: #cbbdc5;
   max-width: 34rem;
   margin-bottom: 2rem;
 }
@@ -340,43 +416,139 @@ p {
   gap: 1rem;
 }
 
-.hero-mark {
-  display: flex;
-  justify-content: center;
+/* ---- Hero team honeycomb ---- */
+.docs {
+  position: relative;
+  width: 100%;
+  max-width: 30rem;
+  aspect-ratio: 1.4846;
+  margin-inline: auto;
+  --gap: 3.5%;
 }
 
-.hero-mark svg {
+.docs::before {
+  content: '';
+  position: absolute;
+  inset: -14%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(5, 4, 9, 0.82), rgba(5, 4, 9, 0.42) 60%, transparent 80%);
+}
+
+.doc {
+  position: absolute;
+  margin: 0;
+  translate: -50% -50%;
+  width: calc(33.333% - var(--gap));
+  aspect-ratio: 0.866;
+  clip-path: var(--hex);
+  padding: 2.5px;
+  background: linear-gradient(152deg, #ffe3ef 0%, var(--hot) 32%, var(--magenta) 62%, #8c0b45 100%);
+  filter: drop-shadow(0 14px 28px rgba(255, 61, 140, 0.32));
+}
+
+.doc:nth-child(1) { left: 16.667%; top: 28.571%; }
+.doc:nth-child(2) { left: 50%; top: 28.571%; }
+.doc:nth-child(3) { left: 83.333%; top: 28.571%; }
+.doc:nth-child(4) { left: 33.333%; top: 71.429%; }
+.doc:nth-child(5) { left: 66.667%; top: 71.429%; }
+
+.doc-face {
+  position: relative;
+  display: block;
+  height: 100%;
+  clip-path: var(--hex);
+  overflow: hidden;
+  background: linear-gradient(158deg, #2a1e2a, #100c15 62%);
+}
+
+.doc-face > img {
+  display: block;
   width: 100%;
-  max-width: 22rem;
+  height: 116%;
+  margin-top: -9%;
+  object-fit: cover;
+  object-position: center 34%;
+}
+
+.doc-ph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display), serif;
+  font-size: 2rem;
+  color: var(--hot);
+  text-shadow: 0 0 22px rgba(255, 61, 140, 0.5);
+  background:
+    radial-gradient(70% 55% at 50% 22%, rgba(255, 61, 140, 0.16), transparent 70%),
+    linear-gradient(158deg, #2a1e2a, #0f0b14 65%);
+}
+
+.doc-tag {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: 14% 15% 24%;
+  display: grid;
+  gap: 0.15em;
+  text-align: center;
+  background: linear-gradient(to top, rgba(6, 4, 10, 0.96) 30%, rgba(6, 4, 10, 0.72) 62%, transparent);
+}
+
+.doc-tag b {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--chalk);
+  line-height: 1.15;
+}
+
+.doc-tag i {
+  font-style: normal;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--blush);
+  opacity: 0.85;
 }
 
 @media (max-width: 860px) {
   .hero-grid {
     grid-template-columns: 1fr;
   }
-  .hero-mark {
+  .docs {
     order: -1;
-    max-width: 14rem;
-    margin: 0 auto;
+    max-width: 20rem;
   }
 }
 
-/* ---- Trust strip ---- */
+/* ---- Stat strip ---- */
 .trust-strip {
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 1.5rem 0;
+  border-block: 1px solid var(--hair);
+  background: linear-gradient(180deg, rgba(255, 61, 140, 0.05), transparent);
 }
 
 .trust-strip-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.75rem 2.5rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--hair);
+  border-inline: 1px solid var(--hair);
+  text-align: center;
+}
+
+.trust-strip-row span {
+  background: var(--void);
+  padding: 1.4rem clamp(0.75rem, 2vw, 1.5rem);
   font-size: 0.85rem;
   font-weight: 700;
-  color: var(--ink-soft);
-  text-align: center;
+  color: var(--ash);
+}
+
+@media (max-width: 620px) {
+  .trust-strip-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* ---- Section headings shared across pages ---- */
@@ -390,28 +562,40 @@ p {
   display: inline-block;
   margin-top: 1.75rem;
   font-weight: 700;
-  color: var(--pink-dark);
+  color: var(--hot);
   text-decoration: none;
 }
 
 .text-link:hover {
   text-decoration: underline;
+  color: var(--blush);
 }
 
 /* ---- Services grid ---- */
 .service-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1.25rem;
+  gap: 1px;
+  background: var(--hair);
+  border: 1px solid var(--hair);
 }
 
 .service-card {
   padding: 1.75rem;
+  background: var(--void-2);
+  border: none;
+  border-radius: 0;
+  transition: background 0.25s ease;
+}
+
+.service-card:hover {
+  background: var(--carbon);
 }
 
 .service-card h3 {
   font-size: 1.15rem;
   margin-bottom: 0.6rem;
+  color: var(--ink);
 }
 
 .service-card p {
@@ -449,8 +633,8 @@ p {
 .avatar-circle {
   width: 4.5rem;
   height: 4.5rem;
-  border-radius: 50%;
-  background: var(--pink);
+  clip-path: var(--hex);
+  background: linear-gradient(155deg, var(--hot), var(--deep));
   color: white;
   display: flex;
   align-items: center;
@@ -478,11 +662,14 @@ p {
 
 .hours-card {
   padding: 2rem;
+  background: linear-gradient(165deg, var(--carbon-hi), var(--void-2));
+  clip-path: polygon(0 0, calc(100% - 26px) 0, 100% 26px, 100% 100%, 26px 100%, 0 calc(100% - 26px));
 }
 
 .hours-card h3 {
   font-size: 1.4rem;
   margin: 0.5rem 0 1.25rem;
+  color: var(--ink);
 }
 
 .hours-card dl {
@@ -493,14 +680,18 @@ p {
 }
 
 .hours-card dt {
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--ink-soft);
+  font-family: var(--font-mono), monospace;
+  font-weight: 500;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ash-dim);
 }
 
 .hours-card dd {
   margin: 0;
   font-size: 0.95rem;
+  color: var(--ink);
 }
 
 .hours-note {
@@ -522,6 +713,7 @@ p {
   justify-content: space-between;
   gap: 2rem;
   flex-wrap: wrap;
+  position: relative;
 }
 
 .reviews-teaser-inner .section-title {
@@ -575,6 +767,7 @@ p {
 .services-list-item h2 {
   font-size: 1.4rem;
   margin-bottom: 0.6rem;
+  color: var(--ink);
 }
 
 .services-list-item > div > p {
@@ -594,17 +787,18 @@ p {
   font-size: 0.9rem;
   padding-left: 1.1rem;
   position: relative;
+  color: var(--ink-soft);
 }
 
 .services-list-item li::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 0.5em;
+  top: 0.55em;
   width: 6px;
   height: 6px;
-  border-radius: 50%;
-  background: var(--pink);
+  clip-path: var(--hex);
+  background: var(--hot);
 }
 
 .services-cta {
@@ -612,12 +806,13 @@ p {
   padding: 2.5rem;
   text-align: center;
   background: var(--pink-tint);
-  border: none;
+  border: 1px solid var(--hair-hot);
 }
 
 .services-cta h2 {
   font-size: 1.5rem;
   margin-bottom: 0.5rem;
+  color: var(--ink);
 }
 
 .services-cta p {
@@ -637,6 +832,7 @@ p {
   margin: 2.5rem 0 1.25rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--line);
+  color: var(--ink);
 }
 
 .team-section-heading:first-of-type {
@@ -673,6 +869,7 @@ p {
 
 .team-card strong {
   font-size: 0.92rem;
+  color: var(--ink);
 }
 
 .team-card span {
@@ -701,9 +898,6 @@ p {
   transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
 }
 
-/* Hover flips it on devices that truly support hover (a real mouse) — a
-   tap also toggles .is-flipped via JS, since :hover never fires on a
-   phone, which is how most people will actually see this page. */
 @media (hover: hover) {
   .flip-card:hover .flip-inner {
     transform: rotateY(180deg);
@@ -716,7 +910,7 @@ p {
 .flip-face {
   position: absolute;
   inset: 0;
-  border-radius: 50%;
+  clip-path: var(--hex);
   overflow: hidden;
   backface-visibility: hidden;
   background: #000;
@@ -734,9 +928,11 @@ p {
 
 .bg-hint {
   margin-top: 0.3rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--pink-dark);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--hot);
   opacity: 0;
   transition: opacity 0.25s;
 }
@@ -774,19 +970,20 @@ p {
 .steps-list li {
   counter-increment: step;
   display: grid;
-  grid-template-columns: 2rem 1fr;
+  grid-template-columns: 2.4rem 1fr;
   gap: 0.9rem;
 }
 
 .steps-list li::before {
-  content: counter(step);
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  background: var(--pink);
-  color: white;
+  content: counter(step, decimal-leading-zero);
+  width: 2.4rem;
+  height: 2.75rem;
+  clip-path: var(--hex);
+  background: linear-gradient(155deg, var(--magenta), var(--deep));
+  color: #fff;
+  font-family: var(--font-mono), monospace;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -795,6 +992,7 @@ p {
 .steps-list strong {
   display: block;
   margin-bottom: 0.2rem;
+  color: var(--ink);
 }
 
 .steps-list span {
@@ -807,6 +1005,7 @@ p {
   text-align: center;
   position: sticky;
   top: 6rem;
+  background: linear-gradient(165deg, var(--carbon-hi), var(--void-2));
 }
 
 .qr-card-label {
@@ -821,6 +1020,8 @@ p {
   max-width: 12rem;
   margin: 0 auto;
   border-radius: 8px;
+  background: #fff;
+  padding: 0.5rem;
 }
 
 @media (max-width: 860px) {
@@ -847,11 +1048,17 @@ p {
 .contact-block h3 {
   font-size: 1rem;
   margin-bottom: 0.6rem;
+  color: var(--ink);
 }
 
 .contact-block p {
   margin-bottom: 0.35rem;
   font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.contact-block a {
+  color: var(--ink);
 }
 
 .whatsapp-card {
@@ -862,13 +1069,13 @@ p {
   text-decoration: none;
   color: var(--ink);
   background: var(--pink-tint);
-  border: none;
+  border: 1px solid var(--hair-hot);
   position: sticky;
   top: 6rem;
 }
 
 .whatsapp-card:hover {
-  background: #f8d8e6;
+  background: rgba(255, 61, 140, 0.16);
 }
 
 .whatsapp-card strong {
@@ -921,6 +1128,11 @@ p {
   color: var(--ink-soft);
 }
 
+.about-story h2 {
+  color: var(--ink);
+  margin-top: 0.75rem;
+}
+
 .equipment-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
@@ -935,6 +1147,7 @@ p {
 .equipment-card h3 {
   font-size: 1.05rem;
   margin-bottom: 0.4rem;
+  color: var(--ink);
 }
 
 .equipment-card p {
@@ -946,16 +1159,17 @@ p {
   padding: 2.5rem;
   margin-bottom: 2rem;
   background: var(--pink-tint);
-  border: none;
+  border: 1px solid var(--hair-hot);
 }
 
 .community-card h2 {
   font-size: 1.4rem;
   margin-bottom: 0.75rem;
+  color: var(--ink);
 }
 
 .community-card p {
-  color: var(--ink);
+  color: var(--ink-soft);
   max-width: 42rem;
 }
 
@@ -1026,6 +1240,7 @@ p {
   font-weight: 700;
   font-size: 0.9rem;
   margin-top: 0.75rem;
+  color: var(--ink);
 }
 
 .review-submit-form textarea,
@@ -1034,14 +1249,14 @@ p {
   padding: 0.75rem 0.9rem;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--void-2);
   color: var(--ink);
   resize: vertical;
 }
 
 .review-submit-form textarea:focus,
 .review-submit-form input[type='text']:focus {
-  outline: 2px solid var(--pink);
+  outline: 2px solid var(--hot);
   outline-offset: 1px;
 }
 
@@ -1052,7 +1267,7 @@ p {
 }
 
 .form-error {
-  color: var(--pink-dark);
+  color: var(--hot);
   font-size: 0.9rem;
   margin-top: 1rem;
 }
@@ -1098,15 +1313,15 @@ p {
   border-radius: 10px;
   font-size: 0.92rem;
   line-height: 1.5;
-  background: var(--bg);
+  background: var(--void-2);
   border: 1px solid var(--line);
   color: var(--ink);
 }
 
 .settle-bill-notice-error {
   background: var(--pink-tint);
-  color: var(--pink-dark);
-  border-color: var(--pink-tint);
+  color: var(--blush);
+  border-color: var(--hair-hot);
 }
 
 @media (prefers-reduced-motion: reduce) {

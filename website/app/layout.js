@@ -1,4 +1,4 @@
-import { Fraunces, Karla } from 'next/font/google';
+import { Fraunces, Karla, Azeret_Mono } from 'next/font/google';
 import './globals.css';
 import Nav from './_components/Nav';
 import Footer from './_components/Footer';
@@ -18,6 +18,13 @@ const karla = Karla({
   display: 'swap',
 });
 
+const azeretMono = Azeret_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  variable: '--font-mono',
+  display: 'swap',
+});
+
 export const metadata = {
   title: 'Europets Clinic - Sharjah',
   description:
@@ -26,7 +33,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${karla.variable}`}>
+    <html lang="en" className={`${fraunces.variable} ${karla.variable} ${azeretMono.variable}`}>
       <body>
         <Nav />
         <main>{children}</main>

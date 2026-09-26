@@ -1,4 +1,6 @@
 import { BOOKING_URL, SERVICES, VETS, HOURS, CONTACT, STORY } from '@/lib/content';
+import HexField from './_components/HexField';
+import HexLattice from './_components/HexLattice';
 
 function initials(name) {
   return name
@@ -14,10 +16,11 @@ function initials(name) {
 export default function HomePage() {
   return (
     <>
-      {/* Hero — no stock photography: an honest, on-brand graphic mark
-          instead of pretending to show the real clinic until we have
-          actual photos to drop in here. */}
+      {/* Hero — an animated field of extruded hex tiles behind the copy,
+          with the vets themselves as a honeycomb of hex-clipped portraits.
+          Anyone without a photo yet still shows up as an initial. */}
       <section className="hero">
+        <HexField />
         <div className="container hero-grid">
           <div>
             <span className="eyebrow">Sharjah &middot; Independent since 2005</span>
@@ -37,24 +40,29 @@ export default function HomePage() {
               </a>
             </div>
           </div>
-          <div className="hero-mark" aria-hidden="true">
-            <svg viewBox="0 0 320 320" fill="none">
-              <circle cx="160" cy="160" r="150" fill="var(--pink-tint)" />
-              <path
-                d="M160 90c-30 0-46 24-46 50 0 40 30 66 46 84 16-18 46-44 46-84 0-26-16-50-46-50z"
-                fill="var(--pink)"
-                opacity="0.15"
-              />
-              <path
-                d="M160 130a26 26 0 1 1 0 52 26 26 0 0 1 0-52zM108 96a20 20 0 1 1 0 40 20 20 0 0 1 0-40zM212 96a20 20 0 1 1 0 40 20 20 0 0 1 0-40zM86 150a18 18 0 1 1 0 36 18 18 0 0 1 0-36zM234 150a18 18 0 1 1 0 36 18 18 0 0 1 0-36z"
-                fill="var(--pink)"
-              />
-            </svg>
+          <div className="docs">
+            {VETS.slice(0, 5).map((v) => (
+              <figure className="doc" key={v.name}>
+                <span className="doc-face">
+                  {v.photo ? (
+                    <img src={v.photo} alt={v.name} />
+                  ) : (
+                    <span className="doc-ph" aria-hidden="true">
+                      {initials(v.name).charAt(0)}
+                    </span>
+                  )}
+                  <span className="doc-tag">
+                    <b>{v.name}</b>
+                    <i>{v.role}</i>
+                  </span>
+                </span>
+              </figure>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Trust strip */}
+      {/* Stat strip */}
       <section className="trust-strip">
         <div className="container trust-strip-row">
           <span>20 years in Sharjah</span>
@@ -99,7 +107,8 @@ export default function HomePage() {
 
       {/* Team teaser */}
       <section className="section section-tint">
-        <div className="container">
+        <HexLattice />
+        <div className="container" style={{ position: 'relative' }}>
           <span className="eyebrow">Who you&apos;ll meet</span>
           <h2 className="section-title">A team that knows your pet by name</h2>
           <div className="team-teaser-row">
@@ -150,6 +159,7 @@ export default function HomePage() {
 
       {/* Reviews teaser */}
       <section className="section section-tint reviews-teaser">
+        <HexLattice />
         <div className="container reviews-teaser-inner">
           <div>
             <span className="eyebrow">From our clients</span>
