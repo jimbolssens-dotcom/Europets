@@ -36,16 +36,38 @@ function preview(text) {
 }
 
 // The little mark next to each "Submit ... WhatsApp template" button below
-// — reflects Meta's own status for that template (see GET
+// — reflects Meta's own status AND category for that template (see GET
 // /api/whatsapp/template-statuses), not just "was this clicked before".
 // Nothing renders for a template never submitted, so a bare button still
-// reads as "not done yet" with no mark needed.
+// reads as "not done yet" with no mark needed. Category matters as much as
+// status: every template here is submitted as UTILITY (transactional,
+// not subject to per-recipient send limits), but Meta can silently
+// recategorize one as MARKETING during review — that's a real, separate
+// failure mode from approval, so it's flagged loudly rather than buried.
 function TemplateStatusMark({ status }) {
   if (!status) return null;
-  if (status === 'APPROVED') return <span className="template-status template-status-approved">✅ Approved</span>;
-  if (status === 'PENDING') return <span className="template-status template-status-pending">⏳ Pending Meta review</span>;
-  if (status === 'REJECTED') return <span className="template-status template-status-rejected">❌ Rejected — resubmit</span>;
-  return <span className="template-status">{status}</span>;
+  const { status: approvalStatus, category } = status;
+  const statusMark =
+    approvalStatus === 'APPROVED' ? (
+      <span className="template-status template-status-approved">✅ Approved</span>
+    ) : approvalStatus === 'PENDING' ? (
+      <span className="template-status template-status-pending">⏳ Pending Meta review</span>
+    ) : approvalStatus === 'REJECTED' ? (
+      <span className="template-status template-status-rejected">❌ Rejected — resubmit</span>
+    ) : (
+      <span className="template-status">{approvalStatus}</span>
+    );
+  return (
+    <>
+      {statusMark}
+      {category && category !== 'UTILITY' && (
+        <span className="template-status template-status-rejected">
+          {' '}
+          ⚠️ Meta recategorized this as {category} — subject to per-recipient send limits
+        </span>
+      )}
+    </>
+  );
 }
 
 function UnmatchedThreadRow({ conv, staff, onLinked }) {
