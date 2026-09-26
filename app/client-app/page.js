@@ -377,6 +377,12 @@ export default function ClientAppHomePage() {
 
     return (
       <div className="mobile-page client-app-login">
+        <a
+          href={process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet'}
+          className="client-app-website-link"
+        >
+          ← Back to website
+        </a>
         {theme === 'light' ? (
           <>
             <div className="mobile-heading-row">

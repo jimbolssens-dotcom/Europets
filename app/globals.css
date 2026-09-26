@@ -7386,6 +7386,37 @@ form.card.admit-patient-form {
   margin-top: 0.6rem;
 }
 
+/* A way back for anyone who clicked through from the website — without
+   this, the only way back was the browser's own Back button, easy to
+   lose track of once a phone number/code has been typed in. Shown on the
+   login screen (any theme) and again in the desktop sidebar once logged
+   in, since the sidebar replaces the browser chrome someone came in
+   through. Not shown on the mobile bottom nav — a phone's own back
+   gesture already covers that case there. */
+.client-app-website-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--ash);
+  text-decoration: none;
+}
+
+.client-app-website-link:hover {
+  color: var(--hot);
+}
+
+.client-app-sidebar-website-link {
+  /* .client-app-sidebar-nav's flex: 1 already pushes everything after it
+     to the bottom of the sidebar — this just matches the logout button's
+     own horizontal margin/centering right above it. */
+  margin: 0.5rem 0.5rem 0;
+  text-align: center;
+}
+
 /* The one clear place this gets said: login only works with the WhatsApp
    number the clinic already has on file, so anyone whose number changed
    or was never registered needs to know to contact the clinic rather than
@@ -8036,6 +8067,17 @@ form.card.admit-patient-form {
   cursor: pointer;
 }
 
+/* Base (mobile/default) state — hidden until the desktop breakpoint below
+   switches it on. Must stay declared BEFORE that media query: with equal
+   specificity, CSS breaks ties by source order, so a same-specificity
+   rule declared later always wins once both apply. A stray copy of this
+   rule placed after the media query previously cancelled out its
+   "display: block" the moment the viewport was actually wide enough to
+   show it — the desktop overview silently never appeared. */
+.client-app-desktop-overview {
+  display: none;
+}
+
 /* ---- Desktop breakpoint ----
    Swaps the fixed bottom tab bar for the fixed left sidebar and gives the
    dashboard room to breathe. Only .client-app content is touched — the
@@ -8081,13 +8123,8 @@ form.card.admit-patient-form {
 }
 
 /* ---- Desktop dashboard overview (app/client-app/page.js) ----
-   Only ever visible once .client-app-desktop-overview is switched to
-   `display: block` by the media query above — declared outside it so the
-   component styling itself doesn't have to live nested three levels deep. */
-.client-app-desktop-overview {
-  display: none;
-}
-
+   Component styling only — the show/hide toggle lives on the base rule
+   and the media query above. */
 .client-app-overview-header {
   display: flex;
   align-items: flex-end;

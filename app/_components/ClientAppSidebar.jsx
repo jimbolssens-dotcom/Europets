@@ -42,6 +42,12 @@ export default function ClientAppSidebar() {
         ))}
       </nav>
 
+      <a
+        href={process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet'}
+        className="client-app-website-link client-app-sidebar-website-link"
+      >
+        ← Back to website
+      </a>
       <button type="button" className="client-app-sidebar-logout" onClick={logout}>
         Log out
       </button>
