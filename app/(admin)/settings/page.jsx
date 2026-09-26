@@ -23,6 +23,8 @@ const emptyForm = {
   booking_morning_end: '13:00',
   booking_afternoon_start: '16:30',
   booking_afternoon_end: '19:00',
+  booking_surgery_start: '10:30',
+  booking_surgery_end: '13:00',
   client_app_theme: 'dark',
 };
 
@@ -55,6 +57,8 @@ export default function SettingsPage() {
           booking_morning_end: (data.booking_morning_end || '13:00').slice(0, 5),
           booking_afternoon_start: (data.booking_afternoon_start || '16:30').slice(0, 5),
           booking_afternoon_end: (data.booking_afternoon_end || '19:00').slice(0, 5),
+          booking_surgery_start: (data.booking_surgery_start || '10:30').slice(0, 5),
+          booking_surgery_end: (data.booking_surgery_end || '13:00').slice(0, 5),
           client_app_theme: data.client_app_theme || 'dark',
         });
         setLoading(false);
@@ -264,9 +268,11 @@ export default function SettingsPage() {
         <h3>
           Client Self-Booking Hours{' '}
           <InfoHint>
-            The two windows a client can request a consult/spay/castration/dental slot in on the
-            booking portal — a slot only shows up within these hours, and only with a doctor the
-            roster flags in for that kind (Staff Roster page).
+            The windows a client can request a slot in on the booking portal — a slot only shows
+            up within these hours, and only with a doctor the roster flags in for that kind (Staff
+            Roster page). Morning/afternoon apply to a plain consult; spay/castration/dental use
+            their own narrower Surgery window below instead, regardless of what the morning window
+            says.
           </InfoHint>
         </h3>
         <label>
@@ -299,6 +305,30 @@ export default function SettingsPage() {
             type="time"
             value={form.booking_afternoon_end}
             onChange={(e) => setForm({ ...form, booking_afternoon_end: e.target.value })}
+          />
+        </label>
+        <label>
+          Surgery window start (spay/castration/dental){' '}
+          <InfoHint>
+            No surgery-type slot is ever offered before this time, even if the morning window
+            above starts earlier.
+          </InfoHint>
+          <input
+            type="time"
+            value={form.booking_surgery_start}
+            onChange={(e) => setForm({ ...form, booking_surgery_start: e.target.value })}
+          />
+        </label>
+        <label>
+          Surgery window end (spay/castration/dental){' '}
+          <InfoHint>
+            Every surgery-type slot must finish by this time — anesthesia/recovery needs the rest
+            of the day clear.
+          </InfoHint>
+          <input
+            type="time"
+            value={form.booking_surgery_end}
+            onChange={(e) => setForm({ ...form, booking_surgery_end: e.target.value })}
           />
         </label>
 

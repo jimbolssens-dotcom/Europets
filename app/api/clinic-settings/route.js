@@ -8,6 +8,7 @@
 //                                 surgical_postop_baseline, dental_postop_baseline,
 //                                 booking_morning_start, booking_morning_end,
 //                                 booking_afternoon_start, booking_afternoon_end,
+//                                 booking_surgery_start, booking_surgery_end,
 //                                 client_app_theme)
 //
 // Singleton row (id is always `true`) — there's only ever one clinic. Both
@@ -58,6 +59,8 @@ export async function PATCH(request) {
     booking_morning_end,
     booking_afternoon_start,
     booking_afternoon_end,
+    booking_surgery_start,
+    booking_surgery_end,
     client_app_theme,
   } = body;
 
@@ -77,6 +80,8 @@ export async function PATCH(request) {
   if (booking_morning_end !== undefined) update.booking_morning_end = booking_morning_end;
   if (booking_afternoon_start !== undefined) update.booking_afternoon_start = booking_afternoon_start;
   if (booking_afternoon_end !== undefined) update.booking_afternoon_end = booking_afternoon_end;
+  if (booking_surgery_start !== undefined) update.booking_surgery_start = booking_surgery_start;
+  if (booking_surgery_end !== undefined) update.booking_surgery_end = booking_surgery_end;
   if (client_app_theme !== undefined) {
     if (!['dark', 'light'].includes(client_app_theme)) {
       return NextResponse.json({ error: "client_app_theme must be 'dark' or 'light'" }, { status: 400 });
