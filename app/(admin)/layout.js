@@ -53,7 +53,6 @@ export default function AdminLayout({ children }) {
   const dayProcedureAlarmIcon =
     dayProcedureAlarmLevel === 'red' || dayProcedureAlarmLevel === 'both' ? ' 🩺' : dayProcedureAlarmLevel === 'yellow' ? ' 🔔' : '';
   const [hasPendingAppointmentRequest, setHasPendingAppointmentRequest] = useState(false);
-  const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
   const [hasPendingReviewRequest, setHasPendingReviewRequest] = useState(false);
   const [hasPendingClientMessage, setHasPendingClientMessage] = useState(false);
   const pendingClientMessageRef = useRef(false);
@@ -84,10 +83,12 @@ export default function AdminLayout({ children }) {
     return () => supabase.removeChannel(channel);
   }, []);
 
-  // Same blinking treatment for a submitted intake/invite request awaiting
-  // review — Appointments if it also asked for a slot (reviewed there, see
-  // AppointmentRequestsPanel), Invite otherwise (see IntakeReviewCard) —
-  // so staff notice a pending review from anywhere in the app.
+  // Same blinking treatment for a submitted intake/invite request that also
+  // asked for an appointment slot — reviewed on Appointments (see
+  // AppointmentRequestsPanel) — so staff notice a pending review from
+  // anywhere in the app. A plain invite request (no slot requested) has its
+  // own bell on the Invite pill atop the Messages page instead, since Invite
+  // no longer has a top-nav link of its own.
   useEffect(() => {
     const checkPending = () =>
       fetch('/api/intake-requests')
@@ -96,7 +97,6 @@ export default function AdminLayout({ children }) {
           const list = Array.isArray(data) ? data : [];
           const submitted = list.filter((r) => r.status === 'submitted');
           setHasPendingAppointmentRequest(submitted.some((r) => r.appointment_type));
-          setHasPendingInviteRequest(submitted.some((r) => !r.appointment_type));
         });
 
     checkPending();
@@ -173,13 +173,6 @@ export default function AdminLayout({ children }) {
             Messages{hasPendingClientMessage && ' 🔔'}
           </a>
           <a
-            href="/intake"
-            className={hasPendingInviteRequest ? 'nav-update-requested' : ''}
-            title={hasPendingInviteRequest ? 'A submission is waiting for review' : undefined}
-          >
-            Invite{hasPendingInviteRequest && ' 🔔'}
-          </a>
-          <a
             href="/appointments"
             className={hasPendingAppointmentRequest ? 'nav-update-requested' : ''}
             title={hasPendingAppointmentRequest ? 'An appointment request is waiting for review' : undefined}
@@ -201,9 +194,7 @@ export default function AdminLayout({ children }) {
           >
             Hospitalization{hospitalizationAlarmIcon}
           </a>
-          <a href="/vaccinations">Vaccinations</a>
           <a href="/invoices">Invoices</a>
-          <a href="/follow-ups">Follow-ups</a>
           <a href="/hospitalization/wall" title="Hospitalization wall display" aria-label="Hospitalization wall display" className="settings-link">
             🗺️
           </a>

@@ -230,6 +230,7 @@ export default function MessagesInboxPage() {
   const [intakeTemplateResult, setIntakeTemplateResult] = useState(null); // { ok: boolean, message: string } | null
   const [submittingClientAppLinkTemplate, setSubmittingClientAppLinkTemplate] = useState(false);
   const [clientAppLinkTemplateResult, setClientAppLinkTemplateResult] = useState(null); // { ok: boolean, message: string } | null
+  const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
 
   const load = () =>
     fetch('/api/client-messages')
@@ -251,6 +252,28 @@ export default function MessagesInboxPage() {
       .subscribe();
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Invite's own pending-review bell, now that Invite lives on a pill here
+  // instead of the top nav bar (see app/(admin)/layout.js) — a submitted
+  // intake/invite request with no appointment slot requested (those are
+  // reviewed on Appointments instead).
+  useEffect(() => {
+    const checkPendingInvite = () =>
+      fetch('/api/intake-requests')
+        .then((res) => res.json())
+        .then((data) => {
+          const list = Array.isArray(data) ? data : [];
+          setHasPendingInviteRequest(list.some((r) => r.status === 'submitted' && !r.appointment_type));
+        });
+
+    checkPendingInvite();
+
+    const channel = supabase
+      .channel('messages-pill-intake-requests')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'intake_requests' }, checkPendingInvite)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
   }, []);
 
   const matched = conversations.filter((c) => c.client_id);
@@ -364,6 +387,23 @@ export default function MessagesInboxPage() {
     <>
       <div className="page-header">
         <h1>Messages</h1>
+        {/* Invite, Follow-ups, and Vaccinations moved here off the top nav
+            bar (see app/(admin)/layout.js) — all three are really about
+            messages going out, or waiting to go out, to clients, so they
+            live as pills next to the heading rather than cluttering the
+            main bar. Each is still just a plain link to its own unchanged
+            page. */}
+        <div className="hospitalization-header-actions">
+          <a href="/intake" className="button-link">
+            ✉️ Invite{hasPendingInviteRequest && ' 🔔'}
+          </a>
+          <a href="/follow-ups" className="button-link">
+            📋 Follow-ups
+          </a>
+          <a href="/vaccinations" className="button-link">
+            💉 Vaccinations
+          </a>
+        </div>
       </div>
 
       {/* All three below are one-time setup actions (fix the subscription,
