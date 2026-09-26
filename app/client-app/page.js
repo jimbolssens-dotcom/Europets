@@ -18,6 +18,9 @@ import HexfieldCanvas from '@/app/_components/HexfieldCanvas';
 import EcgLine from '@/app/_components/EcgLine';
 import { dueStatus, formatDate } from '@/lib/vaccinationDueStatus';
 import { normalizePhoneDigits } from '@/lib/clientPhoneDigits';
+import { money, balanceDue, invoiceLabel } from '@/lib/paymentReminders';
+import { reportPdfHref } from '@/lib/clientAppReports';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 const APPOINTMENT_TYPE_LABEL = {
   consult: 'Consult',
@@ -60,6 +63,19 @@ export default function ClientAppHomePage() {
   const [videoBookingLoading, setVideoBookingLoading] = useState(false);
   const [videoBookingError, setVideoBookingError] = useState(null);
 
+  // Below here is only rendered by the desktop-width overview (see
+  // .client-app-desktop-overview) — the mobile dashboard doesn't need any
+  // of it, but it's cheap to fetch alongside everything else above rather
+  // than add a second viewport-gated data-fetching path.
+  const [pets, setPets] = useState([]);
+  const [nextAppointment, setNextAppointment] = useState(null);
+  const [nextDueVaccine, setNextDueVaccine] = useState(null);
+  const [latestInvoice, setLatestInvoice] = useState(null);
+  const [recentReports, setRecentReports] = useState([]);
+  const [latestMessage, setLatestMessage] = useState(null);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState(null);
+
   useEffect(() => {
     if (!ready || !clientId) return;
     let cancelled = false;
@@ -72,8 +88,9 @@ export default function ClientAppHomePage() {
       fetch(`/api/patients?client_id=${clientId}`).then((res) => (res.ok ? res.json() : [])),
       fetch(`/api/appointments?client_id=${clientId}`).then((res) => (res.ok ? res.json() : [])),
       fetch(`/api/consent-form-requests?client_id=${clientId}`).then((res) => (res.ok ? res.json() : [])),
+      fetch(`/api/invoices?client_id=${clientId}`).then((res) => (res.ok ? res.json() : [])),
     ])
-      .then(async ([clientData, admissions, pets, appointments, pendingConsentForms]) => {
+      .then(async ([clientData, admissions, pets, appointments, pendingConsentForms, invoices]) => {
         if (cancelled) return;
         if (!clientData) {
           // Stale/deleted id on this phone — send them back to the login screen.
@@ -83,6 +100,12 @@ export default function ClientAppHomePage() {
         setClient(clientData);
         setOpenAdmissions(Array.isArray(admissions) ? admissions : []);
         setConsentRequests(Array.isArray(pendingConsentForms) ? pendingConsentForms : []);
+        setPets(Array.isArray(pets) ? pets : []);
+
+        const latestInv = (Array.isArray(invoices) ? invoices : [])
+          .filter((inv) => inv.status !== 'void')
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+        setLatestInvoice(latestInv || null);
 
         // Reminders banner: vaccines due (or overdue) across every pet
         // within the same 30-day "due soon" window dueStatus already
@@ -102,17 +125,19 @@ export default function ClientAppHomePage() {
         const dueVaccines = dueByPet
           .flat()
           .sort((a, b) => new Date(a.next_due_date) - new Date(b.next_due_date));
+        setNextDueVaccine(dueVaccines[0] || null);
 
         const now = Date.now();
         const weekOut = now + 7 * 24 * 60 * 60 * 1000;
-        const upcomingAppt = (Array.isArray(appointments) ? appointments : [])
-          .filter(
-            (a) =>
-              a.status !== 'cancelled' &&
-              new Date(a.start_time).getTime() >= now &&
-              new Date(a.start_time).getTime() <= weekOut
-          )
+        // The full next-upcoming-appointment (no 7-day cutoff) — for the
+        // desktop overview's "Next Appointment" stat card, which should
+        // show what's booked even if it's weeks out, unlike the reminders
+        // banner below (only surfaces what's coming up imminently).
+        const trueNextAppt = (Array.isArray(appointments) ? appointments : [])
+          .filter((a) => a.status !== 'cancelled' && new Date(a.start_time).getTime() >= now)
           .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0];
+        setNextAppointment(trueNextAppt || null);
+        const upcomingAppt = trueNextAppt && new Date(trueNextAppt.start_time).getTime() <= weekOut ? trueNextAppt : null;
 
         const items = dueVaccines.map((v) => {
           const status = dueStatus(v.next_due_date);
@@ -142,6 +167,68 @@ export default function ClientAppHomePage() {
       cancelled = true;
     };
   }, [ready, clientId, logout]);
+
+  // Desktop overview only (see .client-app-desktop-overview) — needs
+  // `pets` from the effect above first, so it's a separate effect rather
+  // than folded into the Promise.all up there.
+  useEffect(() => {
+    if (!ready || !clientId || pets.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      pets.map((pet) =>
+        fetch(`/api/patients/${pet.id}/report-overview`)
+          .then((res) => (res.ok ? res.json() : []))
+          .then((rows) => rows.map((r) => ({ ...r, petName: pet.name })))
+      )
+    ).then((byPet) => {
+      if (cancelled) return;
+      const merged = byPet
+        .flat()
+        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+        .slice(0, 4);
+      setRecentReports(merged);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, clientId, pets]);
+
+  useEffect(() => {
+    if (!ready || !clientId) return;
+    let cancelled = false;
+    fetch(`/api/clients/${clientId}/messages`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (cancelled) return;
+        const list = Array.isArray(data) ? data : [];
+        setLatestMessage(list[list.length - 1] || null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, clientId]);
+
+  // Same "start a fresh intake request, open its portal link" flow as
+  // Appointments' own "Book a New Appointment" — the desktop overview's
+  // generic "Book an appointment" button (unlike startVideoBooking below,
+  // this doesn't pre-set a type).
+  async function startBooking() {
+    setBookingError(null);
+    setBookingLoading(true);
+    try {
+      const res = await fetch('/api/intake-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not start booking — please try again.');
+      window.location.href = `/portal/intake/${data.id}?app=1`;
+    } catch (err) {
+      setBookingError(err.message);
+      setBookingLoading(false);
+    }
+  }
 
   async function handlePhoneSubmit(e) {
     e.preventDefault();
@@ -423,61 +510,216 @@ export default function ClientAppHomePage() {
         </>
       )}
 
-      {!loadingDashboard && reminders.length > 0 && (
-        <>
-          <p className="mobile-section-header">Reminders</p>
-          <ul className="mobile-list">
-            {reminders.map((item) => (
-              <li key={item.key}>
-                <a href={item.href} className="mobile-list-item">
-                  <span className="mobile-list-title">
-                    {item.icon} {item.text}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      {/* Mobile: reminders banner + the 6-tile quick-link grid. Hidden at
+          desktop widths in favor of .client-app-desktop-overview below —
+          see the .client-app-mobile-only / .client-app-desktop-overview
+          rules in globals.css. */}
+      <div className="client-app-mobile-only">
+        {!loadingDashboard && reminders.length > 0 && (
+          <>
+            <p className="mobile-section-header">Reminders</p>
+            <ul className="mobile-list">
+              {reminders.map((item) => (
+                <li key={item.key}>
+                  <a href={item.href} className="mobile-list-item">
+                    <span className="mobile-list-title">
+                      {item.icon} {item.text}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
 
-      <div className="mobile-square-tiles">
-        <a href="/client-app/pets" className="mobile-square-tile">
-          <HexIcon>🐾</HexIcon>
-          <span>My Pets</span>
-        </a>
-        <a href="/client-app/reports" className="mobile-square-tile">
-          <HexIcon>🩻</HexIcon>
-          <span>Reports</span>
-        </a>
-        <a href="/client-app/invoices" className="mobile-square-tile">
-          <HexIcon>🧾</HexIcon>
-          <span>Invoices</span>
-        </a>
-        <a href="/client-app/appointments" className="mobile-square-tile">
-          <HexIcon>📅</HexIcon>
-          <span>Appointments</span>
-        </a>
-        <a href="/client-app/messages" className="mobile-square-tile">
-          <HexIcon>💬</HexIcon>
-          <span>Messages</span>
-        </a>
-        <button
-          type="button"
-          className="mobile-square-tile"
-          onClick={startVideoBooking}
-          disabled={videoBookingLoading}
-        >
-          <HexIcon>🎥</HexIcon>
-          <span>{videoBookingLoading ? 'Opening…' : 'Video Consult'}</span>
-        </button>
+        <div className="mobile-square-tiles">
+          <a href="/client-app/pets" className="mobile-square-tile">
+            <HexIcon>🐾</HexIcon>
+            <span>My Pets</span>
+          </a>
+          <a href="/client-app/reports" className="mobile-square-tile">
+            <HexIcon>🩻</HexIcon>
+            <span>Reports</span>
+          </a>
+          <a href="/client-app/invoices" className="mobile-square-tile">
+            <HexIcon>🧾</HexIcon>
+            <span>Invoices</span>
+          </a>
+          <a href="/client-app/appointments" className="mobile-square-tile">
+            <HexIcon>📅</HexIcon>
+            <span>Appointments</span>
+          </a>
+          <a href="/client-app/messages" className="mobile-square-tile">
+            <HexIcon>💬</HexIcon>
+            <span>Messages</span>
+          </a>
+          <button
+            type="button"
+            className="mobile-square-tile"
+            onClick={startVideoBooking}
+            disabled={videoBookingLoading}
+          >
+            <HexIcon>🎥</HexIcon>
+            <span>{videoBookingLoading ? 'Opening…' : 'Video Consult'}</span>
+          </button>
+        </div>
+        {videoBookingError && <p className="client-app-login-error">{videoBookingError}</p>}
+
+        <p className="mobile-hint">
+          Add this to your home screen for one-tap access: on iPhone, tap Share, then &quot;Add to Home
+          Screen&quot;. On Android, tap the ⋮ menu, then &quot;Add to Home screen&quot; or &quot;Install
+          app&quot;.
+        </p>
       </div>
-      {videoBookingError && <p className="client-app-login-error">{videoBookingError}</p>}
 
-      <p className="mobile-hint">
-        Add this to your home screen for one-tap access: on iPhone, tap Share, then &quot;Add to Home
-        Screen&quot;. On Android, tap the ⋮ menu, then &quot;Add to Home screen&quot; or &quot;Install
-        app&quot;.
-      </p>
+      {/* Desktop: a proper dashboard — see app/_components/ClientAppSidebar
+          for the nav this pairs with. Same data as the mobile view above,
+          just laid out for a wide screen instead of squeezed into a
+          single column of tiles. */}
+      <div className="client-app-desktop-overview">
+        <div className="client-app-overview-header">
+          <div>
+            <p className="client-app-overview-eyebrow">
+              {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }).toUpperCase()}
+            </p>
+            <h2 className="client-app-overview-heading">
+              Welcome back, <span>{client?.full_name?.split(' ')[0] || 'there'}</span>
+            </h2>
+          </div>
+          <button type="button" className="client-app-cta-btn" onClick={startBooking} disabled={bookingLoading}>
+            {bookingLoading ? 'Opening…' : 'Book an appointment'}
+          </button>
+        </div>
+        {bookingError && <p className="client-app-login-error">{bookingError}</p>}
+
+        {!loadingDashboard && (
+          <div className="client-app-overview-stats">
+            <div className="client-app-stat-card">
+              <p className="client-app-stat-label">Next Appointment</p>
+              {nextAppointment ? (
+                <>
+                  <p className="client-app-stat-value">{formatApptWhen(nextAppointment.start_time)}</p>
+                  <p className="client-app-stat-meta">
+                    {APPOINTMENT_TYPE_LABEL[nextAppointment.type] || 'Appointment'}
+                    {nextAppointment.staff?.full_name ? ` with ${nextAppointment.staff.full_name}` : ''}
+                  </p>
+                </>
+              ) : (
+                <p className="client-app-stat-meta">Nothing booked yet</p>
+              )}
+            </div>
+            <div className="client-app-stat-card">
+              <p className="client-app-stat-label">Vaccine Due Soon</p>
+              {nextDueVaccine ? (
+                <>
+                  <p className="client-app-stat-value client-app-stat-value-accent">
+                    {nextDueVaccine.vaccine_name} — {nextDueVaccine.petName}
+                  </p>
+                  <p className="client-app-stat-meta">
+                    {dueStatus(nextDueVaccine.next_due_date)?.className === 'error'
+                      ? 'Overdue'
+                      : `Due ${formatDate(nextDueVaccine.next_due_date)}`}
+                  </p>
+                </>
+              ) : (
+                <p className="client-app-stat-meta">All up to date</p>
+              )}
+            </div>
+            <div className="client-app-stat-card">
+              <p className="client-app-stat-label">Latest Invoice</p>
+              {latestInvoice ? (
+                <>
+                  <p className="client-app-stat-value">AED {money(latestInvoice.total)}</p>
+                  <p
+                    className={`client-app-stat-meta${
+                      latestInvoice.status === 'paid' ? ' client-app-stat-meta-good' : ''
+                    }`}
+                  >
+                    {latestInvoice.status === 'paid'
+                      ? `Paid · ${formatShortDate(latestInvoice.created_at)}`
+                      : `AED ${money(balanceDue(latestInvoice))} due`}
+                  </p>
+                </>
+              ) : (
+                <p className="client-app-stat-meta">No invoices yet</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="client-app-overview-panels">
+          <div className="client-app-overview-panel">
+            <div className="client-app-overview-panel-header">
+              <p>Your Pets</p>
+              <a href="/client-app/pets">View all →</a>
+            </div>
+            {pets.length === 0 ? (
+              <p className="mobile-subtitle">No pets on file yet.</p>
+            ) : (
+              <div className="client-app-overview-pets">
+                {pets
+                  .filter((pet) => !pet.deceased && !pet.rehomed)
+                  .slice(0, 4)
+                  .map((pet) => (
+                    <a key={pet.id} href={`/client-app/pets/${pet.id}`} className="client-app-overview-pet-chip">
+                      {pet.profile_photo_url ? (
+                        <img src={pet.profile_photo_url} alt="" className="client-app-pet-avatar-sm" />
+                      ) : (
+                        <HexIcon>🐾</HexIcon>
+                      )}
+                      <div>
+                        <span className="client-app-overview-pet-name">{pet.name}</span>
+                        <span className="client-app-overview-pet-meta">
+                          {[pet.species, pet.breed].filter(Boolean).join(', ')}
+                        </span>
+                      </div>
+                    </a>
+                  ))}
+              </div>
+            )}
+            {recentReports.length > 0 && (
+              <>
+                <p className="client-app-overview-subheader">Recent Reports</p>
+                <ul className="client-app-overview-reports">
+                  {recentReports.map((row) => {
+                    const href = reportPdfHref(row);
+                    const Tag = href ? 'a' : 'div';
+                    return (
+                      <li key={row.id}>
+                        <Tag {...(href ? { href, target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                          <span>
+                            {row.kind} — {row.petName}
+                          </span>
+                          <span>{row.date ? formatShortDate(row.date) : 'Undated'}</span>
+                        </Tag>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+          </div>
+
+          <div className="client-app-overview-panel">
+            <div className="client-app-overview-panel-header">
+              <p>Messages</p>
+            </div>
+            {latestMessage ? (
+              <div className="client-app-overview-message-preview">
+                <p className="client-app-overview-message-from">
+                  {latestMessage.sender === 'client' ? 'You' : latestMessage.staff?.full_name || 'Europets Clinic'}
+                </p>
+                <p className="client-app-overview-message-body">{latestMessage.body}</p>
+              </div>
+            ) : (
+              <p className="mobile-subtitle">No messages yet — say hello!</p>
+            )}
+            <a href="/client-app/messages" className="client-app-overview-open-messages">
+              Open Messages
+            </a>
+          </div>
+        </div>
+      </div>
 
       <div className="client-app-logout-row">
         <button type="button" className="client-app-logout-btn" onClick={logout}>

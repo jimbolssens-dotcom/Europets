@@ -8051,9 +8051,287 @@ form.card.admit-patient-form {
     max-width: 56rem;
   }
 
-  .client-app-sidebar ~ .client-app-content .mobile-square-tiles {
-    grid-template-columns: repeat(6, 1fr);
+  /* The home dashboard swaps its whole content for the desktop overview
+     below — not just a wider version of the mobile tile grid. Both these
+     classes only ever appear inside the logged-in dashboard (page.js's
+     `if (!clientId)` branch returns the login screen instead), so unlike
+     the sidebar/nav above there's no logged-out case to scope around. */
+  .client-app-mobile-only {
+    display: none;
   }
+
+  .client-app-desktop-overview {
+    display: block;
+  }
+}
+
+/* ---- Desktop dashboard overview (app/client-app/page.js) ----
+   Only ever visible once .client-app-desktop-overview is switched to
+   `display: block` by the media query above — declared outside it so the
+   component styling itself doesn't have to live nested three levels deep. */
+.client-app-desktop-overview {
+  display: none;
+}
+
+.client-app-overview-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin: 1.75rem 0 1.5rem;
+}
+
+.client-app-overview-eyebrow {
+  margin: 0 0 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--hot);
+}
+
+.client-app-overview-heading {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 2rem;
+  color: var(--chalk);
+}
+
+.client-app-overview-heading span {
+  font-style: italic;
+  color: var(--hot);
+}
+
+.client-app-cta-btn {
+  flex: none;
+  padding: 0.75rem 1.4rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--hot), var(--magenta) 70%);
+  color: var(--chalk);
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: 0 10px 24px -12px rgba(255, 61, 140, 0.75);
+}
+
+.client-app-overview-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.client-app-stat-card {
+  padding: 1.1rem 1.25rem;
+  background: var(--carbon);
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+}
+
+.client-app-stat-label {
+  margin: 0 0 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+
+.client-app-stat-value {
+  margin: 0 0 0.2rem;
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--chalk);
+}
+
+.client-app-stat-value-accent {
+  color: var(--hot);
+}
+
+.client-app-stat-meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ash);
+}
+
+.client-app-stat-meta-good {
+  color: #6fd9a2;
+}
+
+.client-app-overview-panels {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+}
+
+/* Between 880px (the sidebar breakpoint) and ~1100px there isn't quite
+   enough room for a 2fr/1fr split plus a 2-column pet grid without
+   things crowding — stack to one column instead of squeezing. */
+@media (min-width: 880px) and (max-width: 1099px) {
+  .client-app-overview-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .client-app-overview-panels {
+    grid-template-columns: 1fr;
+  }
+}
+
+.client-app-overview-panel {
+  padding: 1.25rem;
+  background: var(--carbon);
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+}
+
+.client-app-overview-panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+
+.client-app-overview-panel-header p {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--chalk);
+}
+
+.client-app-overview-panel-header a {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--hot);
+  text-decoration: none;
+}
+
+.client-app-overview-pets {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.client-app-overview-pet-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem;
+  background: var(--void-2);
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+  text-decoration: none;
+}
+
+.client-app-overview-pet-chip .client-app-hex-plate {
+  width: 2.4rem;
+  height: 2.75rem;
+  flex: none;
+}
+
+.client-app-overview-pet-chip .client-app-pet-avatar-sm {
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: none;
+}
+
+.client-app-overview-pet-name {
+  display: block;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--chalk);
+}
+
+.client-app-overview-pet-meta {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ash);
+}
+
+.client-app-overview-subheader {
+  margin: 1.1rem 0 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+
+.client-app-overview-reports {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.client-app-overview-reports li + li {
+  border-top: 1px solid var(--hair);
+}
+
+.client-app-overview-reports li > a,
+.client-app-overview-reports li > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0;
+  font-size: 0.82rem;
+  color: var(--chalk);
+  text-decoration: none;
+}
+
+.client-app-overview-reports li > a span:last-child,
+.client-app-overview-reports li > div span:last-child {
+  flex: none;
+  color: var(--ash);
+  font-size: 0.75rem;
+}
+
+.client-app-overview-message-preview {
+  padding: 0.85rem;
+  background: var(--void-2);
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+.client-app-overview-message-from {
+  margin: 0 0 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--hot);
+}
+
+.client-app-overview-message-body {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--chalk);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.client-app-overview-open-messages {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.65rem 0;
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--chalk);
+  font-weight: 700;
+  font-size: 0.85rem;
 }
 
 .mobile-app .cage-cluster {
