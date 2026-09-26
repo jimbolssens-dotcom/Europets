@@ -247,6 +247,8 @@ export default function MessagesInboxPage() {
   const [submittingDischargeFollowupTemplate, setSubmittingDischargeFollowupTemplate] = useState(false);
   const [dischargeFollowupTemplateResult, setDischargeFollowupTemplateResult] = useState(null); // { ok: boolean, message: string } | null
   const [templateStatuses, setTemplateStatuses] = useState({}); // { [purpose]: 'APPROVED' | 'PENDING' | 'REJECTED' | null }
+  const [checkingQuality, setCheckingQuality] = useState(false);
+  const [qualityResult, setQualityResult] = useState(null); // { ok: boolean, data? } | null
 
   const load = () =>
     fetch('/api/client-messages')
@@ -323,6 +325,20 @@ export default function MessagesInboxPage() {
       setSubscribeResult({ ok: false, message: err.message });
     }
     setSubscribing(false);
+  }
+
+  async function checkPhoneQuality() {
+    setCheckingQuality(true);
+    setQualityResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/phone-quality');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setQualityResult({ ok: true, data });
+    } catch (err) {
+      setQualityResult({ ok: false, message: err.message });
+    }
+    setCheckingQuality(false);
   }
 
   async function submitFirstContactTemplate() {
@@ -485,6 +501,26 @@ export default function MessagesInboxPage() {
           {subscribeResult && (
             <span className={subscribeResult.ok ? '' : 'error'}> {subscribeResult.message}</span>
           )}
+        </p>
+
+        {/* Diagnostic for a "failed" send whose ⚠️ Not delivered reason
+            doesn't point at template approval or the 24h window — Meta
+            throttles/blocks a number whose Quality Rating has dropped,
+            independent of any one template's own approval status. */}
+        <p className="visit-meta">
+          A message failed for an unclear reason?{' '}
+          <button type="button" onClick={checkPhoneQuality} disabled={checkingQuality}>
+            {checkingQuality ? 'Checking…' : 'Check number quality rating'}
+          </button>
+          {qualityResult && qualityResult.ok && (
+            <span>
+              {' '}
+              {qualityResult.data.display_phone_number || 'This number'} — Quality:{' '}
+              <strong>{qualityResult.data.quality_rating || 'unknown'}</strong>, Messaging limit:{' '}
+              <strong>{qualityResult.data.messaging_limit_tier || 'unknown'}</strong>
+            </span>
+          )}
+          {qualityResult && !qualityResult.ok && <span className="error"> {qualityResult.message}</span>}
         </p>
 
         {/* One-time setup so a text reply to a client with no open WhatsApp

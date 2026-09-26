@@ -172,10 +172,20 @@ async function handleStatusUpdate(status) {
   // reply was sent outside the 24-hour window a client's own message
   // opens. Meta's own send API can accept the request and only report
   // this async, once delivery actually fails, so this is often the only
-  // place that reason ever surfaces.
+  // place that reason ever surfaces. Leads with the numeric error code
+  // Meta always attaches (e.g. "#131047") — title/message alone can be
+  // vague or unfamiliar-sounding prose; the code is the part that's
+  // actually searchable against Meta's own error-code docs.
   const update = { status: status.status };
   if (status.status === 'failed' && status.errors?.[0]) {
-    update.wa_error = status.errors[0].title || status.errors[0].message || null;
+    const err = status.errors[0];
+    update.wa_error = [
+      err.code != null ? `#${err.code}` : null,
+      err.title || err.message || null,
+      err.error_data?.details || null,
+    ]
+      .filter(Boolean)
+      .join(' — ') || null;
   }
   const { error } = await supabaseAdmin.from('client_messages').update(update).eq('wa_message_id', status.id);
   if (error) {
