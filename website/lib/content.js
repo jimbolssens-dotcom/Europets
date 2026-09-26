@@ -59,19 +59,68 @@ export const VETS = [
     role: 'DVM, Owner',
     photo: '/team/jim-bolssens.jpg',
     photoFunny: '/team/jim-bolssens-funny.jpg',
+    bio: 'The heart-hands say it all: twenty years in, and he still means it every time a patient walks through the door.',
   },
-  { name: 'Dr. Nada', role: 'DVM', photo: '/team/nada.jpg', photoFunny: '/team/nada-funny.jpg' },
-  { name: 'Dr. Dalma', role: 'DVM', photo: '/team/dalma.jpg', photoFunny: '/team/dalma-funny.jpg' },
-  { name: 'Dr. Eva', role: 'DVM', photo: '/team/eva.jpg', photoFunny: '/team/eva-funny.jpg' },
+  {
+    name: 'Dr. Nada',
+    role: 'DVM',
+    photo: '/team/nada.jpg',
+    photoFunny: '/team/nada-funny.jpg',
+    bio: "Happiest in the OR with a sweet treat on standby, and counting down the days until the Sharjah summer's over.",
+  },
+  {
+    name: 'Dr. Dalma',
+    role: 'DVM',
+    photo: '/team/dalma.jpg',
+    photoFunny: '/team/dalma-funny.jpg',
+    bio: 'Brings the same energy to a routine check-up as she does to, well, that photo.',
+  },
+  {
+    name: 'Dr. Eva',
+    role: 'DVM',
+    photo: '/team/eva.jpg',
+    photoFunny: '/team/eva-funny.jpg',
+    bio: "If there's a fluffy patient anywhere in the building, don't be surprised if she's already holding it.",
+  },
 ];
 
 export const TEAM = [
-  { name: 'Arlyn', role: 'Accounts & Admin Manager' },
-  { name: 'Tyke', role: 'Vet Assistant', photo: '/team/tyke.jpg', photoFunny: '/team/tyke-funny.jpg' },
-  { name: 'Emman', role: 'Vet Assistant', photo: '/team/emman.jpg', photoFunny: '/team/emman-funny.jpg' },
-  { name: 'Genie', role: 'Receptionist', photo: '/team/genie.jpg', photoFunny: '/team/genie-funny.jpg' },
-  { name: 'Niluka', role: 'Staff', photo: '/team/niluka.jpg', photoFunny: '/team/niluka-funny.jpg' },
-  { name: 'Kamala', role: 'Staff', photo: '/team/kamala.jpg', photoFunny: '/team/kamala-funny.jpg' },
+  { name: 'Arlyn', role: 'Accounts & Admin Manager', photo: '/team/arlyn.png' },
+  {
+    name: 'Tyke',
+    role: 'Vet Assistant',
+    photo: '/team/tyke.jpg',
+    photoFunny: '/team/tyke-funny.jpg',
+    bio: "Will happily handle a snake or a lizard, but put a frog in front of him and it's a different story.",
+  },
+  {
+    name: 'Emman',
+    role: 'Vet Assistant',
+    photo: '/team/emman.jpg',
+    photoFunny: '/team/emman-funny.jpg',
+    bio: 'Keeps things light even on the longest shift days.',
+  },
+  {
+    name: 'Genie',
+    role: 'Receptionist',
+    photo: '/team/genie.jpg',
+    photoFunny: '/team/genie-funny.jpg',
+    bio: "The first friendly face you'll meet, and clearly not afraid to make you smile back.",
+  },
+  {
+    name: 'Niluka',
+    role: 'Staff',
+    photo: '/team/niluka.jpg',
+    photoFunny: '/team/niluka-funny.jpg',
+    bio: 'Steady, cheerful, and always ready to lend a hand around the clinic.',
+  },
+  {
+    name: 'Kamala',
+    role: 'Staff',
+    photo: '/team/kamala.jpg',
+    photoFunny: '/team/kamala-funny.jpg',
+    bio: 'Two thumbs up, always — the attitude the whole clinic runs on.',
+  },
 ];
 
 export const NAV_LINKS = [

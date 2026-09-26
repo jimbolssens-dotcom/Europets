@@ -2,26 +2,20 @@
 
 import { useState } from 'react';
 
-// A team member with both a sensible and a funny photo — hovering (desktop)
-// or a first tap (touch, where :hover never fires) flips to the funny one;
-// tapping again while flipped reveals a short background blurb, if there is
-// one. Someone with only a plain photo (or no photo at all) still renders
-// as a normal static card — see TeamPage's own fallback for those.
+// A team member with both a sensible and a funny photo. Hovering (desktop)
+// flips to the funny one on its own. A click/tap — on any device — flips it
+// (if not already) and opens their background blurb in the same action, so
+// one click is all it takes to see their story. Clicking again closes it.
 export default function TeamFlipCard({ name, role, photo, photoFunny, bio }) {
-  const [flipped, setFlipped] = useState(false);
-  const [bioOpen, setBioOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   function handleActivate() {
-    if (!flipped) {
-      setFlipped(true);
-      return;
-    }
-    if (bio) setBioOpen((open) => !open);
+    setOpen((o) => !o);
   }
 
   return (
     <div
-      className={`card team-card flip-card${flipped ? ' is-flipped' : ''}`}
+      className={`team-person flip-card${open ? ' is-flipped' : ''}`}
       onClick={handleActivate}
       role="button"
       tabIndex={0}
@@ -44,8 +38,8 @@ export default function TeamFlipCard({ name, role, photo, photoFunny, bio }) {
       </div>
       <strong>{name}</strong>
       <span>{role}</span>
-      {bio && <span className="bg-hint">{bioOpen ? 'Tap to close' : 'Tap again for background'}</span>}
-      {bioOpen && <p className="team-bio">{bio}</p>}
+      {bio && <span className="bg-hint">{open ? 'Tap to close' : 'Tap for their story'}</span>}
+      {open && bio && <p className="team-bio">{bio}</p>}
     </div>
   );
 }

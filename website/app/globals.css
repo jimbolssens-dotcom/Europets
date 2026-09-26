@@ -851,12 +851,12 @@ p {
 
 .team-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 2rem 1.5rem;
 }
 
-.team-card {
-  padding: 1.75rem 1rem;
+.team-person {
+  padding: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -865,23 +865,23 @@ p {
 }
 
 .avatar-circle-lg {
-  width: 4rem;
-  height: 4rem;
-  font-size: 1.15rem;
-  margin-bottom: 0.4rem;
+  width: 7rem;
+  height: 7rem;
+  font-size: 1.8rem;
+  margin-bottom: 0.6rem;
 }
 
 .avatar-photo {
   object-fit: cover;
 }
 
-.team-card strong {
-  font-size: 0.92rem;
+.team-person strong {
+  font-size: 0.98rem;
   color: var(--ink);
 }
 
-.team-card span {
-  font-size: 0.8rem;
+.team-person span {
+  font-size: 0.82rem;
   color: var(--ink-soft);
 }
 
@@ -892,13 +892,14 @@ p {
 }
 
 .flip-stage {
-  width: 4rem;
-  height: 4rem;
-  perspective: 600px;
-  margin-bottom: 0.4rem;
-  padding: 2px;
+  width: 7rem;
+  height: 7rem;
+  perspective: 900px;
+  margin-bottom: 0.6rem;
+  padding: 2.5px;
   clip-path: var(--hex);
   background: linear-gradient(152deg, #ffe3ef 0%, var(--hot) 32%, var(--magenta) 62%, #8c0b45 100%);
+  filter: drop-shadow(0 10px 22px rgba(255, 61, 140, 0.28));
 }
 
 .flip-inner {
@@ -958,7 +959,7 @@ p {
   font-size: 0.82rem;
   line-height: 1.5;
   color: var(--ink-soft);
-  text-align: left;
+  text-align: center;
 }
 
 /* ---- New patients page ---- */

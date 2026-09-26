@@ -21,7 +21,7 @@ function TeamRow({ people }) {
         p.photo && p.photoFunny ? (
           <TeamFlipCard key={p.name} name={p.name} role={p.role} photo={p.photo} photoFunny={p.photoFunny} bio={p.bio} />
         ) : (
-          <div key={p.name} className="card team-card">
+          <div key={p.name} className="team-person">
             {p.photo ? (
               <img src={p.photo} alt={p.name} className="avatar-circle avatar-circle-lg avatar-photo" />
             ) : (
