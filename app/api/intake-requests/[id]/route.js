@@ -28,12 +28,21 @@ import { isStaffRequest } from '@/lib/staffAuth';
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('intake_requests')
-    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg, sex))')
+    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg, sex, deceased, rehomed))')
     .eq('id', params.id)
     .single();
 
   if (error) {
     return NextResponse.json({ error: 'intake request not found' }, { status: 404 });
+  }
+  // A deceased/rehomed pet (owner-editable from the client app's own pet
+  // page) has no business showing up as something to book an appointment
+  // for — same filter lib/whatsappConcierge.js already applies for the
+  // AI concierge's own version of this same "which of this client's pets"
+  // list, just missed here since this query embeds through clients()
+  // instead of querying patients directly.
+  if (data.clients?.patients) {
+    data.clients.patients = data.clients.patients.filter((p) => !p.deceased && !p.rehomed);
   }
   return NextResponse.json(data);
 }
@@ -78,10 +87,16 @@ async function linkExistingClient(id, phone) {
     .from('intake_requests')
     .update({ client_id: matches[0].id, sent_to_phone: phone })
     .eq('id', id)
-    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg, sex))')
+    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg, sex, deceased, rehomed))')
     .single();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  // Same deceased/rehomed filter as GET above — this path (an own-number
+  // match re-pointing a blank link at an existing client) returns the
+  // same shape straight to the public form.
+  if (data.clients?.patients) {
+    data.clients.patients = data.clients.patients.filter((p) => !p.deceased && !p.rehomed);
   }
   return NextResponse.json({ matched: true, request: data });
 }
