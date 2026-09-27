@@ -67,10 +67,13 @@ export async function GET(request) {
     // (migration 149) — not tied to any invoice here and not a fresh
     // taxable supply, so it's kept out of the VAT figures below, but it's
     // still money in the door and belongs in cash-basis net profit.
+    // Failing this one query alone never takes down the rest of the P&L —
+    // most obviously so the whole Accounting page doesn't 500 for a clinic
+    // that hasn't run migration 149 yet.
     supabase.from('legacy_payments').select('amount').gte('paid_at', start).lt('paid_at', end),
   ]);
 
-  for (const res of [invoicedRes, paymentsRes, expensesRes, outstandingRes, legacyRes]) {
+  for (const res of [invoicedRes, paymentsRes, expensesRes, outstandingRes]) {
     if (res.error) {
       return NextResponse.json({ error: res.error.message }, { status: 500 });
     }
@@ -80,7 +83,7 @@ export async function GET(request) {
   const payments = paymentsRes.data;
   const expenses = expensesRes.data;
   const outstanding = outstandingRes.data;
-  const legacyPayments = legacyRes.data;
+  const legacyPayments = legacyRes.error ? [] : legacyRes.data;
 
   const paymentsByMethod = Object.fromEntries(PAYMENT_METHODS.map((m) => [m, 0]));
   for (const p of payments) {
