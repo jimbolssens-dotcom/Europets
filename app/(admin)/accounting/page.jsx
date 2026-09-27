@@ -68,6 +68,9 @@ export default function AccountingOverviewPage() {
           <a href="/accounting/donations" className="button-link">
             💳 Online Payments
           </a>
+          <a href="/accounting/website" className="button-link">
+            🌐 Website &amp; Domains
+          </a>
         </div>
       </div>
 
