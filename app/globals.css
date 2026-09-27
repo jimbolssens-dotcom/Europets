@@ -108,12 +108,29 @@ body.mobile-body-fill .mobile-app {
   flex: 1;
   min-height: 0;
   max-height: none;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1rem calc(7rem + env(safe-area-inset-bottom));
   margin-bottom: 0;
 }
 
+/* Pinned via position: fixed (anchored to the real, live visual viewport
+   the browser reports) rather than relying only on the flex-fill/100dvh
+   chain above (body -> .mobile-app -> .mobile-messages-thread-page) to
+   keep this in view — a reply bar getting pushed below the fold on some
+   Android builds (dvh/toolbar recalculation glitches, a flex ancestor
+   ending up shorter than its content expects) leaves someone unable to
+   reply at all, with nothing to scroll to reach it, since body itself is
+   overflow: hidden while a thread's open. Fixed positioning can't be
+   pushed out of view by anything upstream miscalculating a height, at the
+   cost of taking it out of the thread's flex flow — .staff-chat-thread's
+   own bottom padding above reserves room so the last message isn't
+   hidden behind it instead. */
 .mobile-messages-composer {
   flex-shrink: 0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
   padding: 0.6rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
   border-top: 1px solid #eee;
   background: white;
