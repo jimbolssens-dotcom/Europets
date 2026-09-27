@@ -108,39 +108,43 @@ export default function ClientAppAppointmentsPage() {
   }
 
   return (
-    <div className="mobile-page">
-      <h1>Appointments</h1>
-      <button type="button" onClick={startBooking} disabled={bookingLoading}>
-        {bookingLoading ? 'Opening booking form...' : '📅 Book a New Appointment'}
-      </button>
+    <div className="mobile-page client-app-appts-page">
+      <div className="client-app-appt-header">
+        <h1>Appointments</h1>
+        <button type="button" onClick={startBooking} disabled={bookingLoading}>
+          {bookingLoading ? 'Opening booking form...' : '📅 Book a New Appointment'}
+        </button>
+      </div>
       {bookingError && <p className="client-app-login-error">{bookingError}</p>}
       {loading ? (
         <p className="mobile-subtitle">Loading...</p>
       ) : appointments.length === 0 ? (
         <p className="mobile-subtitle">No appointments yet.</p>
       ) : (
-        <>
-          <p className="mobile-section-header">Upcoming</p>
-          {upcoming.length === 0 ? (
-            <p className="mobile-subtitle">Nothing booked yet.</p>
-          ) : (
-            <ul className="mobile-list">
-              {upcoming.map((appt) => (
-                <AppointmentRow key={appt.id} appt={appt} />
-              ))}
-            </ul>
-          )}
+        <div className="client-app-appt-columns">
+          <div>
+            <p className="mobile-section-header">Upcoming</p>
+            {upcoming.length === 0 ? (
+              <p className="mobile-subtitle">Nothing booked yet.</p>
+            ) : (
+              <ul className="mobile-list">
+                {upcoming.map((appt) => (
+                  <AppointmentRow key={appt.id} appt={appt} />
+                ))}
+              </ul>
+            )}
+          </div>
           {past.length > 0 && (
-            <>
+            <div>
               <p className="mobile-section-header">Past</p>
               <ul className="mobile-list">
                 {past.map((appt) => (
                   <AppointmentRow key={appt.id} appt={appt} />
                 ))}
               </ul>
-            </>
+            </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

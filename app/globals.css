@@ -8539,6 +8539,160 @@ form.card.admit-patient-form {
   font-size: 0.85rem;
 }
 
+/* ---- Desktop tab layouts (Pets / Reports / Invoices / Appointments /
+   Messages) ----
+   Same fork idea as the dashboard overview above, but at the level of one
+   row instead of a whole page: a pair of "-inline" toggle classes let a
+   single row carry two structurally different renderings of the same
+   data — a plain title+meta line for mobile, a set of column-aligned
+   cells for desktop — so Reports/Invoices don't need a second component
+   just to gain real table columns. Same source-order rule as
+   .client-app-desktop-overview above: the "hidden by default" state has
+   to be declared before the media query that turns it back on, or a
+   same-specificity rule declared even later would cancel it out. */
+.client-app-desktop-only-inline {
+  display: none;
+}
+
+@media (min-width: 880px) {
+  .client-app-mobile-only-inline {
+    display: none;
+  }
+
+  .client-app-desktop-only-inline {
+    display: flex;
+  }
+
+  /* Pets — the existing card markup just gets grid-ified; no new DOM. */
+  .client-app-pets-page .mobile-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .client-app-pets-page .mobile-list-item {
+    padding: 1.1rem 1.25rem;
+  }
+
+  .client-app-pets-page .mobile-list-title {
+    font-size: 1.05rem;
+  }
+
+  .client-app-pets-page .client-app-pet-card-row {
+    gap: 0.9rem;
+  }
+
+  .client-app-pets-page .client-app-pet-avatar-sm {
+    width: 3.2rem;
+    height: 3.2rem;
+    font-size: 1.35rem;
+  }
+
+  /* Reports / Invoices — table-style rows. Column widths are shared
+     between the header row and every list row via the same class names
+     so they line up down the page. */
+  .client-app-table-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 1rem 0.6rem;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ash);
+  }
+
+  .mobile-list-item.client-app-table-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .client-app-table-head-primary,
+  .client-app-table-cell-primary {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .client-app-table-head-secondary,
+  .client-app-table-cell-secondary {
+    flex: none;
+    width: 7rem;
+  }
+
+  .client-app-table-head-date,
+  .client-app-table-cell-date {
+    flex: none;
+    width: 7rem;
+  }
+
+  .client-app-table-head-total,
+  .client-app-table-cell-total {
+    flex: none;
+    width: 9rem;
+  }
+
+  .client-app-table-head-action,
+  .client-app-table-cell-action {
+    flex: none;
+    width: 8rem;
+    text-align: right;
+  }
+
+  .client-app-table-cell-secondary,
+  .client-app-table-cell-date {
+    color: var(--ash);
+    font-size: 0.85rem;
+  }
+
+  .client-app-table-cell-total {
+    color: var(--chalk);
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .client-app-table-cell-action {
+    color: var(--hot);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* Appointments — Book button beside the heading, Upcoming/Past side by
+     side instead of stacked. */
+  .client-app-appt-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .client-app-appt-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  /* Messages — cap bubble width instead of stretching edge to edge, and
+     turn the composer into a single pill-shaped input bar. Scoped under
+     .client-app-sidebar so the hospitalization/consent portal chat (same
+     .portal-chat-* classes, no sidebar there) is untouched. */
+  .client-app-sidebar ~ .client-app-content .portal-chat-thread {
+    max-height: 480px;
+  }
+
+  .client-app-sidebar ~ .client-app-content .portal-chat-bubble {
+    max-width: 60%;
+  }
+
+  .client-app-sidebar ~ .client-app-content .portal-chat-form textarea {
+    border-radius: 999px;
+    padding: 0.65rem 1.1rem;
+    resize: none;
+  }
+}
+
 .mobile-app .cage-cluster {
   grid-template-columns: repeat(var(--cols), 58px);
   gap: 0.35rem;

@@ -112,7 +112,7 @@ export default function ClientAppPetsPage() {
   }
 
   return (
-    <div className="mobile-page">
+    <div className="mobile-page client-app-pets-page">
       <h1>My Pets</h1>
       {loading ? (
         <p className="mobile-subtitle">Loading...</p>

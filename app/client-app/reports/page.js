@@ -53,34 +53,56 @@ export default function ClientAppReportsPage() {
   if (!ready) return null;
 
   return (
-    <div className="mobile-page">
+    <div className="mobile-page client-app-reports-page">
       <h1>Reports</h1>
       {loading ? (
         <p className="mobile-subtitle">Loading...</p>
       ) : reports.length === 0 ? (
         <p className="mobile-subtitle">No reports yet.</p>
       ) : (
-        <ul className="mobile-list">
-          {reports.map((row) => {
-            const href = reportPdfHref(row);
-            const Tag = href ? 'a' : 'div';
-            return (
-              <li key={row.id}>
-                <Tag
-                  {...(href ? { href, target: '_blank', rel: 'noopener noreferrer' } : {})}
-                  className="mobile-list-item"
-                >
-                  <span className="mobile-list-title">
-                    {row.kind} — {row.petName}
-                  </span>
-                  <span className="mobile-list-meta">
-                    {row.date ? formatShortDate(row.date) : 'Undated'}
-                  </span>
-                </Tag>
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          <div className="client-app-table-head client-app-desktop-only-inline">
+            <span className="client-app-table-head-primary">Report</span>
+            <span className="client-app-table-head-secondary">Pet</span>
+            <span className="client-app-table-head-date">Date</span>
+            <span className="client-app-table-head-action" />
+          </div>
+          <ul className="mobile-list">
+            {reports.map((row) => {
+              const href = reportPdfHref(row);
+              const Tag = href ? 'a' : 'div';
+              return (
+                <li key={row.id}>
+                  <Tag
+                    {...(href ? { href, target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    className="mobile-list-item client-app-table-row"
+                  >
+                    <span className="mobile-list-title client-app-mobile-only-inline">
+                      {row.kind} — {row.petName}
+                    </span>
+                    <span className="mobile-list-meta client-app-mobile-only-inline">
+                      {row.date ? formatShortDate(row.date) : 'Undated'}
+                    </span>
+                    <span className="client-app-table-cell client-app-table-cell-primary client-app-desktop-only-inline">
+                      {row.kind}
+                    </span>
+                    <span className="client-app-table-cell client-app-table-cell-secondary client-app-desktop-only-inline">
+                      {row.petName}
+                    </span>
+                    <span className="client-app-table-cell client-app-table-cell-date client-app-desktop-only-inline">
+                      {row.date ? formatShortDate(row.date) : 'Undated'}
+                    </span>
+                    {href && (
+                      <span className="client-app-table-cell client-app-table-cell-action client-app-desktop-only-inline">
+                        Open PDF ↗
+                      </span>
+                    )}
+                  </Tag>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </div>
   );

@@ -48,39 +48,67 @@ export default function ClientAppInvoicesPage() {
   if (!ready) return null;
 
   return (
-    <div className="mobile-page">
+    <div className="mobile-page client-app-invoices-page">
       <h1>Invoices</h1>
       {loading ? (
         <p className="mobile-subtitle">Loading...</p>
       ) : invoices.length === 0 ? (
         <p className="mobile-subtitle">No invoices yet.</p>
       ) : (
-        <ul className="mobile-list">
-          {invoices.map((inv) => {
-            const due = balanceDue(inv);
-            return (
-              <li key={inv.id}>
-                <a
-                  href={`/api/invoices/${inv.id}/tax-invoice-pdf`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mobile-list-item"
-                >
-                  <span className="mobile-list-title">
-                    {invoiceLabel(inv)}
-                    <span className={`client-app-status-pill client-app-status-${inv.status}`}>
-                      {STATUS_LABEL[inv.status] || inv.status}
+        <>
+          <div className="client-app-table-head client-app-desktop-only-inline">
+            <span className="client-app-table-head-primary">Invoice</span>
+            <span className="client-app-table-head-date">Date</span>
+            <span className="client-app-table-head-secondary">Status</span>
+            <span className="client-app-table-head-total">Total</span>
+            <span className="client-app-table-head-action" />
+          </div>
+          <ul className="mobile-list">
+            {invoices.map((inv) => {
+              const due = balanceDue(inv);
+              return (
+                <li key={inv.id}>
+                  <a
+                    href={`/api/invoices/${inv.id}/tax-invoice-pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mobile-list-item client-app-table-row"
+                  >
+                    <span className="mobile-list-title client-app-mobile-only-inline">
+                      {invoiceLabel(inv)}
+                      <span className={`client-app-status-pill client-app-status-${inv.status}`}>
+                        {STATUS_LABEL[inv.status] || inv.status}
+                      </span>
                     </span>
-                  </span>
-                  <span className="mobile-list-meta">
-                    {formatShortDate(inv.created_at)} · AED {money(inv.total)}
-                    {due > 0 ? ` · AED ${money(due)} due` : ''}
-                  </span>
-                </a>
-              </li>
-            );
-          })}
-        </ul>
+                    <span className="mobile-list-meta client-app-mobile-only-inline">
+                      {formatShortDate(inv.created_at)} · AED {money(inv.total)}
+                      {due > 0 ? ` · AED ${money(due)} due` : ''}
+                    </span>
+
+                    <span className="client-app-table-cell client-app-table-cell-primary client-app-desktop-only-inline">
+                      {invoiceLabel(inv)}
+                    </span>
+                    <span className="client-app-table-cell client-app-table-cell-date client-app-desktop-only-inline">
+                      {formatShortDate(inv.created_at)}
+                    </span>
+                    <span className="client-app-table-cell client-app-table-cell-secondary client-app-desktop-only-inline">
+                      <span className={`client-app-status-pill client-app-status-${inv.status}`}>
+                        {STATUS_LABEL[inv.status] || inv.status}
+                      </span>
+                    </span>
+                    <span className="client-app-table-cell client-app-table-cell-total client-app-desktop-only-inline">
+                      AED {money(inv.total)}
+                      {due > 0 ? ` (${money(due)} due)` : ''}
+                    </span>
+                    <span className="client-app-table-cell client-app-table-cell-action client-app-desktop-only-inline">
+                      Tax Invoice ↗
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </div>
   );

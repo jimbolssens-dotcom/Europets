@@ -94,7 +94,7 @@ export default function ClientAppMessagesPage() {
   if (!ready || loading) return null;
 
   return (
-    <div className="mobile-page">
+    <div className="mobile-page client-app-messages-page">
       <h1>Messages</h1>
       <p className="mobile-subtitle">Chat directly with the Europets Clinic team.</p>
 
