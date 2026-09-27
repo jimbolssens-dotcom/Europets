@@ -5,7 +5,12 @@
 // later (see clinic_settings in the app) since they're the most likely to
 // go stale here; everything else changes rarely enough that static is fine.
 
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://europets-r4mx3sbiv-jimbolssens-dotcom.vercel.app';
+// The client-app/staff-app deployment now has its own custom domain
+// (portal.epc.vet, added directly on the Vercel project — see the DNS
+// CNAME below) instead of exposing the raw *.vercel.app URL to clients.
+// NEXT_PUBLIC_APP_URL is set to match in the Vercel project's env vars;
+// this fallback just keeps local dev working without it set.
+export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://portal.epc.vet';
 // ?src=web marks this link as having come from the website itself (as
 // opposed to a WhatsApp-sent intake link) — the intake page reads it to
 // decide whether to show its own website nav bar back to these same
