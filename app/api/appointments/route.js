@@ -219,6 +219,7 @@ export async function POST(request) {
         start_time: startTime.toISOString(),
         duration_minutes: duration,
         reason: reason || null,
+        booking_source: 'staff',
       },
     ])
     .select()

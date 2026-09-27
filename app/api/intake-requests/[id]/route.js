@@ -433,6 +433,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
             ? `Client-requested surgery: ${intake.custom_surgery_reason}`
             : `Client-requested ${CLIENT_APPOINTMENT_TYPE_LABELS[intake.appointment_type] || intake.appointment_type}`,
         client_requested: true,
+        booking_source: 'client_requested',
       }])
       .select('id')
       .single();

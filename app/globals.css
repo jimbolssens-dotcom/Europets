@@ -4115,6 +4115,20 @@ button.secondary:hover {
   cursor: wait;
 }
 
+/* Booking-channel badge (lib/appointmentBooking.js's BOOKING_SOURCE_BADGES)
+   — top-right corner, small enough to never compete with the doctor's
+   name/time already in the block. .schedule-block is itself
+   position: absolute, which already gives it its own positioning context
+   for this without any extra rule. */
+.schedule-block .channel-badge {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 8px;
+  line-height: 1;
+  opacity: 0.85;
+}
+
 .schedule-block-inactive {
   cursor: default;
   opacity: 0.75;
@@ -6915,6 +6929,18 @@ form.card.admit-patient-form {
 .mobile-appt-dr-accent {
   border-left-width: 4px;
   padding-left: calc(1rem - 3px);
+  position: relative;
+}
+
+/* Same booking-channel badge as the desktop schedule block above, just
+   sized up a touch for a touch screen instead of a mouse-hover title. */
+.mobile-appt-dr-accent .channel-badge {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.75rem;
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.85;
 }
 
 .mobile-list-title {

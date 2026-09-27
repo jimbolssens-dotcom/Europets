@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabaseClient';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import { formatTime, formatDayHeader } from '@/lib/formatTimestamp';
 import { buildStaffColorMap, UNASSIGNED_STAFF_COLOR, INACTIVE_APPOINTMENT_COLOR } from '@/lib/staffColors';
+import { BOOKING_SOURCE_BADGES } from '@/lib/appointmentBooking';
 
 const TYPE_ICONS = { consult: '🩺', video: '🎥', surgery: '📋', meeting: '👥' };
 const SWIPE_MIN_DISTANCE = 60;
@@ -134,12 +135,14 @@ export default function MobileAppointmentsPage() {
               const borderColor = inactive
                 ? INACTIVE_APPOINTMENT_COLOR.fg
                 : ((a.vet_id && vetColor[a.vet_id]) || UNASSIGNED_STAFF_COLOR).fg;
+              const badge = BOOKING_SOURCE_BADGES[a.booking_source];
               return (
                 <li key={a.id}>
                   <div
                     className={`mobile-list-item mobile-appt-dr-accent${inactive ? ' mobile-appt-inactive' : ''}`}
                     style={{ borderLeftColor: borderColor }}
                   >
+                    {badge && <span className="channel-badge">{badge}</span>}
                     <span className="mobile-list-title">
                       {formatTime(a.start_time)} · {TYPE_ICONS[a.type] || ''}{' '}
                       {a.type === 'meeting' ? a.reason || 'Staff Meeting' : a.patients?.name || '(unlinked)'}
