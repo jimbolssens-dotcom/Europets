@@ -12,7 +12,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import { formatTime, formatDayHeader } from '@/lib/formatTimestamp';
-import { buildStaffColorMap, colorForAppointment, INACTIVE_APPOINTMENT_COLOR } from '@/lib/staffColors';
+import { buildStaffColorMap, UNASSIGNED_STAFF_COLOR, INACTIVE_APPOINTMENT_COLOR } from '@/lib/staffColors';
 
 const TYPE_ICONS = { consult: '🩺', video: '🎥', surgery: '📋', meeting: '👥' };
 const SWIPE_MIN_DISTANCE = 60;
@@ -124,9 +124,16 @@ export default function MobileAppointmentsPage() {
           <ul className="mobile-list">
             {appointments.map((a) => {
               const inactive = a.status === 'cancelled' || a.status === 'no_show';
+              // Always the vet's own plain hue, regardless of appointment
+              // type — unlike colorForAppointment's bg/fg swap for surgery
+              // (meant for a solid filled block on the desktop schedule
+              // grid), this is just a thin border accent, so there's no
+              // "fill" for a dark/white swap to make sense against; using
+              // it here rendered every surgery row's border white,
+              // invisible against the white card.
               const borderColor = inactive
                 ? INACTIVE_APPOINTMENT_COLOR.fg
-                : colorForAppointment(vetColor, a.vet_id, a.type).fg;
+                : ((a.vet_id && vetColor[a.vet_id]) || UNASSIGNED_STAFF_COLOR).fg;
               return (
                 <li key={a.id}>
                   <div
