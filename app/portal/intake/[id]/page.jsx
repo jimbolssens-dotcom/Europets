@@ -66,15 +66,36 @@ function todayISODate() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// Mirrors website/lib/content.js's own NAV_LINKS — kept as a separate
+// copy rather than a shared import since the website and this app are two
+// separate Next.js projects/deployments. Only shown when fromWebsite is
+// true (see below): someone who followed a WhatsApp link here has no
+// reason to see the rest of the marketing site.
+const WEBSITE_URL = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
+const WEBSITE_NAV_LINKS = [
+  { href: `${WEBSITE_URL}/about`, label: 'About' },
+  { href: `${WEBSITE_URL}/services`, label: 'Services' },
+  { href: `${WEBSITE_URL}/team`, label: 'Our Team' },
+  { href: `${WEBSITE_URL}/new-patients`, label: 'New Patients' },
+  { href: `${WEBSITE_URL}/reviews`, label: 'Reviews' },
+  { href: `${WEBSITE_URL}/contact`, label: 'Contact' },
+];
+
 export default function IntakePortalPage() {
   const { id } = useParams();
   const searchParams = useSearchParams();
   // Set by every link the client app itself generates (see app/client-app/
   // pets/[id] and app/client-app/appointments) — never present on a link
   // sent straight from the desktop to someone with no client-app account,
-  // who has nowhere to go "home" to. Drives both the dark theme below and
-  // the "← Home" link.
+  // who has nowhere to go "home" to. Drives the "← Home" link.
   const fromApp = searchParams.get('app') === '1';
+  // Set only by the website's own "Book an Appointment"/"New Patients"
+  // buttons (see BOOKING_URL in website/lib/content.js, forwarded through
+  // the redirect in app/portal/intake/new/route.js) — never present on a
+  // link sent over WhatsApp or from inside the client app, which have
+  // their own way back (fromApp's Home link, or nothing at all for a cold
+  // WhatsApp send). Drives the website nav bar below.
+  const fromWebsite = searchParams.get('src') === 'web';
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -457,6 +478,20 @@ export default function IntakePortalPage() {
 
   return (
     <div className="client-app">
+    {fromWebsite && (
+      <nav className="portal-website-nav">
+        <a href={WEBSITE_URL} className="portal-website-nav-brand">
+          <img src="/logo.png" alt="Europets Clinic" />
+        </a>
+        <div className="portal-website-nav-links">
+          {WEBSITE_NAV_LINKS.map((link) => (
+            <a key={link.href} href={link.href}>
+              {link.label}
+            </a>
+          ))}
+        </div>
+      </nav>
+    )}
     <div className="portal-page">
       {fromApp && (
         <Link href="/client-app" className="mobile-link-btn portal-home-link">

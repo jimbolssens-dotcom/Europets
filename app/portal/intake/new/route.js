@@ -26,5 +26,12 @@ export async function GET(request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.redirect(new URL(`/portal/intake/${data.id}`, request.url));
+  // Forward query params as-is — specifically ?src=web (see BOOKING_URL in
+  // the website's lib/content.js), which the intake page reads to decide
+  // whether to show its own website nav bar. A QR-code scan or any other
+  // plain link here just won't carry it, so the nav bar stays off by
+  // default, same as a WhatsApp-sent link.
+  const target = new URL(`/portal/intake/${data.id}`, request.url);
+  target.search = new URL(request.url).search;
+  return NextResponse.redirect(target);
 }

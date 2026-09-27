@@ -6,7 +6,12 @@
 // go stale here; everything else changes rarely enough that static is fine.
 
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://europets-r4mx3sbiv-jimbolssens-dotcom.vercel.app';
-export const BOOKING_URL = `${APP_URL}/portal/intake/new`;
+// ?src=web marks this link as having come from the website itself (as
+// opposed to a WhatsApp-sent intake link) — the intake page reads it to
+// decide whether to show its own website nav bar back to these same
+// pages. See app/portal/intake/new/route.js (forwards it) and
+// app/portal/intake/[id]/page.jsx (reads it) in the main app.
+export const BOOKING_URL = `${APP_URL}/portal/intake/new?src=web`;
 export const CLIENT_PORTAL_URL = `${APP_URL}/client-app`;
 
 export const CONTACT = {

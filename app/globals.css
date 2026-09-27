@@ -4891,6 +4891,56 @@ button.secondary:hover {
   padding: 1.5rem 1rem 3rem;
 }
 
+/* Website nav bar (app/portal/intake/[id], shown only when fromWebsite —
+   i.e. reached via a "Book an Appointment"/"New Patients" link from the
+   website itself, never a WhatsApp-sent link) — a link out of this
+   ecosystem entirely, so it sits outside .portal-page and isn't width-
+   capped, matching the website's own sticky nav look but in this app's
+   own Hexfield tokens. Shown at every width, mobile included: a phone
+   visitor who tapped through from the website can just as easily want to
+   jump to another page. */
+.portal-website-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  padding: 0.85rem 1.25rem;
+  background: rgba(7, 6, 10, 0.85);
+  backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid var(--hair);
+}
+
+.portal-website-nav-brand {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.portal-website-nav-brand img {
+  height: 2.25rem;
+  width: auto;
+}
+
+.portal-website-nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.35rem;
+}
+
+.portal-website-nav-links a {
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: var(--ash);
+}
+
+.portal-website-nav-links a:hover {
+  color: var(--blush);
+}
+
 /* Desktop-only hero + 2-column field layout for the intake page
    (app/portal/intake/[id]) — this is most people's actual first contact
    with the clinic (every "Book an Appointment"/"New Patients" link on the
