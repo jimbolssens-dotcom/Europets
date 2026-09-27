@@ -172,6 +172,25 @@ export default function WebsiteAccountingPage() {
         )}
       </p>
 
+      <div className="accounting-stat" style={{ marginBottom: '2rem', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+        <div>
+          <span className="accounting-stat-label">Want something on the site changed?</span>
+          <span style={{ display: 'block', fontSize: '0.85rem', marginTop: '0.3rem' }}>
+            Describe it in plain language — it'll show you a preview and wait for your go-ahead before anything goes live.
+            Limited to the website only; can't touch patient records, invoices, or anything else in the app.
+          </span>
+        </div>
+        <a
+          href="https://claude.ai/code/session_01K3UCW1CRXkcCws6LWf4Ezi"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="button-link"
+          style={{ flex: 'none' }}
+        >
+          💬 Request a website change
+        </a>
+      </div>
+
       <h2>Domains</h2>
       {DOMAINS.map((d) => {
         const pill = domainPill(d, statusByHost);
