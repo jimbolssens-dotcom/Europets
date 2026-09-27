@@ -48,7 +48,7 @@ export async function GET(request) {
   const dateStart = start.slice(0, 10);
   const dateEnd = end.slice(0, 10);
 
-  const [invoicedRes, paymentsRes, expensesRes, outstandingRes] = await Promise.all([
+  const [invoicedRes, paymentsRes, expensesRes, outstandingRes, legacyRes] = await Promise.all([
     supabase
       .from('invoices')
       .select('subtotal, discount_amount, vat_amount, total')
@@ -63,9 +63,14 @@ export async function GET(request) {
       .lt('paid_at', end),
     supabase.from('expenses').select('amount, vat_amount, total').gte('expense_date', dateStart).lt('expense_date', dateEnd),
     supabase.from('invoices').select('total, amount_paid').in('status', ['unpaid', 'partially_paid']),
+    // Real cash received this month against a client's old-system balance
+    // (migration 149) — not tied to any invoice here and not a fresh
+    // taxable supply, so it's kept out of the VAT figures below, but it's
+    // still money in the door and belongs in cash-basis net profit.
+    supabase.from('legacy_payments').select('amount').gte('paid_at', start).lt('paid_at', end),
   ]);
 
-  for (const res of [invoicedRes, paymentsRes, expensesRes, outstandingRes]) {
+  for (const res of [invoicedRes, paymentsRes, expensesRes, outstandingRes, legacyRes]) {
     if (res.error) {
       return NextResponse.json({ error: res.error.message }, { status: 500 });
     }
@@ -75,6 +80,7 @@ export async function GET(request) {
   const payments = paymentsRes.data;
   const expenses = expensesRes.data;
   const outstanding = outstandingRes.data;
+  const legacyPayments = legacyRes.data;
 
   const paymentsByMethod = Object.fromEntries(PAYMENT_METHODS.map((m) => [m, 0]));
   for (const p of payments) {
@@ -95,6 +101,7 @@ export async function GET(request) {
     (total, inv) => total + (Number(inv.total || 0) - Number(inv.amount_paid || 0)),
     0
   );
+  const legacyCollected = sum(legacyPayments, 'amount');
 
   return NextResponse.json({
     month,
@@ -107,7 +114,8 @@ export async function GET(request) {
     },
     expenses: { total: expensesTotal, count: expenses.length },
     discounts: { total: discountsTotal, count: discountedInvoiceCount },
-    net_profit_cash_basis: revenueCollected - expensesTotal,
+    legacy: { collected: legacyCollected, count: legacyPayments.length },
+    net_profit_cash_basis: revenueCollected + legacyCollected - expensesTotal,
     payments_by_method: paymentsByMethod,
     unpaid: { total: unpaidTotal, count: outstanding.length },
   });

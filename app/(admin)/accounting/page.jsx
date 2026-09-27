@@ -71,6 +71,9 @@ export default function AccountingOverviewPage() {
           <a href="/accounting/website" className="button-link">
             🌐 Website &amp; Domains
           </a>
+          <a href="/accounting/legacy-payments" className="button-link">
+            📇 Old System Payments
+          </a>
         </div>
       </div>
 
@@ -104,13 +107,23 @@ export default function AccountingOverviewPage() {
             <div className="accounting-stat">
               <span className="accounting-stat-label">Net Profit</span>
               <span className="accounting-stat-value">AED {money(summary.net_profit_cash_basis)}</span>
-              <span className="accounting-stat-hint">Cash basis: collected minus spent this month</span>
+              <span className="accounting-stat-hint">Cash basis: collected + old-system payments minus spent this month</span>
             </div>
             <div className="accounting-stat">
               <span className="accounting-stat-label">Discounts Given</span>
               <span className="accounting-stat-value">AED {money(summary.discounts.total)}</span>
               <span className="accounting-stat-hint">
                 {summary.discounts.count} invoice{summary.discounts.count === 1 ? '' : 's'} discounted this month
+              </span>
+            </div>
+            <div className="accounting-stat">
+              <span className="accounting-stat-label">Old System Payments</span>
+              <span className="accounting-stat-value">AED {money(summary.legacy.collected)}</span>
+              <span className="accounting-stat-hint">
+                <a href="/accounting/legacy-payments">
+                  {summary.legacy.count} payment{summary.legacy.count === 1 ? '' : 's'} logged this month
+                </a>{' '}
+                — counted in Net Profit above, kept out of VAT
               </span>
             </div>
           </div>

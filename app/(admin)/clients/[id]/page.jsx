@@ -252,10 +252,13 @@ export default function ClientDetailPage() {
     load();
   }
 
-  // Knocks a payment off the carried-over old-system balance, clamped at
-  // zero — for the common case of a client paying down what they owed the
-  // old software over time, without having to open the full Edit form and
-  // retype the whole remaining figure by hand.
+  // Logs a real legacy_payments row (migration 149) and knocks the same
+  // amount off the carried-over old-system balance, clamped at zero — for
+  // the common case of a client paying down what they owed the old
+  // software over time, without having to open the full Edit form and
+  // retype the whole remaining figure by hand. See
+  // app/(admin)/accounting/legacy-payments for the accounting-wide view
+  // onto every payment logged this way.
   async function recordLegacyPayment(e) {
     e.preventDefault();
     const amount = Number(legacyPaymentAmount);
@@ -265,11 +268,10 @@ export default function ClientDetailPage() {
     }
     setRecordingLegacyPayment(true);
     setLegacyPaymentError(null);
-    const newBalance = Math.max(0, Math.round((client.legacy_outstanding_balance - amount) * 100) / 100);
-    const res = await fetch(`/api/clients/${id}`, {
-      method: 'PATCH',
+    const res = await fetch(`/api/clients/${id}/legacy-payments`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ legacy_outstanding_balance: newBalance }),
+      body: JSON.stringify({ amount }),
     });
     const data = await res.json().catch(() => ({}));
     setRecordingLegacyPayment(false);
