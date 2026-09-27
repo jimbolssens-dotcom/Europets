@@ -22,7 +22,9 @@ const CHECKS = [
   { host: 'europetshospital.com', kind: 'A', expect: '76.76.21.21' },
   { host: 'www.europetshospital.com', kind: 'CNAME', expect: 'cname.vercel-dns.com' },
   { host: 'portal.europetshospital.com', kind: 'CNAME', expect: 'cname.vercel-dns.com' },
-  { host: 'europetsclinic.com', kind: 'A', expect: null },
+  { host: 'europetsclinic.com', kind: 'A', expect: '76.76.21.21' },
+  { host: 'www.europetsclinic.com', kind: 'CNAME', expect: 'cname.vercel-dns.com' },
+  { host: 'portal.europetsclinic.com', kind: 'CNAME', expect: 'cname.vercel-dns.com' },
 ];
 
 async function checkOne({ host, kind, expect }) {
@@ -31,10 +33,11 @@ async function checkOne({ host, kind, expect }) {
     const matches = expect ? answers.some((a) => a.toLowerCase().replace(/\.$/, '') === expect.toLowerCase()) : true;
     return { host, kind, resolved: true, answers, expect, ok: matches };
   } catch (err) {
-    // ENOTFOUND/ENODATA both mean "doesn't resolve" — the only outcome
-    // europetsclinic.com should ever show, since it isn't a registered
-    // domain at all.
-    return { host, kind, resolved: false, answers: [], expect, ok: expect === null, error: err.code || err.message };
+    // ENOTFOUND/ENODATA both mean "doesn't resolve" — a real problem for
+    // every host checked here now, since all three domains are actually
+    // registered and DNS-configured (europetsclinic.com joined the other
+    // two on 27 Sep 2026).
+    return { host, kind, resolved: false, answers: [], expect, ok: false, error: err.code || err.message };
   }
 }
 

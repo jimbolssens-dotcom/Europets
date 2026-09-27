@@ -48,14 +48,18 @@ const DOMAINS = [
   },
   {
     name: 'europetsclinic.com',
-    tag: 'Not actually registered',
-    registrar: 'None — 100WebSpace support confirmed directly: "no such domain is registered anywhere."',
-    registrarExpiry: '—',
-    dnsHost: "DNS records exist in the 100WebSpace panel and in Vercel's dashboard, but neither has any effect — nothing resolves because the domain itself was never secured.",
-    serves: null,
-    records: [],
-    note: 'Decide: either register europetsclinic.com properly (brand protection, or a redirect to epc.vet) or stop maintaining records for it — it does nothing either way right now.',
-    statusHosts: ['europetsclinic.com'],
+    tag: 'Secondary domain',
+    registrar: '100WebSpace — registered 27 Sep 2026, Order #1122289 ($15.99/yr, PayPal).',
+    registrarExpiry: '27 Sep 2027',
+    dnsHost: "100WebSpace's own nameservers — the records already sitting in the 100WebSpace panel from earlier this session started working the moment the domain itself was registered.",
+    serves: 'Same public marketing site as epc.vet and europetshospital.com. portal. subdomain also live.',
+    records: [
+      ['@', 'A', '76.76.21.21'],
+      ['www', 'CNAME', 'cname.vercel-dns.com'],
+      ['portal', 'CNAME', 'cname.vercel-dns.com'],
+    ],
+    note: null,
+    statusHosts: ['europetsclinic.com', 'www.europetsclinic.com', 'portal.europetsclinic.com'],
   },
 ];
 
@@ -63,7 +67,7 @@ const SERVICES = [
   {
     name: 'Vercel — "website" project',
     lines: [
-      'Domains: epc.vet, www.epc.vet, europetshospital.com + www',
+      'Domains: epc.vet, europetshospital.com, europetsclinic.com (+ www on each)',
       'Public marketing site, reviews, contact, new-patients, settle-bill',
     ],
   },
@@ -87,21 +91,20 @@ const SERVICES = [
     lines: [
       'Was the real authoritative DNS for epc.vet — not anymore',
       'Not the domain registrar — confirmed "managed by third party"',
-      'Premium Business Plan now safe to cancel, once confirmed nothing else depends on it',
+      'Premium Business Plan cancelled (auto-renew off) — stays active through Mar 2027, then ends',
     ],
   },
 ];
 
 const RENEWALS = [
   ['epc.vet domain', 'eNom / domain.com', '30 May 2027'],
+  ['europetsclinic.com domain', '100WebSpace', '27 Sep 2027'],
   ['100WebSpace hosting plan', '100WebSpace (Personal plan)', '22 Jun 2027'],
   ['europetshospital.com domain', '100WebSpace', 'Not yet confirmed'],
-  ['Wix Business Plan', 'Wix', 'Check before cancelling'],
+  ['Wix Premium plan (cancelled)', 'Wix', 'Ends 19 Mar 2027 — no renewal'],
 ];
 
 const FOLLOW_UPS = [
-  ['Decide on europetsclinic.com', 'Register it properly, or stop maintaining unused records for it.'],
-  ['Cancel or downgrade the Wix Business Plan', 'Safe now DNS no longer depends on Wix — check nothing else (old forms, embedded widgets) still relies on it first.'],
   ['Close or update 100WebSpace ticket d4421ad72d07', 'The real cause (Wix, not 100WebSpace) is now understood.'],
   ['Confirm europetshospital.com’s exact renewal date', 'Check 100WebSpace’s Registered Domains list directly.'],
   ['Set STAFF_LOGIN_OTP_ENABLED / STAFF_LOGIN_OTP_PHONE live on Vercel', 'Still pending before staff OTP login can go live in production.'],
@@ -110,12 +113,6 @@ const FOLLOW_UPS = [
 function domainPill(domain, statusByHost) {
   const rows = domain.statusHosts.map((h) => statusByHost[h]).filter(Boolean);
   if (rows.length === 0) return { label: 'Checking…', cls: 'void' };
-  if (domain.name === 'europetsclinic.com') {
-    const stillNothing = rows.every((r) => !r.resolved);
-    return stillNothing
-      ? { label: 'Confirmed not registered', cls: 'void' }
-      : { label: 'Something changed — check this', cls: 'partial' };
-  }
   if (rows.every((r) => r.resolved && r.ok)) return { label: 'Live', cls: 'paid' };
   if (rows.some((r) => !r.resolved)) return { label: 'Not resolving', cls: 'unpaid' };
   return { label: 'Resolving, but drifted from expected', cls: 'partial' };
