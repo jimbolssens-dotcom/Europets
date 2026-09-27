@@ -1,11 +1,14 @@
 // app/api/clients/[id]/legacy-payments/route.js
 // GET  -> this client's logged legacy payments, newest first.
-// POST { amount } -> records a payment against this client's
+// POST { amount, paid_at? } -> records a payment against this client's
 //   legacy_outstanding_balance (migration 069) as a proper legacy_payments
 //   row (migration 149) AND clamps the balance down by the same amount —
 //   replacing the old behavior of only ever touching the balance number
-//   with nothing to show it happened. See app/(admin)/clients/[id]/page.jsx's
-//   recordLegacyPayment.
+//   with nothing to show it happened. paid_at (YYYY-MM-DD) is optional and
+//   defaults to today — lets a payment actually received earlier (e.g.
+//   before this table existed) be backfilled with its real date instead
+//   of the date someone got around to typing it in. See
+//   app/(admin)/clients/[id]/page.jsx's recordLegacyPayment.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -29,6 +32,7 @@ export async function POST(request, { params }) {
   if (!amount || amount <= 0) {
     return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 });
   }
+  const paidAt = typeof body.paid_at === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.paid_at) ? body.paid_at : null;
 
   const { data: client, error: clientError } = await supabaseAdmin
     .from('clients')
@@ -42,7 +46,7 @@ export async function POST(request, { params }) {
 
   const { data: payment, error: insertError } = await supabaseAdmin
     .from('legacy_payments')
-    .insert([{ client_id: id, amount }])
+    .insert([{ client_id: id, amount, ...(paidAt ? { paid_at: paidAt } : {}) }])
     .select()
     .single();
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });

@@ -34,6 +34,11 @@ export default function ClientDetailPage() {
   const [editError, setEditError] = useState(null);
 
   const [legacyPaymentAmount, setLegacyPaymentAmount] = useState('');
+  // Defaults to today, but editable — for backfilling a payment that was
+  // actually received earlier (e.g. before this table existed at all, see
+  // migration 149), so its date reflects reality instead of "whenever
+  // someone got around to typing it into this form."
+  const [legacyPaymentDate, setLegacyPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [recordingLegacyPayment, setRecordingLegacyPayment] = useState(false);
   const [legacyPaymentError, setLegacyPaymentError] = useState(null);
 
@@ -271,7 +276,7 @@ export default function ClientDetailPage() {
     const res = await fetch(`/api/clients/${id}/legacy-payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount, paid_at: legacyPaymentDate }),
     });
     const data = await res.json().catch(() => ({}));
     setRecordingLegacyPayment(false);
@@ -280,6 +285,7 @@ export default function ClientDetailPage() {
       return;
     }
     setLegacyPaymentAmount('');
+    setLegacyPaymentDate(new Date().toISOString().slice(0, 10));
     load();
   }
 
@@ -450,6 +456,14 @@ export default function ClientDetailPage() {
                 placeholder="Amount paid"
                 value={legacyPaymentAmount}
                 onChange={(e) => setLegacyPaymentAmount(e.target.value)}
+              />
+            </label>
+            <label>
+              Date paid
+              <input
+                type="date"
+                value={legacyPaymentDate}
+                onChange={(e) => setLegacyPaymentDate(e.target.value)}
               />
             </label>
             <button type="submit" disabled={recordingLegacyPayment}>
