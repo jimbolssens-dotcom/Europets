@@ -82,8 +82,8 @@ const SERVICES = [
     name: '100WebSpace',
     lines: [
       'Plan: Personal — expires 22 Jun 2027',
-      'Hosts email (mbox.100ws.com) and DNS for europetshospital.com',
-      'Support ticket d4421ad72d07 still open — root cause now known, worth closing',
+      'Hosts email (mbox.100ws.com) and DNS for europetshospital.com + europetsclinic.com',
+      'Registered europetsclinic.com — 27 Sep 2026',
     ],
   },
   {
@@ -105,7 +105,6 @@ const RENEWALS = [
 ];
 
 const FOLLOW_UPS = [
-  ['Close or update 100WebSpace ticket d4421ad72d07', 'The real cause (Wix, not 100WebSpace) is now understood.'],
   ['Confirm europetshospital.com’s exact renewal date', 'Check 100WebSpace’s Registered Domains list directly.'],
   ['Set STAFF_LOGIN_OTP_ENABLED / STAFF_LOGIN_OTP_PHONE live on Vercel', 'Still pending before staff OTP login can go live in production.'],
 ];
