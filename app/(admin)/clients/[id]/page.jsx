@@ -14,7 +14,7 @@ import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder,
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
-import { LEGACY_PAYMENT_METHOD_LABELS } from '@/lib/legacyPayments';
+import { DEFAULT_LEGACY_PAYMENT_METHODS } from '@/lib/legacyPayments';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -34,6 +34,16 @@ export default function ClientDetailPage() {
 
   const [legacyPaymentAmount, setLegacyPaymentAmount] = useState('');
   const [legacyPaymentMethod, setLegacyPaymentMethod] = useState('');
+  const [legacyPaymentNote, setLegacyPaymentNote] = useState('');
+  // The Origin dropdown's options — staff-managed (migration 155), not a
+  // fixed set, so anyone can add "Nomod", "Tap", "PayPal", etc. Seeded
+  // with the defaults until the real list loads. See
+  // app/api/accounting/legacy-payment-methods.
+  const [legacyPaymentMethods, setLegacyPaymentMethods] = useState(DEFAULT_LEGACY_PAYMENT_METHODS);
+  const [addingLegacyPaymentMethod, setAddingLegacyPaymentMethod] = useState(false);
+  const [newLegacyPaymentMethodName, setNewLegacyPaymentMethodName] = useState('');
+  const [savingLegacyPaymentMethod, setSavingLegacyPaymentMethod] = useState(false);
+  const [legacyPaymentMethodError, setLegacyPaymentMethodError] = useState(null);
   // Defaults to today, but editable — for backfilling a payment that was
   // actually received earlier (e.g. before this table existed at all, see
   // migration 149), so its date reflects reality instead of "whenever
@@ -61,6 +71,11 @@ export default function ClientDetailPage() {
 
   useEffect(() => {
     load();
+    fetch('/api/accounting/legacy-payment-methods')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length) setLegacyPaymentMethods(data);
+      });
 
     const channel = supabase
       .channel(`client-${id}`)
@@ -255,7 +270,12 @@ export default function ClientDetailPage() {
     const res = await fetch(`/api/clients/${id}/legacy-payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, payment_method: legacyPaymentMethod, paid_at: legacyPaymentDate }),
+      body: JSON.stringify({
+        amount,
+        payment_method: legacyPaymentMethod,
+        note: legacyPaymentNote,
+        paid_at: legacyPaymentDate,
+      }),
     });
     const data = await res.json().catch(() => ({}));
     setRecordingLegacyPayment(false);
@@ -265,8 +285,39 @@ export default function ClientDetailPage() {
     }
     setLegacyPaymentAmount('');
     setLegacyPaymentMethod('');
+    setLegacyPaymentNote('');
     setLegacyPaymentDate(new Date().toISOString().slice(0, 10));
     load();
+  }
+
+  // Adds a new Origin option to the staff-managed list (migration 155)
+  // and selects it, instead of forcing whoever's recording a payment with
+  // an unlisted origin to leave the amount unlogged.
+  async function addLegacyPaymentMethod(e) {
+    e.preventDefault();
+    const name = newLegacyPaymentMethodName.trim();
+    if (!name) {
+      setLegacyPaymentMethodError('Enter a name for the new origin');
+      return;
+    }
+    setSavingLegacyPaymentMethod(true);
+    setLegacyPaymentMethodError(null);
+    const res = await fetch('/api/accounting/legacy-payment-methods', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSavingLegacyPaymentMethod(false);
+    if (!res.ok) {
+      setLegacyPaymentMethodError(data.error || 'Failed to add payment origin');
+      return;
+    }
+    setLegacyPaymentMethods(data);
+    const saved = data.find((m) => m.toLowerCase() === name.toLowerCase()) || name;
+    setLegacyPaymentMethod(saved);
+    setNewLegacyPaymentMethodName('');
+    setAddingLegacyPaymentMethod(false);
   }
 
   function startLegacyBalanceCorrection() {
@@ -474,14 +525,60 @@ export default function ClientDetailPage() {
             </label>
             <label>
               Origin
-              <select value={legacyPaymentMethod} onChange={(e) => setLegacyPaymentMethod(e.target.value)}>
+              <select
+                value={legacyPaymentMethod}
+                onChange={(e) => {
+                  if (e.target.value === '__add_new__') {
+                    setAddingLegacyPaymentMethod(true);
+                    return;
+                  }
+                  setLegacyPaymentMethod(e.target.value);
+                }}
+              >
                 <option value="">Select...</option>
-                {Object.entries(LEGACY_PAYMENT_METHOD_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
+                {legacyPaymentMethods.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
                   </option>
                 ))}
+                <option value="__add_new__">+ Add new origin...</option>
               </select>
+            </label>
+            {addingLegacyPaymentMethod && (
+              <div className="legacy-balance-payment-form">
+                {legacyPaymentMethodError && <p className="error">{legacyPaymentMethodError}</p>}
+                <label>
+                  New origin name
+                  <input
+                    type="text"
+                    placeholder="e.g. Nomod, Tap, PayPal"
+                    value={newLegacyPaymentMethodName}
+                    onChange={(e) => setNewLegacyPaymentMethodName(e.target.value)}
+                  />
+                </label>
+                <button type="button" onClick={addLegacyPaymentMethod} disabled={savingLegacyPaymentMethod}>
+                  {savingLegacyPaymentMethod ? 'Adding...' : 'Add'}
+                </button>{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingLegacyPaymentMethod(false);
+                    setNewLegacyPaymentMethodName('');
+                    setLegacyPaymentMethodError(null);
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            <label>
+              Note (optional)
+              <input
+                type="text"
+                placeholder="e.g. which old invoice this covers"
+                value={legacyPaymentNote}
+                onChange={(e) => setLegacyPaymentNote(e.target.value)}
+              />
             </label>
             <label>
               Date paid

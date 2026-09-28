@@ -21,7 +21,7 @@ export async function GET(request) {
 
   let query = supabase
     .from('legacy_payments')
-    .select('id, amount, payment_method, paid_at, client_id, clients(full_name, client_number)')
+    .select('id, amount, payment_method, note, paid_at, client_id, clients(full_name, client_number)')
     .order('paid_at', { ascending: false });
 
   if (month) {
