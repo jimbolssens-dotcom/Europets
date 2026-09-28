@@ -24,6 +24,7 @@ import SpeciesField from '@/app/_components/SpeciesField';
 import PetAttributeField from '@/app/_components/PetAttributeField';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 const SEX_LABELS = {
   male: 'Male',
@@ -54,6 +55,8 @@ export default function PatientDetailPage() {
   const [quotes, setQuotes] = useState([]);
   const [weightHistory, setWeightHistory] = useState([]);
   const [temperatureHistory, setTemperatureHistory] = useState([]);
+  const [sendingReviewLink, setSendingReviewLink] = useState(false);
+  const [reviewLinkError, setReviewLinkError] = useState(null);
 
   const load = () =>
     fetch(`/api/patients/${id}`)
@@ -263,6 +266,40 @@ export default function PatientDetailPage() {
     }
   }
 
+  // Generates a link to the public website's review form, scoped to this
+  // one patient (migration 152 — a review is about one visit/pet, not a
+  // client's whole account, which is why this moved here from the client
+  // page), and drafts it in WhatsApp to the owner — same pattern as the
+  // client page's own sendBookingLink, landing on the website (see
+  // website/app/reviews/submit/[id]) instead of the app's own portal,
+  // since reviews are public-facing.
+  async function sendReviewLink() {
+    setReviewLinkError(null);
+    setSendingReviewLink(true);
+    const res = await fetch('/api/review-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patient_id: patient.id, sent_to_phone: patient.clients?.phone || null }),
+    });
+    const data = await res.json().catch(() => null);
+    setSendingReviewLink(false);
+    if (!res.ok) {
+      setReviewLinkError(data?.error || 'Failed to generate a review link');
+      return;
+    }
+    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
+    const url = `${websiteUrl}/reviews/submit/${data.id}`;
+    const ownerName = patient.clients?.full_name || 'there';
+    const digits = (patient.clients?.phone || '').replace(/\D/g, '');
+    const message = `Hi ${ownerName}! Thanks for bringing ${patient.name} to see us — we'd love to hear how it went. Could you leave us a quick review (with a photo of ${patient.name}!) here? ${url}`;
+    if (digits.length > 3) {
+      openWhatsApp(patient.clients.phone, message);
+    } else {
+      await navigator.clipboard.writeText(url);
+      setReviewLinkError('No phone number on file for this patient\'s owner — link copied to clipboard instead.');
+    }
+  }
+
   function startEdit() {
     setEditForm({
       name: patient.name || '',
@@ -349,6 +386,7 @@ export default function PatientDetailPage() {
       </div>
 
       {videoConsultError && <p className="error">{videoConsultError}</p>}
+      {reviewLinkError && <p className="error">{reviewLinkError}</p>}
 
       <div className="action-row">
         <a href={`/appointments?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
@@ -365,6 +403,9 @@ export default function PatientDetailPage() {
         <a href={`/patients/${patient.id}/history`} className="button-link">
           📖 Full Patient History
         </a>
+        <button type="button" className="button-link" onClick={sendReviewLink} disabled={sendingReviewLink}>
+          {sendingReviewLink ? 'Sending...' : '⭐ Review'}
+        </button>
         <button type="button" className="button-link" onClick={toggleDeceased}>
           {patient.deceased ? (
             'Undo RIP'

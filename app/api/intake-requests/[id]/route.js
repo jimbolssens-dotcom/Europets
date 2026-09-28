@@ -28,12 +28,21 @@ import { isStaffRequest } from '@/lib/staffAuth';
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('intake_requests')
-    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg, sex))')
+    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg, sex, deceased, rehomed))')
     .eq('id', params.id)
     .single();
 
   if (error) {
     return NextResponse.json({ error: 'intake request not found' }, { status: 404 });
+  }
+  // A deceased/rehomed pet (owner-editable from the client app's own pet
+  // page) has no business showing up as something to book an appointment
+  // for — same filter lib/whatsappConcierge.js already applies for the
+  // AI concierge's own version of this same "which of this client's pets"
+  // list, just missed here since this query embeds through clients()
+  // instead of querying patients directly.
+  if (data.clients?.patients) {
+    data.clients.patients = data.clients.patients.filter((p) => !p.deceased && !p.rehomed);
   }
   return NextResponse.json(data);
 }
@@ -78,10 +87,16 @@ async function linkExistingClient(id, phone) {
     .from('intake_requests')
     .update({ client_id: matches[0].id, sent_to_phone: phone })
     .eq('id', id)
-    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg, sex))')
+    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg, sex, deceased, rehomed))')
     .single();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  // Same deceased/rehomed filter as GET above — this path (an own-number
+  // match re-pointing a blank link at an existing client) returns the
+  // same shape straight to the public form.
+  if (data.clients?.patients) {
+    data.clients.patients = data.clients.patients.filter((p) => !p.deceased && !p.rehomed);
   }
   return NextResponse.json({ matched: true, request: data });
 }
@@ -433,6 +448,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
             ? `Client-requested surgery: ${intake.custom_surgery_reason}`
             : `Client-requested ${CLIENT_APPOINTMENT_TYPE_LABELS[intake.appointment_type] || intake.appointment_type}`,
         client_requested: true,
+        booking_source: 'client_requested',
       }])
       .select('id')
       .single();
@@ -480,8 +496,27 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
   let confirmation_error = null;
   if (appointmentId && data.clients?.phone) {
     try {
-      const dateLabel = appointmentStart.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: '2-digit' });
-      const timeLabel = appointmentStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      // This runs server-side (a Vercel serverless function, whose runtime
+      // clock is UTC, not Dubai) — toLocaleDateString/toLocaleTimeString
+      // with no explicit timeZone format in the SERVER's zone, not the
+      // clinic's, so a 9:30am Dubai (UTC+4) booking went out to the client
+      // as "05:30 AM". lib/dubaiTime.js's helpers don't cover formatting a
+      // human-readable label, so this sets the zone directly instead.
+      const dateLabel = appointmentStart.toLocaleDateString('en-GB', {
+        weekday: 'long',
+        day: '2-digit',
+        month: '2-digit',
+        timeZone: 'Asia/Dubai',
+      });
+      // hour12 forced explicitly — en-GB otherwise defaults to a 24-hour
+      // clock (same gotcha lib/formatTimestamp.js's formatDateTime works
+      // around), which would silently change "09:30 AM" to "09:30".
+      const timeLabel = appointmentStart.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Dubai',
+      });
       await sendBookingConfirmation(data.clients.phone.replace(/\D/g, ''), {
         clientName: data.clients.full_name,
         patientName: patient_name,

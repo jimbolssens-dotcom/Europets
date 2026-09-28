@@ -108,12 +108,29 @@ body.mobile-body-fill .mobile-app {
   flex: 1;
   min-height: 0;
   max-height: none;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1rem calc(7rem + env(safe-area-inset-bottom));
   margin-bottom: 0;
 }
 
+/* Pinned via position: fixed (anchored to the real, live visual viewport
+   the browser reports) rather than relying only on the flex-fill/100dvh
+   chain above (body -> .mobile-app -> .mobile-messages-thread-page) to
+   keep this in view — a reply bar getting pushed below the fold on some
+   Android builds (dvh/toolbar recalculation glitches, a flex ancestor
+   ending up shorter than its content expects) leaves someone unable to
+   reply at all, with nothing to scroll to reach it, since body itself is
+   overflow: hidden while a thread's open. Fixed positioning can't be
+   pushed out of view by anything upstream miscalculating a height, at the
+   cost of taking it out of the thread's flex flow — .staff-chat-thread's
+   own bottom padding above reserves room so the last message isn't
+   hidden behind it instead. */
 .mobile-messages-composer {
   flex-shrink: 0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
   padding: 0.6rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
   border-top: 1px solid #eee;
   background: white;
@@ -1686,6 +1703,12 @@ button.secondary:hover {
   display: block;
 }
 
+.attachment-date {
+  font-size: 0.75rem;
+  color: #888;
+  white-space: nowrap;
+}
+
 .attachment-actions {
   display: flex;
   align-items: center;
@@ -3021,6 +3044,21 @@ button.secondary:hover {
   margin: 0.25rem 0 0.75rem;
 }
 
+/* Review moderation's own photo thumbnails (app/(admin)/reviews) — the
+   mandatory photo(s) a public review submission carries (migration 152). */
+.review-photo-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.review-photo-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
 /* Tucks the one-time WhatsApp setup actions (fix subscription, submit a
    template) out of the way above the Messages inbox — done once, rarely
    touched again, so a plain closed disclosure beats permanent clutter. */
@@ -4098,6 +4136,20 @@ button.secondary:hover {
   cursor: wait;
 }
 
+/* Booking-channel badge (lib/appointmentBooking.js's BOOKING_SOURCE_BADGES)
+   — top-right corner, small enough to never compete with the doctor's
+   name/time already in the block. .schedule-block is itself
+   position: absolute, which already gives it its own positioning context
+   for this without any extra rule. */
+.schedule-block .channel-badge {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 8px;
+  line-height: 1;
+  opacity: 0.85;
+}
+
 .schedule-block-inactive {
   cursor: default;
   opacity: 0.75;
@@ -4548,6 +4600,12 @@ button.secondary:hover {
   border-radius: 8px;
   margin-bottom: 0.3rem;
   cursor: zoom-in;
+}
+
+.portal-chat-bubble-audio {
+  display: block;
+  max-width: 100%;
+  margin-bottom: 0.3rem;
 }
 
 .portal-chat-bubble-mine {
@@ -5201,6 +5259,18 @@ button.secondary:hover {
 
 .legacy-balance-payment-form .error {
   margin: 0 0 0.4rem;
+}
+
+.legacy-balance-correct-link {
+  background: none;
+  border: none;
+  padding: 0.4rem 0 0;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: normal;
+  color: #8a6116;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .possible-duplicate-warning p {
@@ -6898,6 +6968,18 @@ form.card.admit-patient-form {
 .mobile-appt-dr-accent {
   border-left-width: 4px;
   padding-left: calc(1rem - 3px);
+  position: relative;
+}
+
+/* Same booking-channel badge as the desktop schedule block above, just
+   sized up a touch for a touch screen instead of a mouse-hover title. */
+.mobile-appt-dr-accent .channel-badge {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.75rem;
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.85;
 }
 
 .mobile-list-title {

@@ -9,6 +9,7 @@ import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import EditAppointmentModal from '@/app/_components/EditAppointmentModal';
 import AppointmentRequestsPanel from '@/app/_components/AppointmentRequestsPanel';
 import { buildStaffColorMap, colorForAppointment, UNASSIGNED_STAFF_COLOR, INACTIVE_APPOINTMENT_COLOR } from '@/lib/staffColors';
+import { BOOKING_SOURCE_BADGES } from '@/lib/appointmentBooking';
 import { openWhatsApp } from '@/lib/whatsapp';
 
 const OPEN_HOUR = 8;
@@ -407,13 +408,14 @@ function AppointmentsPageInner() {
     const inactive = a.status === 'cancelled' || a.status === 'no_show';
     const color = inactive ? INACTIVE_APPOINTMENT_COLOR : colorForVetAppt(a.vet_id, a.type); const canMove = a.status !== 'cancelled' && a.status !== 'complete' && a.status !== 'no_show'; const canResize = calendarView === 'day' && canMove;
     const blockLabel = a.type === 'meeting' ? (a.reason || 'Staff Meeting') : (a.patients?.name || 'Unlinked');
+    const badge = BOOKING_SOURCE_BADGES[a.booking_source];
     // A cancelled/no-show block stays visible (so staff can still see what
     // used to be there) but is otherwise a ghost: pointer-events: none
     // makes clicks, drags, and hover all pass straight through it to
     // whatever's underneath — the room/day track's own slot-selection —
     // instead of the block intercepting them, which used to make a
     // cancelled slot's space permanently unbookable and immovable.
-    return <div key={a.id} className={['schedule-block', canMove ? 'schedule-block-draggable' : '', inactive ? 'schedule-block-inactive' : '', openingConsultId === a.id ? 'schedule-block-opening' : ''].filter(Boolean).join(' ')} style={{ background: color.bg, borderColor: color.fg, color: color.fg, overflow: 'hidden', pointerEvents: inactive ? 'none' : undefined, ...extraStyle }} title={`${formatTime(a.start_time)} · ${blockLabel} · ${a.rooms?.name || 'No room'} · ${a.staff?.full_name || 'Unassigned vet'}${inactive ? ` · ${a.status === 'no_show' ? 'No-show' : 'Cancelled'}` : ''}`} onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => { e.stopPropagation(); if (pendingClickTimeoutRef.current) clearTimeout(pendingClickTimeoutRef.current); openAppointmentRecord(a); }} onMouseDown={(e) => startMoveAppointment(e, a)} onMouseMove={(e) => e.stopPropagation()} onMouseEnter={() => setHoverSlot(null)}><strong>{blockLabel}</strong>{compact ? <><br />{formatTime(a.start_time)}</> : <> {formatTime(a.start_time)} · {a.type} · {a.status}</>}{a.type === 'surgery' && canResize && <div className="schedule-resize-handle" onMouseDown={(e) => startResizeAppointment(e, a)} />}</div>;
+    return <div key={a.id} className={['schedule-block', canMove ? 'schedule-block-draggable' : '', inactive ? 'schedule-block-inactive' : '', openingConsultId === a.id ? 'schedule-block-opening' : ''].filter(Boolean).join(' ')} style={{ background: color.bg, borderColor: color.fg, color: color.fg, overflow: 'hidden', pointerEvents: inactive ? 'none' : undefined, ...extraStyle }} title={`${formatTime(a.start_time)} · ${blockLabel} · ${a.rooms?.name || 'No room'} · ${a.staff?.full_name || 'Unassigned vet'}${inactive ? ` · ${a.status === 'no_show' ? 'No-show' : 'Cancelled'}` : ''}`} onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => { e.stopPropagation(); if (pendingClickTimeoutRef.current) clearTimeout(pendingClickTimeoutRef.current); openAppointmentRecord(a); }} onMouseDown={(e) => startMoveAppointment(e, a)} onMouseMove={(e) => e.stopPropagation()} onMouseEnter={() => setHoverSlot(null)}>{badge && <span className="channel-badge">{badge}</span>}<strong>{blockLabel}</strong>{compact ? <><br />{formatTime(a.start_time)}</> : <> {formatTime(a.start_time)} · {a.type} · {a.status}</>}{a.type === 'surgery' && canResize && <div className="schedule-resize-handle" onMouseDown={(e) => startResizeAppointment(e, a)} />}</div>;
   }
   function renderTimeColumn() { return <div className="schedule-time-col" style={{ flex: `0 0 ${TIME_COL_WIDTH}px` }}><div className="schedule-header schedule-time-header" /><div className="schedule-time-track" style={{ height: scheduleHeight }}>{HOUR_MARKS.map((h) => <div key={h} className="schedule-hour-label" style={{ top: (h - OPEN_HOUR) * 60 * pixelsPerMinute }}>{pad(h)}:00</div>)}</div></div>; }
   function gridLines() { return <>{HOUR_MARKS.map((h) => <div key={`h-${h}`} className="schedule-hour-line" style={{ top: (h - OPEN_HOUR) * 60 * pixelsPerMinute }} />)}{QUARTER_MARKS.map((m) => <div key={`q-${m}`} className="schedule-quarter-line" style={{ top: m * pixelsPerMinute }} />)}</>; }

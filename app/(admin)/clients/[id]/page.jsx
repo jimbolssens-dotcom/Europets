@@ -14,6 +14,7 @@ import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder,
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { DEFAULT_LEGACY_PAYMENT_METHODS } from '@/lib/legacyPayments';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -23,8 +24,6 @@ export default function ClientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [sendingLink, setSendingLink] = useState(false);
   const [bookingLinkError, setBookingLinkError] = useState(null);
-  const [sendingReviewLink, setSendingReviewLink] = useState(false);
-  const [reviewLinkError, setReviewLinkError] = useState(null);
   const [paymentLinkError, setPaymentLinkError] = useState(null);
   const [clientAppLinkError, setClientAppLinkError] = useState(null);
 
@@ -34,8 +33,29 @@ export default function ClientDetailPage() {
   const [editError, setEditError] = useState(null);
 
   const [legacyPaymentAmount, setLegacyPaymentAmount] = useState('');
+  const [legacyPaymentMethod, setLegacyPaymentMethod] = useState('');
+  const [legacyPaymentNote, setLegacyPaymentNote] = useState('');
+  // The Origin dropdown's options — staff-managed (migration 155), not a
+  // fixed set, so anyone can add "Nomod", "Tap", "PayPal", etc. Seeded
+  // with the defaults until the real list loads. See
+  // app/api/accounting/legacy-payment-methods.
+  const [legacyPaymentMethods, setLegacyPaymentMethods] = useState(DEFAULT_LEGACY_PAYMENT_METHODS);
+  const [addingLegacyPaymentMethod, setAddingLegacyPaymentMethod] = useState(false);
+  const [newLegacyPaymentMethodName, setNewLegacyPaymentMethodName] = useState('');
+  const [savingLegacyPaymentMethod, setSavingLegacyPaymentMethod] = useState(false);
+  const [legacyPaymentMethodError, setLegacyPaymentMethodError] = useState(null);
+  // Defaults to today, but editable — for backfilling a payment that was
+  // actually received earlier (e.g. before this table existed at all, see
+  // migration 149), so its date reflects reality instead of "whenever
+  // someone got around to typing it into this form."
+  const [legacyPaymentDate, setLegacyPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [recordingLegacyPayment, setRecordingLegacyPayment] = useState(false);
   const [legacyPaymentError, setLegacyPaymentError] = useState(null);
+
+  const [correctingLegacyBalance, setCorrectingLegacyBalance] = useState(false);
+  const [legacyBalanceCorrection, setLegacyBalanceCorrection] = useState('');
+  const [savingLegacyCorrection, setSavingLegacyCorrection] = useState(false);
+  const [legacyCorrectionError, setLegacyCorrectionError] = useState(null);
 
   const load = () =>
     Promise.all([
@@ -51,6 +71,11 @@ export default function ClientDetailPage() {
 
   useEffect(() => {
     load();
+    fetch('/api/accounting/legacy-payment-methods')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length) setLegacyPaymentMethods(data);
+      });
 
     const channel = supabase
       .channel(`client-${id}`)
@@ -103,36 +128,6 @@ export default function ClientDetailPage() {
     } else {
       await navigator.clipboard.writeText(url);
       setBookingLinkError('No phone number on file — link copied to clipboard instead.');
-    }
-  }
-
-  // Generates a link to the public website's review form, scoped to this
-  // one client, and drafts it in WhatsApp — same pattern as sendBookingLink
-  // above, but landing on the website (see website/app/reviews/submit/[id])
-  // instead of the app's own portal, since reviews are public-facing.
-  async function sendReviewLink() {
-    setReviewLinkError(null);
-    setSendingReviewLink(true);
-    const res = await fetch('/api/review-requests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client_id: id, sent_to_phone: client.phone || null }),
-    });
-    const data = await res.json().catch(() => null);
-    setSendingReviewLink(false);
-    if (!res.ok) {
-      setReviewLinkError(data?.error || 'Failed to generate a review link');
-      return;
-    }
-    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
-    const url = `${websiteUrl}/reviews/submit/${data.id}`;
-    const digits = (client.phone || '').replace(/\D/g, '');
-    const message = `Hi ${client.full_name}! Thanks for visiting Europets Clinic — we'd love to hear how it went. Could you leave us a quick review here? ${url}`;
-    if (digits.length > 3) {
-      openWhatsApp(client.phone, message);
-    } else {
-      await navigator.clipboard.writeText(url);
-      setReviewLinkError('No phone number on file — link copied to clipboard instead.');
     }
   }
 
@@ -252,10 +247,13 @@ export default function ClientDetailPage() {
     load();
   }
 
-  // Knocks a payment off the carried-over old-system balance, clamped at
-  // zero — for the common case of a client paying down what they owed the
-  // old software over time, without having to open the full Edit form and
-  // retype the whole remaining figure by hand.
+  // Logs a real legacy_payments row (migration 149) and knocks the same
+  // amount off the carried-over old-system balance, clamped at zero — for
+  // the common case of a client paying down what they owed the old
+  // software over time, without having to open the full Edit form and
+  // retype the whole remaining figure by hand. See
+  // app/(admin)/accounting/legacy-payments for the accounting-wide view
+  // onto every payment logged this way.
   async function recordLegacyPayment(e) {
     e.preventDefault();
     const amount = Number(legacyPaymentAmount);
@@ -263,13 +261,21 @@ export default function ClientDetailPage() {
       setLegacyPaymentError('Enter an amount paid');
       return;
     }
+    if (!legacyPaymentMethod) {
+      setLegacyPaymentError('Pick where the money came from');
+      return;
+    }
     setRecordingLegacyPayment(true);
     setLegacyPaymentError(null);
-    const newBalance = Math.max(0, Math.round((client.legacy_outstanding_balance - amount) * 100) / 100);
-    const res = await fetch(`/api/clients/${id}`, {
-      method: 'PATCH',
+    const res = await fetch(`/api/clients/${id}/legacy-payments`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ legacy_outstanding_balance: newBalance }),
+      body: JSON.stringify({
+        amount,
+        payment_method: legacyPaymentMethod,
+        note: legacyPaymentNote,
+        paid_at: legacyPaymentDate,
+      }),
     });
     const data = await res.json().catch(() => ({}));
     setRecordingLegacyPayment(false);
@@ -278,6 +284,77 @@ export default function ClientDetailPage() {
       return;
     }
     setLegacyPaymentAmount('');
+    setLegacyPaymentMethod('');
+    setLegacyPaymentNote('');
+    setLegacyPaymentDate(new Date().toISOString().slice(0, 10));
+    load();
+  }
+
+  // Adds a new Origin option to the staff-managed list (migration 155)
+  // and selects it, instead of forcing whoever's recording a payment with
+  // an unlisted origin to leave the amount unlogged.
+  async function addLegacyPaymentMethod(e) {
+    e.preventDefault();
+    const name = newLegacyPaymentMethodName.trim();
+    if (!name) {
+      setLegacyPaymentMethodError('Enter a name for the new origin');
+      return;
+    }
+    setSavingLegacyPaymentMethod(true);
+    setLegacyPaymentMethodError(null);
+    const res = await fetch('/api/accounting/legacy-payment-methods', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSavingLegacyPaymentMethod(false);
+    if (!res.ok) {
+      setLegacyPaymentMethodError(data.error || 'Failed to add payment origin');
+      return;
+    }
+    setLegacyPaymentMethods(data);
+    const saved = data.find((m) => m.toLowerCase() === name.toLowerCase()) || name;
+    setLegacyPaymentMethod(saved);
+    setNewLegacyPaymentMethodName('');
+    setAddingLegacyPaymentMethod(false);
+  }
+
+  function startLegacyBalanceCorrection() {
+    setLegacyBalanceCorrection(String(client.legacy_outstanding_balance ?? ''));
+    setLegacyCorrectionError(null);
+    setCorrectingLegacyBalance(true);
+  }
+
+  // A straight PATCH of the number itself — deliberately not the
+  // legacy-payments endpoint above: this is for fixing a discrepancy in
+  // the carried-over figure itself (an import error, a payment already
+  // accounted for elsewhere), not money actually received today, so it
+  // creates no legacy_payments row and has no effect on the P&L the way
+  // recordLegacyPayment does.
+  async function saveLegacyBalanceCorrection(e) {
+    e.preventDefault();
+    const amount = Number(legacyBalanceCorrection);
+    // A negative figure is valid here — a client in credit (overpaid, or
+    // the clinic owes them) — so only NaN is actually rejected.
+    if (legacyBalanceCorrection === '' || Number.isNaN(amount)) {
+      setLegacyCorrectionError('Enter a valid amount');
+      return;
+    }
+    setSavingLegacyCorrection(true);
+    setLegacyCorrectionError(null);
+    const res = await fetch(`/api/clients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ legacy_outstanding_balance: amount }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSavingLegacyCorrection(false);
+    if (!res.ok) {
+      setLegacyCorrectionError(data.error || 'Failed to update the balance');
+      return;
+    }
+    setCorrectingLegacyBalance(false);
     load();
   }
 
@@ -326,15 +403,11 @@ export default function ClientDetailPage() {
         <button type="button" className="button-link" onClick={sendBookingLink} disabled={sendingLink}>
           {sendingLink ? 'Sending...' : '📅 Invite'}
         </button>{' '}
-        <button type="button" className="button-link" onClick={sendReviewLink} disabled={sendingReviewLink}>
-          {sendingReviewLink ? 'Sending...' : '⭐ Review'}
-        </button>{' '}
         <button type="button" className="button-link" onClick={sendClientAppLink}>
           📱 Client App
         </button>
       </p>
       {bookingLinkError && <p className="error">{bookingLinkError}</p>}
-      {reviewLinkError && <p className="error">{reviewLinkError}</p>}
       {clientAppLinkError && <p className="error">{clientAppLinkError}</p>}
 
       {editing ? (
@@ -433,8 +506,8 @@ export default function ClientDetailPage() {
             ⚠️ Old system balance: AED {money(client.legacy_outstanding_balance)}{' '}
             <InfoHint>
               Carried over from the previous clinic software at import — not reflected in any
-              invoice here. Record what they pay off below as it comes in, or clear it from
-              Edit once fully reconciled.
+              invoice here. Record what they pay off below as it comes in, or correct the figure
+              itself if it doesn't match what's actually owed.
             </InfoHint>
           </summary>
           <form className="legacy-balance-payment-form" onSubmit={recordLegacyPayment}>
@@ -450,10 +523,106 @@ export default function ClientDetailPage() {
                 onChange={(e) => setLegacyPaymentAmount(e.target.value)}
               />
             </label>
+            <label>
+              Origin
+              <select
+                value={legacyPaymentMethod}
+                onChange={(e) => {
+                  if (e.target.value === '__add_new__') {
+                    setAddingLegacyPaymentMethod(true);
+                    return;
+                  }
+                  setLegacyPaymentMethod(e.target.value);
+                }}
+              >
+                <option value="">Select...</option>
+                {legacyPaymentMethods.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+                <option value="__add_new__">+ Add new origin...</option>
+              </select>
+            </label>
+            {addingLegacyPaymentMethod && (
+              <div className="legacy-balance-payment-form">
+                {legacyPaymentMethodError && <p className="error">{legacyPaymentMethodError}</p>}
+                <label>
+                  New origin name
+                  <input
+                    type="text"
+                    placeholder="e.g. Nomod, Tap, PayPal"
+                    value={newLegacyPaymentMethodName}
+                    onChange={(e) => setNewLegacyPaymentMethodName(e.target.value)}
+                  />
+                </label>
+                <button type="button" onClick={addLegacyPaymentMethod} disabled={savingLegacyPaymentMethod}>
+                  {savingLegacyPaymentMethod ? 'Adding...' : 'Add'}
+                </button>{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingLegacyPaymentMethod(false);
+                    setNewLegacyPaymentMethodName('');
+                    setLegacyPaymentMethodError(null);
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            <label>
+              Note (optional)
+              <input
+                type="text"
+                placeholder="e.g. which old invoice this covers"
+                value={legacyPaymentNote}
+                onChange={(e) => setLegacyPaymentNote(e.target.value)}
+              />
+            </label>
+            <label>
+              Date paid
+              <input
+                type="date"
+                value={legacyPaymentDate}
+                onChange={(e) => setLegacyPaymentDate(e.target.value)}
+              />
+            </label>
             <button type="submit" disabled={recordingLegacyPayment}>
               {recordingLegacyPayment ? 'Saving...' : 'Record Payment'}
             </button>
           </form>
+
+          {/* A straight correction to the carried-over figure itself —
+              distinct from Record Payment above (which logs real money
+              received and feeds the P&L). This just fixes a wrong number,
+              e.g. an import discrepancy — no legacy_payments row, no
+              accounting effect. */}
+          {correctingLegacyBalance ? (
+            <form className="legacy-balance-payment-form" onSubmit={saveLegacyBalanceCorrection}>
+              {legacyCorrectionError && <p className="error">{legacyCorrectionError}</p>}
+              <label>
+                Correct balance to (AED)
+                <input
+                  type="number"
+                  step="0.01"
+                  autoFocus
+                  value={legacyBalanceCorrection}
+                  onChange={(e) => setLegacyBalanceCorrection(e.target.value)}
+                />
+              </label>
+              <button type="submit" disabled={savingLegacyCorrection}>
+                {savingLegacyCorrection ? 'Saving...' : 'Save Correction'}
+              </button>
+              <button type="button" onClick={() => setCorrectingLegacyBalance(false)} disabled={savingLegacyCorrection}>
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <button type="button" className="legacy-balance-correct-link" onClick={startLegacyBalanceCorrection}>
+              ✏️ Correct this number
+            </button>
+          )}
         </details>
       )}
 

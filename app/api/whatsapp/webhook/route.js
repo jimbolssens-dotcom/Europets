@@ -48,21 +48,34 @@ function isValidSignature(rawBody, signatureHeader) {
   return timingSafeEqual(expectedBuf, gotBuf);
 }
 
-// A text message's body, an image's caption (may be empty — the photo
-// itself is handled separately, see downloadInboundImage), or a short
-// bracketed placeholder for any other message type Meta might deliver
-// (voice note, document, location, a reaction, ...). There's no "open
-// WhatsApp instead" fallback for those — this number can only ever be
-// used through this app, never the regular WhatsApp client — so v1 just
-// says plainly that type isn't viewable here yet rather than pointing
-// staff somewhere that doesn't exist for this number.
+// A text message's body, an image/document's caption (may be empty —
+// the file itself is handled separately, see downloadInboundMedia), or
+// a short bracketed placeholder for any other message type Meta might
+// deliver (location, a reaction, ...). There's no "open WhatsApp
+// instead" fallback for those — this number can only ever be used
+// through this app, never the regular WhatsApp client — so v1 just says
+// plainly that type isn't viewable here yet rather than pointing staff
+// somewhere that doesn't exist for this number.
 function extractBody(message) {
   if (message.type === 'text') return message.text?.body || '';
   if (message.type === 'image') return message.image?.caption || '';
-  if (message.type === 'sticker') return '';
+  if (message.type === 'document') return message.document?.caption || '';
+  if (message.type === 'sticker' || message.type === 'audio') return '';
   if (message.type === 'button') return message.button?.text || '[button reply]';
   if (message.type === 'interactive') {
     return message.interactive?.button_reply?.title || message.interactive?.list_reply?.title || '[interactive reply]';
+  }
+  // WhatsApp's own "share contact" card — no media download involved,
+  // its name(s)/phone(s) arrive as plain data right on the message, so
+  // this just formats them into something readable rather than
+  // treating it like an unsupported type.
+  if (message.type === 'contacts') {
+    const shared = (message.contacts || []).map((c) => {
+      const name = c.name?.formatted_name || 'Unknown';
+      const phone = c.phones?.[0]?.phone;
+      return phone ? `${name} (${phone})` : name;
+    });
+    return shared.length ? `📇 Shared contact: ${shared.join(', ')}` : '📇 Shared a contact';
   }
   // A tap-and-hold emoji reaction on one of our own messages, not a new
   // message of its own — Meta still delivers it as a full inbound message
@@ -81,28 +94,43 @@ async function findClientIdForPhone(digits) {
   return matches[0] || null;
 }
 
-// Downloads a photo/sticker a client sent and re-hosts it in the same
-// "consult-files" Storage bucket every other photo/file in this app
-// already lives in (see migrations/131) — Meta only keeps the original
-// for a few days, so this has to happen right away, not on first view.
-// Best-effort: a failure here (Meta media API hiccup, huge file, ...)
-// shouldn't lose the rest of the message — it just falls back to no
-// photo, same as before this existed.
-async function downloadInboundImage(message) {
-  const media = message.image || message.sticker;
+// Meta's per-type media object always carries the same { id, ... } shape
+// regardless of which of these it is — this just says which field to
+// read it off of, and what media_type to tag the stored row with so the
+// thread views (app/(admin)/messages/[id], app/mobile/messages/[id])
+// know whether to render an image, an <audio> player, or a plain
+// download link (the same 'file' type a staff-sent PDF already uses).
+const INBOUND_MEDIA_TYPES = {
+  image: { field: 'image', mediaType: 'image' },
+  sticker: { field: 'sticker', mediaType: 'image' },
+  document: { field: 'document', mediaType: 'file' },
+  audio: { field: 'audio', mediaType: 'audio' },
+};
+
+// Downloads a photo/sticker/document/voice-note a client sent and
+// re-hosts it in the same "consult-files" Storage bucket every other
+// photo/file in this app already lives in (see migrations/131) — Meta
+// only keeps the original for a few days, so this has to happen right
+// away, not on first view. Best-effort: a failure here (Meta media API
+// hiccup, huge file, ...) shouldn't lose the rest of the message — it
+// just falls back to no media, same as before this existed (and still
+// leaves extractBody's caption/placeholder text on the row either way).
+async function downloadInboundMedia(message) {
+  const spec = INBOUND_MEDIA_TYPES[message.type];
+  const media = spec && message[spec.field];
   if (!media?.id) return {};
   try {
     const { buffer, mimeType } = await downloadWhatsAppMedia(media.id);
-    const ext = mimeType.split('/')[1]?.split(';')[0] || 'jpg';
+    const ext = mimeType.split('/')[1]?.split(';')[0] || (spec.mediaType === 'file' ? 'bin' : 'jpg');
     const path = `whatsapp/${message.id}.${ext}`;
     const { error: uploadError } = await supabaseAdmin.storage
       .from('consult-files')
       .upload(path, buffer, { contentType: mimeType, upsert: true });
     if (uploadError) throw uploadError;
     const { data } = supabaseAdmin.storage.from('consult-files').getPublicUrl(path);
-    return { media_url: data.publicUrl, media_type: 'image' };
+    return { media_url: data.publicUrl, media_type: spec.mediaType };
   } catch (err) {
-    console.error('Failed to download/store inbound WhatsApp image', message.id, err);
+    console.error('Failed to download/store inbound WhatsApp media', message.id, err);
     return {};
   }
 }
@@ -141,8 +169,7 @@ async function runConciergeForInbound(message, clientId, digits) {
 async function handleInboundMessage(message, contactPhone) {
   const digits = (contactPhone || message.from || '').replace(/\D/g, '');
   const clientId = await findClientIdForPhone(digits);
-  const media =
-    message.type === 'image' || message.type === 'sticker' ? await downloadInboundImage(message) : {};
+  const media = INBOUND_MEDIA_TYPES[message.type] ? await downloadInboundMedia(message) : {};
 
   const { error } = await supabaseAdmin.from('client_messages').insert([
     {

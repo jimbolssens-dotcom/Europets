@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { uploadAttachment, attachmentUrl } from '@/lib/attachments';
+import { formatShortDate } from '@/lib/formatTimestamp';
 
 function isImage(attachment) {
   return (
@@ -133,6 +134,7 @@ export default function AttachmentSection({
                   {a.file_name || 'file'}
                 </a>
               )}
+              {a.created_at && <span className="attachment-date">{formatShortDate(a.created_at)}</span>}
               <button type="button" onClick={() => handleDelete(a.id)}>
                 Remove
               </button>
