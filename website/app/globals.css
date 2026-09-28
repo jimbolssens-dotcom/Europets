@@ -416,15 +416,16 @@ p {
   gap: 1rem;
 }
 
-/* ---- Hero team honeycomb (2x2) ----
+/* ---- Hero team honeycomb (1-2-2 pyramid) ----
    True hex tessellation math: adjacent rows are offset by half a hex
-   width and 3/4 a hex height, so the bottom row's points nest into the
-   top row's flat side gaps instead of just sitting underneath them. */
+   width and 3/4 a hex height, so each row's points nest into the row
+   above's flat side gaps instead of just sitting underneath them. The
+   lone apex tile sits centered above the two rows of two below it. */
 .docs {
   position: relative;
   width: 100%;
   max-width: 27rem;
-  aspect-ratio: 1.2372;
+  aspect-ratio: 0.949;
   margin-inline: auto;
   --gap: 3.5%;
 }
@@ -452,10 +453,11 @@ p {
   -webkit-tap-highlight-color: transparent;
 }
 
-.doc:nth-child(1) { left: 20%; top: 28.571%; }
-.doc:nth-child(2) { left: 60%; top: 28.571%; }
-.doc:nth-child(3) { left: 40%; top: 71.429%; }
-.doc:nth-child(4) { left: 80%; top: 71.429%; }
+.doc:nth-child(1) { left: 40%; top: 20%; }
+.doc:nth-child(2) { left: 20%; top: 50%; }
+.doc:nth-child(3) { left: 60%; top: 50%; }
+.doc:nth-child(4) { left: 40%; top: 80%; }
+.doc:nth-child(5) { left: 80%; top: 80%; }
 
 .doc-inner {
   position: relative;

@@ -78,6 +78,13 @@ export const SERVICES = [
 
 export const VETS = [
   {
+    name: 'Dr. Poes',
+    role: 'Big Boss — Everyone Answers to Him',
+    photo: '/team/poes.jpg',
+    photoFunny: '/team/poes-funny.jpg',
+    bio: "Not licensed, not trained, and technically not even a doctor — but he's decided he's Chief Purr-geon, and frankly nobody here is brave enough to argue with him.",
+  },
+  {
     name: 'Dr. Jim Bolssens',
     role: 'DVM, Owner',
     photo: '/team/jim-bolssens.jpg',

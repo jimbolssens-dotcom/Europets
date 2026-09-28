@@ -34,7 +34,7 @@ export default function HomePage() {
             </a>
           </div>
           <div className="docs">
-            {VETS.slice(0, 4).map((v) => (
+            {VETS.slice(0, 5).map((v) => (
               <HeroDoc key={v.name} name={v.name} role={v.role} photo={v.photo} photoFunny={v.photoFunny} />
             ))}
           </div>
