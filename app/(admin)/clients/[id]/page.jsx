@@ -14,6 +14,7 @@ import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder,
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { LEGACY_PAYMENT_METHOD_LABELS } from '@/lib/legacyPayments';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -32,6 +33,7 @@ export default function ClientDetailPage() {
   const [editError, setEditError] = useState(null);
 
   const [legacyPaymentAmount, setLegacyPaymentAmount] = useState('');
+  const [legacyPaymentMethod, setLegacyPaymentMethod] = useState('');
   // Defaults to today, but editable — for backfilling a payment that was
   // actually received earlier (e.g. before this table existed at all, see
   // migration 149), so its date reflects reality instead of "whenever
@@ -244,12 +246,16 @@ export default function ClientDetailPage() {
       setLegacyPaymentError('Enter an amount paid');
       return;
     }
+    if (!legacyPaymentMethod) {
+      setLegacyPaymentError('Pick where the money came from');
+      return;
+    }
     setRecordingLegacyPayment(true);
     setLegacyPaymentError(null);
     const res = await fetch(`/api/clients/${id}/legacy-payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, paid_at: legacyPaymentDate }),
+      body: JSON.stringify({ amount, payment_method: legacyPaymentMethod, paid_at: legacyPaymentDate }),
     });
     const data = await res.json().catch(() => ({}));
     setRecordingLegacyPayment(false);
@@ -258,6 +264,7 @@ export default function ClientDetailPage() {
       return;
     }
     setLegacyPaymentAmount('');
+    setLegacyPaymentMethod('');
     setLegacyPaymentDate(new Date().toISOString().slice(0, 10));
     load();
   }
@@ -462,6 +469,17 @@ export default function ClientDetailPage() {
                 value={legacyPaymentAmount}
                 onChange={(e) => setLegacyPaymentAmount(e.target.value)}
               />
+            </label>
+            <label>
+              Origin
+              <select value={legacyPaymentMethod} onChange={(e) => setLegacyPaymentMethod(e.target.value)}>
+                <option value="">Select...</option>
+                {Object.entries(LEGACY_PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               Date paid

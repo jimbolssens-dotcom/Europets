@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { LEGACY_PAYMENT_METHOD_LABELS } from '@/lib/legacyPayments';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -84,6 +85,7 @@ export default function LegacyPaymentsPage() {
             <tr>
               <th>Date</th>
               <th>Client</th>
+              <th>Origin</th>
               <th>Amount</th>
             </tr>
           </thead>
@@ -101,6 +103,7 @@ export default function LegacyPaymentsPage() {
                     p.clients?.full_name || 'Unknown client'
                   )}
                 </td>
+                <td>{p.payment_method ? LEGACY_PAYMENT_METHOD_LABELS[p.payment_method] || p.payment_method : '—'}</td>
                 <td>AED {money(p.amount)}</td>
               </tr>
             ))}
