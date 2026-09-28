@@ -77,6 +77,9 @@ export default function AccountingOverviewPage() {
           <a href="/accounting/legacy-balance-corrections" className="button-link">
             🛠️ Bulk-Correct Old Balances
           </a>
+          <a href="/accounting/legacy-payments-import" className="button-link">
+            📥 Bulk-Import Old Payments
+          </a>
         </div>
       </div>
 
