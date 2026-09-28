@@ -5249,6 +5249,18 @@ button.secondary:hover {
   margin: 0 0 0.4rem;
 }
 
+.legacy-balance-correct-link {
+  background: none;
+  border: none;
+  padding: 0.4rem 0 0;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: normal;
+  color: #8a6116;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .possible-duplicate-warning p {
   margin: 0 0 0.4rem;
   font-weight: 600;

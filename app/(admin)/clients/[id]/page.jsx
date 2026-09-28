@@ -40,6 +40,11 @@ export default function ClientDetailPage() {
   const [recordingLegacyPayment, setRecordingLegacyPayment] = useState(false);
   const [legacyPaymentError, setLegacyPaymentError] = useState(null);
 
+  const [correctingLegacyBalance, setCorrectingLegacyBalance] = useState(false);
+  const [legacyBalanceCorrection, setLegacyBalanceCorrection] = useState('');
+  const [savingLegacyCorrection, setSavingLegacyCorrection] = useState(false);
+  const [legacyCorrectionError, setLegacyCorrectionError] = useState(null);
+
   const load = () =>
     Promise.all([
       fetch(`/api/clients/${id}`).then((res) => res.json()),
@@ -257,6 +262,42 @@ export default function ClientDetailPage() {
     load();
   }
 
+  function startLegacyBalanceCorrection() {
+    setLegacyBalanceCorrection(String(client.legacy_outstanding_balance ?? ''));
+    setLegacyCorrectionError(null);
+    setCorrectingLegacyBalance(true);
+  }
+
+  // A straight PATCH of the number itself — deliberately not the
+  // legacy-payments endpoint above: this is for fixing a discrepancy in
+  // the carried-over figure itself (an import error, a payment already
+  // accounted for elsewhere), not money actually received today, so it
+  // creates no legacy_payments row and has no effect on the P&L the way
+  // recordLegacyPayment does.
+  async function saveLegacyBalanceCorrection(e) {
+    e.preventDefault();
+    const amount = Number(legacyBalanceCorrection);
+    if (legacyBalanceCorrection === '' || Number.isNaN(amount) || amount < 0) {
+      setLegacyCorrectionError('Enter a valid amount (0 or more)');
+      return;
+    }
+    setSavingLegacyCorrection(true);
+    setLegacyCorrectionError(null);
+    const res = await fetch(`/api/clients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ legacy_outstanding_balance: amount }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSavingLegacyCorrection(false);
+    if (!res.ok) {
+      setLegacyCorrectionError(data.error || 'Failed to update the balance');
+      return;
+    }
+    setCorrectingLegacyBalance(false);
+    load();
+  }
+
   if (loading) return <p>Loading client...</p>;
   if (!client || client.error) return <p>Client not found.</p>;
 
@@ -405,8 +446,8 @@ export default function ClientDetailPage() {
             ⚠️ Old system balance: AED {money(client.legacy_outstanding_balance)}{' '}
             <InfoHint>
               Carried over from the previous clinic software at import — not reflected in any
-              invoice here. Record what they pay off below as it comes in, or clear it from
-              Edit once fully reconciled.
+              invoice here. Record what they pay off below as it comes in, or correct the figure
+              itself if it doesn't match what's actually owed.
             </InfoHint>
           </summary>
           <form className="legacy-balance-payment-form" onSubmit={recordLegacyPayment}>
@@ -434,6 +475,38 @@ export default function ClientDetailPage() {
               {recordingLegacyPayment ? 'Saving...' : 'Record Payment'}
             </button>
           </form>
+
+          {/* A straight correction to the carried-over figure itself —
+              distinct from Record Payment above (which logs real money
+              received and feeds the P&L). This just fixes a wrong number,
+              e.g. an import discrepancy — no legacy_payments row, no
+              accounting effect. */}
+          {correctingLegacyBalance ? (
+            <form className="legacy-balance-payment-form" onSubmit={saveLegacyBalanceCorrection}>
+              {legacyCorrectionError && <p className="error">{legacyCorrectionError}</p>}
+              <label>
+                Correct balance to (AED)
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  autoFocus
+                  value={legacyBalanceCorrection}
+                  onChange={(e) => setLegacyBalanceCorrection(e.target.value)}
+                />
+              </label>
+              <button type="submit" disabled={savingLegacyCorrection}>
+                {savingLegacyCorrection ? 'Saving...' : 'Save Correction'}
+              </button>
+              <button type="button" onClick={() => setCorrectingLegacyBalance(false)} disabled={savingLegacyCorrection}>
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <button type="button" className="legacy-balance-correct-link" onClick={startLegacyBalanceCorrection}>
+              ✏️ Correct this number
+            </button>
+          )}
         </details>
       )}
 
