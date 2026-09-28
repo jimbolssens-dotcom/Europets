@@ -196,7 +196,16 @@ export default function HospitalizationDetailPage() {
           )
       )
     );
-    const merged = [...(Array.isArray(ownNotes) ? ownNotes : []), ...dayProcedureNoteLists.flat()].sort((a, b) => {
+    // A synced_note row (lib/hospitalizationVitalsSync.js) exists purely so
+    // the OTHER linked record's own Day Treatment Plan tile can show the
+    // reading as done — it carries no content of its own beyond the same
+    // boilerplate line every time, so surfacing it here too just reads as
+    // a recurring near-empty entry on any stay with a long-running linked
+    // record. The actual reading is already visible wherever it was really
+    // typed in.
+    const realOwnNotes = (Array.isArray(ownNotes) ? ownNotes : []).filter((n) => !n.synced_note);
+    const realDayProcedureNotes = dayProcedureNoteLists.flat().filter((n) => !n.synced_note);
+    const merged = [...realOwnNotes, ...realDayProcedureNotes].sort((a, b) => {
       if (a.note_date !== b.note_date) return a.note_date < b.note_date ? 1 : -1;
       return new Date(b.created_at) - new Date(a.created_at);
     });
