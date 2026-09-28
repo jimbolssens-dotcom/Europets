@@ -28,6 +28,7 @@ import { ACCOUNTING_COOKIE, sha256Hex } from '@/lib/accountingAuth';
 const PUBLIC_PATTERNS = [
   /^\/login$/,
   /^\/api\/login$/,
+  /^\/api\/login\/request-code$/, // OTP mode's own "send me a code" button — called from /login before anyone has a cookie yet, so this can't sit behind the same gate it's the way in past
   /^\/portal(\/.*)?$/,
   /^\/api\/new-client-qr$/,
   /^\/api\/client-app-qr$/,
