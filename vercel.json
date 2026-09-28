@@ -3,6 +3,10 @@
     {
       "path": "/api/vaccinations/send-due-reminders",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/intake-requests/cleanup-stale",
+      "schedule": "0 6 * * *"
     }
   ]
 }
