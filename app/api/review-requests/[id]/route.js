@@ -17,7 +17,7 @@ import { NextResponse } from 'next/server';
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('review_requests')
-    .select('*, clients(id, full_name)')
+    .select('*, clients(id, full_name), patients(id, name)')
     .eq('id', params.id)
     .single();
 
@@ -27,10 +27,22 @@ export async function GET(request, { params }) {
   return NextResponse.json(data);
 }
 
+// Photos are required (migration 152) but this route is never actually
+// reached by the live submission flow — the public form
+// (website/app/reviews/submit/[id]) posts to its own separate route
+// (website/app/api/review-requests/[id]) instead, precisely so the
+// server-only Supabase key never needs to be near a 'use client' file
+// (see that route's own comment). Kept in sync here anyway so this route
+// doesn't silently drift into accepting a photo-less review if it's ever
+// used for something else later (a staff-side test, a future admin tool).
 async function submit(id, body) {
   const rating = Number(body.rating);
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     return NextResponse.json({ error: 'a rating from 1 to 5 is required' }, { status: 400 });
+  }
+  const photoUrls = Array.isArray(body.photo_urls) ? body.photo_urls.filter((u) => typeof u === 'string' && u).slice(0, 2) : [];
+  if (photoUrls.length === 0) {
+    return NextResponse.json({ error: 'at least one photo is required' }, { status: 400 });
   }
 
   const { data: existing, error: existingError } = await supabase
@@ -51,6 +63,7 @@ async function submit(id, body) {
       rating,
       comment: body.comment?.trim() || null,
       display_name: body.display_name?.trim() || null,
+      photo_urls: photoUrls,
       status: 'submitted',
       submitted_at: new Date().toISOString(),
     })

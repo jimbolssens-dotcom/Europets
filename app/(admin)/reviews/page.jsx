@@ -1,9 +1,12 @@
 // app/reviews/page.jsx
-// Reviews/testimonials: links are sent from a client's own page ("⭐
-// Request a Review"), filled in with no login on the public website
+// Reviews/testimonials: links are sent from a patient's own page ("⭐
+// Review"), filled in with no login on the public website
 // (website/app/reviews/submit/[id]), and land here for moderation before
 // they can show up on the public site (website/app/reviews) — approving
 // just flips status, nothing else is created (unlike an intake approval).
+// A submission always carries 1-2 photos (migration 152 — mandatory on
+// the public form), shown here so staff are actually moderating what's
+// about to go live, not just the text.
 
 'use client';
 
@@ -88,9 +91,10 @@ export default function ReviewsPage() {
       <h1>
         Reviews{' '}
         <InfoHint>
-          Send clients a review link from their own client page (&ldquo;⭐ Request a Review&rdquo;).
+          Send a review link from a patient&apos;s own page (&ldquo;⭐ Review&rdquo;).
           Submissions land here for moderation — approving is what makes a review show up on the
-          public website.
+          public website. A photo is required on the public form, so every submission carries at
+          least one.
         </InfoHint>
       </h1>
 
@@ -102,7 +106,8 @@ export default function ReviewsPage() {
           <table>
             <thead>
               <tr>
-                <th>Client</th>
+                <th>Patient</th>
+                <th>Owner</th>
                 <th>Link</th>
                 <th>Sent</th>
                 <th></th>
@@ -111,6 +116,9 @@ export default function ReviewsPage() {
             <tbody>
               {pending.map((r) => (
                 <tr key={r.id}>
+                  <td>
+                    {r.patients ? <a href={`/patients/${r.patients.id}`}>{r.patients.name}</a> : 'Unknown patient'}
+                  </td>
                   <td>
                     <a href={`/clients/${r.clients?.id}`}>{r.clients?.full_name || 'Unknown client'}</a>
                   </td>
@@ -138,10 +146,20 @@ export default function ReviewsPage() {
           {submitted.map((r) => (
             <div key={r.id} className="card">
               <p>
-                <strong>{r.clients?.full_name || 'Unknown client'}</strong> &middot; <Stars rating={r.rating} />
+                <strong>{r.patients?.name || 'Unknown patient'}</strong>
+                {r.clients?.full_name && <> &middot; {r.clients.full_name}</>} &middot; <Stars rating={r.rating} />
                 {r.display_name && <> &middot; will show as &ldquo;{r.display_name}&rdquo;</>}
               </p>
               {r.comment && <p>&ldquo;{r.comment}&rdquo;</p>}
+              {r.photo_urls?.length > 0 && (
+                <p className="review-photo-row">
+                  {r.photo_urls.map((url) => (
+                    <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                      <img src={url} alt="" className="review-photo-thumb" />
+                    </a>
+                  ))}
+                </p>
+              )}
               <p className="visit-meta">Submitted {formatDateTime(r.submitted_at)}</p>
               <button type="button" onClick={() => moderate(r.id, 'approve')} disabled={reviewing === r.id}>
                 ✅ Approve
@@ -160,20 +178,30 @@ export default function ReviewsPage() {
           <table>
             <thead>
               <tr>
-                <th>Client</th>
+                <th>Patient</th>
+                <th>Shown as</th>
                 <th>Rating</th>
                 <th>Comment</th>
+                <th>Photos</th>
                 <th>Approved</th>
               </tr>
             </thead>
             <tbody>
               {approved.map((r) => (
                 <tr key={r.id}>
+                  <td>{r.patients?.name || '—'}</td>
                   <td>{r.display_name || r.clients?.full_name}</td>
                   <td>
                     <Stars rating={r.rating} />
                   </td>
                   <td>{r.comment}</td>
+                  <td>
+                    {r.photo_urls?.map((url) => (
+                      <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                        <img src={url} alt="" className="review-photo-thumb" />
+                      </a>
+                    ))}
+                  </td>
                   <td>{formatDateTime(r.reviewed_at)}</td>
                 </tr>
               ))}
@@ -182,7 +210,7 @@ export default function ReviewsPage() {
         </>
       )}
 
-      {requests.length === 0 && <p className="visit-meta">No review requests yet — send one from a client&apos;s page.</p>}
+      {requests.length === 0 && <p className="visit-meta">No review requests yet — send one from a patient&apos;s page.</p>}
     </div>
   );
 }

@@ -16,7 +16,7 @@ function Stars({ rating }) {
 export default async function ReviewsPage() {
   const { data } = await supabaseServer
     .from('review_requests')
-    .select('rating, comment, display_name, reviewed_at')
+    .select('rating, comment, display_name, reviewed_at, photo_urls')
     .eq('status', 'approved')
     .order('reviewed_at', { ascending: false })
     .limit(50);
@@ -39,6 +39,13 @@ export default async function ReviewsPage() {
         <div className="reviews-grid">
           {reviews.map((r, i) => (
             <div key={i} className="card review-card">
+              {r.photo_urls?.length > 0 && (
+                <div className="review-card-photos">
+                  {r.photo_urls.map((url) => (
+                    <img key={url} src={url} alt="" />
+                  ))}
+                </div>
+              )}
               <Stars rating={r.rating} />
               {r.comment && <p className="review-comment">&ldquo;{r.comment}&rdquo;</p>}
               <p className="review-author">{r.display_name}</p>

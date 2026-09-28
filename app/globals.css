@@ -3038,6 +3038,21 @@ button.secondary:hover {
   margin: 0.25rem 0 0.75rem;
 }
 
+/* Review moderation's own photo thumbnails (app/(admin)/reviews) — the
+   mandatory photo(s) a public review submission carries (migration 152). */
+.review-photo-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.review-photo-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
 /* Tucks the one-time WhatsApp setup actions (fix subscription, submit a
    template) out of the way above the Messages inbox — done once, rarely
    touched again, so a plain closed disclosure beats permanent clutter. */

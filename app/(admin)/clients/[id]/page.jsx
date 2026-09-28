@@ -23,8 +23,6 @@ export default function ClientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [sendingLink, setSendingLink] = useState(false);
   const [bookingLinkError, setBookingLinkError] = useState(null);
-  const [sendingReviewLink, setSendingReviewLink] = useState(false);
-  const [reviewLinkError, setReviewLinkError] = useState(null);
   const [paymentLinkError, setPaymentLinkError] = useState(null);
   const [clientAppLinkError, setClientAppLinkError] = useState(null);
 
@@ -108,36 +106,6 @@ export default function ClientDetailPage() {
     } else {
       await navigator.clipboard.writeText(url);
       setBookingLinkError('No phone number on file — link copied to clipboard instead.');
-    }
-  }
-
-  // Generates a link to the public website's review form, scoped to this
-  // one client, and drafts it in WhatsApp — same pattern as sendBookingLink
-  // above, but landing on the website (see website/app/reviews/submit/[id])
-  // instead of the app's own portal, since reviews are public-facing.
-  async function sendReviewLink() {
-    setReviewLinkError(null);
-    setSendingReviewLink(true);
-    const res = await fetch('/api/review-requests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client_id: id, sent_to_phone: client.phone || null }),
-    });
-    const data = await res.json().catch(() => null);
-    setSendingReviewLink(false);
-    if (!res.ok) {
-      setReviewLinkError(data?.error || 'Failed to generate a review link');
-      return;
-    }
-    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
-    const url = `${websiteUrl}/reviews/submit/${data.id}`;
-    const digits = (client.phone || '').replace(/\D/g, '');
-    const message = `Hi ${client.full_name}! Thanks for visiting Europets Clinic — we'd love to hear how it went. Could you leave us a quick review here? ${url}`;
-    if (digits.length > 3) {
-      openWhatsApp(client.phone, message);
-    } else {
-      await navigator.clipboard.writeText(url);
-      setReviewLinkError('No phone number on file — link copied to clipboard instead.');
     }
   }
 
@@ -334,15 +302,11 @@ export default function ClientDetailPage() {
         <button type="button" className="button-link" onClick={sendBookingLink} disabled={sendingLink}>
           {sendingLink ? 'Sending...' : '📅 Invite'}
         </button>{' '}
-        <button type="button" className="button-link" onClick={sendReviewLink} disabled={sendingReviewLink}>
-          {sendingReviewLink ? 'Sending...' : '⭐ Review'}
-        </button>{' '}
         <button type="button" className="button-link" onClick={sendClientAppLink}>
           📱 Client App
         </button>
       </p>
       {bookingLinkError && <p className="error">{bookingLinkError}</p>}
-      {reviewLinkError && <p className="error">{reviewLinkError}</p>}
       {clientAppLinkError && <p className="error">{clientAppLinkError}</p>}
 
       {editing ? (
