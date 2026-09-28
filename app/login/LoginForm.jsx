@@ -4,11 +4,15 @@
 // so that page can stay a server component (it needs to read
 // STAFF_LOGIN_OTP_ENABLED at request time; see its own comment).
 //
-// Two modes, picked by the `otpEnabled` prop the server already resolved:
+// Two modes, picked by the `otpEnabled` prop the server already resolved,
+// with no link between them — the PIN is a genuine security bypass once
+// removed from view, not just a UI shortcut, so it doesn't stay reachable
+// as a "having trouble?" fallback (see /api/login, which rejects a PIN
+// login outright while this is on):
 //   - OTP mode: "Send code" -> WhatsApps the clinic's phone -> type the
-//     6-digit code. A "Use the PIN instead" link always stays visible,
-//     since WhatsApp sending is one more thing that can go wrong and
-//     nobody should be locked out of their own clinic by it.
+//     6-digit code. If WhatsApp sending ever breaks, recovery is
+//     STAFF_LOGIN_OTP_ENABLED itself — flip it back to false in Vercel
+//     and PIN-only mode returns for everyone on the next deploy.
 //   - PIN-only mode (the default until STAFF_LOGIN_OTP_ENABLED="true"):
 //     exactly the old single-field form, unchanged.
 
@@ -94,7 +98,6 @@ function OtpForm({ onRequestCode, onSubmitCode, submitting, error, step }) {
 function LoginFormInner({ otpEnabled }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState(otpEnabled ? 'otp' : 'pin');
   const [step, setStep] = useState('request'); // otp mode only: 'request' | 'code'
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -130,47 +133,24 @@ function LoginFormInner({ otpEnabled }) {
     setStep('code');
   }
 
-  if (mode === 'pin') {
-    return (
-      <>
-        <PincodeForm onSubmit={(pincode) => finishLogin({ pincode })} submitting={submitting} error={error} />
-        {otpEnabled && (
-          <button
-            type="button"
-            className="mobile-link-btn"
-            onClick={() => {
-              setMode('otp');
-              setStep('request');
-              setError(null);
-            }}
-          >
-            Use the WhatsApp code instead
-          </button>
-        )}
-      </>
-    );
+  if (!otpEnabled) {
+    return <PincodeForm onSubmit={(pincode) => finishLogin({ pincode })} submitting={submitting} error={error} />;
   }
 
+  // No "use the PIN instead" escape hatch once OTP is on — the PIN check
+  // (see /api/login) is disabled at the API level while this is true, not
+  // just hidden here, so there'd be nothing behind that link to actually
+  // fall back to. The real fallback is STAFF_LOGIN_OTP_ENABLED itself: set
+  // it back to false in Vercel and PIN-only mode returns for everyone,
+  // instantly, on the next deploy — see lib/staffAuth.js's isStaffOtpEnabled.
   return (
-    <>
-      <OtpForm
-        step={step}
-        onRequestCode={handleRequestCode}
-        onSubmitCode={(code) => finishLogin({ code })}
-        submitting={submitting}
-        error={error}
-      />
-      <button
-        type="button"
-        className="mobile-link-btn"
-        onClick={() => {
-          setMode('pin');
-          setError(null);
-        }}
-      >
-        Having trouble? Use the PIN instead
-      </button>
-    </>
+    <OtpForm
+      step={step}
+      onRequestCode={handleRequestCode}
+      onSubmitCode={(code) => finishLogin({ code })}
+      submitting={submitting}
+      error={error}
+    />
   );
 }
 

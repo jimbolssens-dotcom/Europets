@@ -8,11 +8,17 @@
 // limited (see lib/loginRateLimit.js) since a short shared PIN — or a
 // guessed OTP — is otherwise easy to brute-force.
 //
-// The PIN branch (`{ pincode }`) never goes away even once
-// STAFF_LOGIN_OTP_ENABLED is on — see lib/staffAuth.js's isStaffOtpEnabled
-// comment for why: it's the fallback if WhatsApp sending ever breaks.
-// The OTP branch (`{ code }`) only exists once that flag is on; the
-// request-code step that sends the code lives at /api/login/request-code.
+// The PIN branch (`{ pincode }`) is rejected outright while
+// STAFF_LOGIN_OTP_ENABLED is on — it's not just hidden from the login
+// form (app/login/LoginForm.jsx), it's genuinely disabled here, so
+// nobody can bypass a required WhatsApp code by POSTing a remembered PIN
+// straight to this route. The PIN itself is never deleted from the code
+// though: it's the fallback if WhatsApp sending ever breaks — flip
+// STAFF_LOGIN_OTP_ENABLED back to false in Vercel and this route (and
+// the login form) both fall back to PIN-only immediately, no redeploy of
+// this file needed. The OTP branch (`{ code }`) only exists once that
+// flag is on; the request-code step that sends the code lives at
+// /api/login/request-code.
 
 import { NextResponse } from 'next/server';
 import { STAFF_COOKIE, getEffectiveStaffPincode, isStaffOtpEnabled, verifyStaffOtpCode } from '@/lib/staffAuth';
@@ -43,7 +49,15 @@ export async function POST(request) {
 
   const body = await request.json();
 
-  if (isStaffOtpEnabled() && body.code) {
+  if (isStaffOtpEnabled()) {
+    if (!body.code) {
+      // A pincode field here (or nothing at all) while OTP is required —
+      // never fall through to the PIN check below. Counted as a failed
+      // attempt like a wrong PIN/code would be, so this can't be used to
+      // probe the rate limiter for free.
+      recordFailedAttempt(clientKey);
+      return NextResponse.json({ error: 'WhatsApp login is required — request a code first.' }, { status: 403 });
+    }
     let result;
     try {
       result = await verifyStaffOtpCode(body.code);
