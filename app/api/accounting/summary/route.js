@@ -28,6 +28,13 @@ import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 import { VAT_RATE } from '@/lib/invoicing';
 
+// Next.js can otherwise cache a GET route handler's response (it has no
+// dynamic API calls of its own to signal it shouldn't) — the P&L is meant
+// to reflect whatever's actually in the ledger right now, not whatever
+// was true the first time anyone ever hit this URL. See
+// app/api/hospitalizations/[id]/route.js for the same gotcha.
+export const dynamic = 'force-dynamic';
+
 const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'payment_link'];
 
 function monthBounds(month) {

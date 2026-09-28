@@ -8,6 +8,13 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 
+// Next.js can otherwise cache a GET route handler's response (it has no
+// dynamic API calls of its own to signal it shouldn't) — this list is
+// meant to reflect whatever's actually in legacy_payments right now, not
+// whatever was true the first time anyone ever hit this URL. See
+// app/api/hospitalizations/[id]/route.js for the same gotcha.
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const month = searchParams.get('month');

@@ -14,6 +14,10 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
+// Next.js can otherwise cache a GET route handler's response — see
+// app/api/hospitalizations/[id]/route.js for the same gotcha.
+export const dynamic = 'force-dynamic';
+
 export async function GET(request, { params }) {
   const { id } = await params;
   const { data, error } = await supabase
