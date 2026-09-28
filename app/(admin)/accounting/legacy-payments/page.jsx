@@ -44,9 +44,6 @@ export default function LegacyPaymentsPage() {
         <a href="/accounting" className="button-link">
           ← Accounting
         </a>
-        <a href="/accounting/legacy-payments-import" className="button-link">
-          📥 Bulk-Import
-        </a>
       </div>
       <p className="accounting-stat-hint">
         Every payment logged against a client&apos;s carried-over old-system balance — counted in the P&amp;L&apos;s
