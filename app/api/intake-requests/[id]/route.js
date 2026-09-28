@@ -496,8 +496,27 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
   let confirmation_error = null;
   if (appointmentId && data.clients?.phone) {
     try {
-      const dateLabel = appointmentStart.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: '2-digit' });
-      const timeLabel = appointmentStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      // This runs server-side (a Vercel serverless function, whose runtime
+      // clock is UTC, not Dubai) — toLocaleDateString/toLocaleTimeString
+      // with no explicit timeZone format in the SERVER's zone, not the
+      // clinic's, so a 9:30am Dubai (UTC+4) booking went out to the client
+      // as "05:30 AM". lib/dubaiTime.js's helpers don't cover formatting a
+      // human-readable label, so this sets the zone directly instead.
+      const dateLabel = appointmentStart.toLocaleDateString('en-GB', {
+        weekday: 'long',
+        day: '2-digit',
+        month: '2-digit',
+        timeZone: 'Asia/Dubai',
+      });
+      // hour12 forced explicitly — en-GB otherwise defaults to a 24-hour
+      // clock (same gotcha lib/formatTimestamp.js's formatDateTime works
+      // around), which would silently change "09:30 AM" to "09:30".
+      const timeLabel = appointmentStart.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Dubai',
+      });
       await sendBookingConfirmation(data.clients.phone.replace(/\D/g, ''), {
         clientName: data.clients.full_name,
         patientName: patient_name,
