@@ -425,9 +425,11 @@ p {
   position: relative;
   width: 100%;
   max-width: 27rem;
-  aspect-ratio: 0.949;
+  /* Must match the tile's own aspect-ratio below — that's what makes the
+     3/4-height row spacing land exactly on true hex tessellation distance,
+     equal in every direction (flat sides and slanted alike). */
+  aspect-ratio: 0.866;
   margin-inline: auto;
-  --gap: 3.5%;
 }
 
 .docs::before {
@@ -442,8 +444,12 @@ p {
   position: absolute;
   margin: 0;
   translate: -50% -50%;
-  width: calc(40% - var(--gap));
+  /* Full touching-tessellation size — shrunk evenly on every edge via
+     transform below, so the gap reads the same on the flat sides and the
+     slanted ones instead of only appearing between same-row neighbors. */
+  width: 40%;
   aspect-ratio: 0.866;
+  transform: scale(0.9125);
   clip-path: var(--hex);
   padding: 2.5px;
   background: linear-gradient(152deg, #ffe3ef 0%, var(--hot) 32%, var(--magenta) 62%, #8c0b45 100%);
