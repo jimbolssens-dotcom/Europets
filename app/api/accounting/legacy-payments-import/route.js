@@ -110,8 +110,16 @@ export async function POST(request) {
   );
   const paymentsError = paymentChunkResults.find((r) => r.error)?.error;
   if (paymentsError) return NextResponse.json({ error: paymentsError.message }, { status: 500 });
+  // paid_at comes back from Postgres as a full timestamp
+  // ("2026-09-15T00:00:00+00:00"), not the bare "2026-09-15" a pasted row
+  // carries — comparing those two formats directly never matches, which
+  // is exactly the bug that let a re-submitted batch silently duplicate
+  // every row instead of being recognized as already imported. Slicing
+  // to just the date part before comparing fixes that.
   const existingKeys = new Set(
-    paymentChunkResults.flatMap((r) => r.data || []).map((p) => `${p.client_id}|${Number(p.amount)}|${p.paid_at}`)
+    paymentChunkResults
+      .flatMap((r) => r.data || [])
+      .map((p) => `${p.client_id}|${Number(p.amount)}|${String(p.paid_at).slice(0, 10)}`)
   );
 
   const results = parsed.map((r) => {
