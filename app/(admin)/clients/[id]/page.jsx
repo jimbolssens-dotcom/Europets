@@ -284,8 +284,10 @@ export default function ClientDetailPage() {
   async function saveLegacyBalanceCorrection(e) {
     e.preventDefault();
     const amount = Number(legacyBalanceCorrection);
-    if (legacyBalanceCorrection === '' || Number.isNaN(amount) || amount < 0) {
-      setLegacyCorrectionError('Enter a valid amount (0 or more)');
+    // A negative figure is valid here — a client in credit (overpaid, or
+    // the clinic owes them) — so only NaN is actually rejected.
+    if (legacyBalanceCorrection === '' || Number.isNaN(amount)) {
+      setLegacyCorrectionError('Enter a valid amount');
       return;
     }
     setSavingLegacyCorrection(true);
@@ -507,7 +509,6 @@ export default function ClientDetailPage() {
                 <input
                   type="number"
                   step="0.01"
-                  min="0"
                   autoFocus
                   value={legacyBalanceCorrection}
                   onChange={(e) => setLegacyBalanceCorrection(e.target.value)}

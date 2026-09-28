@@ -21,6 +21,11 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
+// A large apply (hundreds of rows) can otherwise run past the default
+// serverless function timeout — see app/api/hospitalizations/[id]/route.js
+// for the same reasoning.
+export const maxDuration = 60;
+
 export async function POST(request) {
   const body = await request.json().catch(() => ({}));
   const rows = Array.isArray(body.rows) ? body.rows : [];
@@ -33,18 +38,36 @@ export async function POST(request) {
     return NextResponse.json({ error: 'rows must include at least one valid client_number' }, { status: 400 });
   }
 
-  const { data: clients, error: clientsError } = await supabaseAdmin
-    .from('clients')
-    .select('id, client_number, full_name, legacy_outstanding_balance')
-    .in('client_number', clientNumbers);
+  // Supabase caps a single request at 1000 rows by default — with no
+  // explicit .order() on this query, which rows survive that cap for a
+  // large .in() list is essentially arbitrary, so a big paste (this tool
+  // exists specifically for big pastes) could silently "lose" real
+  // clients past row 1000 and wrongly report them as not found. Chunking
+  // the lookup avoids ever depending on that cap regardless of how large
+  // the pasted list is.
+  const CHUNK_SIZE = 300;
+  const chunks = [];
+  for (let i = 0; i < clientNumbers.length; i += CHUNK_SIZE) {
+    chunks.push(clientNumbers.slice(i, i + CHUNK_SIZE));
+  }
+  const chunkResults = await Promise.all(
+    chunks.map((chunk) =>
+      supabaseAdmin.from('clients').select('id, client_number, full_name, legacy_outstanding_balance').in('client_number', chunk)
+    )
+  );
+  const clientsError = chunkResults.find((r) => r.error)?.error;
   if (clientsError) return NextResponse.json({ error: clientsError.message }, { status: 500 });
+  const clients = chunkResults.flatMap((r) => r.data || []);
 
-  const byNumber = new Map((clients || []).map((c) => [c.client_number, c]));
+  const byNumber = new Map(clients.map((c) => [c.client_number, c]));
 
   const results = rows.map((r) => {
     const clientNumber = Number(r.client_number);
     const newBalance = Number(r.balance);
-    if (!Number.isInteger(clientNumber) || !Number.isFinite(newBalance) || newBalance < 0) {
+    // Negative is a legitimate balance here (the old system tracks a
+    // client in credit — they overpaid, or the clinic owes them) — only
+    // NaN/non-finite is actually invalid, not the sign.
+    if (!Number.isInteger(clientNumber) || !Number.isFinite(newBalance)) {
       return { client_number: r.client_number, found: false, error: 'invalid client_number or balance' };
     }
     const client = byNumber.get(clientNumber);
@@ -65,18 +88,20 @@ export async function POST(request) {
     return NextResponse.json({ results });
   }
 
-  const applied = [];
-  for (const r of results) {
-    if (!r.found) {
-      applied.push(r);
-      continue;
-    }
-    const { error: updateError } = await supabaseAdmin
-      .from('clients')
-      .update({ legacy_outstanding_balance: r.new_balance })
-      .eq('id', r.client_id);
-    applied.push(updateError ? { ...r, error: updateError.message } : { ...r, applied: true });
-  }
+  // Each write is its own row (client_id), so these are all independent
+  // — running them in parallel matters at this scale: hundreds of
+  // one-at-a-time round trips risks running past this route's own
+  // execution budget (see maxDuration above) on a large apply.
+  const applied = await Promise.all(
+    results.map(async (r) => {
+      if (!r.found) return r;
+      const { error: updateError } = await supabaseAdmin
+        .from('clients')
+        .update({ legacy_outstanding_balance: r.new_balance })
+        .eq('id', r.client_id);
+      return updateError ? { ...r, error: updateError.message } : { ...r, applied: true };
+    })
+  );
 
   return NextResponse.json({ results: applied });
 }
