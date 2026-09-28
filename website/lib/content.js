@@ -115,7 +115,13 @@ export const VETS = [
 ];
 
 export const TEAM = [
-  { name: 'Arlyn', role: 'Accounts & Admin Manager', photo: '/team/arlyn.png' },
+  {
+    name: 'Arlyn',
+    role: 'Accounts & Admin Manager',
+    photo: '/team/arlyn.jpg',
+    photoFunny: '/team/arlyn-funny.jpg',
+    bio: "Keeps the books balanced and the front desk running — and yes, that's her genuine reaction to a bill getting settled on time.",
+  },
   {
     name: 'Tyke',
     role: 'Vet Assistant',
@@ -136,6 +142,13 @@ export const TEAM = [
     photo: '/team/genie.jpg',
     photoFunny: '/team/genie-funny.jpg',
     bio: "The first friendly face you'll meet, and clearly not afraid to make you smile back.",
+  },
+  {
+    name: 'Louisa',
+    role: 'Receptionist',
+    photo: '/team/louisa.jpg',
+    photoFunny: '/team/louisa-funny.jpg',
+    bio: "The newest face at the front desk, and already fully committed to the bit.",
   },
   {
     name: 'Niluka',
