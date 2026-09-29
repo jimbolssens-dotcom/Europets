@@ -31,6 +31,7 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
   const [items, setItems] = useState([]);
   const [expanded, setExpanded] = useState({});
   const [checkErrors, setCheckErrors] = useState({});
+  const [retryingId, setRetryingId] = useState(null);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   // Recordings already finished as of the initial load (or already
@@ -206,6 +207,27 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
     load();
   }
 
+  // For a recording that failed before ever getting an AssemblyAI job
+  // (a bad API key, AssemblyAI having an outage, ...) — the audio is
+  // still in Storage, so this resubmits the same file rather than making
+  // staff record it again. Surfaces the new failure right on the row
+  // (via checkErrors, same spot "Check now" uses) if it fails again.
+  async function retryRecording(id) {
+    setRetryingId(id);
+    setCheckErrors((prev) => ({ ...prev, [id]: null }));
+    try {
+      const res = await fetch(`/api/recordings/${id}/retry`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCheckErrors((prev) => ({ ...prev, [id]: data.error || `Retry failed (${res.status})` }));
+      }
+    } catch (err) {
+      setCheckErrors((prev) => ({ ...prev, [id]: err.message || 'Network error — check your connection' }));
+    }
+    setRetryingId(null);
+    load();
+  }
+
   // Everything above normally arrives on its own — a postgres_changes
   // subscription on the page holding this recorder reloads its own fields
   // the moment the webhook finishes writing them (see e.g. the consult
@@ -277,6 +299,11 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
                 {r.status === 'processing' && (
                   <button type="button" onClick={() => checkNow(r.id)}>
                     Check now
+                  </button>
+                )}
+                {r.status === 'error' && r.file_path && (
+                  <button type="button" onClick={() => retryRecording(r.id)} disabled={retryingId === r.id}>
+                    {retryingId === r.id ? 'Retrying...' : '↻ Retry'}
                   </button>
                 )}
                 <button type="button" onClick={() => removeRecording(r.id)}>
