@@ -11,6 +11,10 @@
     {
       "path": "/api/backups/nightly",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/whatsapp/nudge-sweep",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
