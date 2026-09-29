@@ -195,6 +195,14 @@ export default function AdminLayout({ children }) {
             Hospitalization{hospitalizationAlarmIcon}
           </a>
           <a href="/invoices">Invoices</a>
+        </div>
+        {/* A separate flex item from .topnav-links (not nested inside it) so
+            it can be reordered independently — see .topnav-icons in
+            globals.css. On a narrow phone where the logo alone fills the
+            first line (not enough room for it plus the full text nav),
+            these icons move up next to the logo instead of wrapping to
+            their own third line below the text links. */}
+        <div className="topnav-icons">
           <a href="/hospitalization/wall" title="Hospitalization wall display" aria-label="Hospitalization wall display" className="settings-link">
             🗺️
           </a>

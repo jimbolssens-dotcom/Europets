@@ -376,6 +376,17 @@ button:disabled {
   display: flex;
   gap: 1.25rem;
   flex-wrap: wrap;
+  order: 1;
+}
+
+/* Sibling of .topnav-links (not nested inside it) specifically so it can
+   carry its own flex `order` — see the narrow-screen override below. */
+.topnav-icons {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  order: 2;
 }
 
 .topnav-links a {
@@ -394,13 +405,13 @@ button:disabled {
   border-bottom-color: var(--pink);
 }
 
-.topnav-links a.settings-link,
-.topnav-links button.settings-link {
+.topnav-icons a.settings-link,
+.topnav-icons button.settings-link {
   font-size: 1.1rem;
   letter-spacing: normal;
 }
 
-.topnav-links button.settings-link {
+.topnav-icons button.settings-link {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -409,9 +420,23 @@ button:disabled {
   cursor: pointer;
 }
 
-.topnav-links button.settings-link:hover {
+.topnav-icons button.settings-link:hover {
   color: var(--pink-dark);
   border-bottom-color: var(--pink);
+}
+
+/* Below this width the logo alone fills the first line — .topnav-links
+   (the full text nav) is too wide to share it, so it wraps whole onto
+   its own line, and then wraps AGAIN internally, leaving the icons on a
+   third line by themselves. Moving .topnav-icons ahead of .topnav-links
+   in flex order puts it right after the logo instead, using the empty
+   space that's already there on line one and folding this down to two
+   lines. Doesn't touch anything above this width, where the logo already
+   shares its line with the full nav as today. */
+@media (max-width: 600px) {
+  .topnav-icons {
+    order: 0;
+  }
 }
 
 /* Hospitalization nav link when any admitted case has a pending "Request
