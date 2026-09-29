@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
 import CultureReminderBanner from '../_components/CultureReminderBanner';
+import DiscoveryMode from '../_components/DiscoveryMode';
 import { useHospitalizationUpdatePending } from '../_components/useHospitalizationUpdatePending';
 import { navAlarmClass } from '@/lib/hospitalizationAttention';
 import { supabase } from '@/lib/supabaseClient';
@@ -240,13 +241,31 @@ export default function AdminLayout({ children }) {
             these icons move up next to the logo instead of wrapping to
             their own third line below the text links. */}
         <div className="topnav-icons">
-          <a href="/hospitalization/wall" title="Hospitalization wall display" aria-label="Hospitalization wall display" className="settings-link">
+          <a
+            href="/hospitalization/wall"
+            title="Hospitalization wall display"
+            aria-label="Hospitalization wall display"
+            className="settings-link"
+            data-discover="Opens the big-screen cage-status board for the ward, meant for a TV/monitor mounted in the treatment area — read-only, not for day-to-day editing."
+          >
             🗺️
           </a>
-          <a href="/day-procedures/wall" title="Day procedure wall display" aria-label="Day procedure wall display" className="settings-link">
+          <a
+            href="/day-procedures/wall"
+            title="Day procedure wall display"
+            aria-label="Day procedure wall display"
+            className="settings-link"
+            data-discover="Same idea as the Hospitalization wall display, but for same-day procedures — a read-only status board for a TV/monitor."
+          >
             🩺
           </a>
-          <a href="/mobile" title="Mobile recording app" aria-label="Mobile recording app" className="settings-link">
+          <a
+            href="/mobile"
+            title="Mobile recording app"
+            aria-label="Mobile recording app"
+            className="settings-link"
+            data-discover="Opens the phone-friendly version of the app — for scanning microchips, adding quick worksheet notes, or messaging from a phone on the floor."
+          >
             📱
           </a>
           <a
@@ -256,6 +275,7 @@ export default function AdminLayout({ children }) {
             title="Client app (opens in a new tab)"
             aria-label="Client app (opens in a new tab)"
             className="settings-link"
+            data-discover="Opens the public client-facing app in a new tab — what a client themselves sees and uses (booking, messages, their pet's records)."
           >
             🐾
           </a>
@@ -264,6 +284,7 @@ export default function AdminLayout({ children }) {
             title={hasPendingReviewRequest ? 'Settings — a review is waiting for moderation' : 'Settings'}
             aria-label="Settings"
             className={`settings-link${hasPendingReviewRequest ? ' nav-update-requested' : ''}`}
+            data-discover="Clinic-wide settings: staff accounts, the service/medication catalog, vaccine protocols, clinic details, and other configuration."
           >
             ⚙️{hasPendingReviewRequest && ' 🔔'}
           </a>
@@ -273,9 +294,11 @@ export default function AdminLayout({ children }) {
             title="Log out"
             aria-label="Log out"
             className="settings-link"
+            data-discover="Logs you out of the app — you'd need to sign back in with your PIN/password."
           >
             🚪
           </button>
+          <DiscoveryMode />
         </div>
       </nav>
       <CultureReminderBanner />
