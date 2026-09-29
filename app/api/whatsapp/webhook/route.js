@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
-import { maybeRunConcierge, sendConciergeReply, sendEscalationNotice, sendEscalationFollowUpNotice, flagEscalatedThread } from '@/lib/whatsappConcierge';
+import { maybeRunConcierge, sendConciergeReply, sendEscalationNotice, sendEscalationFollowUpNotice, sendStaffHandoffNotice, flagEscalatedThread } from '@/lib/whatsappConcierge';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -148,20 +148,31 @@ async function runConciergeForInbound(message, clientId, digits) {
     const result = await maybeRunConcierge({ clientId, phone: digits });
     if (result.sent) {
       await sendConciergeReply({ clientId, phone: digits, reply: result.reply });
-    } else if (result.escalated) {
-      console.log('WhatsApp AI concierge escalated to staff', message.id, result.reason);
-      // Always flag the thread, regardless of whether either notice below
+    } else if (result.escalated || result.handoff) {
+      // Two different reasons land here — the model itself chose to
+      // escalate (result.escalated), or the concierge stayed out entirely
+      // because staff are already in this thread (result.handoff, see
+      // maybeRunConcierge's priorRow check) — but both get the same
+      // treatment from here on: flag the thread, and send something,
+      // never nothing. Always flag regardless of whether the notice below
       // succeeds — staff need to see this either way. A thread already
-      // flagged from an earlier still-open escalation gets the shorter
-      // follow-up line instead of repeating the full first-time notice —
-      // but it still gets SOMETHING: a client whose later message(s) also
-      // escalate (e.g. "please book that", then "hello") must never be
-      // met with total silence just because a human hasn't cleared the
-      // flag yet (see the incident behind sendEscalationFollowUpNotice's
-      // own comment).
+      // flagged from an earlier still-open episode gets the shorter
+      // follow-up line instead of repeating a first-time notice — but it
+      // still gets SOMETHING: a client whose later message(s) also land
+      // here (e.g. "please book that", then "hello") must never be met
+      // with total silence just because a human hasn't cleared the flag
+      // yet (see the incident behind sendEscalationFollowUpNotice's own
+      // comment, and the one behind sendStaffHandoffNotice's).
+      console.log(
+        result.handoff ? 'WhatsApp AI concierge deferred — staff already in thread' : 'WhatsApp AI concierge escalated to staff',
+        message.id,
+        result.reason
+      );
       const { alreadyFlagged } = await flagEscalatedThread(clientId);
       if (alreadyFlagged) {
         await sendEscalationFollowUpNotice(digits);
+      } else if (result.handoff) {
+        await sendStaffHandoffNotice(digits);
       } else {
         await sendEscalationNotice(digits);
       }
