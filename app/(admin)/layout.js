@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
 import CultureReminderBanner from '../_components/CultureReminderBanner';
@@ -56,6 +56,43 @@ export default function AdminLayout({ children }) {
   const [hasPendingReviewRequest, setHasPendingReviewRequest] = useState(false);
   const [hasPendingClientMessage, setHasPendingClientMessage] = useState(false);
   const pendingClientMessageRef = useRef(false);
+  const navRef = useRef(null);
+  const [logoAlone, setLogoAlone] = useState(false);
+
+  // Whether the icon-only links should sit next to the logo isn't really
+  // a viewport-width question — it depends on whatever the nav's actual
+  // content width happens to be right now, which shifts on its own: the
+  // Hospitalization/Day Procedures alarm badges and the Messages/
+  // Appointments/Settings "something's pending" pills below all load
+  // async, a few hundred ms to a second after first paint, each adding
+  // real width to whichever link they land on. A fixed max-width media
+  // query can't see any of that — it can only ever match the one device
+  // width it was tuned against, and stops matching the moment a badge
+  // pushes the real break point past it. Measuring where .topnav-links
+  // actually lands relative to .brand, and redoing that measurement
+  // whenever the nav's rendered size changes for any reason (a resize,
+  // a badge appearing, a webfont swapping in), tracks the real thing the
+  // user asked for: "whenever the logo ends up alone on its own line."
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const brand = nav.querySelector('.brand');
+    const links = nav.querySelector('.topnav-links');
+    if (!brand || !links) return;
+
+    function measure() {
+      // On the same line, .topnav's align-items: center still leaves a
+      // few px of difference between two items of different heights —
+      // wrapped onto its own line, .topnav-links jumps down by a full
+      // row's height instead, comfortably clearing this margin.
+      setLogoAlone(links.offsetTop - brand.offsetTop > 16);
+    }
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, []);
 
   // Same blinking treatment for a client-app chat message waiting on a
   // reply (see app/messages and client_messages / migration 120) — plus a
@@ -158,7 +195,7 @@ export default function AdminLayout({ children }) {
   return (
     <>
       <AppVersionWatcher />
-      <nav className="topnav">
+      <nav ref={navRef} className={`topnav${logoAlone ? ' topnav-logo-alone' : ''}`}>
         <a href="/" className="brand">
           <img src="/logo.png" alt="Europets Clinic" />
         </a>
