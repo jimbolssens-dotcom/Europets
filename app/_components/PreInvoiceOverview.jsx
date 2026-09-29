@@ -404,7 +404,7 @@ export default function PreInvoiceOverview({
               <tr>
                 <th>Item</th>
                 <th>Qty</th>
-                <th>Given</th>
+                <th>#</th>
                 <th>Total</th>
                 <th></th>
               </tr>

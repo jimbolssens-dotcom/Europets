@@ -263,7 +263,7 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
                   <tr>
                     <th>Item</th>
                     <th>Qty</th>
-                    <th>Given</th>
+                    <th>#</th>
                     <th>Unit price</th>
                     <th>Line total</th>
                     {editable && <th></th>}

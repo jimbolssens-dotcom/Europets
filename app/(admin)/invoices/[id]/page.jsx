@@ -554,7 +554,7 @@ export default function InvoiceDetailPage() {
           <tr>
             <th>Item</th>
             <th>Qty</th>
-            <th>Given</th>
+            <th>#</th>
             <th>Method</th>
             <th>Instructions</th>
             <th>Unit price</th>
