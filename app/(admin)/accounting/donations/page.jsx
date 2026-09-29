@@ -51,6 +51,15 @@ export default function DonationsPage() {
   const [error, setError] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const [detail, setDetail] = useState(null);
+  // Sequence (donation_number) preferred over received date — a backdated
+  // entry logged out of order otherwise jumps around the list every time
+  // the date sort is used, when staff actually want to see them in the
+  // order they were logged.
+  const [sortBy, setSortBy] = useState('sequence');
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState(null);
   const [applyClient, setApplyClient] = useState(null);
   const [applyInvoices, setApplyInvoices] = useState([]);
   const [applyInvoiceId, setApplyInvoiceId] = useState('');
@@ -119,6 +128,7 @@ export default function DonationsPage() {
   }
 
   async function toggleDetail(donation) {
+    cancelEdit();
     if (expandedId === donation.id) {
       setExpandedId(null);
       setDetail(null);
@@ -130,6 +140,56 @@ export default function DonationsPage() {
     const res = await fetch(`/api/donations/${donation.id}`);
     const data = await res.json();
     setDetail(data);
+  }
+
+  function startEdit(donation) {
+    setExpandedId(null);
+    setDetail(null);
+    resetApplyPanel();
+    setEditingId(donation.id);
+    setEditError(null);
+    setEditForm({
+      donor_name: donation.donor_name || '',
+      donor_contact: donation.donor_contact || '',
+      amount: String(donation.amount),
+      source: donation.source,
+      received_at: donation.received_at,
+      notes: donation.notes || '',
+    });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditForm(null);
+    setEditError(null);
+  }
+
+  async function saveEdit(donation) {
+    if (!editForm.amount || !editForm.source) return;
+    setEditSubmitting(true);
+    setEditError(null);
+
+    const res = await fetch(`/api/donations/${donation.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        donor_name: editForm.donor_name || null,
+        donor_contact: editForm.donor_contact || null,
+        amount: Number(editForm.amount),
+        source: editForm.source,
+        received_at: editForm.received_at,
+        notes: editForm.notes || null,
+      }),
+    });
+    const data = await res.json();
+    setEditSubmitting(false);
+
+    if (!res.ok) {
+      setEditError(data.error || 'Failed to update payment');
+      return;
+    }
+    cancelEdit();
+    loadDonations();
   }
 
   async function pickApplyClient(client) {
@@ -188,6 +248,16 @@ export default function DonationsPage() {
   const totalReceived = donations.reduce((sum, d) => sum + Number(d.amount), 0);
   const totalRemaining = donations.reduce((sum, d) => sum + Number(d.remaining), 0);
   const selectedInvoice = applyInvoices.find((inv) => inv.id === applyInvoiceId);
+
+  // API already returns newest-received-first; sequence mode re-sorts by
+  // donation_number instead (its YY-MM-NN format sorts correctly as a
+  // plain string), which tracks logging order rather than the received
+  // date a backdated entry might carry.
+  const sortedDonations = [...donations].sort((a, b) => {
+    if (sortBy === 'sequence') return b.donation_number.localeCompare(a.donation_number);
+    if (a.received_at !== b.received_at) return a.received_at < b.received_at ? 1 : -1;
+    return (a.created_at || '') < (b.created_at || '') ? 1 : -1;
+  });
 
   return (
     <div>
@@ -267,6 +337,14 @@ export default function DonationsPage() {
       ) : donations.length === 0 ? (
         <p>No payments logged yet.</p>
       ) : (
+        <>
+          <label className="visit-meta">
+            Sort by:{' '}
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="sequence">Sequence number</option>
+              <option value="date">Date received</option>
+            </select>
+          </label>
         <table>
           <thead>
             <tr>
@@ -281,7 +359,7 @@ export default function DonationsPage() {
             </tr>
           </thead>
           <tbody>
-            {donations.map((d) => (
+            {sortedDonations.map((d) => (
               <Fragment key={d.id}>
                 <tr>
                   <td>{d.donation_number}</td>
@@ -295,6 +373,9 @@ export default function DonationsPage() {
                     <button type="button" onClick={() => toggleDetail(d)}>
                       {expandedId === d.id ? 'Close' : d.remaining > 0 ? 'Apply / View' : 'View'}
                     </button>
+                    <button type="button" onClick={() => (editingId === d.id ? cancelEdit() : startEdit(d))}>
+                      {editingId === d.id ? 'Cancel' : 'Edit'}
+                    </button>
                     {Number(d.allocated) === 0 && (
                       <button type="button" onClick={() => deleteDonation(d)}>
                         Delete
@@ -302,6 +383,65 @@ export default function DonationsPage() {
                     )}
                   </td>
                 </tr>
+                {editingId === d.id && (
+                  <tr>
+                    <td colSpan={8}>
+                      <form
+                        className="note-form"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          saveEdit(d);
+                        }}
+                      >
+                        {editError && <p className="error">{editError}</p>}
+                        <input
+                          placeholder="Donor name (optional)"
+                          value={editForm.donor_name}
+                          onChange={(e) => setEditForm({ ...editForm, donor_name: e.target.value })}
+                        />
+                        <input
+                          placeholder="Donor contact (optional)"
+                          value={editForm.donor_contact}
+                          onChange={(e) => setEditForm({ ...editForm, donor_contact: e.target.value })}
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          placeholder="Amount"
+                          value={editForm.amount}
+                          onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                        />
+                        <select
+                          value={editForm.source}
+                          onChange={(e) => setEditForm({ ...editForm, source: e.target.value })}
+                        >
+                          <option value="">Received via...</option>
+                          <option value="nomod">Nomod</option>
+                          <option value="paymob">PayMob</option>
+                          <option value="paypal">PayPal</option>
+                          <option value="bank_transfer">Bank Transfer</option>
+                        </select>
+                        <input
+                          type="date"
+                          value={editForm.received_at}
+                          onChange={(e) => setEditForm({ ...editForm, received_at: e.target.value })}
+                        />
+                        <input
+                          placeholder="Notes (optional)"
+                          value={editForm.notes}
+                          onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                        />
+                        <button type="submit" disabled={editSubmitting || !editForm.amount || !editForm.source}>
+                          {editSubmitting ? 'Saving...' : 'Save Changes'}
+                        </button>
+                        <button type="button" className="secondary" onClick={cancelEdit} disabled={editSubmitting}>
+                          Cancel
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                )}
                 {expandedId === d.id && (
                   <tr>
                     <td colSpan={8}>
@@ -441,6 +581,7 @@ export default function DonationsPage() {
             ))}
           </tbody>
         </table>
+        </>
       )}
     </div>
   );
