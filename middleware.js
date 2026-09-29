@@ -39,6 +39,7 @@ const PUBLIC_PATTERNS = [
   /^\/api\/app-version$/, // polled by AppVersionWatcher on every page, staff and portal alike
   /^\/api\/whatsapp\/webhook$/, // Meta's own verification + event delivery — can't carry a staff cookie; verified via its own signature header instead (see the route)
   /^\/api\/vaccinations\/send-due-reminders$/, // Vercel Cron's own daily trigger — can't carry a staff cookie; verified via its own CRON_SECRET bearer token instead (see the route)
+  /^\/api\/backups\/nightly$/, // Vercel Cron's own daily trigger — same reasoning as send-due-reminders above. Deliberately not under /api/accounting, which needs its own separate password cookie a cron job has no way to carry either.
   // Report/invoice PDFs staff link directly to a client via WhatsApp/email
   // (see ReportShareActions and the invoice/consult pages) — these need to
   // open for the client with no login, same reasoning as the rest of this
