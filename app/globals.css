@@ -9355,9 +9355,16 @@ form.card.admit-patient-form {
   filter: drop-shadow(0 0 4px var(--pink));
 }
 
+/* Bottom, not top: a top:0 strip sat directly on top of the nav bar and,
+   despite z-index being purely visual, its real (non-zero) size physically
+   intercepted every click on the nav underneath it — the browser delivers
+   a click to whichever element is topmost at that point, never reaching
+   the nav link beneath, so nothing under it ever responded. Pointer-events
+   is set to none/auto as a second layer of protection against the same
+   mistake on any other page's own fixed-bottom content. */
 .discovery-banner {
   position: fixed;
-  top: 0;
+  bottom: 0;
   left: 0;
   right: 0;
   z-index: 9999;
@@ -9366,6 +9373,7 @@ form.card.admit-patient-form {
   text-align: center;
   padding: 0.5rem 1rem;
   font-size: 0.85rem;
+  pointer-events: none;
 }
 
 .discovery-banner button {
@@ -9377,6 +9385,7 @@ form.card.admit-patient-form {
   padding: 0.15rem 0.6rem;
   cursor: pointer;
   font-weight: 600;
+  pointer-events: auto;
 }
 
 .discovery-popup {
