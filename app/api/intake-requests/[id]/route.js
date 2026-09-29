@@ -244,6 +244,42 @@ async function submit(id, body) {
   return NextResponse.json(data);
 }
 
+// Folds any not-yet-linked WhatsApp thread (the /messages inbox's
+// "Unmatched WhatsApp numbers" section) into this client the moment
+// they're actually registered/attached here — that section is meant to
+// flag numbers that never became a real client, so a thread left sitting
+// there after its intake gets approved is stale, not a real "unmatched"
+// case. Matches the client's own phone (clients.phone plus every number
+// in client_phones) the same digits-suffix way phone search everywhere
+// else in this app already works, so formatting differences (+971 vs a
+// leading 0, spaces, ...) don't stop a real match. Best-effort: never
+// fails the approval itself over this.
+async function linkUnmatchedMessagesToClient(clientId) {
+  try {
+    const [{ data: phoneRows }, { data: clientRow }] = await Promise.all([
+      supabase.from('client_phones').select('phone').eq('client_id', clientId),
+      supabase.from('clients').select('phone').eq('id', clientId).maybeSingle(),
+    ]);
+    const candidates = [...(phoneRows || []).map((r) => r.phone), clientRow?.phone].filter(Boolean);
+    const suffixes = new Set(candidates.map(phoneSearchDigits).filter((s) => s.length >= 6));
+    if (suffixes.size === 0) return;
+
+    const { data: unmatched } = await supabaseAdmin
+      .from('client_messages')
+      .select('phone')
+      .is('client_id', null)
+      .not('phone', 'is', null);
+    const phonesToLink = new Set(
+      (unmatched || []).map((r) => r.phone).filter((phone) => suffixes.has(phoneSearchDigits(phone)))
+    );
+    for (const phone of phonesToLink) {
+      await supabaseAdmin.from('client_messages').update({ client_id: clientId }).eq('phone', phone).is('client_id', null);
+    }
+  } catch (err) {
+    console.error('Failed to auto-link unmatched WhatsApp messages to newly approved client', clientId, err);
+  }
+}
+
 async function review(id, action, existingClientId, roomId, overrides = {}) {
   const { data: intake, error: fetchError } = await supabase
     .from('intake_requests')
@@ -363,6 +399,8 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
         .insert([{ client_id: client.id, phone: intake.phone, label: 'Mobile', is_whatsapp: true }]);
     }
   }
+
+  await linkUnmatchedMessagesToClient(client.id);
 
   const patientRows = (intake.patients || []).map((p) => ({
     client_id: client.id,
