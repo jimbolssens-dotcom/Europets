@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
-import { maybeRunConcierge, sendConciergeReply, sendEscalationNotice, flagEscalatedThread } from '@/lib/whatsappConcierge';
+import { maybeRunConcierge, sendConciergeReply, sendEscalationNotice, sendEscalationFollowUpNotice, flagEscalatedThread } from '@/lib/whatsappConcierge';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -150,14 +150,19 @@ async function runConciergeForInbound(message, clientId, digits) {
       await sendConciergeReply({ clientId, phone: digits, reply: result.reply });
     } else if (result.escalated) {
       console.log('WhatsApp AI concierge escalated to staff', message.id, result.reason);
-      // Always flag the thread, regardless of whether the courtesy text
-      // below succeeds — staff need to see this either way. Skip the
-      // courtesy text on a thread that's already flagged from an earlier
-      // still-open escalation, so a burst of several escalating messages
-      // in one sitting doesn't repeat the same "let me get one of our
-      // team..." line two or three times in a row.
+      // Always flag the thread, regardless of whether either notice below
+      // succeeds — staff need to see this either way. A thread already
+      // flagged from an earlier still-open escalation gets the shorter
+      // follow-up line instead of repeating the full first-time notice —
+      // but it still gets SOMETHING: a client whose later message(s) also
+      // escalate (e.g. "please book that", then "hello") must never be
+      // met with total silence just because a human hasn't cleared the
+      // flag yet (see the incident behind sendEscalationFollowUpNotice's
+      // own comment).
       const { alreadyFlagged } = await flagEscalatedThread(clientId);
-      if (!alreadyFlagged) {
+      if (alreadyFlagged) {
+        await sendEscalationFollowUpNotice(digits);
+      } else {
         await sendEscalationNotice(digits);
       }
     }
