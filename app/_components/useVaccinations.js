@@ -27,6 +27,7 @@ function makeEmptyForm(defaultVetId = '') {
     batch_number: '',
     administered_by: defaultVetId,
     notes: '',
+    skip_billing: false,
   };
 }
 
@@ -375,8 +376,17 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
       // vaccination backdated the same way still bills as usual (it's
       // never a "just recording history" entry the way an annual booster
       // can be), and today's own annual visit bills normally too.
+      //
+      // form.skip_billing is the manual version of the same thing, for the
+      // one case that date-based detection can't catch: a primary course's
+      // 1-month booster, given right on schedule (today, not backdated) —
+      // already paid for at the primary visit (see billVaccinationVisit's
+      // core-vaccine ×2 comment above), but nothing here otherwise knows
+      // that. Log it as Annual (so it rolls onto the normal 12-month cycle
+      // instead of scheduling yet another 1-month booster) with this
+      // checked.
       const isBackdatedAnnual = !isPrimary && dateGiven !== todayISODate();
-      if (!isBackdatedAnnual) {
+      if (!isBackdatedAnnual && !form.skip_billing) {
         try {
           await billVaccinationVisit({ isPrimary, checkedProtocols, coreProtocol, rabiesGiven, boosterDue });
         } catch (billingError) {

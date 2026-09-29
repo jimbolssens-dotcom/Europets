@@ -26,7 +26,10 @@ export default function VaccinationForm({
         Add Vaccination{' '}
         <InfoHint>
           Primary Booster schedules the core vaccine for a 1-month booster and, if rabies isn&apos;t
-          checked above, adds a rabies reminder for that same date.
+          checked above, adds a rabies reminder for that same date. Giving that 1-month booster
+          itself later? Log it as Annual with &quot;Already paid for&quot; checked below — it was
+          billed as part of the Primary visit already, and Annual keeps it on the normal 12-month
+          cycle afterward instead of scheduling another 1-month booster.
         </InfoHint>
       </h3>
       {error && <p className="error">{error}</p>}
@@ -97,6 +100,15 @@ export default function VaccinationForm({
         value={form.notes}
         onChange={(e) => setForm({ ...form, notes: e.target.value })}
       />
+
+      <label className="treat-item-billable-toggle">
+        <input
+          type="checkbox"
+          checked={form.skip_billing}
+          onChange={(e) => setForm({ ...form, skip_billing: e.target.checked })}
+        />
+        Already paid for — just record it, don&apos;t add a charge
+      </label>
 
       <div className="vaccine-submit-actions">
         <button
