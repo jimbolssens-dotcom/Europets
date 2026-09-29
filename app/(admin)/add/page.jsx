@@ -273,7 +273,11 @@ function AddPageContent() {
                     · {c.phone || 'no phone'}
                     {c.emirates_id && ` · ID ${c.emirates_id}`}
                     {c.email && ` · ${c.email}`}
-                    <button type="button" onClick={() => setOwner(c)}>
+                    <button
+                      type="button"
+                      onClick={() => setOwner(c)}
+                      data-discover="Uses this already-existing client as the owner for the pet on the right, instead of creating a duplicate client record."
+                    >
                       Use this client instead
                     </button>
                   </li>
@@ -282,7 +286,11 @@ function AddPageContent() {
             </div>
           )}
 
-          <button type="submit" disabled={clientSubmitting || clientCheckingDuplicates}>
+          <button
+            type="submit"
+            disabled={clientSubmitting || clientCheckingDuplicates}
+            data-discover="Checks the phone number, Emirates ID, and name above against existing clients first — if none match, creates a new client record and pre-fills them as the owner on the right so their first pet can go straight in."
+          >
             {clientCheckingDuplicates
               ? 'Checking for duplicates...'
               : clientSubmitting
@@ -299,7 +307,11 @@ function AddPageContent() {
           {owner ? (
             <p className="owner-picked-badge">
               Owner: <strong>{owner.full_name}</strong>{' '}
-              <button type="button" onClick={() => setOwner(null)}>
+              <button
+                type="button"
+                onClick={() => setOwner(null)}
+                data-discover="Clears the picked owner so you can search for a different client for this pet."
+              >
                 Change
               </button>
             </p>
@@ -376,7 +388,11 @@ function AddPageContent() {
               onChange={(e) => setPatientForm({ ...patientForm, last_vaccination_date: e.target.value })}
             />
           </label>
-          <button type="submit" disabled={patientSubmitting}>
+          <button
+            type="submit"
+            disabled={patientSubmitting}
+            data-discover="Creates this pet's patient record under the picked owner, then takes you straight to its file — the next step from there is usually booking an appointment or starting a consult."
+          >
             {patientSubmitting ? 'Saving...' : 'Add Patient'}
           </button>
         </form>

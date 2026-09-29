@@ -100,7 +100,15 @@ export default function DiscoveryMode() {
       );
     }
 
-    function onClick(e) {
+    // Shared by click, mousedown, and dblclick — some of this app's
+    // custom controls (the Appointments calendar's drag-to-reschedule and
+    // double-click-to-open blocks, its click-to-book empty time slots)
+    // don't use a plain click at all: dragging starts on mousedown, and a
+    // browser's own dblclick event fires independently of the click
+    // events that precede it, so stopping click alone wouldn't reliably
+    // stop either. Intercepting all three the same way covers both plain
+    // buttons and these custom drag/double-click interactions.
+    function onIntercept(e) {
       // e.target can be a non-Element (a text node) in rare cases —
       // .closest only exists on Element.
       if (!(e.target instanceof Element)) return;
@@ -135,10 +143,14 @@ export default function DiscoveryMode() {
       });
     }
 
-    document.addEventListener('click', onClick, true);
+    document.addEventListener('click', onIntercept, true);
+    document.addEventListener('mousedown', onIntercept, true);
+    document.addEventListener('dblclick', onIntercept, true);
     document.addEventListener('submit', onSubmit, true);
     return () => {
-      document.removeEventListener('click', onClick, true);
+      document.removeEventListener('click', onIntercept, true);
+      document.removeEventListener('mousedown', onIntercept, true);
+      document.removeEventListener('dblclick', onIntercept, true);
       document.removeEventListener('submit', onSubmit, true);
       clearTimeout(dismissTimerRef.current);
     };

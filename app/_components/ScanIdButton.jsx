@@ -45,7 +45,12 @@ export default function ScanIdButton({ onScanned, label = '📷 Scan' }) {
 
   return (
     <span className="voice-btn-wrap">
-      <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={scanning}>
+      <button
+        type="button"
+        onClick={() => cameraInputRef.current?.click()}
+        disabled={scanning}
+        data-discover="Opens your camera to photograph an Emirates ID card, then reads the name and ID number off it automatically and fills those fields in below."
+      >
         {scanning ? 'Reading ID...' : label}
       </button>
       {error && <span className="voice-btn-error">{error}</span>}

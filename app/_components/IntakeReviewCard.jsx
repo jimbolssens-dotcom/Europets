@@ -191,6 +191,7 @@ export default function IntakeReviewCard({
                   type="button"
                   onClick={() => review(r.id, 'approve', c.id, r, c.full_name)}
                   disabled={reviewing?.id === r.id}
+                  data-discover="Attaches this request to the EXISTING client shown here (instead of creating a duplicate) and approves it — books the requested appointment under that client."
                 >
                   {reviewing?.id === r.id ? 'Working...' : 'Attach'}
                 </button>
@@ -216,6 +217,7 @@ export default function IntakeReviewCard({
                     !customBooking[r.id]?.time ||
                     !customBooking[r.id]?.duration))))
           }
+          data-discover="Approves this request: creates the client/patient if they're new, and books the appointment they asked for onto the real schedule."
         >
           {reviewing?.id === r.id && reviewing.action === 'approve'
             ? 'Approving...'
@@ -228,6 +230,7 @@ export default function IntakeReviewCard({
           className="secondary"
           onClick={() => review(r.id, 'reject', null, r)}
           disabled={reviewing?.id === r.id}
+          data-discover="Rejects this request — no client, patient, or appointment gets created from it."
         >
           {reviewing?.id === r.id && reviewing.action === 'reject' ? 'Rejecting...' : 'Reject'}
         </button>

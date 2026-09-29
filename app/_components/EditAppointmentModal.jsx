@@ -117,7 +117,7 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
         ) : (
           <p className="booking-owner-picked">
             Owner: <strong>{ownerName}</strong>{' '}
-            <button type="button" onClick={() => setChangingOwner(true)}>
+            <button type="button" onClick={() => setChangingOwner(true)} data-discover="Search for a different owner/patient for this appointment.">
               Change
             </button>
           </p>
@@ -206,19 +206,31 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
         </label>
 
         <div className="modal-actions modal-actions-status">
-          <button type="button" className="secondary" onClick={() => handleStatusChange('no_show')} disabled={submitting}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => handleStatusChange('no_show')}
+            disabled={submitting}
+            data-discover="Marks this appointment as a no-show right away — saves immediately, doesn't wait for the Save button below."
+          >
             🚫 Mark No-Show
           </button>
-          <button type="button" className="secondary" onClick={() => handleStatusChange('cancelled')} disabled={submitting}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => handleStatusChange('cancelled')}
+            disabled={submitting}
+            data-discover="Cancels this appointment right away — saves immediately, doesn't wait for the Save button below."
+          >
             ✖️ Cancel Appointment
           </button>
         </div>
 
         <div className="modal-actions">
-          <button type="button" className="secondary" onClick={onClose} disabled={submitting}>
+          <button type="button" className="secondary" onClick={onClose} disabled={submitting} data-discover="Closes this form without saving any of the changes made above.">
             Close
           </button>
-          <button type="submit" disabled={submitting}>
+          <button type="submit" disabled={submitting} data-discover="Saves every field above onto this appointment — patient, room, vet, type, date/time, and reason.">
             {submitting ? 'Saving...' : 'Save'}
           </button>
         </div>
