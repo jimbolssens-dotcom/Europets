@@ -8,7 +8,13 @@
 // never lags behind — same underlying invoice the "Invoice" button below
 // opens, just editable inline instead of a click-through.
 //
-// Quantity edits commit on blur, no Save button — same on-blur-commit
+// Quantity and times-given edit independently — a hospitalization
+// worksheet item consolidates onto one line (see newConsolidatedLine in
+// lib/invoicing.js), so "Qty" here is the per-dose amount and "Given" is
+// how many times it was actually logged; staff can correct either one on
+// its own (a missed day undercounting Given without touching the real
+// per-dose amount, say) rather than only ever seeing their averaged
+// product. Both commit on blur, no Save button — same on-blur-commit
 // pattern as DayProcedureTreatmentPlan.jsx's own treatment-items-table,
 // since staff make several small adjustments in a row here and a Save
 // click per edit would just be friction.
@@ -211,30 +217,46 @@ export default function PreInvoiceOverview({
   function commitQuantity(item, value) {
     const quantity = Number(value);
     if (!value || Number.isNaN(quantity) || quantity <= 0 || quantity === Number(item.quantity)) {
-      setDrafts((prev) => {
-        const next = { ...prev };
-        delete next[item.id];
-        return next;
-      });
+      clearDraft(item.id);
       return;
     }
-    saveQuantity(item, quantity);
+    saveLineItemField(item, { quantity });
   }
 
-  async function saveQuantity(item, quantity) {
+  // times_given is the count a consolidated hospitalization-worksheet line
+  // folds together (a medication given once a day for however many days —
+  // see newConsolidatedLine in lib/invoicing.js), shown and edited
+  // separately from quantity (the per-dose amount) so staff can correct
+  // either one independently — e.g. a day that was never actually logged,
+  // undercounting times_given without touching the real per-dose amount.
+  function commitTimesGiven(item, value) {
+    const timesGiven = Number(value);
+    const current = Number(item.times_given) || 1;
+    if (!value || !Number.isInteger(timesGiven) || timesGiven <= 0 || timesGiven === current) {
+      clearDraft(item.id);
+      return;
+    }
+    saveLineItemField(item, { times_given: timesGiven });
+  }
+
+  function clearDraft(itemId) {
+    setDrafts((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  }
+
+  async function saveLineItemField(item, patch) {
     const res = await fetch(`/api/invoices/${invoice.id}/line-items/${item.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quantity }),
+      body: JSON.stringify(patch),
     });
     const data = await res.json();
-    setDrafts((prev) => {
-      const next = { ...prev };
-      delete next[item.id];
-      return next;
-    });
+    clearDraft(item.id);
     if (!res.ok) {
-      setError(data.error || 'Failed to update quantity');
+      setError(data.error || 'Failed to update the line item');
       return;
     }
     syncAndLoad();
@@ -382,6 +404,7 @@ export default function PreInvoiceOverview({
               <tr>
                 <th>Item</th>
                 <th>Qty</th>
+                <th>Given</th>
                 <th>Total</th>
                 <th></th>
               </tr>
@@ -389,50 +412,63 @@ export default function PreInvoiceOverview({
             <tbody>
               {lineItems.length === 0 && (
                 <tr>
-                  <td colSpan={4}>Nothing billable logged yet.</td>
+                  <td colSpan={5}>Nothing billable logged yet.</td>
                 </tr>
               )}
               {lineItemSections.map((section) => (
                 <Fragment key={section.sectionLabel || 'primary'}>
                   {section.sectionLabel && (
                     <tr className="invoice-section-row">
-                      <td colSpan={4}>{section.sectionLabel}</td>
+                      <td colSpan={5}>{section.sectionLabel}</td>
                     </tr>
                   )}
-                  {section.items.map((li) => (
-                    <tr key={li.id}>
-                      <td>{li.description}</td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={drafts[li.id] ?? li.quantity}
-                          onChange={(e) => setDrafts({ ...drafts, [li.id]: e.target.value })}
-                          onBlur={(e) => commitQuantity(li, e.target.value)}
-                        />
-                      </td>
-                      <td>AED {money(li.line_total)}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className="day-plan-remove"
-                          style={{ position: 'static' }}
-                          onClick={() => removeLine(li)}
-                          disabled={removingId === li.id}
-                          title="Remove from invoice"
-                        >
-                          &times;
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {section.items.map((li) => {
+                    const draft = drafts[li.id];
+                    return (
+                      <tr key={li.id}>
+                        <td>{li.description}</td>
+                        <td>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={draft?.quantity ?? li.quantity}
+                            onChange={(e) => setDrafts({ ...drafts, [li.id]: { ...draft, quantity: e.target.value } })}
+                            onBlur={(e) => commitQuantity(li, e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            value={draft?.timesGiven ?? li.times_given ?? 1}
+                            onChange={(e) => setDrafts({ ...drafts, [li.id]: { ...draft, timesGiven: e.target.value } })}
+                            onBlur={(e) => commitTimesGiven(li, e.target.value)}
+                          />
+                        </td>
+                        <td>AED {money(li.line_total)}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="day-plan-remove"
+                            style={{ position: 'static' }}
+                            onClick={() => removeLine(li)}
+                            disabled={removingId === li.id}
+                            title="Remove from invoice"
+                          >
+                            &times;
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </Fragment>
               ))}
             </tbody>
             {invoice && (
               <tfoot>
                 <tr>
-                  <td colSpan={2}>Running Total</td>
+                  <td colSpan={3}>Running Total</td>
                   <td colSpan={2}>AED {money(invoice.total)}</td>
                 </tr>
               </tfoot>
