@@ -1394,7 +1394,19 @@ td select {
 }
 
 /* Overrides .treatment-items-table's own nth-child widths, sized for its
-   6 columns — this table only has 4, laid out very differently. */
+   6 columns — this table has 5 (Item, Qty, Given, Total, remove). Qty and
+   Given are kept small and tight against each other so Item and Total get
+   the room; smaller type throughout so more fits without wrapping. */
+.pre-invoice-table {
+  font-size: 0.78rem;
+}
+
+.pre-invoice-table th {
+  font-size: 0.65rem;
+  letter-spacing: 0.01em;
+  padding: 0.3rem 0.25rem;
+}
+
 .pre-invoice-table th:nth-child(1),
 .pre-invoice-table td:nth-child(1) {
   width: auto;
@@ -1402,22 +1414,33 @@ td select {
 
 .pre-invoice-table th:nth-child(2),
 .pre-invoice-table td:nth-child(2) {
-  width: 4.5rem;
+  width: 2.6rem;
+  padding-right: 0.15rem;
 }
 
 .pre-invoice-table th:nth-child(3),
 .pre-invoice-table td:nth-child(3) {
-  width: 5.5rem;
-  white-space: nowrap;
+  width: 2.6rem;
+  padding-left: 0.15rem;
 }
 
 .pre-invoice-table th:nth-child(4),
 .pre-invoice-table td:nth-child(4) {
-  width: 1.8rem;
+  width: 4.5rem;
+  white-space: nowrap;
 }
 
-.pre-invoice-table td:nth-child(2) input {
-  width: 4rem;
+.pre-invoice-table th:nth-child(5),
+.pre-invoice-table td:nth-child(5) {
+  width: 1.6rem;
+}
+
+.pre-invoice-table td:nth-child(2) input,
+.pre-invoice-table td:nth-child(3) input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.2rem 0.1rem;
+  font-size: 0.72rem;
 }
 
 .pre-invoice-dog-size {
