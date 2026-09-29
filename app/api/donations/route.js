@@ -4,7 +4,11 @@
 //      invoice_payments rows are tagged with its id (see migration 111).
 // POST /api/donations  -> log a new donation, auto-assigning the next
 //      donation_number for its received_at month (YY-MM-NN, resets every
-//      month — see nextDonationNumber below).
+//      month). This sequence is now shared with Old System Payments'
+//      payment_number (see migration 156/lib/paymentSequence.js) — the
+//      two stay separate tables, but draw from one running counter, so a
+//      number always means exactly one real-world payment regardless of
+//      which tab it's logged in.
 //
 // Accounting-only (see middleware.js) — donations never come through the
 // front desk, so this never needs to be reachable by PIN-only staff.
@@ -12,35 +16,12 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { nextPaymentNumber } from '@/lib/paymentSequence';
 
 const SOURCES = ['nomod', 'paymob', 'paypal', 'bank_transfer'];
 
 function today() {
   return new Date().toISOString().slice(0, 10);
-}
-
-// Finds the highest existing sequence number already used this same YY-MM
-// and adds one — not a DB sequence, since the whole point is that it
-// resets to 01 every month rather than ever climbing indefinitely. Uses
-// the max of what's actually there rather than a plain count: a deleted
-// donation (see DELETE /api/donations/:id) leaves a gap, and counting
-// would recompute the exact same already-taken number on every retry
-// below, failing 5 times in a row instead of just skipping past it.
-async function nextDonationNumber(receivedDate) {
-  const d = new Date(`${receivedDate}T00:00:00`);
-  const yy = String(d.getFullYear() % 100).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const prefix = `${yy}-${mm}-`;
-
-  const { data, error } = await supabase.from('donations').select('donation_number').like('donation_number', `${prefix}%`);
-  if (error) return { error };
-
-  const maxSeq = (data || []).reduce((max, row) => {
-    const seq = parseInt(row.donation_number.slice(prefix.length), 10);
-    return Number.isFinite(seq) && seq > max ? seq : max;
-  }, 0);
-
-  return { donationNumber: `${prefix}${String(maxSeq + 1).padStart(2, '0')}` };
 }
 
 export async function GET() {
@@ -90,35 +71,25 @@ export async function POST(request) {
 
   const receivedDate = received_at || today();
 
-  // A unique-violation retry, not a lock — this is an accountant-only,
-  // low-traffic form, but two tabs open at once should still never produce
-  // a duplicate donation_number.
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const { donationNumber, error: numberError } = await nextDonationNumber(receivedDate);
-    if (numberError) return NextResponse.json({ error: numberError.message }, { status: 500 });
+  const { paymentNumber, error: numberError } = await nextPaymentNumber(supabaseAdmin, receivedDate);
+  if (numberError) return NextResponse.json({ error: numberError.message }, { status: 500 });
 
-    const { data, error } = await supabaseAdmin
-      .from('donations')
-      .insert([
-        {
-          donation_number: donationNumber,
-          donor_name: donor_name || null,
-          donor_contact: donor_contact || null,
-          amount: Math.round(numericAmount * 100) / 100,
-          source,
-          received_at: receivedDate,
-          notes: notes || null,
-        },
-      ])
-      .select()
-      .single();
+  const { data, error } = await supabaseAdmin
+    .from('donations')
+    .insert([
+      {
+        donation_number: paymentNumber,
+        donor_name: donor_name || null,
+        donor_contact: donor_contact || null,
+        amount: Math.round(numericAmount * 100) / 100,
+        source,
+        received_at: receivedDate,
+        notes: notes || null,
+      },
+    ])
+    .select()
+    .single();
 
-    if (!error) return NextResponse.json({ ...data, allocated: 0, remaining: Number(data.amount) }, { status: 201 });
-    if (error.code !== '23505') return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json(
-    { error: 'Failed to generate a unique donation number — please try again' },
-    { status: 500 }
-  );
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ...data, allocated: 0, remaining: Number(data.amount) }, { status: 201 });
 }

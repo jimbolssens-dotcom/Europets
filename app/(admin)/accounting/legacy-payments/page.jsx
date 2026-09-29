@@ -82,6 +82,7 @@ export default function LegacyPaymentsPage() {
         <table>
           <thead>
             <tr>
+              <th>#</th>
               <th>Date</th>
               <th>Client</th>
               <th>Origin</th>
@@ -92,6 +93,7 @@ export default function LegacyPaymentsPage() {
           <tbody>
             {payments.map((p) => (
               <tr key={p.id}>
+                <td>{p.payment_number || '—'}</td>
                 <td>{formatShortDate(p.paid_at)}</td>
                 <td>
                   {p.client_id ? (

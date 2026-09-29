@@ -19,10 +19,15 @@
 //   backfilled with its real date instead of the date someone got around
 //   to typing it in. See app/(admin)/clients/[id]/page.jsx's
 //   recordLegacyPayment.
+//   Every new payment also gets a payment_number (migration 156) from the
+//   same shared sequence Online Payments' donation_number draws from — see
+//   lib/paymentSequence.js. Payments imported before this field existed
+//   are left without one, same as payment_method's own history.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { nextPaymentNumber } from '@/lib/paymentSequence';
 
 // Next.js can otherwise cache a GET route handler's response — see
 // app/api/hospitalizations/[id]/route.js for the same gotcha.
@@ -32,7 +37,7 @@ export async function GET(request, { params }) {
   const { id } = await params;
   const { data, error } = await supabase
     .from('legacy_payments')
-    .select('id, amount, payment_method, note, paid_at, created_at')
+    .select('id, amount, payment_method, note, payment_number, paid_at, created_at')
     .eq('client_id', id)
     .order('paid_at', { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -75,9 +80,21 @@ export async function POST(request, { params }) {
 
   const newBalance = Math.max(0, Math.round(((client.legacy_outstanding_balance || 0) - amount) * 100) / 100);
 
+  const { paymentNumber, error: numberError } = await nextPaymentNumber(supabaseAdmin, paidAt || new Date().toISOString());
+  if (numberError) return NextResponse.json({ error: numberError.message }, { status: 500 });
+
   const { data: payment, error: insertError } = await supabaseAdmin
     .from('legacy_payments')
-    .insert([{ client_id: id, amount, payment_method: knownMethod.name, note, ...(paidAt ? { paid_at: paidAt } : {}) }])
+    .insert([
+      {
+        client_id: id,
+        amount,
+        payment_method: knownMethod.name,
+        note,
+        payment_number: paymentNumber,
+        ...(paidAt ? { paid_at: paidAt } : {}),
+      },
+    ])
     .select()
     .single();
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
