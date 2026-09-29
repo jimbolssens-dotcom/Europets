@@ -20,6 +20,7 @@ const VALID_KINDS = [
   'dental_notes',
   'hospitalization_notes',
   'treatment_item_instructions',
+  'test_result',
 ];
 
 export async function POST(request) {

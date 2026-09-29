@@ -14,6 +14,7 @@ import ClientReportEditor from './ClientReportEditor';
 import ReportShareActions from './ReportShareActions';
 import AttachmentSection from './AttachmentSection';
 import AudioRecorder from './AudioRecorder';
+import VoiceToTextButton from './VoiceToTextButton';
 import { useState } from 'react';
 import { isImagingDiagnostic } from '@/lib/diagnosticReportPolicy';
 import { formatDateTime } from '@/lib/formatTimestamp';
@@ -156,7 +157,17 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
         return <details className="card" key={diagnostic.id}>
           <summary>{name} · {done ? 'Result recorded' : 'Awaiting result'}</summary>
           {diagnostic.description && <p>{diagnostic.description}</p>}
-          <label className="report-result-field">Results (optional — the attached file below is the record)
+          <label className="report-result-field">
+            <span className="field-label-row">
+              Results (optional — the attached file below is the record)
+              <VoiceToTextButton
+                kind="test_result"
+                onResult={(text) => {
+                  const current = resultDrafts[diagnostic.id] ?? diagnostic.result ?? '';
+                  onResultChange(diagnostic.id, current ? `${current}\n${text}` : text);
+                }}
+              />
+            </span>
             <textarea rows={2} value={resultDrafts[diagnostic.id] ?? diagnostic.result ?? ''}
               onChange={(event) => onResultChange(diagnostic.id, event.target.value)} />
           </label>
