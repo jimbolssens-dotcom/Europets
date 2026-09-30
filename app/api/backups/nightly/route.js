@@ -23,7 +23,7 @@
 // away from being independent rather than already in hand.
 
 import { buildDatabaseBackupZip } from '@/lib/databaseBackup';
-import { sendEmail } from '@/lib/resend';
+import { sendEmail } from '@/lib/email';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
