@@ -144,6 +144,29 @@ export default function PreInvoiceOverview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoice?.id]);
 
+  // Editing an EXISTING item's quantity from DayProcedureTreatmentPlan.jsx's
+  // own table (or the consult page's equivalent Treatment Plan list) PATCHes
+  // treatment_items directly — it never touches hospitalization_notes at
+  // all, only adding a brand-new item does (see that component's own POST).
+  // Without this, a quantity correction there silently never reached this
+  // panel: the invoice sync itself reads treatment_items live and would've
+  // picked up the new value, but nothing ever told this panel to re-sync in
+  // the first place, so the old total just sat there — even across a
+  // refresh, since the stale number came right back from that same
+  // never-re-triggered sync. treatment_items has no hospitalization_id of
+  // its own to filter on (only hospitalization_note_id — see
+  // migrations/019), so this listens unfiltered rather than joining; a
+  // clinic this size generates far too little edit traffic for that to
+  // matter.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`pre-invoice-treatment-items-${hospitalizationId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'treatment_items' }, () => syncAndLoad())
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hospitalizationId]);
+
   useEffect(() => {
     if (!showRateOverride) return;
     fetch('/api/hospitalizations/rate-options')
