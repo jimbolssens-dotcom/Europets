@@ -266,6 +266,8 @@ export default function MessagesInboxPage() {
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
   const [submittingDischargeFollowupTemplate, setSubmittingDischargeFollowupTemplate] = useState(false);
   const [dischargeFollowupTemplateResult, setDischargeFollowupTemplateResult] = useState(null); // { ok: boolean, message: string } | null
+  const [submittingAppointmentReminderTemplate, setSubmittingAppointmentReminderTemplate] = useState(false);
+  const [appointmentReminderTemplateResult, setAppointmentReminderTemplateResult] = useState(null); // { ok: boolean, message: string } | null
   const [templateStatuses, setTemplateStatuses] = useState({}); // { [purpose]: 'APPROVED' | 'PENDING' | 'REJECTED' | null }
   const [checkingQuality, setCheckingQuality] = useState(false);
   const [qualityResult, setQualityResult] = useState(null); // { ok: boolean, data? } | null
@@ -458,6 +460,25 @@ export default function MessagesInboxPage() {
     setSubmittingDischargeFollowupTemplate(false);
   }
 
+  async function submitAppointmentReminderTemplate() {
+    setSubmittingAppointmentReminderTemplate(true);
+    setAppointmentReminderTemplateResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/create-appointment-reminder-template', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setAppointmentReminderTemplateResult({
+        ok: true,
+        message:
+          'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
+      });
+      loadTemplateStatuses();
+    } catch (err) {
+      setAppointmentReminderTemplateResult({ ok: false, message: err.message });
+    }
+    setSubmittingAppointmentReminderTemplate(false);
+  }
+
   return (
     <>
       <div className="page-header">
@@ -537,6 +558,7 @@ export default function MessagesInboxPage() {
             { key: 'hospitalizationPortal', label: 'Hospitalization portal-link', onSubmit: submitHospitalizationPortalTemplate, submitting: submittingHospitalizationTemplate, result: hospitalizationTemplateResult },
             { key: 'intakeLink', label: 'New-patient-intake', onSubmit: submitIntakeTemplate, submitting: submittingIntakeTemplate, result: intakeTemplateResult },
             { key: 'dischargeFollowup', label: 'Discharge follow-up', onSubmit: submitDischargeFollowupTemplate, submitting: submittingDischargeFollowupTemplate, result: dischargeFollowupTemplateResult },
+            { key: 'appointmentReminder', label: 'Appointment reminder', onSubmit: submitAppointmentReminderTemplate, submitting: submittingAppointmentReminderTemplate, result: appointmentReminderTemplateResult },
           ];
           const needsAttention = (t) => {
             const s = templateStatuses[t.key];
