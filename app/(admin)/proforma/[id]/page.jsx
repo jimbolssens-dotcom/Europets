@@ -34,8 +34,6 @@ export default function ProformaInvoiceDetailPage() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [shareError, setShareError] = useState(null);
-  const [emailSending, setEmailSending] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [quantityDrafts, setQuantityDrafts] = useState({});
 
@@ -153,31 +151,16 @@ export default function ProformaInvoiceDetailPage() {
     }
   }
 
-  async function sendViaEmail() {
+  function sendViaEmail() {
     setShareError(null);
-    setEmailSent(false);
     if (!quote.clients?.email) {
       setShareError('No email address on file for this client.');
       return;
     }
     const url = `${window.location.origin}/api/proforma-invoices/${id}/quote-pdf`;
     const subject = `Europets Clinic — Quotation for ${quote.patients?.name || 'your pet'}`;
-    const text = `Hi ${quote.clients?.full_name || ''},\n\nHere is a quotation from Europets Clinic: ${url}\n\nThis is an estimate only — please don't hesitate to reach out if you have any questions.`;
-    setEmailSending(true);
-    try {
-      const res = await fetch(`/api/clients/${quote.client_id}/send-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, text }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Failed to send');
-      setEmailSent(true);
-    } catch (err) {
-      setShareError(err.message);
-    } finally {
-      setEmailSending(false);
-    }
+    const body = `Hi ${quote.clients?.full_name || ''},\n\nHere is a quotation from Europets Clinic: ${url}\n\nThis is an estimate only — please don't hesitate to reach out if you have any questions.`;
+    window.open(`mailto:${quote.clients.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
   }
 
   if (loading || !quote) return <p>Loading quote...</p>;
@@ -211,8 +194,8 @@ export default function ProformaInvoiceDetailPage() {
         <button type="button" onClick={sendViaWhatsApp}>
           💬 WhatsApp
         </button>
-        <button type="button" onClick={sendViaEmail} disabled={emailSending}>
-          {emailSending ? 'Sending...' : emailSent ? '✅ Sent' : '✉️ Email'}
+        <button type="button" onClick={sendViaEmail}>
+          ✉️ Email
         </button>
         <button type="button" onClick={discardQuote} disabled={discarding}>
           {discarding ? 'Discarding…' : '🗑️ Discard Quote'}

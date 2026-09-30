@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabaseClient';
 import ClientPhonesEditor, { initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
 import InfoHint from '@/app/_components/InfoHint';
 import { EMIRATES } from '@/lib/emirates';
-import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder, sendReminderEmail } from '@/lib/paymentReminders';
+import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder, openEmailReminder } from '@/lib/paymentReminders';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
@@ -25,23 +25,6 @@ export default function ClientDetailPage() {
   const [sendingLink, setSendingLink] = useState(false);
   const [bookingLinkError, setBookingLinkError] = useState(null);
   const [paymentLinkError, setPaymentLinkError] = useState(null);
-  const [statementEmailSending, setStatementEmailSending] = useState(false);
-  const [statementEmailSent, setStatementEmailSent] = useState(false);
-  const [balanceReminderEmailSending, setBalanceReminderEmailSending] = useState(false);
-  const [balanceReminderEmailSent, setBalanceReminderEmailSent] = useState(false);
-
-  async function remindBalanceViaEmail() {
-    setPaymentLinkError(null);
-    setBalanceReminderEmailSent(false);
-    setBalanceReminderEmailSending(true);
-    const result = await sendReminderEmail(id, client.email, client.full_name, outstandingInvoices);
-    setBalanceReminderEmailSending(false);
-    if (result.ok) {
-      setBalanceReminderEmailSent(true);
-    } else {
-      setPaymentLinkError(result.error);
-    }
-  }
   const [clientAppLinkError, setClientAppLinkError] = useState(null);
 
   const [editing, setEditing] = useState(false);
@@ -212,31 +195,16 @@ export default function ClientDetailPage() {
     }
   }
 
-  async function sendStatementViaEmail() {
+  function sendStatementViaEmail() {
     setPaymentLinkError(null);
-    setStatementEmailSent(false);
     if (!client.email) {
       setPaymentLinkError('No email address on file for this client.');
       return;
     }
     const url = `${window.location.origin}/api/clients/${id}/statement-pdf`;
     const subject = `Europets Clinic — Statement of Account`;
-    const text = `Hi ${client.full_name},\n\nHere is your statement of account from Europets Clinic: ${url}\n\nPlease don't hesitate to reach out if you have any questions.`;
-    setStatementEmailSending(true);
-    try {
-      const res = await fetch(`/api/clients/${id}/send-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, text }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Failed to send');
-      setStatementEmailSent(true);
-    } catch (err) {
-      setPaymentLinkError(err.message);
-    } finally {
-      setStatementEmailSending(false);
-    }
+    const body = `Hi ${client.full_name},\n\nHere is your statement of account from Europets Clinic: ${url}\n\nPlease don't hesitate to reach out if you have any questions.`;
+    window.open(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
   }
 
   function startEdit() {
@@ -676,8 +644,8 @@ export default function ClientDetailPage() {
           <button type="button" onClick={sendStatementViaWhatsApp} disabled={!client.phone}>
             💬 WhatsApp
           </button>
-          <button type="button" onClick={sendStatementViaEmail} disabled={!client.email || statementEmailSending}>
-            {statementEmailSending ? 'Sending...' : statementEmailSent ? '✅ Sent' : '✉️ Email'}
+          <button type="button" onClick={sendStatementViaEmail} disabled={!client.email}>
+            ✉️ Email
           </button>
         </div>
 
@@ -696,10 +664,10 @@ export default function ClientDetailPage() {
               </button>
               <button
                 type="button"
-                onClick={remindBalanceViaEmail}
-                disabled={!client.email || balanceReminderEmailSending}
+                onClick={() => openEmailReminder(client.email, client.full_name, outstandingInvoices)}
+                disabled={!client.email}
               >
-                {balanceReminderEmailSending ? 'Sending...' : balanceReminderEmailSent ? '✅ Sent' : '✉️ Email'}
+                ✉️ Email
               </button>
               <button type="button" onClick={sendPaymentLink}>
                 💳 Pay All

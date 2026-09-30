@@ -26,11 +26,10 @@ export default function ClientMessageThreadPage() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [replyDraft, setReplyDraft] = useState('');
-  const [subjectDraft, setSubjectDraft] = useState('');
   const [replyStaffId, setReplyStaffId] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
-  const [channelOverride, setChannelOverride] = useState(null); // 'app' | 'whatsapp' | 'email' | null (auto)
+  const [channelOverride, setChannelOverride] = useState(null); // 'app' | 'whatsapp' | null (auto)
   const [flagged, setFlagged] = useState(false);
   const [error, setError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
@@ -138,16 +137,10 @@ export default function ClientMessageThreadPage() {
   }
 
   async function postReply(extra) {
-    const channel = currentChannel();
     const res = await fetch(`/api/clients/${id}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        staff_id: replyStaffId,
-        channel,
-        ...(channel === 'email' ? { subject: subjectDraft.trim() } : {}),
-        ...extra,
-      }),
+      body: JSON.stringify({ staff_id: replyStaffId, channel: currentChannel(), ...extra }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -155,7 +148,6 @@ export default function ClientMessageThreadPage() {
       return false;
     }
     setReplyDraft('');
-    setSubjectDraft('');
     // Don't wait on realtime for the reply to show up — same as the
     // hospitalization chat's sendReply, which also reloads immediately
     // rather than relying solely on the postgres_changes subscription.
@@ -188,7 +180,6 @@ export default function ClientMessageThreadPage() {
     e?.preventDefault();
     const text = replyDraft.trim();
     if (!text || !replyStaffId) return;
-    if (currentChannel() === 'email' && !subjectDraft.trim()) return;
     setSendingReply(true);
     setError(null);
     await postReply({ body: text });
@@ -270,11 +261,10 @@ export default function ClientMessageThreadPage() {
                 </a>
               )
             )}
-            {m.channel === 'email' && m.subject && <p><strong>{m.subject}</strong></p>}
             {m.body && <p>{m.body}</p>}
             <span className="portal-chat-bubble-meta">
               {m.sender === 'staff' ? m.staff?.full_name || 'Staff' : m.sender === 'ai' ? '🤖 AI concierge' : client?.full_name || 'Client'} ·{' '}
-              {formatDateTime(m.created_at)} · {m.channel === 'whatsapp' ? '💬 WhatsApp' : m.channel === 'email' ? '✉️ Email' : '📱 App'}
+              {formatDateTime(m.created_at)} · {m.channel === 'whatsapp' ? '💬 WhatsApp' : '📱 App'}
               {/* Delivery status only applies to our own outbound WhatsApp
                   sends — Meta's send API can accept a message and only
                   report async, moments later, that it actually never
@@ -336,15 +326,6 @@ export default function ClientMessageThreadPage() {
           >
             💬 WhatsApp
           </button>
-          <button
-            type="button"
-            className={currentChannel() === 'email' ? 'window-filter-active' : ''}
-            onClick={() => setChannelOverride('email')}
-            disabled={!client?.email}
-            title={client?.email ? undefined : 'No email address on file for this client'}
-          >
-            ✉️ Email
-          </button>
         </div>
         <form className="portal-chat-form" onSubmit={sendReply}>
           <select value={replyStaffId} onChange={(e) => setReplyStaffId(e.target.value)} required>
@@ -355,14 +336,6 @@ export default function ClientMessageThreadPage() {
               </option>
             ))}
           </select>
-          {currentChannel() === 'email' && (
-            <input
-              placeholder="Subject"
-              value={subjectDraft}
-              onChange={(e) => setSubjectDraft(e.target.value)}
-              required
-            />
-          )}
           <textarea
             rows={2}
             placeholder="Reply... (Enter to send, Shift+Enter for a new line)"
@@ -370,22 +343,13 @@ export default function ClientMessageThreadPage() {
             onChange={(e) => setReplyDraft(e.target.value)}
             onKeyDown={handleReplyKeyDown}
           />
-          <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={uploadingFile || currentChannel() === 'email'}>
+          <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={uploadingFile}>
             📷
           </button>
-          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingFile || currentChannel() === 'email'}>
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingFile}>
             📎
           </button>
-          <button
-            type="submit"
-            disabled={
-              sendingReply ||
-              uploadingFile ||
-              !replyDraft.trim() ||
-              !replyStaffId ||
-              (currentChannel() === 'email' && !subjectDraft.trim())
-            }
-          >
+          <button type="submit" disabled={sendingReply || uploadingFile || !replyDraft.trim() || !replyStaffId}>
             {sendingReply ? 'Sending...' : uploadingFile ? 'Uploading...' : 'Send'}
           </button>
         </form>

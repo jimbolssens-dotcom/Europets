@@ -60,8 +60,6 @@ export default function InvoiceDetailPage() {
   const [printingLabelId, setPrintingLabelId] = useState(null); // line item id currently printing, or null
   const [labelsError, setLabelsError] = useState(null);
   const [paymentLinkError, setPaymentLinkError] = useState(null);
-  const [emailSending, setEmailSending] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
   const [microchipModalOpen, setMicrochipModalOpen] = useState(false);
   const [lineItemDrafts, setLineItemDrafts] = useState({}); // line item id -> { quantity, instructions } while typing, before it's saved on blur
   const [lineItemEditError, setLineItemEditError] = useState(null);
@@ -359,12 +357,12 @@ export default function InvoiceDetailPage() {
     }
   }
 
-  // Sends straight from the app via lib/email.js (see /api/clients/:id/
-  // send-email) — same link as sendInvoiceViaWhatsApp, just emailed
-  // instead of handed off to the staff member's own mail client.
-  async function sendInvoiceViaEmail() {
+  // Same handoff-to-another-app pattern as sendInvoiceViaWhatsApp, just a
+  // mailto: link (no email-sending service is wired into this app) —
+  // opens the staff member's own mail client with the invoice link
+  // pre-filled, same as ReportShareActions does for report PDFs.
+  function sendInvoiceViaEmail() {
     setPaymentLinkError(null);
-    setEmailSent(false);
     const url = `${window.location.origin}/api/invoices/${id}/tax-invoice-pdf`;
     if (!invoice.clients?.email) {
       setPaymentLinkError('No email address on file for this client.');
@@ -372,22 +370,8 @@ export default function InvoiceDetailPage() {
     }
     const invoiceLabel = invoice.invoice_number ? `INV-${String(invoice.invoice_number).padStart(6, '0')}` : 'your invoice';
     const subject = `Europets Clinic — ${invoiceLabel}`;
-    const text = `Hi ${invoice.clients?.full_name || ''},\n\nHere is your invoice from Europets Clinic: ${url}\n\nPlease don't hesitate to reach out if you have any questions.`;
-    setEmailSending(true);
-    try {
-      const res = await fetch(`/api/clients/${invoice.clients.id}/send-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, text }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Failed to send');
-      setEmailSent(true);
-    } catch (err) {
-      setPaymentLinkError(err.message);
-    } finally {
-      setEmailSending(false);
-    }
+    const body = `Hi ${invoice.clients?.full_name || ''},\n\nHere is your invoice from Europets Clinic: ${url}\n\nPlease don't hesitate to reach out if you have any questions.`;
+    window.open(`mailto:${invoice.clients.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
   }
 
   // Cross-record links (Consult/Hospitalization/Day Procedure) — same
@@ -503,8 +487,8 @@ export default function InvoiceDetailPage() {
         <button type="button" onClick={sendInvoiceViaWhatsApp}>
           💬 WhatsApp
         </button>
-        <button type="button" onClick={sendInvoiceViaEmail} disabled={emailSending}>
-          {emailSending ? 'Sending...' : emailSent ? '✅ Sent' : '✉️ Email'}
+        <button type="button" onClick={sendInvoiceViaEmail}>
+          ✉️ Email
         </button>
         {editable && (
           <button type="button" onClick={sendPaymentLink}>
