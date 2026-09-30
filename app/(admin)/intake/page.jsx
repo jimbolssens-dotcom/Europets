@@ -177,7 +177,13 @@ export default function IntakePage() {
 
   if (loading) return <p>Loading intake requests...</p>;
 
-  const pending = requests.filter((r) => r.status === 'pending');
+  // sent_to_phone is only ever set on a link staff actually sent to someone
+  // (see sendNewLink/shareViaWhatsApp above) — a blank one with no phone at
+  // all is an anonymous QR-code/website visit nobody finished, not
+  // something "awaiting submission" from a real person. Those get cleaned
+  // up automatically after 48h (see /api/intake-requests/cleanup-stale) but
+  // shouldn't clutter this list in the meantime.
+  const pending = requests.filter((r) => r.status === 'pending' && r.sent_to_phone);
   const submitted = plainSubmissions;
   const approved = requests.filter((r) => r.status === 'approved').slice(0, 10);
 
