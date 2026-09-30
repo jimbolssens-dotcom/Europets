@@ -27,6 +27,18 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'goods_service_id is required' }, { status: 400 });
   }
 
+  // A paid (or void) invoice is locked — see lib/invoicing.js's
+  // syncInvoiceTreatmentItems for the same rule on the automatic sync
+  // path. Bill a late charge on a fresh invoice instead, or void and
+  // reissue this one if it genuinely needs correcting.
+  const { data: invoiceStatus } = await supabase.from('invoices').select('status').eq('id', params.id).single();
+  if (invoiceStatus?.status === 'paid' || invoiceStatus?.status === 'void') {
+    return NextResponse.json(
+      { error: `This invoice is already ${invoiceStatus.status} and can't be changed — bill this on a new invoice, or void and reissue if it needs correcting.` },
+      { status: 409 }
+    );
+  }
+
   const { data: item, error: itemError } = await supabase
     .from('goods_services')
     .select('*')

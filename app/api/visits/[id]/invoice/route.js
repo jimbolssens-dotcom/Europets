@@ -70,10 +70,18 @@ export async function POST(request, { params }) {
   }
 
   const treatmentItems = await gatherInvoiceTreatmentItems(supabase, { visitId, hospitalizationIds });
-  const { error: syncError } = await syncInvoiceTreatmentItems(supabase, invoiceId, treatmentItems);
-  if (syncError) {
-    return NextResponse.json({ error: syncError.message }, { status: 500 });
+  const syncResult = await syncInvoiceTreatmentItems(supabase, invoiceId, treatmentItems);
+  if (syncResult.error) {
+    return NextResponse.json({ error: syncResult.error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ id: invoiceId, existing: Boolean(existing) }, { status: existing ? 200 : 201 });
+  return NextResponse.json(
+    {
+      id: invoiceId,
+      existing: Boolean(existing),
+      blocked_count: syncResult.blockedCount || 0,
+      blocked_status: syncResult.blockedStatus || null,
+    },
+    { status: existing ? 200 : 201 }
+  );
 }

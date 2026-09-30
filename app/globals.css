@@ -2134,6 +2134,18 @@ button.secondary:hover {
   color: #b00020;
 }
 
+/* Deliberately louder than a plain .error line — a charge that got
+   silently dropped onto a paid invoice was exactly the incident this
+   exists to prevent, so staff should never be able to scroll past it. */
+.pre-invoice-blocked-charges {
+  margin: 0.7rem 0;
+  padding: 0.7rem 1rem;
+  border: 2px solid #b00020;
+  border-radius: 8px;
+  background: #fdecea;
+  font-weight: 600;
+}
+
 /* Staff page — the chosen appointment-schedule color swatch. */
 .staff-color-swatch {
   display: inline-block;

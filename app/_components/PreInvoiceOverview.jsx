@@ -74,6 +74,11 @@ export default function PreInvoiceOverview({
   // hiding is delayed just long enough for that click to land.
   const [rateSelectOpen, setRateSelectOpen] = useState(false);
   const rateBlurTimeoutRef = useRef(null);
+  // Set when the last sync found new billable items but the invoice is
+  // already paid/void, so they were deliberately NOT added (see
+  // lib/invoicing.js#syncInvoiceTreatmentItems) — surfaced loudly rather
+  // than silently dropped, which is exactly what used to happen here.
+  const [blockedCharges, setBlockedCharges] = useState(null); // { count, status } | null
 
   async function syncAndLoad(dogSize) {
     setError(null);
@@ -89,6 +94,7 @@ export default function PreInvoiceOverview({
       return;
     }
     setNeedsDogSize(Boolean(syncData.needs_dog_size));
+    setBlockedCharges(syncData.blocked_count > 0 ? { count: syncData.blocked_count, status: syncData.blocked_status } : null);
 
     // Nothing billable logged yet — no invoice exists for this case at all
     // (see the route: it deliberately doesn't create an empty one just from
@@ -400,6 +406,15 @@ export default function PreInvoiceOverview({
       )}
 
       {error && <p className="error">{error}</p>}
+
+      {blockedCharges && (
+        <p className="error pre-invoice-blocked-charges">
+          ⚠️ {blockedCharges.count} new billable item{blockedCharges.count === 1 ? '' : 's'} logged on this stay{' '}
+          {blockedCharges.count === 1 ? "wasn't" : "weren't"} added here — this invoice is already{' '}
+          {blockedCharges.status}, so it's locked. Bill the new item{blockedCharges.count === 1 ? '' : 's'} on a
+          separate invoice, or void and reissue this one if it needs correcting.
+        </p>
+      )}
 
       {needsDogSize && (
         <div className="pre-invoice-dog-size">

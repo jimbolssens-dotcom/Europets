@@ -29,11 +29,23 @@
 // app/api/invoices/[id]/payments) — that amount was already collected, so
 // lowering it needs a refund/payment adjustment handled separately, not a
 // total that's silently less than the cash received.
+//
+// A FULLY paid (or void) invoice is locked outright, regardless of
+// direction — see lib/invoicing.js's syncInvoiceTreatmentItems for the
+// same rule on the automatic sync path that used to add a late charge
+// straight onto an already-paid invoice with no warning at all.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { recomputeInvoiceTotals, applyAdministrationFee, stripAdministrationFeeTag, VAT_RATE } from '@/lib/invoicing';
+
+function lockedInvoiceResponse(status) {
+  return NextResponse.json(
+    { error: `This invoice is already ${status} and can't be changed — bill this on a new invoice, or void and reissue if it needs correcting.` },
+    { status: 409 }
+  );
+}
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
@@ -48,6 +60,11 @@ export async function PATCH(request, { params }) {
       { error: 'instructions, voice_note_path, quantity, times_given, or administration_method is required' },
       { status: 400 }
     );
+  }
+
+  const { data: invoiceStatus } = await supabase.from('invoices').select('status, amount_paid').eq('id', params.id).single();
+  if (invoiceStatus?.status === 'paid' || invoiceStatus?.status === 'void') {
+    return lockedInvoiceResponse(invoiceStatus.status);
   }
 
   const { data: current, error: currentError } = await supabase
@@ -111,8 +128,7 @@ export async function PATCH(request, { params }) {
     update.administration_method = administrationMethod;
 
     if (Number(current.line_total) !== line.line_total) {
-      const { data: invoice } = await supabase.from('invoices').select('amount_paid').eq('id', params.id).single();
-      if (invoice && Number(invoice.amount_paid) > 0) {
+      if (Number(invoiceStatus?.amount_paid) > 0) {
         const { data: otherItems } = await supabase
           .from('invoice_line_items')
           .select('line_total')
@@ -120,10 +136,10 @@ export async function PATCH(request, { params }) {
           .neq('id', params.itemId);
         const subtotalAfter = (otherItems || []).reduce((sum, li) => sum + Number(li.line_total), 0) + line.line_total;
         const totalAfter = Math.round(subtotalAfter * (1 + VAT_RATE) * 100) / 100;
-        if (totalAfter < Number(invoice.amount_paid) - 0.01) {
+        if (totalAfter < Number(invoiceStatus.amount_paid) - 0.01) {
           return NextResponse.json(
             {
-              error: `this change would drop the total below the AED ${Number(invoice.amount_paid).toFixed(2)} already paid — remove a logged payment first if this is a genuine refund`,
+              error: `this change would drop the total below the AED ${Number(invoiceStatus.amount_paid).toFixed(2)} already paid — remove a logged payment first if this is a genuine refund`,
             },
             { status: 400 }
           );
@@ -169,7 +185,7 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   const [{ data: invoice, error: invoiceError }, { data: item, error: itemError }] = await Promise.all([
-    supabase.from('invoices').select('amount_paid').eq('id', params.id).single(),
+    supabase.from('invoices').select('status, amount_paid').eq('id', params.id).single(),
     supabase.from('invoice_line_items').select('line_total').eq('id', params.itemId).single(),
   ]);
 
@@ -178,6 +194,9 @@ export async function DELETE(request, { params }) {
   }
   if (itemError || !item) {
     return NextResponse.json({ error: 'line item not found' }, { status: 404 });
+  }
+  if (invoice.status === 'paid' || invoice.status === 'void') {
+    return lockedInvoiceResponse(invoice.status);
   }
 
   if (Number(invoice.amount_paid) > 0) {
