@@ -42,6 +42,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendWhatsAppText, sendWhatsAppMedia, sendFirstContactMessage } from '@/lib/metaWhatsapp';
+import { sendPushToClient } from '@/lib/pushNotifications';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
@@ -173,6 +174,20 @@ export async function POST(request, { params }) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Only the app channel needs this — a WhatsApp reply already reaches
+  // the client through WhatsApp itself, which has its own notifications.
+  // Best-effort and never allowed to fail the request: a client who
+  // hasn't opted into push (see ClientAppPushOptIn.jsx) simply has no
+  // subscriptions on file, and sendPushToClient quietly does nothing.
+  if (channel === 'app') {
+    sendPushToClient(params.id, {
+      title: data.staff?.full_name || 'Europets Clinic',
+      body: text || 'Sent a message',
+      url: '/client-app/messages',
+    }).catch((err) => console.error('Failed to send push notification for new app message', params.id, err));
+  }
+
   return NextResponse.json(data, { status: 201 });
 }
 

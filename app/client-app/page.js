@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import { useClientAppTheme } from '@/app/_components/ClientAppThemeContext';
+import ClientAppPushOptIn from '@/app/_components/ClientAppPushOptIn';
 import HexIcon from '@/app/_components/HexIcon';
 import HexfieldCanvas from '@/app/_components/HexfieldCanvas';
 import EcgLine from '@/app/_components/EcgLine';
@@ -485,6 +486,8 @@ export default function ClientAppHomePage() {
       </div>
 
       {theme === 'dark' && <EcgLine />}
+
+      <ClientAppPushOptIn />
 
       {!loadingDashboard && openAdmissions.length > 0 && (
         <div className="client-app-admission-alert">

@@ -7903,6 +7903,48 @@ form.card.admit-patient-form {
   font-size: 1.15rem;
 }
 
+.client-app-push-optin {
+  margin: 1rem 0;
+  padding: 0.9rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.client-app[data-theme='dark'] .client-app-push-optin {
+  background: linear-gradient(165deg, var(--carbon-hi), var(--void-2));
+  border: 1px solid var(--hair);
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+}
+
+.client-app[data-theme='light'] .client-app-push-optin {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+}
+
+.client-app-push-optin p {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.client-app[data-theme='dark'] .client-app-push-optin p {
+  color: var(--chalk);
+}
+
+.client-app-push-optin-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.client-app-push-optin-on {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1.1rem;
+}
+
 .client-app-pet-card {
   cursor: pointer;
 }
