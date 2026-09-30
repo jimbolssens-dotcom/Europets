@@ -6303,6 +6303,12 @@ button.secondary:hover {
   background: #fcfcfb;
   border-radius: 8px;
   font-size: 0.78rem;
+  cursor: pointer;
+  /* Long-pressable (see DayTreatmentPlan.jsx) — a plain div, unlike the
+     active tiles' own <button>, so this keeps a touch device from reading
+     the press-and-hold as the start of a page scroll instead of firing
+     the long-press timer. */
+  touch-action: none;
 }
 
 .day-plan-completed-item .day-plan-task-status {

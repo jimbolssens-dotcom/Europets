@@ -1110,11 +1110,74 @@ export default function DayTreatmentPlan({
               const doneEntries = doneEver(item.id);
               const last = doneEntries[doneEntries.length - 1];
               return (
-                <div key={item.id} className="day-plan-completed-item">
-                  <span className="day-plan-task-label">{item.label}</span>
-                  <span className="day-plan-task-status">
-                    ✓ done {formatTime(last.created_at)} · {authorName(last.author_id)}
-                  </span>
+                <div key={item.id}>
+                  <div
+                    className="day-plan-completed-item"
+                    onPointerDown={() => startLongPress(() => openEditItem(item))}
+                    onPointerUp={cancelLongPress}
+                    onPointerLeave={cancelLongPress}
+                    onContextMenu={(e) => e.preventDefault()}
+                    title="Long-press to continue this daily"
+                  >
+                    <span className="day-plan-task-label">{item.label}</span>
+                    <span className="day-plan-task-status">
+                      ✓ done {formatTime(last.created_at)} · {authorName(last.author_id)}
+                    </span>
+                  </div>
+                  {editingItemId === item.id && (
+                    <div className="day-plan-catalog-add day-plan-edit-task">
+                      <div className="day-plan-catalog-add-picker">
+                        <CatalogPicker
+                          catalog={catalog}
+                          subcategories={subcategories}
+                          value={editGoodsServiceId}
+                          onChange={setEditGoodsServiceId}
+                          onItemCreated={onCatalogItemCreated}
+                        />
+                      </div>
+                      <div className="day-plan-catalog-add-row">
+                        <input
+                          placeholder="Instructions (e.g. PO with food, twice daily)"
+                          value={editInstructions}
+                          onChange={(e) => setEditInstructions(e.target.value)}
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          className="day-plan-qty-input"
+                          placeholder="Qty"
+                          title="Quantity to log per tap (e.g. 0.5 for half a mL)"
+                          value={editQuantity}
+                          onChange={(e) => setEditQuantity(e.target.value)}
+                        />
+                      </div>
+                      <ScheduleControl
+                        name={`edit-schedule-${item.id}`}
+                        frequency={editFrequency}
+                        onFrequencyChange={setEditFrequency}
+                        billOnce={editBillOnce}
+                        onBillOnceChange={setEditBillOnce}
+                        showBillOnce={!!editGoodsServiceId}
+                      />
+                      <div className="day-plan-edit-actions">
+                        <button type="button" className="day-plan-save-action" onClick={() => saveEditItem(item.id)} disabled={editSaving}>
+                          {editSaving ? 'Saving...' : 'Save'}
+                        </button>
+                        <button type="button" className="day-plan-cancel-action" onClick={cancelEditItem} disabled={editSaving}>
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="day-plan-delete-action"
+                          onClick={() => removePlanItem(item.id)}
+                          disabled={editSaving || deletingId === item.id}
+                        >
+                          {deletingId === item.id ? 'Removing...' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
