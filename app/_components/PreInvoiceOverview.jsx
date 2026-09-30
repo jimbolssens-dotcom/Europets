@@ -74,11 +74,12 @@ export default function PreInvoiceOverview({
   // hiding is delayed just long enough for that click to land.
   const [rateSelectOpen, setRateSelectOpen] = useState(false);
   const rateBlurTimeoutRef = useRef(null);
-  // Set when the last sync found new billable items but the invoice is
-  // already paid/void, so they were deliberately NOT added (see
+  // Set when the last sync found new billable items but deliberately did
+  // NOT add them — either the invoice is already paid/void, or the
+  // underlying consult/hospitalization is already closed/discharged (see
   // lib/invoicing.js#syncInvoiceTreatmentItems) — surfaced loudly rather
   // than silently dropped, which is exactly what used to happen here.
-  const [blockedCharges, setBlockedCharges] = useState(null); // { count, status } | null
+  const [blockedCharges, setBlockedCharges] = useState(null); // { count, status, reason, closedLabel } | null
 
   async function syncAndLoad(dogSize) {
     setError(null);
@@ -94,7 +95,16 @@ export default function PreInvoiceOverview({
       return;
     }
     setNeedsDogSize(Boolean(syncData.needs_dog_size));
-    setBlockedCharges(syncData.blocked_count > 0 ? { count: syncData.blocked_count, status: syncData.blocked_status } : null);
+    setBlockedCharges(
+      syncData.blocked_count > 0
+        ? {
+            count: syncData.blocked_count,
+            status: syncData.blocked_status,
+            reason: syncData.blocked_reason,
+            closedLabel: syncData.closed_label,
+          }
+        : null
+    );
 
     // Nothing billable logged yet — no invoice exists for this case at all
     // (see the route: it deliberately doesn't create an empty one just from
@@ -407,7 +417,16 @@ export default function PreInvoiceOverview({
 
       {error && <p className="error">{error}</p>}
 
-      {blockedCharges && (
+      {blockedCharges && blockedCharges.reason === 'record_closed' && (
+        <p className="error pre-invoice-blocked-charges">
+          ⚠️ {blockedCharges.count} new billable item{blockedCharges.count === 1 ? '' : 's'} logged on this stay{' '}
+          {blockedCharges.count === 1 ? "wasn't" : "weren't"} added here — {blockedCharges.closedLabel}, so new
+          charges don't get added automatically anymore. If {blockedCharges.count === 1 ? 'it' : 'they'} should still
+          be billed, add {blockedCharges.count === 1 ? 'it' : 'them'} on the full invoice page by hand.
+        </p>
+      )}
+
+      {blockedCharges && blockedCharges.reason !== 'record_closed' && (
         <p className="error pre-invoice-blocked-charges">
           ⚠️ {blockedCharges.count} new billable item{blockedCharges.count === 1 ? '' : 's'} logged on this stay{' '}
           {blockedCharges.count === 1 ? "wasn't" : "weren't"} added here — this invoice is already{' '}

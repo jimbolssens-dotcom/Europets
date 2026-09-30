@@ -759,6 +759,23 @@ export default function ConsultDetailPage() {
     const data = await res.json();
     setCreatingInvoice(false);
     if (res.ok) {
+      // New treatment items logged after this invoice was locked (paid/void)
+      // or after the underlying record was closed/discharged never get
+      // folded onto it automatically — see
+      // lib/invoicing.js#syncInvoiceTreatmentItems. Flagged loudly here
+      // rather than silently dropped, since this page has no live panel
+      // like the hospitalization page's Pre-Invoice Overview to surface it.
+      if (data.blocked_count > 0) {
+        const plural = data.blocked_count === 1 ? '' : 's';
+        const reason = data.closed_label || `this invoice is already ${data.blocked_status}, so it's locked`;
+        alert(
+          `⚠️ ${data.blocked_count} new billable item${plural} logged on the treatment plan ${
+            data.blocked_count === 1 ? "wasn't" : "weren't"
+          } added to the invoice — ${reason}. Add ${
+            data.blocked_count === 1 ? 'it' : 'them'
+          } on the invoice page by hand if it should still be billed.`
+        );
+      }
       router.push(`/invoices/${data.id}`);
     }
   }

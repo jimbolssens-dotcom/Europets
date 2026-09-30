@@ -81,6 +81,8 @@ export async function POST(request, { params }) {
       existing: Boolean(existing),
       blocked_count: syncResult.blockedCount || 0,
       blocked_status: syncResult.blockedStatus || null,
+      blocked_reason: syncResult.blockedReason || null,
+      closed_label: syncResult.closedLabel || null,
     },
     { status: existing ? 200 : 201 }
   );
