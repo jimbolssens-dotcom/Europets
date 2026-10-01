@@ -1156,7 +1156,8 @@ create table invoice_payments (
     -- remaining balance is amount minus the sum of rows tagged with it.
     donation_id uuid references donations(id),
     paid_at timestamptz not null default now(),
-    created_at timestamptz default now()
+    created_at timestamptz default now(),
+    note text  -- optional, staff-entered context for this payment (migration 162)
 );
 
 create index invoice_payments_invoice_id_idx on invoice_payments(invoice_id);

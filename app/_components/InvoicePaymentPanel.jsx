@@ -29,6 +29,7 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [receivedBy, setReceivedBy] = useState('');
+  const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [voiding, setVoiding] = useState(false);
   const [confirmingVoid, setConfirmingVoid] = useState(false);
@@ -55,6 +56,7 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
         amount: amt,
         payment_method: paymentMethod,
         received_by: receivedBy,
+        note: note.trim() || undefined,
       }),
     });
     const data = await res.json();
@@ -65,6 +67,7 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
       setAmount('');
       setPaymentMethod('');
       setReceivedBy('');
+      setNote('');
       onChanged();
     }
     setSubmitting(false);
@@ -145,6 +148,7 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
                   ? `Donation #${p.donations.donation_number}`
                   : p.staff?.full_name || (p.payment_method === 'payment_link' ? 'Online (Nomod)' : 'unassigned')}
               </span>
+              {p.note && <span className="invoice-payment-note">“{p.note}”</span>}
               {canTakePayment &&
                 (confirmingRemovePaymentId === p.id ? (
                   <span className="invoice-payment-remove-confirm">
@@ -194,6 +198,12 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
                 </option>
               ))}
             </select>
+            <input
+              type="text"
+              placeholder="Note (optional) — e.g. balance due Friday"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
             <button type="submit" disabled={submitting || !amount || !paymentMethod || !receivedBy}>
               {submitting ? 'Logging...' : 'Log'}
             </button>

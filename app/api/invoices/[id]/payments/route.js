@@ -18,7 +18,7 @@ const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'payment_link'];
 
 export async function POST(request, { params }) {
   const body = await request.json();
-  const { amount, payment_method, received_by } = body;
+  const { amount, payment_method, received_by, note } = body;
 
   const numericAmount = Number(amount);
   if (!numericAmount || Number.isNaN(numericAmount) || numericAmount <= 0) {
@@ -71,6 +71,7 @@ export async function POST(request, { params }) {
         amount: Math.round(numericAmount * 100) / 100,
         payment_method,
         received_by,
+        note: note?.trim() || null,
       },
     ])
     .select('*, staff(full_name)')
