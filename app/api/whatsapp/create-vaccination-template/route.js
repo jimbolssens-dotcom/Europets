@@ -1,7 +1,7 @@
 // app/api/whatsapp/create-vaccination-template/route.js
 // POST /api/whatsapp/create-vaccination-template -> the one-time (safe to
 // re-run) setup step for automated vaccination-reminder sending: proposes
-// the vaccination_reminder template to Meta for review (see
+// the vaccination_reminder_v2 template to Meta for review (see
 // lib/metaWhatsapp.js's submitVaccinationReminderTemplate). Nothing
 // actually sends over WhatsApp until Meta approves it — that review is
 // external and can't be triggered or sped up from here; check status
