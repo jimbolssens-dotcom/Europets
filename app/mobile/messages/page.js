@@ -75,6 +75,7 @@ export default function MobileMessagesListPage() {
                   <span className="mobile-list-meta">
                     {c.last_sender === 'staff' ? 'You: ' : c.last_sender === 'ai' ? '🤖 ' : ''}
                     {preview(c.last_message)} · {formatWhen(c.last_message_at)}
+                    {c.assigned_staff_name && ` · 👤 ${c.assigned_staff_name}`}
                   </span>
                 </a>
               </li>

@@ -47,11 +47,31 @@ export default function MobileMessageThreadPage() {
   const [channelOverride, setChannelOverride] = useState(null); // matched threads only
   const [error, setError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [staffList, setStaffList] = useState([]);
+  const [assignedStaffId, setAssignedStaffId] = useState('');
   const threadRef = useRef(null);
   const cameraInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const apiBase = isMatched ? `/api/clients/${id}/messages` : `/api/client-messages/unmatched/${encodeURIComponent(id)}`;
+
+  useEffect(() => {
+    fetch('/api/staff')
+      .then((res) => res.json())
+      .then((data) => setStaffList(Array.isArray(data) ? data : []));
+  }, []);
+
+  // Hands this conversation to one doctor/nurse — pushes a one-time
+  // notification to their own phone if they've turned notifications on
+  // (see StaffPushOptIn.jsx).
+  async function assignTo(staffId) {
+    setAssignedStaffId(staffId);
+    await fetch('/api/client-messages/thread-state', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thread_key: isMatched ? id : `phone:${id}`, assigned_staff_id: staffId || null }),
+    });
+  }
 
   useEffect(() => {
     setChannelOverride(null);
@@ -76,6 +96,9 @@ export default function MobileMessageThreadPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ thread_key: isMatched ? id : `phone:${id}`, mark_read: true }),
     });
+    fetch(`/api/client-messages/thread-state?thread_key=${encodeURIComponent(isMatched ? id : `phone:${id}`)}`)
+      .then((res) => res.json())
+      .then((data) => setAssignedStaffId(data?.assigned_staff_id || ''));
 
     const channel = supabase
       .channel(`mobile-messages-${id}`)
@@ -208,6 +231,21 @@ export default function MobileMessageThreadPage() {
         </button>
         <span className="mobile-messages-header-name">{headerName}</span>
       </div>
+      <select
+        value={assignedStaffId}
+        onChange={(e) => assignTo(e.target.value)}
+        className="mobile-messages-assign"
+        title="Assign this conversation to one doctor or nurse"
+      >
+        <option value="">Assign to...</option>
+        {staffList
+          .filter((s) => s.role === 'vet' || s.role === 'tech')
+          .map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.full_name}
+            </option>
+          ))}
+      </select>
 
       {error && <p className="error">{error}</p>}
 

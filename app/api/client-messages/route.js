@@ -36,7 +36,7 @@ export async function GET() {
         'id, client_id, phone, channel, sender, body, media_type, created_at, clients(full_name, client_number, phone)'
       )
       .order('created_at', { ascending: false }),
-    supabase.from('client_message_thread_state').select('thread_key, last_read_at, flagged'),
+    supabase.from('client_message_thread_state').select('thread_key, last_read_at, flagged, assigned_staff_id, staff:assigned_staff_id(full_name)'),
   ]);
 
   if (error) {
@@ -67,6 +67,8 @@ export async function GET() {
         last_message_at: row.created_at,
         flagged: state?.flagged || false,
         pending: Boolean(state?.flagged) || unread,
+        assigned_staff_id: state?.assigned_staff_id || null,
+        assigned_staff_name: state?.staff?.full_name || null,
       });
     }
   }

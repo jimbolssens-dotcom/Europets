@@ -104,6 +104,17 @@ body.mobile-body-fill .mobile-app {
   white-space: nowrap;
 }
 
+.mobile-messages-assign {
+  flex-shrink: 0;
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border: none;
+  border-bottom: 1px solid #eee;
+  background: white;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
 .mobile-messages-thread-page .staff-chat-thread {
   flex: 1;
   min-height: 0;

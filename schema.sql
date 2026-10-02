@@ -117,6 +117,24 @@ create table client_messages (
 create index client_messages_client_id_idx on client_messages (client_id, created_at);
 create index client_messages_phone_idx on client_messages (phone) where phone is not null;
 
+-- One row per phone a staff member has turned on push notifications from
+-- (migration 165) — the staff-side mirror of client_push_subscriptions.
+-- staff_id is whoever is picked in the mobile "Logging in as..." selector
+-- on that phone, not a secure per-staff login (this app has none — one
+-- shared clinic PIN gates every staff page). Used to notify one specific
+-- staff member's own phone when a conversation is assigned to them (see
+-- client_message_thread_state.assigned_staff_id below).
+create table staff_push_subscriptions (
+    id uuid primary key default gen_random_uuid(),
+    staff_id uuid references staff(id) on delete cascade not null,
+    endpoint text not null unique,
+    p256dh text not null,
+    auth text not null,
+    user_agent text,
+    created_at timestamptz default now()
+);
+create index staff_push_subscriptions_staff_id_idx on staff_push_subscriptions (staff_id);
+
 -- ============ PATIENTS ============
 create table patients (
     id uuid primary key default gen_random_uuid(),

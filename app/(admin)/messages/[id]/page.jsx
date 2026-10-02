@@ -31,6 +31,7 @@ export default function ClientMessageThreadPage() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [channelOverride, setChannelOverride] = useState(null); // 'app' | 'whatsapp' | null (auto)
   const [flagged, setFlagged] = useState(false);
+  const [assignedStaffId, setAssignedStaffId] = useState('');
   const [error, setError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const threadRef = useRef(null);
@@ -79,7 +80,10 @@ export default function ClientMessageThreadPage() {
     });
     fetch(`/api/client-messages/thread-state?thread_key=${encodeURIComponent(id)}`)
       .then((res) => res.json())
-      .then((data) => setFlagged(Boolean(data?.flagged)));
+      .then((data) => {
+        setFlagged(Boolean(data?.flagged));
+        setAssignedStaffId(data?.assigned_staff_id || '');
+      });
   }, [id]);
 
   async function toggleFlagged() {
@@ -89,6 +93,19 @@ export default function ClientMessageThreadPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ thread_key: id, flagged: next }),
+    });
+  }
+
+  // Hands this conversation to one doctor/nurse — pushes a one-time
+  // notification to their own phone if they've turned notifications on
+  // (see StaffPushOptIn.jsx / lib/pushNotifications.js's sendPushToStaff),
+  // so it reaches them even if nobody's looking at this inbox right now.
+  async function assignTo(staffId) {
+    setAssignedStaffId(staffId);
+    await fetch('/api/client-messages/thread-state', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thread_key: id, assigned_staff_id: staffId || null }),
     });
   }
 
@@ -240,6 +257,20 @@ export default function ClientMessageThreadPage() {
         <button type="button" onClick={toggleFlagged} className={flagged ? 'button-link' : ''} title={flagged ? 'Clear the needs-attention flag' : 'Flag this conversation as still needing attention'}>
           {flagged ? '🔔 Flagged' : '🏳️ Flag as needing attention'}
         </button>
+        <select
+          value={assignedStaffId}
+          onChange={(e) => assignTo(e.target.value)}
+          title="Assign this conversation to one doctor or nurse — pushes a notification to their phone if they have one set up"
+        >
+          <option value="">Assign to...</option>
+          {staff
+            .filter((s) => s.role === 'vet' || s.role === 'tech')
+            .map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.full_name}
+              </option>
+            ))}
+        </select>
       </div>
 
       {error && <p className="error">{error}</p>}

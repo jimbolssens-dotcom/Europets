@@ -24,6 +24,7 @@
 
 import { useEffect, useState } from 'react';
 import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
+import StaffPushOptIn from '@/app/_components/StaffPushOptIn';
 import CleanerLanguageToggle from '@/app/_components/CleanerLanguageToggle';
 import { useCleanerLanguage } from '@/app/_components/useCleanerLanguage';
 import { useHospitalizationUpdatePending } from '@/app/_components/useHospitalizationUpdatePending';
@@ -114,6 +115,8 @@ export default function MobileHomePage() {
           <button type="button" className="mobile-link-btn" onClick={switchStaff}>
             {t('Switch', useSinhala)}
           </button>
+
+          {!isCleaner && <StaffPushOptIn staffId={staffId} />}
 
           {isCleaner ? (
             // A cleaner's whole job on this phone is these two things —
