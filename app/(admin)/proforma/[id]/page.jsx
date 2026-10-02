@@ -15,6 +15,7 @@ import { groupLineItemsByCategory } from '@/lib/catalogGrouping';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { appOrigin } from '@/lib/appOrigin';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -142,7 +143,7 @@ export default function ProformaInvoiceDetailPage() {
 
   function sendViaWhatsApp() {
     setShareError(null);
-    const url = `${window.location.origin}/api/proforma-invoices/${id}/quote-pdf`;
+    const url = `${appOrigin()}/api/proforma-invoices/${id}/quote-pdf`;
     const message = `Hi ${quote.clients?.full_name || ''}! Here is a quotation from Europets Clinic for ${quote.patients?.name || 'your pet'}: ${url}`;
     const digits = (quote.clients?.phone || '').replace(/\D/g, '');
     if (digits.length > 3) {
@@ -160,7 +161,7 @@ export default function ProformaInvoiceDetailPage() {
       setShareError('No email address on file for this client.');
       return;
     }
-    const url = `${window.location.origin}/api/proforma-invoices/${id}/quote-pdf`;
+    const url = `${appOrigin()}/api/proforma-invoices/${id}/quote-pdf`;
     const subject = `Europets Clinic — Quotation for ${quote.patients?.name || 'your pet'}`;
     const text = `Hi ${quote.clients?.full_name || ''},\n\nHere is a quotation from Europets Clinic: ${url}\n\nThis is an estimate only — please don't hesitate to reach out if you have any questions.`;
     setEmailSending(true);

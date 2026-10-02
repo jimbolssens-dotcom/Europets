@@ -18,6 +18,7 @@ import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { printPdfUrl } from '@/lib/printPdf';
 import InfoHint from '@/app/_components/InfoHint';
+import { appOrigin } from '@/lib/appOrigin';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
@@ -348,7 +349,7 @@ export default function InvoiceDetailPage() {
   // PDF fresh from the route's own no-store headers regardless.
   function sendInvoiceViaWhatsApp() {
     setPaymentLinkError(null);
-    const url = `${window.location.origin}/api/invoices/${id}/tax-invoice-pdf`;
+    const url = `${appOrigin()}/api/invoices/${id}/tax-invoice-pdf`;
     const digits = (invoice.clients?.phone || '').replace(/\D/g, '');
     const message = `Hi ${invoice.clients?.full_name || ''}! Here is your invoice from Europets Clinic: ${url}`;
     if (digits.length > 3) {
@@ -365,7 +366,7 @@ export default function InvoiceDetailPage() {
   async function sendInvoiceViaEmail() {
     setPaymentLinkError(null);
     setEmailSent(false);
-    const url = `${window.location.origin}/api/invoices/${id}/tax-invoice-pdf`;
+    const url = `${appOrigin()}/api/invoices/${id}/tax-invoice-pdf`;
     if (!invoice.clients?.email) {
       setPaymentLinkError('No email address on file for this client.');
       return;

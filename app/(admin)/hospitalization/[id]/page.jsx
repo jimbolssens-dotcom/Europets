@@ -23,6 +23,7 @@ import { ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 import { ADMINISTRATION_METHOD_LABELS, resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import { printPdfUrl } from '@/lib/printPdf';
+import { appOrigin } from '@/lib/appOrigin';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
@@ -80,6 +81,7 @@ export default function HospitalizationDetailPage() {
   const [editNoteError, setEditNoteError] = useState(null);
   const [noteDeleteVersion, setNoteDeleteVersion] = useState(0);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [shareStatus, setShareStatus] = useState(null); // null | 'sent' | 'already_sent' | 'opened_whatsapp'
   const [editingReason, setEditingReason] = useState(false);
   const [reasonDraft, setReasonDraft] = useState('');
   const [catalog, setCatalog] = useState([]);
@@ -587,7 +589,7 @@ export default function HospitalizationDetailPage() {
       setConsentError(data?.error || 'Failed to generate a consent link');
       return;
     }
-    const url = `${window.location.origin}/portal/consent/${data.id}`;
+    const url = `${appOrigin()}/portal/consent/${data.id}`;
     if (data.whatsapp?.sent) {
       setConsentInfo('Sent — the link was WhatsApped to the owner.');
     } else {
@@ -627,7 +629,7 @@ export default function HospitalizationDetailPage() {
   }
 
   function portalUrl() {
-    return `${window.location.origin}/portal/hospitalization/${id}`;
+    return `${appOrigin()}/portal/hospitalization/${id}`;
   }
 
   // Fire-and-forget — just records that the link has now actually been
@@ -651,10 +653,19 @@ export default function HospitalizationDetailPage() {
   // (the automatic send beat this click to it) counts as done, not a
   // failure, so it's treated the same as sent:true here.
   async function shareViaWhatsApp() {
+    setShareStatus(null);
     try {
       const res = await fetch(`/api/hospitalizations/${id}/send-portal-link`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && (data.sent || data.reason === 'already sent')) return;
+      if (res.ok && (data.sent || data.reason === 'already sent')) {
+        // The whole point of trying this first is that it sends for real,
+        // with no app/window to open — which otherwise looks exactly like
+        // the button doing nothing at all when clicked. Flash SOMETHING
+        // every time, success included, not just on the fallback below.
+        setShareStatus(data.sent ? 'sent' : 'already_sent');
+        setTimeout(() => setShareStatus(null), 3000);
+        return;
+      }
     } catch {
       // fall through to the manual-share fallback below
     }
@@ -667,6 +678,8 @@ export default function HospitalizationDetailPage() {
     const message = `Hi ${clientLabel}, here's the live care update page for ${patientLabel} during their stay with us: ${portalUrl()}`;
     openWhatsApp(admission.clients?.phone, message);
     markPortalLinkShared();
+    setShareStatus('opened_whatsapp');
+    setTimeout(() => setShareStatus(null), 3000);
   }
 
   async function copyPortalLink() {
@@ -1249,7 +1262,20 @@ export default function HospitalizationDetailPage() {
           <button type="button" className="button-link" onClick={discharge}>Discharge</button>
         )}
         <button type="button" className="button-link" onClick={downloadSummaryPdf} title="Download the summary PDF">Summary</button>
-        <button type="button" className="button-link" onClick={shareViaWhatsApp} title="Open WhatsApp, then attach the downloaded summary PDF">Share</button>
+        <button
+          type="button"
+          className="button-link"
+          onClick={shareViaWhatsApp}
+          title="Send the live care-update link over WhatsApp — opens your own WhatsApp to send it by hand only if the automatic send can't"
+        >
+          {shareStatus === 'sent'
+            ? '✅ Sent!'
+            : shareStatus === 'already_sent'
+              ? '✅ Already sent'
+              : shareStatus === 'opened_whatsapp'
+                ? '✅ Opened WhatsApp'
+                : 'Share'}
+        </button>
         <button type="button" className="button-link" onClick={copyPortalLink} title="Copy the live care-update link">
           {linkCopied ? 'Copied!' : 'Copy'}
         </button>

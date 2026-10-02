@@ -14,6 +14,7 @@ import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder,
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { appOrigin } from '@/lib/appOrigin';
 import { DEFAULT_LEGACY_PAYMENT_METHODS } from '@/lib/legacyPayments';
 
 export default function ClientDetailPage() {
@@ -137,7 +138,7 @@ export default function ClientDetailPage() {
       setBookingLinkError(data?.error || 'Failed to generate a booking link');
       return;
     }
-    const url = `${window.location.origin}/portal/intake/${data.id}`;
+    const url = `${appOrigin()}/portal/intake/${data.id}`;
     const digits = (client.phone || '').replace(/\D/g, '');
     const message = `Hi ${client.full_name}! Please pick or add your pet and request an appointment here: ${url}`;
     if (digits.length > 3) {
@@ -177,7 +178,7 @@ export default function ClientDetailPage() {
   // quality-rating risk to the whole number) for something this low-volume.
   function sendClientAppLink() {
     setClientAppLinkError(null);
-    const url = `${window.location.origin}/client-app`;
+    const url = `${appOrigin()}/client-app`;
     const digits = (client.phone || '').replace(/\D/g, '');
     const message = `Hi ${client.full_name}! You can now view your pet(s), invoices, and appointments anytime here: ${url}`;
     if (digits.length > 3) {
@@ -201,7 +202,7 @@ export default function ClientDetailPage() {
   // time they open it themselves.
   function sendStatementViaWhatsApp() {
     setPaymentLinkError(null);
-    const url = `${window.location.origin}/api/clients/${id}/statement-pdf`;
+    const url = `${appOrigin()}/api/clients/${id}/statement-pdf`;
     const message = `Hi ${client.full_name}! Here is your statement of account from Europets Clinic: ${url}`;
     const digits = (client.phone || '').replace(/\D/g, '');
     if (digits.length > 3) {
@@ -219,7 +220,7 @@ export default function ClientDetailPage() {
       setPaymentLinkError('No email address on file for this client.');
       return;
     }
-    const url = `${window.location.origin}/api/clients/${id}/statement-pdf`;
+    const url = `${appOrigin()}/api/clients/${id}/statement-pdf`;
     const subject = `Europets Clinic — Statement of Account`;
     const text = `Hi ${client.full_name},\n\nHere is your statement of account from Europets Clinic: ${url}\n\nPlease don't hesitate to reach out if you have any questions.`;
     setStatementEmailSending(true);

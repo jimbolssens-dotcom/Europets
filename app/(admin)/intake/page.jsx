@@ -17,6 +17,7 @@ import { usePossibleClientMatches } from '@/lib/usePossibleClientMatches';
 import IntakeReviewCard from '@/app/_components/IntakeReviewCard';
 import InfoHint from '@/app/_components/InfoHint';
 import { openWhatsApp } from '@/lib/whatsapp';
+import { appOrigin } from '@/lib/appOrigin';
 
 function formatDateTime(dateStr) {
   return new Date(dateStr).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -68,7 +69,7 @@ export default function IntakePage() {
   const possibleMatches = usePossibleClientMatches(plainSubmissions);
 
   function portalUrl(id) {
-    return `${window.location.origin}/portal/intake/${id}`;
+    return `${appOrigin()}/portal/intake/${id}`;
   }
 
   // A request already matched to an existing client (see POST
@@ -139,7 +140,7 @@ export default function IntakePage() {
       setError('Enter a phone number first');
       return;
     }
-    const url = `${window.location.origin}/client-app`;
+    const url = `${appOrigin()}/client-app`;
     openWhatsApp(phone, `Hi! You can now view your pet(s), invoices, and appointments anytime here: ${url}`);
     setClientAppPhone('+971 ');
   }

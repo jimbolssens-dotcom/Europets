@@ -18,6 +18,7 @@ import CatalogPicker from '@/app/_components/CatalogPicker';
 import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
+import { appOrigin } from '@/lib/appOrigin';
 import { isXrayTest } from '@/lib/xrayProduct';
 import { isGastroscopyTest } from '@/lib/gastroscopyProduct';
 import RecordReports from '@/app/_components/RecordReports';
@@ -269,7 +270,7 @@ export default function ConsultDetailPage() {
   }
 
   function videoPortalUrl() {
-    return `${window.location.origin}/portal/video-consult/${id}`;
+    return `${appOrigin()}/portal/video-consult/${id}`;
   }
 
   // Same whatsapp:// deep-link pattern as the hospitalization page's own

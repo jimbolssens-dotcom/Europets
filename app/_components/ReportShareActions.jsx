@@ -10,13 +10,14 @@
 
 import { useState } from 'react';
 import { openWhatsApp } from '@/lib/whatsapp';
+import { appOrigin } from '@/lib/appOrigin';
 
 export default function ReportShareActions({ apiBase, reportId, client, patient, reportLabel, pdfPath = 'report-pdf' }) {
   const [emailState, setEmailState] = useState('idle'); // 'idle' | 'sending' | 'sent' | 'error'
   const [emailError, setEmailError] = useState(null);
 
   function reportPdfUrl() {
-    return `${window.location.origin}${apiBase}/${reportId}/${pdfPath}`;
+    return `${appOrigin()}${apiBase}/${reportId}/${pdfPath}`;
   }
 
   function clientLabel() {
