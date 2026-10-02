@@ -105,13 +105,14 @@ create table client_messages (
     sender text not null check (sender in ('client', 'staff', 'ai', 'system')),
     staff_id uuid references staff(id),   -- set when sender = 'staff'; null for a client/ai message
     body text not null,
-    channel text not null default 'app' check (channel in ('app', 'whatsapp')),
+    channel text not null default 'app' check (channel in ('app', 'whatsapp', 'email')),
     phone text,
     wa_message_id text unique,
     status text check (status in ('sent', 'delivered', 'read', 'failed')),
     wa_error text,
     media_url text,
     media_type text,
+    subject text,  -- only ever set on a channel = 'email' row (migration 166)
     created_at timestamptz default now()
 );
 create index client_messages_client_id_idx on client_messages (client_id, created_at);
