@@ -6,8 +6,9 @@
 // they've already messaged the clinic's WhatsApp number; its Quick Reply
 // button lets them book straight through that same conversation) and
 // marks it reminded so the list doesn't nag about the same due date
-// again. "Email" still drafts a pre-filled message for staff to send
-// themselves — there's no connected email service.
+// again. "Email" sends for real too now, via /api/clients/:id/send-email
+// (see lib/email.js) — either button independently marks the group
+// reminded on success.
 
 'use client';
 
@@ -147,17 +148,27 @@ export default function VaccinationsDuePage() {
     load();
   }
 
-  function draftEmail(group) {
-    const email = group.patients?.clients?.email;
-    if (!email) return;
+  // Sends for real via /api/clients/:id/send-email (see lib/email.js) —
+  // used to just open a mailto: draft for staff to send themselves.
+  async function sendEmail(group) {
+    const clientId = group.patients?.clients?.id;
+    if (!clientId) return;
+    setSendingKey(group.key);
+    setSendResult(null);
     const vaccineNames = group.rows.map((r) => r.vaccine_name);
     const subject = `${group.patients?.name || 'Your pet'}'s ${listNames(vaccineNames)} vaccination`;
-    window.open(
-      `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
-        reminderMessage(group)
-      )}`,
-      '_blank'
-    );
+    const res = await fetch(`/api/clients/${clientId}/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject, text: reminderMessage(group) }),
+    });
+    const data = await res.json().catch(() => null);
+    setSendingKey(null);
+    if (!res.ok) {
+      setSendResult({ key: group.key, ok: false, message: data?.error || 'Failed to send' });
+      return;
+    }
+    setSendResult({ key: group.key, ok: true, message: 'Sent' });
     markReminded(group.rows.map((r) => r.id));
   }
 
@@ -240,8 +251,13 @@ export default function VaccinationsDuePage() {
                             </button>
                           )}
                           {g.patients?.clients?.email && (
-                            <button type="button" onClick={() => draftEmail(g)}>
-                              ✉️ Email
+                            <button
+                              type="button"
+                              onClick={() => sendEmail(g)}
+                              disabled={sendingKey === g.key || !g.eligibility.canSendNow}
+                              title={g.eligibility.reason || ''}
+                            >
+                              {sendingKey === g.key ? 'Sending…' : '✉️ Email'}
                             </button>
                           )}
                           {!g.eligibility.canSendNow && !sendResult && (
