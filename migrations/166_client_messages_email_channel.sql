@@ -1,4 +1,4 @@
--- Migration 162: 'email' as a third client_messages channel
+-- Migration 166: 'email' as a third client_messages channel
 --
 -- Extends the same client_messages thread (migrations/120, 130 — already
 -- 'app' and 'whatsapp') to carry real, server-sent emails too — see

@@ -18,7 +18,7 @@
 //      sends as WhatsApp media instead of text when media_url is set,
 //      with body used as its caption if present. 'email' sends via
 //      lib/email.js to clients.email (subject required, no media support
-//      yet — see migrations/162).
+//      yet — see migrations/166).
 //
 //      A free-form WhatsApp send only works within the 24-hour window the
 //      client's own last WhatsApp message opened — outside it (most
