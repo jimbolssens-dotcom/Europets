@@ -62,7 +62,11 @@ export async function POST(request, { params }) {
       client_id: appointment.clients.id,
       phone: digits,
       channel: 'whatsapp',
-      sender: 'staff',
+      // 'system', not 'staff' — automated send, no human typed this. See
+      // migration 163: the AI concierge treats a 'staff' sender as "a
+      // human already took over," which falsely blocked it from acting on
+      // a client's reply to an automated notice.
+      sender: 'system',
       body: `Hi ${appointment.clients?.full_name || 'there'}, this is a reminder that ${appointment.patients?.name || 'your pet'} has an appointment at Europets Clinic on ${dateLabel} at ${timeLabel}. See you then! — Europets Clinic`,
       wa_message_id: waMessageId,
       status: 'sent',

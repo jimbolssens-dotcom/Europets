@@ -102,7 +102,7 @@ create index client_phones_phone_idx on client_phones (phone);
 create table client_messages (
     id uuid primary key default gen_random_uuid(),
     client_id uuid references clients(id) on delete cascade,
-    sender text not null check (sender in ('client', 'staff', 'ai')),
+    sender text not null check (sender in ('client', 'staff', 'ai', 'system')),
     staff_id uuid references staff(id),   -- set when sender = 'staff'; null for a client/ai message
     body text not null,
     channel text not null default 'app' check (channel in ('app', 'whatsapp')),

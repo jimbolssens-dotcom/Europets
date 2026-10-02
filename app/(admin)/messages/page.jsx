@@ -170,7 +170,7 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
           </button>
         </td>
         <td>
-          {conv.last_sender === 'staff' ? 'You: ' : ''}
+          {conv.last_sender === 'staff' ? 'You: ' : conv.last_sender === 'system' ? '🔔 ' : ''}
           {preview(conv.last_message)}
         </td>
         <td>{formatWhen(conv.last_message_at)}</td>
@@ -195,7 +195,7 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
                 {messages.map((m) => (
                   <div
                     key={m.id}
-                    className={`portal-chat-bubble portal-chat-bubble-${m.sender === 'staff' ? 'mine' : 'theirs'}`}
+                    className={`portal-chat-bubble portal-chat-bubble-${m.sender === 'client' ? 'theirs' : 'mine'}`}
                   >
                     {m.media_url && (
                       <a href={m.media_url} target="_blank" rel="noopener noreferrer">
@@ -204,7 +204,14 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
                     )}
                     {m.body && <p>{m.body}</p>}
                     <span className="portal-chat-bubble-meta">
-                      {m.sender === 'staff' ? m.staff?.full_name || 'Staff' : phone} · {formatWhen(m.created_at)}
+                      {m.sender === 'staff'
+                        ? m.staff?.full_name || 'Staff'
+                        : m.sender === 'system'
+                          ? '🔔 Automated'
+                          : m.sender === 'ai'
+                            ? '🤖 AI concierge'
+                            : phone}{' '}
+                      · {formatWhen(m.created_at)}
                     </span>
                   </div>
                 ))}
@@ -658,7 +665,7 @@ export default function MessagesInboxPage() {
                       <span className="visit-meta"> · {c.channel === 'whatsapp' ? 'WhatsApp' : 'App'}</span>
                     </td>
                     <td>
-                      {c.last_sender === 'staff' ? 'You: ' : c.last_sender === 'ai' ? '🤖 ' : ''}
+                      {c.last_sender === 'staff' ? 'You: ' : c.last_sender === 'ai' ? '🤖 ' : c.last_sender === 'system' ? '🔔 ' : ''}
                       {preview(c.last_message)}
                     </td>
                     <td>{formatWhen(c.last_message_at)}</td>

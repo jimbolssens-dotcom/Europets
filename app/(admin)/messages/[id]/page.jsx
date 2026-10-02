@@ -263,7 +263,14 @@ export default function ClientMessageThreadPage() {
             )}
             {m.body && <p>{m.body}</p>}
             <span className="portal-chat-bubble-meta">
-              {m.sender === 'staff' ? m.staff?.full_name || 'Staff' : m.sender === 'ai' ? '🤖 AI concierge' : client?.full_name || 'Client'} ·{' '}
+              {m.sender === 'staff'
+                ? m.staff?.full_name || 'Staff'
+                : m.sender === 'ai'
+                  ? '🤖 AI concierge'
+                  : m.sender === 'system'
+                    ? '🔔 Automated'
+                    : client?.full_name || 'Client'}{' '}
+              ·{' '}
               {formatDateTime(m.created_at)} · {m.channel === 'whatsapp' ? '💬 WhatsApp' : '📱 App'}
               {/* Delivery status only applies to our own outbound WhatsApp
                   sends — Meta's send API can accept a message and only
