@@ -185,9 +185,20 @@ export default function ClientAppPetHistoryPage() {
 
   return (
     <div className="mobile-page">
-      <Link href="/client-app/pets" className="mobile-link-btn">
+      {/* router.back() (not a Link to a fixed /client-app/pets URL) so this
+          is a real browser back-navigation, not a fresh forward one — only
+          that way does Next.js restore the pets list's previous scroll
+          position instead of rendering it from the top every time (the
+          actual complaint this fixed: a long list, scroll down, tap a pet,
+          tap back, land back at the top). Falls back to a plain push when
+          there's nothing to go back to (e.g. this page opened directly). */}
+      <button
+        type="button"
+        className="mobile-link-btn"
+        onClick={() => (window.history.length > 1 ? router.back() : router.push('/client-app/pets'))}
+      >
         ← My Pets
-      </Link>
+      </button>
 
       <div className="client-app-pet-header">
         <div className="client-app-pet-avatar-wrap">
