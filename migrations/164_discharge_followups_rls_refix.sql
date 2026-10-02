@@ -1,0 +1,25 @@
+-- Migration 164: re-disable RLS on discharge_followups
+--
+-- Migration 146 already disabled RLS on this table (it has no policies —
+-- access is gated by the app's own PIN-protected routes, same as every
+-- other table here), but it's back on in production: confirmed via
+--   select relrowsecurity from pg_class where relname = 'discharge_followups';
+-- returning true. Most likely flipped back on via Supabase's dashboard,
+-- which nags to "Enable RLS" on any table with no policies attached —
+-- easy to click without realizing this table deliberately has none.
+--
+-- With RLS on and zero policies, every query through the app's normal
+-- (anon-key) Supabase client silently returns zero rows — no error, just
+-- an empty result — which is exactly why the Follow-ups page showed
+-- nothing despite 12 real 'scheduled' rows existing: GET
+-- /api/discharge-followups was getting filtered down to [] every time.
+--
+-- Run this in your Supabase SQL editor. Safe to run more than once.
+--
+-- If this happens again, it's worth checking Supabase's dashboard
+-- (Database > Tables > discharge_followups) for whatever re-enabled it,
+-- rather than just re-running this — same for any other table in this
+-- app that also disables RLS deliberately (grep schema.sql/migrations for
+-- "disable row level security" for the full list).
+
+alter table discharge_followups disable row level security;
