@@ -73,7 +73,7 @@ export default function MobileMessagesListPage() {
                     {!c.client_id && <span className="mobile-list-meta"> · unmatched</span>}
                   </span>
                   <span className="mobile-list-meta">
-                    {c.last_sender === 'staff' ? 'You: ' : c.last_sender === 'ai' ? '🤖 ' : ''}
+                    {c.last_sender === 'staff' ? 'You: ' : c.last_sender === 'ai' ? '🤖 ' : c.last_sender === 'system' ? '🔔 ' : ''}
                     {preview(c.last_message)} · {formatWhen(c.last_message_at)}
                     {c.assigned_staff_name && ` · 👤 ${c.assigned_staff_name}`}
                   </span>

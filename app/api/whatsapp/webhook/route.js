@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
-import { maybeRunConcierge, sendConciergeReply, sendEscalationNotice, sendEscalationFollowUpNotice, sendStaffHandoffNotice, flagEscalatedThread } from '@/lib/whatsappConcierge';
+import { maybeRunConcierge, sendConciergeReply, sendEscalationNotice, sendEscalationFollowUpNotice, sendStaffHandoffNotice, flagEscalatedThread, isWhatsAppAiEnabled } from '@/lib/whatsappConcierge';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -135,6 +135,22 @@ async function downloadInboundMedia(message) {
   }
 }
 
+// A client typing a quick "Hello" and then their real message a beat
+// later arrives as two separate webhook deliveries — without this, the
+// concierge answered the FIRST one alone, before the second had landed,
+// and could end up asking something the client's very next message
+// already answered (a real incident: it asked "how's Pepper doing?"
+// right after the client's own following message already said "she's
+// doing better, stitches healing well"). Waiting a short beat, then
+// checking whether a NEWER client message has shown up in the meantime,
+// lets a fast follow-up supersede an earlier trigger — only the LAST
+// message in a burst of any length ever actually runs the concierge
+// (every earlier one in the burst finds itself superseded and bails out
+// silently), and that one sees the whole burst together in its history.
+// Skipped entirely when the concierge is off or the number's unmatched,
+// so neither case pays this delay for nothing.
+const CONCIERGE_DEBOUNCE_MS = 2000;
+
 // After a fresh inbound message is stored, gives the AI concierge (see
 // lib/whatsappConcierge.js) a chance to answer it directly — gated by
 // WHATSAPP_AI_ENABLED and only for a message matched to a client, both
@@ -145,6 +161,19 @@ async function downloadInboundMedia(message) {
 // retry forever.
 async function runConciergeForInbound(message, clientId, digits) {
   try {
+    if (clientId && isWhatsAppAiEnabled()) {
+      await new Promise((resolve) => setTimeout(resolve, CONCIERGE_DEBOUNCE_MS));
+      const { data: latestClientMessage } = await supabase
+        .from('client_messages')
+        .select('wa_message_id')
+        .eq('client_id', clientId)
+        .eq('sender', 'client')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestClientMessage && latestClientMessage.wa_message_id !== message.id) return;
+    }
+
     const result = await maybeRunConcierge({ clientId, phone: digits });
     if (result.sent) {
       await sendConciergeReply({ clientId, phone: digits, reply: result.reply });

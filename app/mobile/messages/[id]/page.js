@@ -268,9 +268,16 @@ export default function MobileMessageThreadPage() {
             )}
             {m.body && <p>{m.body}</p>}
             <span className="portal-chat-bubble-meta">
-              {m.sender === 'staff' ? m.staff?.full_name || 'Staff' : m.sender === 'ai' ? '🤖 AI concierge' : headerName} ·{' '}
+              {m.sender === 'staff'
+                ? m.staff?.full_name || 'Staff'
+                : m.sender === 'ai'
+                  ? '🤖 AI concierge'
+                  : m.sender === 'system'
+                    ? '🔔 Automated'
+                    : headerName}{' '}
+              ·{' '}
               {formatDateTime(m.created_at)}
-              {isMatched && ` · ${m.channel === 'whatsapp' ? '💬 WhatsApp' : '📱 App'}`}
+              {isMatched && ` · ${m.channel === 'whatsapp' ? '💬 WhatsApp' : m.channel === 'email' ? '✉️ Email' : '📱 App'}`}
               {m.channel === 'whatsapp' && m.sender !== 'client' && m.status && (
                 <span className={m.status === 'failed' ? 'portal-chat-bubble-failed' : ''}>
                   {' '}
