@@ -518,7 +518,11 @@ export default function MessagesInboxPage() {
             main bar. Each is still just a plain link to its own unchanged
             page. */}
         <div className="hospitalization-header-actions">
-          <a href="/intake" className="button-link">
+          <a
+            href="/intake"
+            className={`button-link${hasPendingInviteRequest ? ' button-link-alarm' : ''}`}
+            title={hasPendingInviteRequest ? 'An invite/intake request is waiting for approval' : undefined}
+          >
             ✉️ Invite{hasPendingInviteRequest && ' 🔔'}
           </a>
           <a href="/follow-ups" className="button-link">

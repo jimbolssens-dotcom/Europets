@@ -54,6 +54,7 @@ export default function AdminLayout({ children }) {
   const dayProcedureAlarmIcon =
     dayProcedureAlarmLevel === 'red' || dayProcedureAlarmLevel === 'both' ? ' 🩺' : dayProcedureAlarmLevel === 'yellow' ? ' 🔔' : '';
   const [hasPendingAppointmentRequest, setHasPendingAppointmentRequest] = useState(false);
+  const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
   const [hasPendingReviewRequest, setHasPendingReviewRequest] = useState(false);
   const [hasPendingClientMessage, setHasPendingClientMessage] = useState(false);
   const pendingClientMessageRef = useRef(false);
@@ -125,8 +126,12 @@ export default function AdminLayout({ children }) {
   // asked for an appointment slot — reviewed on Appointments (see
   // AppointmentRequestsPanel) — so staff notice a pending review from
   // anywhere in the app. A plain invite request (no slot requested) has its
-  // own bell on the Invite pill atop the Messages page instead, since Invite
-  // no longer has a top-nav link of its own.
+  // own bell on the Invite pill atop the Messages page (see
+  // app/(admin)/messages/page.jsx) since Invite no longer has a top-nav
+  // link of its own — but staff only see that pill once they're already on
+  // Messages, so the Messages nav link itself blinks for this case too
+  // (merged below with hasPendingClientMessage), same as it already does
+  // for a client waiting on a reply.
   useEffect(() => {
     const checkPending = () =>
       fetch('/api/intake-requests')
@@ -135,6 +140,7 @@ export default function AdminLayout({ children }) {
           const list = Array.isArray(data) ? data : [];
           const submitted = list.filter((r) => r.status === 'submitted');
           setHasPendingAppointmentRequest(submitted.some((r) => r.appointment_type));
+          setHasPendingInviteRequest(submitted.some((r) => !r.appointment_type));
         });
 
     checkPending();
@@ -205,10 +211,18 @@ export default function AdminLayout({ children }) {
           <a href="/add">Add</a>
           <a
             href="/messages"
-            className={hasPendingClientMessage ? 'nav-update-requested' : ''}
-            title={hasPendingClientMessage ? 'A client is waiting on a reply' : undefined}
+            className={hasPendingClientMessage || hasPendingInviteRequest ? 'nav-update-requested' : ''}
+            title={
+              hasPendingClientMessage && hasPendingInviteRequest
+                ? 'A client is waiting on a reply, and an invite/intake request is waiting for approval'
+                : hasPendingClientMessage
+                  ? 'A client is waiting on a reply'
+                  : hasPendingInviteRequest
+                    ? 'An invite/intake request is waiting for approval'
+                    : undefined
+            }
           >
-            Messages{hasPendingClientMessage && ' 🔔'}
+            Messages{(hasPendingClientMessage || hasPendingInviteRequest) && ' 🔔'}
           </a>
           <a
             href="/appointments"

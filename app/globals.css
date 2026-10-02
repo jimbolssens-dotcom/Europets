@@ -305,6 +305,29 @@ button:disabled {
   background: var(--pink-dark);
 }
 
+/* Same "something's waiting for review" alert language as the top nav's
+   .nav-update-requested and the cage tile's .cage-update-requested — a
+   pill-shaped button needs its own selector (not inside .topnav-links)
+   but reuses the exact same blink keyframes so every "pending review"
+   indicator in the app pulses identically. Used by the Invite pill atop
+   Messages (see app/(admin)/messages/page.jsx) when an intake/invite
+   request is waiting for approval. */
+.button-link-alarm {
+  background: #fff3cd !important;
+  color: #92620a !important;
+  box-shadow: 0 0 0 2px #ffc107;
+}
+
+.button-link-alarm:hover {
+  background: #ffe69c !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .button-link-alarm {
+    animation: cage-update-blink 1s ease-in-out infinite;
+  }
+}
+
 .hospitalization-actions {
   display: flex;
   align-items: center;
