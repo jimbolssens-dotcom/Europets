@@ -12,6 +12,14 @@ import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import HexIcon from '@/app/_components/HexIcon';
 
+// Next.js App Router doesn't reliably restore scroll position on
+// router.back() the way plain browser back-navigation does (a known App
+// Router gap, not something fixable from the detail page's own "back"
+// link) — this page saves/restores its own scroll position instead,
+// independent of how staff navigated back to it. Session-scoped: a stale
+// position from a much earlier visit shouldn't reapply to a fresh tab.
+const SCROLL_STORAGE_KEY = 'client-app-pets-scroll';
+
 function ageFromDob(dob) {
   if (!dob) return null;
   const years = (Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
@@ -53,6 +61,25 @@ export default function ClientAppPetsPage() {
     };
   }, [ready, clientId]);
 
+  // Restores the scroll position saved just before tapping a pet (see
+  // renderPetCard's onClick below) — once the list has actually loaded,
+  // not on first paint, since there's nothing to scroll to yet before
+  // then. One-time: cleared right after use so a later fresh visit to
+  // this page (not a "coming back from a pet") starts at the top as
+  // normal, rather than replaying an old position forever.
+  useEffect(() => {
+    if (loading) return;
+    const saved = sessionStorage.getItem(SCROLL_STORAGE_KEY);
+    if (saved == null) return;
+    sessionStorage.removeItem(SCROLL_STORAGE_KEY);
+    requestAnimationFrame(() => window.scrollTo(0, Number(saved)));
+  }, [loading]);
+
+  function openPet(petId) {
+    sessionStorage.setItem(SCROLL_STORAGE_KEY, String(window.scrollY));
+    router.push(`/client-app/pets/${petId}`);
+  }
+
   if (!ready) return null;
 
   // A pet marked RIP or rehomed (see app/client-app/pets/[id]/page.js) is
@@ -73,9 +100,9 @@ export default function ClientAppPetsPage() {
           className="mobile-list-item client-app-pet-card"
           role="link"
           tabIndex={0}
-          onClick={() => router.push(`/client-app/pets/${pet.id}`)}
+          onClick={() => openPet(pet.id)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') router.push(`/client-app/pets/${pet.id}`);
+            if (e.key === 'Enter') openPet(pet.id);
           }}
         >
           <div className="client-app-pet-card-row">
