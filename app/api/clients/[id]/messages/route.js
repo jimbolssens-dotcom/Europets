@@ -7,7 +7,7 @@
 //      WhatsApp channels both — see migrations/130). Used by both the
 //      client app's own chat page and the staff inbox thread view.
 // POST /api/clients/:id/messages  -> staff's reply
-//      ({ body, staff_id, channel?, media_url?, media_type?, media_name? }).
+//      ({ body, staff_id, channel?, subject?, media_url?, media_type?, media_name? }).
 //      channel defaults to 'app' (an ordinary client-app chat row, exactly
 //      as before); 'whatsapp' also sends it live via the WhatsApp Cloud API
 //      to this client's own phone number (clients.phone — see migrations/
@@ -16,7 +16,9 @@
 //      photo or file (see lib/attachments.js's uploadClientMessageMedia,
 //      already uploaded to Storage client-side before this is called)
 //      sends as WhatsApp media instead of text when media_url is set,
-//      with body used as its caption if present.
+//      with body used as its caption if present. 'email' sends via
+//      lib/email.js to clients.email (subject required, no media support
+//      yet — see migrations/162).
 //
 //      A free-form WhatsApp send only works within the 24-hour window the
 //      client's own last WhatsApp message opened — outside it (most
@@ -42,6 +44,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendWhatsAppText, sendWhatsAppMedia, sendFirstContactMessage } from '@/lib/metaWhatsapp';
+import { sendEmail } from '@/lib/email';
 import { sendPushToClient } from '@/lib/pushNotifications';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
@@ -102,13 +105,17 @@ export async function POST(request, { params }) {
   const mediaUrl = typeof body.media_url === 'string' ? body.media_url : null;
   const mediaType = typeof body.media_type === 'string' ? body.media_type : null; // 'image' | 'file'
   const mediaName = typeof body.media_name === 'string' ? body.media_name : null;
-  const channel = body.channel === 'whatsapp' ? 'whatsapp' : 'app';
+  const subject = typeof body.subject === 'string' ? body.subject.trim().slice(0, 200) : '';
+  const channel = body.channel === 'whatsapp' ? 'whatsapp' : body.channel === 'email' ? 'email' : 'app';
 
   if (!text && !mediaUrl) {
     return NextResponse.json({ error: 'body or media_url is required' }, { status: 400 });
   }
   if (!body.staff_id) {
     return NextResponse.json({ error: 'staff_id is required' }, { status: 400 });
+  }
+  if (channel === 'email' && mediaUrl) {
+    return NextResponse.json({ error: 'A photo or file can only be sent over WhatsApp or the app, not email yet.' }, { status: 400 });
   }
 
   // body stays required not-null at the DB level (migration 120) — an
@@ -118,6 +125,23 @@ export async function POST(request, { params }) {
   if (mediaUrl) {
     row.media_url = mediaUrl;
     row.media_type = mediaType || 'file';
+  }
+
+  if (channel === 'email') {
+    if (!subject) {
+      return NextResponse.json({ error: 'subject is required for an email reply' }, { status: 400 });
+    }
+    const { data: emailClient } = await supabase.from('clients').select('email').eq('id', params.id).maybeSingle();
+    if (!emailClient?.email) {
+      return NextResponse.json({ error: 'This client has no email address on file' }, { status: 400 });
+    }
+    try {
+      await sendEmail({ to: emailClient.email, subject, text });
+    } catch (err) {
+      return NextResponse.json({ error: err.message }, { status: 502 });
+    }
+    row.status = 'sent';
+    row.subject = subject;
   }
 
   if (channel === 'whatsapp') {
