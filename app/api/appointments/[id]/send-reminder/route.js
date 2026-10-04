@@ -28,15 +28,21 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'This client has no phone number on file' }, { status: 400 });
   }
 
+  // timeZone set explicitly — this runs on Vercel's servers, which are on
+  // UTC, not the clinic's zone, so without it an 11:00am Dubai (UTC+4)
+  // appointment went out to the client as "7:00 am" (same bug, and fix,
+  // as the booking confirmation in app/api/intake-requests/[id]).
   const dateLabel = new Date(appointment.start_time).toLocaleDateString('en-GB', {
     weekday: 'long',
     day: '2-digit',
     month: '2-digit',
+    timeZone: 'Asia/Dubai',
   });
   const timeLabel = new Date(appointment.start_time).toLocaleTimeString('en-GB', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
+    timeZone: 'Asia/Dubai',
   });
 
   let waMessageId;
