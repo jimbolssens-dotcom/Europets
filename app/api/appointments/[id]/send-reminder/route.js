@@ -11,12 +11,13 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendAppointmentReminder, sendProcedureReminder, procedureReminderBody } from '@/lib/metaWhatsapp';
+import { procedureLabel } from '@/lib/procedureLabel';
 import { NextResponse } from 'next/server';
 
 export async function POST(request, { params }) {
   const { data: appointment, error: fetchError } = await supabase
     .from('appointments')
-    .select('id, type, start_time, clients(id, full_name, phone), patients(name)')
+    .select('id, type, reason, start_time, clients(id, full_name, phone), patients(name)')
     .eq('id', params.id)
     .single();
 
@@ -53,6 +54,7 @@ export async function POST(request, { params }) {
   const reminderFields = {
     clientName: appointment.clients?.full_name,
     patientName: appointment.patients?.name,
+    procedure: procedureLabel(appointment.reason),
     dateLabel,
     timeLabel,
   };
