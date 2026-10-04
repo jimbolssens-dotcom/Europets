@@ -10,13 +10,13 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { sendAppointmentReminder } from '@/lib/metaWhatsapp';
+import { sendAppointmentReminder, sendProcedureReminder, procedureReminderBody } from '@/lib/metaWhatsapp';
 import { NextResponse } from 'next/server';
 
 export async function POST(request, { params }) {
   const { data: appointment, error: fetchError } = await supabase
     .from('appointments')
-    .select('id, start_time, clients(id, full_name, phone), patients(name)')
+    .select('id, type, start_time, clients(id, full_name, phone), patients(name)')
     .eq('id', params.id)
     .single();
 
@@ -45,14 +45,23 @@ export async function POST(request, { params }) {
     timeZone: 'Asia/Dubai',
   });
 
+  // Dental and surgical appointments (both stored as type 'surgery') get
+  // their own reminder: a morning drop-off window and fasting instructions
+  // instead of the booked slot's time, which isn't when the client should
+  // actually arrive (see PROCEDURE_REMINDER_TEXT in lib/metaWhatsapp.js).
+  const isProcedure = appointment.type === 'surgery';
+  const reminderFields = {
+    clientName: appointment.clients?.full_name,
+    patientName: appointment.patients?.name,
+    dateLabel,
+    timeLabel,
+  };
+
   let waMessageId;
   try {
-    waMessageId = await sendAppointmentReminder(digits, {
-      clientName: appointment.clients?.full_name,
-      patientName: appointment.patients?.name,
-      dateLabel,
-      timeLabel,
-    });
+    waMessageId = isProcedure
+      ? await sendProcedureReminder(digits, reminderFields)
+      : await sendAppointmentReminder(digits, reminderFields);
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 502 });
   }
@@ -73,7 +82,9 @@ export async function POST(request, { params }) {
       // human already took over," which falsely blocked it from acting on
       // a client's reply to an automated notice.
       sender: 'system',
-      body: `Hi ${appointment.clients?.full_name || 'there'}, this is a reminder that ${appointment.patients?.name || 'your pet'} has an appointment at Europets Clinic on ${dateLabel} at ${timeLabel}. See you then! — Europets Clinic`,
+      body: isProcedure
+        ? procedureReminderBody(reminderFields)
+        : `Hi ${appointment.clients?.full_name || 'there'}, this is a reminder that ${appointment.patients?.name || 'your pet'} has an appointment at Europets Clinic on ${dateLabel} at ${timeLabel}. See you then! — Europets Clinic`,
       wa_message_id: waMessageId,
       status: 'sent',
     },

@@ -275,6 +275,8 @@ export default function MessagesInboxPage() {
   const [dischargeFollowupTemplateResult, setDischargeFollowupTemplateResult] = useState(null); // { ok: boolean, message: string } | null
   const [submittingAppointmentReminderTemplate, setSubmittingAppointmentReminderTemplate] = useState(false);
   const [appointmentReminderTemplateResult, setAppointmentReminderTemplateResult] = useState(null); // { ok: boolean, message: string } | null
+  const [submittingProcedureReminderTemplate, setSubmittingProcedureReminderTemplate] = useState(false);
+  const [procedureReminderTemplateResult, setProcedureReminderTemplateResult] = useState(null); // { ok: boolean, message: string } | null
   const [submittingVaccinationTemplate, setSubmittingVaccinationTemplate] = useState(false);
   const [vaccinationTemplateResult, setVaccinationTemplateResult] = useState(null); // { ok: boolean, message: string } | null
   const [templateStatuses, setTemplateStatuses] = useState({}); // { [purpose]: 'APPROVED' | 'PENDING' | 'REJECTED' | null }
@@ -488,6 +490,29 @@ export default function MessagesInboxPage() {
     setSubmittingAppointmentReminderTemplate(false);
   }
 
+  // Submits procedure_reminder (see submitProcedureReminderTemplate in
+  // lib/metaWhatsapp.js) — the dental/surgery reminder with the morning
+  // drop-off window and fasting instructions. Until it's approved, the
+  // Remind button on a dental/surgery appointment fails with Meta's error.
+  async function submitProcedureReminderTemplate() {
+    setSubmittingProcedureReminderTemplate(true);
+    setProcedureReminderTemplateResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/create-procedure-reminder-template', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setProcedureReminderTemplateResult({
+        ok: true,
+        message:
+          'Submitted — check WhatsApp Manager > Account tools > Message templates for Meta\'s approval status (usually within a day).',
+      });
+      loadTemplateStatuses();
+    } catch (err) {
+      setProcedureReminderTemplateResult({ ok: false, message: err.message });
+    }
+    setSubmittingProcedureReminderTemplate(false);
+  }
+
   // Submits vaccination_reminder_v2 (see submitVaccinationReminderTemplate
   // in lib/metaWhatsapp.js) — a reworded/reformatted replacement for the
   // original vaccination_reminder template, which had no button here at
@@ -598,6 +623,7 @@ export default function MessagesInboxPage() {
             { key: 'intakeLink', label: 'New-patient-intake', onSubmit: submitIntakeTemplate, submitting: submittingIntakeTemplate, result: intakeTemplateResult },
             { key: 'dischargeFollowup', label: 'Discharge follow-up', onSubmit: submitDischargeFollowupTemplate, submitting: submittingDischargeFollowupTemplate, result: dischargeFollowupTemplateResult },
             { key: 'appointmentReminder', label: 'Appointment reminder', onSubmit: submitAppointmentReminderTemplate, submitting: submittingAppointmentReminderTemplate, result: appointmentReminderTemplateResult },
+            { key: 'procedureReminder', label: 'Dental/surgery reminder', onSubmit: submitProcedureReminderTemplate, submitting: submittingProcedureReminderTemplate, result: procedureReminderTemplateResult },
             { key: 'vaccinationReminder', label: 'Vaccination reminder v2', onSubmit: submitVaccinationTemplate, submitting: submittingVaccinationTemplate, result: vaccinationTemplateResult },
           ];
           const needsAttention = (t) => {
