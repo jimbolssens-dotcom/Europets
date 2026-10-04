@@ -15,6 +15,10 @@
     {
       "path": "/api/whatsapp/nudge-sweep",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/appointments/send-due-reminders",
+      "schedule": "30 13 * * *"
     }
   ]
 }
