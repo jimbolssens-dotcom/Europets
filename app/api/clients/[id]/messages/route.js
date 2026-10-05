@@ -45,6 +45,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendWhatsAppText, sendWhatsAppMedia, sendFirstContactMessage } from '@/lib/metaWhatsapp';
 import { sendEmail } from '@/lib/email';
+import { withoutDashes } from '@/lib/noDashes';
 import { sendPushToClient } from '@/lib/pushNotifications';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
@@ -101,7 +102,9 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   const body = await request.json().catch(() => ({}));
-  const text = typeof body.body === 'string' ? body.body.trim().slice(0, 2000) : '';
+  // Long dashes stripped up front (see lib/noDashes.js) so the logged copy
+  // matches what the client actually receives on every channel.
+  const text = typeof body.body === 'string' ? withoutDashes(body.body.trim().slice(0, 2000)) : '';
   const mediaUrl = typeof body.media_url === 'string' ? body.media_url : null;
   const mediaType = typeof body.media_type === 'string' ? body.media_type : null; // 'image' | 'file'
   const mediaName = typeof body.media_name === 'string' ? body.media_name : null;

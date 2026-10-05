@@ -624,7 +624,7 @@ export default function MessagesInboxPage() {
             { key: 'dischargeFollowup', label: 'Discharge follow-up', onSubmit: submitDischargeFollowupTemplate, submitting: submittingDischargeFollowupTemplate, result: dischargeFollowupTemplateResult },
             { key: 'appointmentReminder', label: 'Appointment reminder', onSubmit: submitAppointmentReminderTemplate, submitting: submittingAppointmentReminderTemplate, result: appointmentReminderTemplateResult },
             { key: 'procedureReminder', label: 'Dental/surgery reminder', onSubmit: submitProcedureReminderTemplate, submitting: submittingProcedureReminderTemplate, result: procedureReminderTemplateResult },
-            { key: 'vaccinationReminder', label: 'Vaccination reminder v2', onSubmit: submitVaccinationTemplate, submitting: submittingVaccinationTemplate, result: vaccinationTemplateResult },
+            { key: 'vaccinationReminder', label: 'Vaccination reminder v3', onSubmit: submitVaccinationTemplate, submitting: submittingVaccinationTemplate, result: vaccinationTemplateResult },
           ];
           const needsAttention = (t) => {
             const s = templateStatuses[t.key];

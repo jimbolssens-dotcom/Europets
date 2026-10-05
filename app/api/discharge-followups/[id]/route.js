@@ -18,7 +18,7 @@ export async function PATCH(request, { params }) {
 
   const { data: row, error } = await supabase
     .from('discharge_followups')
-    .select('*, clients(full_name, phone)')
+    .select('*, patients(name), clients(full_name, phone)')
     .eq('id', params.id)
     .single();
   if (error || !row) {

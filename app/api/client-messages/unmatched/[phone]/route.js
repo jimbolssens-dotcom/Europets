@@ -13,6 +13,7 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendWhatsAppText } from '@/lib/metaWhatsapp';
+import { withoutDashes } from '@/lib/noDashes';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -34,7 +35,7 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   const phone = params.phone;
   const body = await request.json().catch(() => ({}));
-  const text = typeof body.body === 'string' ? body.body.trim().slice(0, 2000) : '';
+  const text = typeof body.body === 'string' ? withoutDashes(body.body.trim().slice(0, 2000)) : '';
 
   if (!text) {
     return NextResponse.json({ error: 'body is required' }, { status: 400 });
