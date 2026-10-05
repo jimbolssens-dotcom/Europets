@@ -104,15 +104,46 @@ body.mobile-body-fill .mobile-app {
   white-space: nowrap;
 }
 
+/* Compact assign picker + flag toggle, both in the thread header row
+   (app/mobile/messages/[id]) instead of a full-width bar of their own. */
 .mobile-messages-assign {
   flex-shrink: 0;
-  width: 100%;
-  padding: 0.5rem 0.7rem;
-  border: none;
-  border-bottom: 1px solid #eee;
+  max-width: 7.5rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #e3dde0;
+  border-radius: 999px;
   background: white;
-  font-size: 0.85rem;
-  color: var(--ink);
+  font-size: 0.8rem;
+  color: #6b6b6b;
+  text-overflow: ellipsis;
+}
+.mobile-messages-assign.on {
+  border-color: var(--pink);
+  color: var(--pink-dark);
+  font-weight: 600;
+}
+.mobile-messages-flag {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid #e3dde0;
+  border-radius: 999px;
+  background: white;
+  color: #9a9a9a;
+}
+.mobile-messages-flag:hover {
+  background: white;
+  color: #6b6b6b;
+}
+.mobile-messages-flag.on,
+.mobile-messages-flag.on:hover {
+  border-color: #dc3545;
+  background: #fdecee;
+  color: #dc3545;
 }
 
 .mobile-messages-thread-page .staff-chat-thread {

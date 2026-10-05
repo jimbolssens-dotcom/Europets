@@ -49,6 +49,7 @@ export default function MobileMessageThreadPage() {
   const [deletingId, setDeletingId] = useState(null);
   const [staffList, setStaffList] = useState([]);
   const [assignedStaffId, setAssignedStaffId] = useState('');
+  const [flagged, setFlagged] = useState(false);
   const threadRef = useRef(null);
   const cameraInputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -70,6 +71,19 @@ export default function MobileMessageThreadPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ thread_key: isMatched ? id : `phone:${id}`, assigned_staff_id: staffId || null }),
+    });
+  }
+
+  // Same needs-attention flag as the desktop thread page's "Flag as
+  // needing attention" button (thread_state.flagged) — a tiny on/off flag
+  // icon here instead of a full-width button.
+  async function toggleFlagged() {
+    const next = !flagged;
+    setFlagged(next);
+    await fetch('/api/client-messages/thread-state', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thread_key: isMatched ? id : `phone:${id}`, flagged: next }),
     });
   }
 
@@ -98,7 +112,10 @@ export default function MobileMessageThreadPage() {
     });
     fetch(`/api/client-messages/thread-state?thread_key=${encodeURIComponent(isMatched ? id : `phone:${id}`)}`)
       .then((res) => res.json())
-      .then((data) => setAssignedStaffId(data?.assigned_staff_id || ''));
+      .then((data) => {
+        setAssignedStaffId(data?.assigned_staff_id || '');
+        setFlagged(Boolean(data?.flagged));
+      });
 
     const channel = supabase
       .channel(`mobile-messages-${id}`)
@@ -230,22 +247,35 @@ export default function MobileMessageThreadPage() {
           ← Back
         </button>
         <span className="mobile-messages-header-name">{headerName}</span>
+        <button
+          type="button"
+          onClick={toggleFlagged}
+          className={`mobile-messages-flag ${flagged ? 'on' : ''}`}
+          aria-pressed={flagged}
+          aria-label={flagged ? 'Clear the needs-attention flag' : 'Flag as needing attention'}
+          title={flagged ? 'Clear the needs-attention flag' : 'Flag as needing attention'}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="M5 21V4m0 0h11l-2 4 2 4H5" fill={flagged ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          </svg>
+        </button>
+        <select
+          value={assignedStaffId}
+          onChange={(e) => assignTo(e.target.value)}
+          className={`mobile-messages-assign ${assignedStaffId ? 'on' : ''}`}
+          title="Assign this conversation to one doctor or nurse"
+          aria-label="Assign to"
+        >
+          <option value="">👤 Assign</option>
+          {staffList
+            .filter((s) => s.role === 'vet' || s.role === 'tech')
+            .map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.full_name}
+              </option>
+            ))}
+        </select>
       </div>
-      <select
-        value={assignedStaffId}
-        onChange={(e) => assignTo(e.target.value)}
-        className="mobile-messages-assign"
-        title="Assign this conversation to one doctor or nurse"
-      >
-        <option value="">Assign to...</option>
-        {staffList
-          .filter((s) => s.role === 'vet' || s.role === 'tech')
-          .map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.full_name}
-            </option>
-          ))}
-      </select>
 
       {error && <p className="error">{error}</p>}
 
