@@ -7013,6 +7013,25 @@ form.card.admit-patient-form {
   text-decoration: none;
 }
 
+/* Notifications-on indicator next to the greeting (StaffPushBell in
+   app/_components/StaffPushOptIn.jsx) — tap to turn notifications off. */
+.mobile-push-bell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 1px solid #f0dc8a;
+  border-radius: 999px;
+  background: #fff8d6;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.mobile-push-bell:hover {
+  background: #fff3c2;
+}
+
 .mobile-hint {
   font-size: 0.85rem;
   color: #666;

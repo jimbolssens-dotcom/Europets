@@ -1,5 +1,10 @@
 // app/_components/StaffPushOptIn.jsx
 // A small "turn on notifications" card for the mobile staff home page —
+// shown only until it's been accepted; after that it collapses into a
+// small 🔔 next to the staff member's name (StaffPushBell below), which
+// they tap to turn notifications back off. Both read the same state from
+// useStaffPush, so the page calls that once and renders whichever applies.
+//
 // same idea and shape as ClientAppPushOptIn.jsx, just for staff: lets
 // whoever is currently picked on this phone (see useMobileStaff) opt into
 // real Web Push, so being assigned a conversation (see
@@ -28,7 +33,7 @@ function pushSupported() {
   return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
 }
 
-export default function StaffPushOptIn({ staffId }) {
+export function useStaffPush(staffId) {
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -105,26 +110,44 @@ export default function StaffPushOptIn({ staffId }) {
     }
   }
 
-  if (checking || !supported || !staffId) return null;
+  return { ready: !checking && supported && Boolean(staffId), subscribed, working, error, enable, disable };
+}
+
+// The first-time card — only while notifications are still off.
+export default function StaffPushOptIn({ push }) {
+  if (!push.ready || push.subscribed) return null;
 
   return (
     <div className="client-app-push-optin">
-      {subscribed ? (
-        <>
-          <p>🔔 Notifications are on for this phone.</p>
-          <button type="button" className="mobile-link-btn" onClick={disable} disabled={working}>
-            {working ? 'Turning off...' : 'Turn off'}
-          </button>
-        </>
-      ) : (
-        <>
-          <p>🔔 Turn on notifications to hear about conversations assigned to you, even when the app isn&rsquo;t open.</p>
-          <button type="button" onClick={enable} disabled={working}>
-            {working ? 'Turning on...' : 'Turn on notifications'}
-          </button>
-        </>
-      )}
-      {error && <p className="client-app-login-error">{error}</p>}
+      <p>🔔 Turn on notifications to hear about conversations assigned to you, even when the app isn&rsquo;t open.</p>
+      <button type="button" onClick={push.enable} disabled={push.working}>
+        {push.working ? 'Turning on...' : 'Turn on notifications'}
+      </button>
+      {push.error && <p className="client-app-login-error">{push.error}</p>}
     </div>
+  );
+}
+
+// The small bell next to the staff member's name once notifications are
+// on — tap it (and confirm) to turn them back off, which brings the
+// first-time card back in case they want to turn them on again.
+export function StaffPushBell({ push }) {
+  if (!push.ready || !push.subscribed) return null;
+
+  function turnOff() {
+    if (window.confirm('Turn off notifications on this phone?')) push.disable();
+  }
+
+  return (
+    <button
+      type="button"
+      className="mobile-push-bell"
+      onClick={turnOff}
+      disabled={push.working}
+      title="Notifications are on — tap to turn off"
+      aria-label="Notifications are on — tap to turn off"
+    >
+      🔔
+    </button>
   );
 }

@@ -24,7 +24,7 @@
 
 import { useEffect, useState } from 'react';
 import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
-import StaffPushOptIn from '@/app/_components/StaffPushOptIn';
+import StaffPushOptIn, { StaffPushBell, useStaffPush } from '@/app/_components/StaffPushOptIn';
 import CleanerLanguageToggle from '@/app/_components/CleanerLanguageToggle';
 import { useCleanerLanguage } from '@/app/_components/useCleanerLanguage';
 import { useHospitalizationUpdatePending } from '@/app/_components/useHospitalizationUpdatePending';
@@ -53,6 +53,7 @@ export default function MobileHomePage() {
   const dayProcedureAlarmClass = cageAlarmClass(dayProcedureAlarmLevel);
   const pendingMessageCount = useClientMessagesPending();
   const { language } = useCleanerLanguage();
+  const push = useStaffPush(staffId);
 
   useEffect(() => {
     setStaffId(localStorage.getItem(MOBILE_STAFF_STORAGE_KEY));
@@ -111,12 +112,14 @@ export default function MobileHomePage() {
             <a href="/mobile/schedule" className="mobile-greeting" title="Go to your schedule">
               {t('Hello,', useSinhala)} {firstName || 'there'}!
             </a>
+            {!isCleaner && <StaffPushBell push={push} />}
           </div>
+          {!isCleaner && push.subscribed && push.error && <p className="client-app-login-error">{push.error}</p>}
           <button type="button" className="mobile-link-btn" onClick={switchStaff}>
             {t('Switch', useSinhala)}
           </button>
 
-          {!isCleaner && <StaffPushOptIn staffId={staffId} />}
+          {!isCleaner && <StaffPushOptIn push={push} />}
 
           {isCleaner ? (
             // A cleaner's whole job on this phone is these two things —
