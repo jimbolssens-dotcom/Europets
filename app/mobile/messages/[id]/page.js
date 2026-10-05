@@ -51,6 +51,7 @@ export default function MobileMessageThreadPage() {
   const [assignedStaffId, setAssignedStaffId] = useState('');
   const [flagged, setFlagged] = useState(false);
   const threadRef = useRef(null);
+  const composerRef = useRef(null);
   const cameraInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -133,6 +134,27 @@ export default function MobileMessageThreadPage() {
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // The composer is pinned over the bottom of the thread (position: fixed,
+  // see .mobile-messages-composer), so the thread needs bottom padding at
+  // least as tall as the composer actually renders — a fixed guess wasn't
+  // enough on narrow screens (e.g. a Galaxy Z Fold's cover screen) where
+  // the composer wraps taller and hid the newest message behind it.
+  // Measured live, so it also tracks the textarea growing as staff type.
+  useEffect(() => {
+    const composer = composerRef.current;
+    const thread = threadRef.current;
+    if (!composer || !thread || typeof ResizeObserver === 'undefined') return undefined;
+    const apply = () => {
+      const nearBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
+      thread.style.paddingBottom = `${composer.offsetHeight + 16}px`;
+      if (nearBottom) thread.scrollTop = thread.scrollHeight;
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(composer);
+    return () => observer.disconnect();
+  }, [loading, staffReady]);
 
   useEffect(() => {
     const el = threadRef.current;
@@ -340,7 +362,7 @@ export default function MobileMessageThreadPage() {
         ))}
       </div>
 
-      <div className="mobile-messages-composer">
+      <div className="mobile-messages-composer" ref={composerRef}>
         {isMatched && (
           <div className="window-filter">
             <button
