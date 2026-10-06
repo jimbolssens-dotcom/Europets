@@ -49,6 +49,15 @@ export async function GET(request, { params }) {
     delete data.notes;
     if (data.clients) data.clients = { id: data.clients.id, full_name: data.clients.full_name };
     data.cattery_daily_logs = data.cattery_daily_logs.map(({ comments, recorded_by, ...owner }) => owner);
+  } else {
+    // Staff see where the cattery consent form stands (sent automatically
+    // when the booking was made, see POST /api/cattery).
+    const { data: requests } = await supabase
+      .from('consent_form_requests')
+      .select('id, status, created_at')
+      .eq('cattery_booking_id', params.id)
+      .order('created_at', { ascending: false });
+    data.consent_requests = requests || [];
   }
   return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } });
 }

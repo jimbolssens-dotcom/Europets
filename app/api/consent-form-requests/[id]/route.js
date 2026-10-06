@@ -20,7 +20,7 @@ import { NextResponse } from 'next/server';
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('consent_form_requests')
-    .select('id, status, form_type, visit_id, hospitalization_id')
+    .select('id, status, form_type, visit_id, hospitalization_id, cattery_booking_id')
     .eq('id', params.id)
     .single();
 
@@ -31,6 +31,7 @@ export async function GET(request, { params }) {
   const context = await resolveConsentFormContext({
     visitId: data.visit_id,
     hospitalizationId: data.hospitalization_id,
+    catteryBookingId: data.cattery_booking_id,
     formType: data.form_type,
   });
   if (context.error) {
@@ -45,6 +46,7 @@ export async function GET(request, { params }) {
     form_text: buildConsentFormText(data.form_type, context.patient || {}, {
       treatmentNotes: context.treatmentNotes,
       treatmentItems: context.treatmentItems,
+      booking: context.booking,
     }),
   });
 }
@@ -60,7 +62,7 @@ export async function POST(request, { params }) {
 
   const { data: existing, error: existingError } = await supabase
     .from('consent_form_requests')
-    .select('id, status, form_type, visit_id, hospitalization_id')
+    .select('id, status, form_type, visit_id, hospitalization_id, cattery_booking_id')
     .eq('id', params.id)
     .single();
 
@@ -74,6 +76,7 @@ export async function POST(request, { params }) {
   const result = await createSignedConsentForm({
     visitId: existing.visit_id,
     hospitalizationId: existing.hospitalization_id,
+    catteryBookingId: existing.cattery_booking_id,
     formType: existing.form_type,
     signedByName,
     signedByRelationship,

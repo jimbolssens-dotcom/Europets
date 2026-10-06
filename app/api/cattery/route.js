@@ -8,7 +8,10 @@
 //        does the real check" split as GET /api/hospitalizations (see
 //        middleware.js CLIENT_APP_READ_PATTERNS).
 // POST /api/cattery -> staff: create a booking. Refuses one that overlaps
-//        another non-cancelled booking in the same space.
+//        another non-cancelled booking in the same space. Then sends the
+//        owner the cattery consent form over WhatsApp automatically (see
+//        lib/consentForms.js createConsentFormRequest; a send failure never
+//        fails the booking, it's reported back as `consent.whatsapp`).
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -16,6 +19,7 @@ import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
 import { catteryToday } from '@/lib/cattery';
 import { findSpaceClash, validateBookingInput } from '@/lib/catteryServer';
+import { createConsentFormRequest } from '@/lib/consentForms';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -109,5 +113,9 @@ export async function POST(request) {
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  const consent = await createConsentFormRequest({ catteryBookingId: data.id, formType: 'cattery' }).catch((err) => ({
+    error: err.message,
+  }));
+  return NextResponse.json({ ...data, consent: consent?.error ? { error: consent.error } : { whatsapp: consent.whatsapp } });
 }

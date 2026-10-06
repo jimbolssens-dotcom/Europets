@@ -34,16 +34,19 @@ export async function GET(request) {
     }
   }
 
-  const [{ data: visits }, { data: admissions }] = await Promise.all([
+  const [{ data: visits }, { data: admissions }, { data: catteryStays }] = await Promise.all([
     supabase.from('visits').select('id, patients(name)').eq('client_id', clientId),
     supabase.from('hospitalizations').select('id, patients(name)').eq('client_id', clientId),
+    supabase.from('cattery_bookings').select('id, patients(name)').eq('client_id', clientId),
   ]);
 
   const visitIds = (visits || []).map((v) => v.id);
   const hospitalizationIds = (admissions || []).map((h) => h.id);
-  if (visitIds.length === 0 && hospitalizationIds.length === 0) {
+  const catteryBookingIds = (catteryStays || []).map((b) => b.id);
+  if (visitIds.length === 0 && hospitalizationIds.length === 0 && catteryBookingIds.length === 0) {
     return NextResponse.json([]);
   }
+  const patientNameByCatteryBooking = Object.fromEntries((catteryStays || []).map((b) => [b.id, b.patients?.name || null]));
 
   const patientNameByVisit = Object.fromEntries((visits || []).map((v) => [v.id, v.patients?.name || null]));
   const patientNameByHospitalization = Object.fromEntries(
@@ -53,10 +56,11 @@ export async function GET(request) {
   const orFilters = [];
   if (visitIds.length > 0) orFilters.push(`visit_id.in.(${visitIds.join(',')})`);
   if (hospitalizationIds.length > 0) orFilters.push(`hospitalization_id.in.(${hospitalizationIds.join(',')})`);
+  if (catteryBookingIds.length > 0) orFilters.push(`cattery_booking_id.in.(${catteryBookingIds.join(',')})`);
 
   let query = supabase
     .from('consent_form_requests')
-    .select('id, status, form_type, visit_id, hospitalization_id, created_at')
+    .select('id, status, form_type, visit_id, hospitalization_id, cattery_booking_id, created_at')
     .or(orFilters.join(','))
     .order('created_at', { ascending: false });
   if (status !== 'all') query = query.eq('status', status);
@@ -74,7 +78,9 @@ export async function GET(request) {
       form_label: CONSENT_FORM_LABELS[row.form_type] || row.form_type,
       patient_name: row.visit_id
         ? patientNameByVisit[row.visit_id]
-        : patientNameByHospitalization[row.hospitalization_id],
+        : row.cattery_booking_id
+          ? patientNameByCatteryBooking[row.cattery_booking_id]
+          : patientNameByHospitalization[row.hospitalization_id],
       created_at: row.created_at,
     }))
   );
@@ -82,7 +88,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { visit_id, hospitalization_id, form_type, sent_to_phone } = body;
+  const { visit_id, hospitalization_id, cattery_booking_id, form_type, sent_to_phone } = body;
 
   if (!form_type || !CONSENT_FORM_TYPES.includes(form_type)) {
     return NextResponse.json(
@@ -94,6 +100,7 @@ export async function POST(request) {
   const result = await createConsentFormRequest({
     visitId: visit_id,
     hospitalizationId: hospitalization_id,
+    catteryBookingId: cattery_booking_id,
     formType: form_type,
     sentToPhone: sent_to_phone,
   });

@@ -48,6 +48,8 @@ export default function CatteryBookingPage() {
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState(null);
   const [error, setError] = useState(null);
+  const [sendingConsent, setSendingConsent] = useState(false);
+  const [consentMessage, setConsentMessage] = useState(null);
   const [openDay, setOpenDay] = useState(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(null);
@@ -94,6 +96,23 @@ export default function CatteryBookingPage() {
     setSavingKey(null);
     if (!res.ok) return setError(data.error || 'Could not save.');
     setLogs((prev) => ({ ...prev, [date]: data }));
+  }
+
+  // Sends (or resends) the cattery consent form to the owner on WhatsApp.
+  // The first one goes out automatically when the booking is made.
+  async function sendConsent() {
+    setSendingConsent(true);
+    setConsentMessage(null);
+    const res = await fetch('/api/consent-form-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cattery_booking_id: id, form_type: 'cattery' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSendingConsent(false);
+    if (!res.ok) return setConsentMessage(data.error || 'Could not send the consent form.');
+    setConsentMessage(data.whatsapp?.sent ? 'Sent on WhatsApp.' : `Not sent on WhatsApp: ${data.whatsapp?.reason || 'unknown reason'}.`);
+    load();
   }
 
   async function patchBooking(update) {
@@ -172,6 +191,25 @@ export default function CatteryBookingPage() {
           Owner: <a href={`/clients/${c.id}`}>{c.full_name}</a> · <a href={`/patients/${p.id}`}>{p.name}&apos;s file</a>
         </span>
       </div>
+
+      {(() => {
+        const requests = booking.consent_requests || [];
+        const signed = requests.some((r) => r.status === 'submitted');
+        return (
+          <div className={`cattery-consent no-print ${signed ? 'signed' : 'pending'}`}>
+            <span>
+              📝 Cattery consent:{' '}
+              {signed ? <strong>✅ Signed by the owner</strong> : requests.length ? <strong>⏳ Sent on WhatsApp, not signed yet</strong> : <strong>Not sent</strong>}
+            </span>
+            {!signed && (
+              <button type="button" className="secondary" onClick={sendConsent} disabled={sendingConsent}>
+                {sendingConsent ? 'Sending…' : requests.length ? 'Resend on WhatsApp' : 'Send on WhatsApp'}
+              </button>
+            )}
+            {consentMessage && <span className="visit-meta">{consentMessage}</span>}
+          </div>
+        );
+      })()}
 
       {editing && draft && (
         <form
