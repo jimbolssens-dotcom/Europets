@@ -101,6 +101,7 @@ const CLIENT_APP_READ_PATTERNS = [
   /^\/api\/invoices$/,
   /^\/api\/vaccinations$/,
   /^\/api\/consent-form-requests$/,
+  /^\/api\/cattery$/,
 ];
 
 // Hospitalization by-id, its /notes, and its /messages are public for the
@@ -129,6 +130,13 @@ const HOSPITALIZATION_READ_PATTERNS = [
 // call (POST/PATCH stay staff-only).
 const VISIT_READ_PATTERNS = [/^\/api\/visits\/[^/]+$/, /^\/api\/visits\/[^/]+\/video-consult$/];
 
+// Same GET-only carve-out for the cattery care page
+// (app/portal/cattery/[id]): the booking-by-id read is public by its UUID
+// link, like a hospitalization, and the route itself strips the staff-only
+// fields for non-staff callers. PATCH on the same path, and the daily-log
+// writes under it, stay staff-only.
+const CATTERY_READ_PATTERNS = [/^\/api\/cattery\/[^/]+$/];
+
 function isPublicPath(pathname, method) {
   if (pathname === '/api/staff' && method === 'GET') return true; // vet picker on the booking form
   if (pathname === '/api/vaccine-protocols' && method === 'GET') return true; // last-vaccination-type picker on the intake form
@@ -141,6 +149,7 @@ function isPublicPath(pathname, method) {
   if (pathname === '/api/attachments' && method === 'GET') return true;
   if (method === 'GET' && HOSPITALIZATION_READ_PATTERNS.some((re) => re.test(pathname))) return true;
   if (method === 'GET' && VISIT_READ_PATTERNS.some((re) => re.test(pathname))) return true;
+  if (method === 'GET' && CATTERY_READ_PATTERNS.some((re) => re.test(pathname))) return true;
   if (method === 'GET' && CLIENT_APP_READ_PATTERNS.some((re) => re.test(pathname))) return true;
   // The client app's own writes — each still re-checks ownership in-route
   // (see lib/clientAppAuth.js's getClientSession) the same way the

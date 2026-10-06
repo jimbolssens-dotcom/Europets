@@ -24,6 +24,7 @@
 
 import { useEffect, useState } from 'react';
 import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
+import { useCatteryAlarm } from '@/app/_components/useCatteryAlarm';
 import StaffPushOptIn, { StaffPushBell, useStaffPush } from '@/app/_components/StaffPushOptIn';
 import CleanerLanguageToggle from '@/app/_components/CleanerLanguageToggle';
 import { useCleanerLanguage } from '@/app/_components/useCleanerLanguage';
@@ -54,6 +55,7 @@ export default function MobileHomePage() {
   const pendingMessageCount = useClientMessagesPending();
   const { language } = useCleanerLanguage();
   const push = useStaffPush(staffId);
+  const catteryWeightOverdue = useCatteryAlarm();
 
   useEffect(() => {
     setStaffId(localStorage.getItem(MOBILE_STAFF_STORAGE_KEY));
@@ -153,6 +155,10 @@ export default function MobileHomePage() {
                   Day Procedures
                   {dayProcedureAlarmLevel === 'red' || dayProcedureAlarmLevel === 'both' ? ' 🩺' : dayProcedureAlarmLevel === 'yellow' ? ' 🔔' : ''}
                 </span>
+              </a>
+              <a href="/cattery" className={`mobile-square-tile${catteryWeightOverdue ? ' cage-doctor-checkup-requested' : ''}`}>
+                <span className="mobile-square-tile-icon">🐱</span>
+                <span>Cattery{catteryWeightOverdue ? ' ⚖️' : ''}</span>
               </a>
               <a href="/mobile/appointments" className="mobile-square-tile">
                 <span className="mobile-square-tile-icon">📅</span>

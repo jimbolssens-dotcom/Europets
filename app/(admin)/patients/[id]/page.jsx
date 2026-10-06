@@ -403,6 +403,9 @@ export default function PatientDetailPage() {
         <a href={`/patients/${patient.id}/history`} className="button-link">
           📖 Full Patient History
         </a>
+        <a href={`/cattery?patient_id=${patient.id}`} className="button-link" title="Book this cat into one of the 7 cattery spaces">
+          🐱 Cattery booking
+        </a>
         <button type="button" className="button-link" onClick={sendReviewLink} disabled={sendingReviewLink}>
           {sendingReviewLink ? 'Sending...' : '⭐ Review'}
         </button>

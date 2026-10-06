@@ -9819,3 +9819,282 @@ form.card.admit-patient-form {
     font-size: 0.8rem;
   }
 }
+
+/* ============ Cattery (app/(admin)/cattery, app/portal/cattery) ============ */
+.cattery-page h2 {
+  margin-top: 1.5rem;
+}
+.cattery-spaces {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+.cattery-space {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 2px solid #e7e3e0;
+  background: #fff;
+  color: var(--ink);
+  text-decoration: none;
+  min-height: 7rem;
+  cursor: pointer;
+}
+.cattery-space.occupied {
+  border-color: var(--pink);
+  background: var(--pink-tint);
+}
+.cattery-space.free {
+  border-style: dashed;
+}
+.cattery-space.overdue {
+  border-color: #dc3545;
+  background: #fdecee;
+}
+.cattery-space-number {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--pink-dark);
+}
+.cattery-overdue {
+  color: #b00020;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.cattery-list {
+  width: 100%;
+  border-collapse: collapse;
+}
+.cattery-list th,
+.cattery-list td {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+.cattery-list tbody tr {
+  cursor: pointer;
+}
+.cattery-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 760px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 1rem;
+}
+.cattery-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+.cattery-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.cattery-form-row > label {
+  flex: 1;
+  min-width: 140px;
+}
+.cattery-form label.cattery-check {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+.cattery-check input[type='text'] {
+  flex: 1;
+  min-width: 110px;
+}
+.cattery-form .search-box {
+  flex: none;
+}
+.cattery-has-update,
+.cattery-has-update:hover {
+  background: transparent;
+}
+.cattery-picked {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 400;
+}
+.cattery-sheet-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.cattery-sheet-actions .spacer {
+  flex: 1;
+}
+.cattery-overdue-banner {
+  background: #fdecee;
+  border: 2px solid #dc3545;
+  color: #b00020;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+}
+.cattery-sheet-header {
+  margin-bottom: 0.75rem;
+}
+.cattery-sheet-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.cattery-sheet-title h1 {
+  margin: 0;
+}
+.cattery-sheet-number {
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+.cattery-sheet-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.5rem;
+  margin-top: 0.35rem;
+}
+.cattery-booking-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.cattery-notes {
+  background: #fff8d6;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+}
+.cattery-sheet {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 0.9rem;
+}
+.cattery-sheet th,
+.cattery-sheet td {
+  border: 1px solid #333;
+  padding: 0.2rem 0.35rem;
+  text-align: center;
+}
+.cattery-sheet td.cattery-date {
+  text-align: right;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.cattery-sheet td.cattery-day {
+  color: #e0932f;
+  font-weight: 700;
+  background: #f4f4f4;
+}
+.cattery-sheet tr.weekend td:not(.cattery-date):not(.cattery-day) {
+  background: #e3eaf3;
+}
+.cattery-sheet tr.today td.cattery-date {
+  box-shadow: inset 4px 0 var(--pink);
+}
+.cattery-sheet tr.overdue td {
+  background: #fdecee !important;
+}
+.cattery-sheet input[type='number'] {
+  width: 4.5rem;
+}
+.cattery-sheet input[type='text'] {
+  width: 100%;
+  min-width: 8rem;
+}
+.cattery-sheet select,
+.cattery-sheet input {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 0.15rem 0.25rem;
+  font-size: 0.85rem;
+  background: transparent;
+}
+.cattery-sheet input.saving {
+  border-color: var(--pink);
+}
+.cattery-owner-row td {
+  text-align: left !important;
+  background: var(--pink-tint);
+}
+.cattery-owner-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.cattery-has-update {
+  color: #3f8f5f;
+  font-weight: 700;
+}
+.print-only {
+  display: none;
+}
+@media (max-width: 760px) {
+  .cattery-sheet-page {
+    overflow-x: auto;
+  }
+  .cattery-sheet {
+    min-width: 720px;
+  }
+}
+/* Print: just the cage sheet, on one A4 page. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  body:has(.cattery-sheet-page) .topnav,
+  body:has(.cattery-sheet-page) .culture-reminder,
+  .cattery-sheet-page .no-print {
+    display: none !important;
+  }
+  .cattery-sheet-page .print-only {
+    display: inline;
+  }
+  .cattery-sheet-page p.print-only {
+    display: block;
+  }
+  .cattery-sheet-page .cattery-sheet input,
+  .cattery-sheet-page .cattery-sheet select {
+    display: none;
+  }
+  .cattery-sheet-page {
+    overflow: visible;
+  }
+  .cattery-sheet-page .cattery-sheet {
+    min-width: 0;
+    font-size: 10pt;
+  }
+  .cattery-sheet-page .cattery-sheet td {
+    height: 7mm;
+  }
+  .cattery-sheet-page .cattery-sheet tr.overdue td {
+    background: transparent !important;
+  }
+  .cattery-sheet-page .cattery-sheet tr.weekend td:not(.cattery-date):not(.cattery-day) {
+    background: #e3eaf3 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .cattery-sheet-page .cattery-sheet td.cattery-day {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

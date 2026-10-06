@@ -6,6 +6,7 @@ import AppVersionWatcher from '../_components/AppVersionWatcher';
 import CultureReminderBanner from '../_components/CultureReminderBanner';
 import DiscoveryMode from '../_components/DiscoveryMode';
 import { useHospitalizationUpdatePending } from '../_components/useHospitalizationUpdatePending';
+import { useCatteryAlarm } from '../_components/useCatteryAlarm';
 import { navAlarmClass } from '@/lib/hospitalizationAttention';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -46,6 +47,7 @@ export default function AdminLayout({ children }) {
   // page/wall, so an alarm on one needs its own bell here rather than
   // lighting up a link with no cage anywhere to show it on.
   const hospitalizationAlarmLevel = useHospitalizationUpdatePending();
+  const catteryWeightOverdue = useCatteryAlarm();
   const hospitalizationAlarmClass = navAlarmClass(hospitalizationAlarmLevel);
   const hospitalizationAlarmIcon =
     hospitalizationAlarmLevel === 'red' || hospitalizationAlarmLevel === 'both' ? ' 🩺' : hospitalizationAlarmLevel === 'yellow' ? ' 🔔' : '';
@@ -245,6 +247,13 @@ export default function AdminLayout({ children }) {
             title={hospitalizationAlarmLevel !== 'none' ? 'A hospitalization needs attention' : undefined}
           >
             Hospitalization{hospitalizationAlarmIcon}
+          </a>
+          <a
+            href="/cattery"
+            className={catteryWeightOverdue ? 'nav-alarm-red' : ''}
+            title={catteryWeightOverdue ? "A cattery cat's weight hasn't been recorded today" : undefined}
+          >
+            Cattery{catteryWeightOverdue && ' ⚖️'}
           </a>
           <a href="/invoices">Invoices</a>
         </div>

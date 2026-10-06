@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import HexIcon from '@/app/_components/HexIcon';
+import { catteryToday } from '@/lib/cattery';
 
 // Next.js App Router doesn't reliably restore scroll position on
 // router.back() the way plain browser back-navigation does (a known App
@@ -32,6 +33,7 @@ export default function ClientAppPetsPage() {
   const router = useRouter();
   const [pets, setPets] = useState([]);
   const [openAdmissionByPatientId, setOpenAdmissionByPatientId] = useState({});
+  const [catteryBookings, setCatteryBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,8 +48,10 @@ export default function ClientAppPetsPage() {
       fetch(`/api/hospitalizations?client_id=${clientId}&status=admitted`).then((res) =>
         res.ok ? res.json() : []
       ),
-    ]).then(([petsData, admissions]) => {
+      fetch(`/api/cattery?client_id=${clientId}`).then((res) => (res.ok ? res.json() : [])),
+    ]).then(([petsData, admissions, cattery]) => {
       if (cancelled) return;
+      setCatteryBookings(Array.isArray(cattery) ? cattery : []);
       setPets(Array.isArray(petsData) ? petsData : []);
       const byPatient = {};
       for (const h of Array.isArray(admissions) ? admissions : []) {
@@ -91,8 +95,21 @@ export default function ClientAppPetsPage() {
   const activePets = pets.filter((pet) => !pet.deceased && !pet.rehomed);
   const pastPets = pets.filter((pet) => pet.deceased || pet.rehomed);
 
+  // A cat's current or next cattery stay (anything not yet checked out and
+  // not already over), shown on its card like a hospital stay is.
+  const today = catteryToday();
+  const currentCatteryByPatient = {};
+  for (const b of catteryBookings) {
+    if (b.status === 'checked_out' || b.date_out < today) continue;
+    const prev = currentCatteryByPatient[b.patient_id];
+    if (!prev || b.date_in < prev.date_in) currentCatteryByPatient[b.patient_id] = b;
+  }
+  const shortDate = (iso) =>
+    new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
   function renderPetCard(pet) {
     const admission = openAdmissionByPatientId[pet.id];
+    const cattery = currentCatteryByPatient[pet.id];
     const age = ageFromDob(pet.date_of_birth);
     return (
       <li key={pet.id}>
@@ -130,7 +147,21 @@ export default function ClientAppPetsPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <HexIcon>🏥</HexIcon>
-              <span>Currently at the clinic — tap for updates</span>
+              <span>Currently at the clinic. Tap for updates</span>
+            </a>
+          )}
+          {cattery && (
+            <a
+              href={`/portal/cattery/${cattery.id}?app=1`}
+              className="client-app-pet-admitted-link"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <HexIcon>🐱</HexIcon>
+              <span>
+                {cattery.status === 'checked_in'
+                  ? 'Staying in our cattery. Tap for daily updates'
+                  : `Cattery booked ${shortDate(cattery.date_in)} to ${shortDate(cattery.date_out)}`}
+              </span>
             </a>
           )}
         </div>
@@ -151,6 +182,24 @@ export default function ClientAppPetsPage() {
             <p className="mobile-subtitle">No pets on file yet.</p>
           ) : (
             <ul className="mobile-list">{activePets.map(renderPetCard)}</ul>
+          )}
+          {catteryBookings.length > 0 && (
+            <>
+              <h2 className="mobile-section-header">Cattery bookings</h2>
+              <ul className="mobile-list">
+                {catteryBookings.map((b) => (
+                  <li key={b.id}>
+                    <a href={`/portal/cattery/${b.id}?app=1`} className="mobile-list-item">
+                      <span className="mobile-list-title">🐱 {b.patients?.name}</span>
+                      <span className="mobile-list-meta">
+                        {shortDate(b.date_in)} to {shortDate(b.date_out)}
+                        {b.status === 'checked_in' ? ' · Staying with us now' : b.status === 'checked_out' ? ' · Back home' : ' · Booked'}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
           {pastPets.length > 0 && (
             <details>
