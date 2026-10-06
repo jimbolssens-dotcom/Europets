@@ -48,7 +48,7 @@ export default function ConsentSigningPage() {
     setSubmitting(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error || 'Something went wrong — please try again.');
+      setError(data.error || 'Something went wrong, please try again.');
       return;
     }
     setState('done');
@@ -83,7 +83,7 @@ export default function ConsentSigningPage() {
         </header>
         <div className="portal-card">
           <h1>Already signed</h1>
-          <p>This consent form has already been signed — thank you!</p>
+          <p>This consent form has already been signed. Thank you!</p>
         </div>
       </div>
       </div>
@@ -99,7 +99,7 @@ export default function ConsentSigningPage() {
         </header>
         <div className="portal-card">
           <h1>Thank you!</h1>
-          <p>Your signature has been received — our team has it on file.</p>
+          <p>Your signature has been received. Our team has it on file.</p>
         </div>
       </div>
       </div>

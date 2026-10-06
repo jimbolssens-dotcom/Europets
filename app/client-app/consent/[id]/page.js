@@ -52,7 +52,7 @@ export default function ClientAppConsentPage() {
     setSubmitting(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error || 'Something went wrong — please try again.');
+      setError(data.error || 'Something went wrong, please try again.');
       return;
     }
     setState('done');
@@ -63,7 +63,7 @@ export default function ClientAppConsentPage() {
   if (state === 'not_found') {
     return (
       <div className="mobile-page">
-        <p className="mobile-subtitle">This consent form link doesn&apos;t look right — please contact the clinic.</p>
+        <p className="mobile-subtitle">This consent form link doesn&apos;t look right. Please contact the clinic.</p>
         <Link href="/client-app" className="mobile-link-btn">
           ← Home
         </Link>
@@ -76,7 +76,7 @@ export default function ClientAppConsentPage() {
       <div className="mobile-page">
         <HexIcon className="client-app-confirm-icon">✅</HexIcon>
         <h1>Already signed</h1>
-        <p className="mobile-subtitle">This consent form has already been signed — thank you!</p>
+        <p className="mobile-subtitle">This consent form has already been signed. Thank you!</p>
         <Link href="/client-app" className="mobile-link-btn">
           ← Home
         </Link>
@@ -89,7 +89,7 @@ export default function ClientAppConsentPage() {
       <div className="mobile-page">
         <HexIcon className="client-app-confirm-icon">✅</HexIcon>
         <h1>Thank you!</h1>
-        <p className="mobile-subtitle">Your signature has been received — our team has it on file.</p>
+        <p className="mobile-subtitle">Your signature has been received. Our team has it on file.</p>
         <Link href="/client-app" className="mobile-link-btn">
           ← Home
         </Link>
