@@ -24,7 +24,10 @@ function shortDate(iso) {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 const STATUS_TEXT = {
-  booked: 'Booked',
+  requested: 'Waiting for confirmation',
+  declined: 'Not confirmed',
+  expired: 'Request expired',
+  booked: 'Confirmed',
   checked_in: 'Staying with us',
   checked_out: 'Back home',
 };
@@ -84,13 +87,26 @@ export default function ClientAppCatteryStayPage() {
           <p className="visit-meta">
             Cattery stay · {shortDate(booking.date_in)} to {shortDate(booking.date_out)} · Space {booking.space_number}
           </p>
+          {booking.status === 'requested' && (
+            <p>⏳ We&apos;ve received your request. Space {booking.space_number} is held for you while our team reviews it, and we&apos;ll confirm within 48 hours.</p>
+          )}
+          {booking.status === 'declined' && (
+            <p>Sorry, we couldn&apos;t confirm this stay{booking.decline_reason ? `: ${booking.decline_reason}` : '.'} You can <a href="/client-app/cattery/new">send a new request</a> or message us in Chat.</p>
+          )}
+          {booking.status === 'expired' && (
+            <p>We couldn&apos;t confirm this request in time, sorry. Please <a href="/client-app/cattery/new">send a new request</a> or message us in Chat.</p>
+          )}
+          {booking.owner_notes && <p className="visit-meta">Your notes: {booking.owner_notes}</p>}
+          {!['requested', 'declined', 'expired'].includes(booking.status) && (
           <p>
             Deworming: {booking.deworming_done ? `✅ given${booking.deworming_product ? ` (${booking.deworming_product})` : ''}` : 'not given'}
             <br />
             Flea and tick treatment: {booking.external_parasite_done ? `✅ given${booking.external_parasite_product ? ` (${booking.external_parasite_product})` : ''}` : 'not given'}
           </p>
+          )}
         </div>
 
+        {!['requested', 'declined', 'expired'].includes(booking.status) && (
         <div className="portal-card">
           <h2>Daily Updates</h2>
           {shownDays.length === 0 && <p className="visit-meta">No updates yet, check back soon.</p>}
@@ -111,6 +127,7 @@ export default function ClientAppCatteryStayPage() {
             </div>
           ))}
         </div>
+        )}
       </div>
     </div>
   );

@@ -1,8 +1,9 @@
 // app/api/cattery/route.js
-// GET  /api/cattery?from=YYYY-MM-DD&to=YYYY-MM-DD -> staff: every non-cancelled
-//        booking overlapping that range (the 7-space overview), with its
-//        daily logs. ?active=1 instead returns just the checked-in bookings
-//        (with today's log), for the Cattery nav alarm.
+// GET  /api/cattery?from=YYYY-MM-DD&to=YYYY-MM-DD -> staff: every booking and
+//        pending client request overlapping that range (the planner), with
+//        daily logs. ?active=1 instead returns the checked-in bookings (with
+//        today's log) plus any pending client requests, for the Cattery nav
+//        alarm (weight overdue / requests waiting for approval).
 //      /api/cattery?client_id=X -> a client-app session (or staff) sees that
 //        client's own bookings only, newest first — same "public path, route
 //        does the real check" split as GET /api/hospitalizations (see
@@ -18,7 +19,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
 import { catteryToday } from '@/lib/cattery';
-import { findSpaceClash, validateBookingInput } from '@/lib/catteryServer';
+import { findSpaceClash, validateBookingInput, expireStaleRequests } from '@/lib/catteryServer';
 import { createConsentFormRequest } from '@/lib/consentForms';
 import { NextResponse } from 'next/server';
 
@@ -27,12 +28,14 @@ export const dynamic = 'force-dynamic';
 const BOOKING_FIELDS =
   '*, patients(id, name, species, patient_number), clients(id, full_name, phone, client_number), cattery_daily_logs(*)';
 const CLIENT_BOOKING_FIELDS =
-  'id, patient_id, client_id, space_number, date_in, date_out, status, deworming_done, deworming_product, external_parasite_done, external_parasite_product, patients(id, name, species)';
+  'id, patient_id, client_id, space_number, date_in, date_out, status, deworming_done, deworming_product, external_parasite_done, external_parasite_product, owner_notes, decline_reason, request_expires_at, requested_by_client, created_at, patients(id, name, species)';
+const PLANNER_STATUSES = ['requested', 'booked', 'checked_in', 'checked_out'];
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get('client_id');
   const staff = await isStaffRequest(request);
+  await expireStaleRequests();
 
   if (clientId) {
     if (!staff) {
@@ -55,14 +58,18 @@ export async function GET(request) {
 
   if (searchParams.get('active')) {
     const today = catteryToday();
-    const { data, error } = await supabase
-      .from('cattery_bookings')
-      .select('id, status, date_in, date_out, cattery_daily_logs(log_date, weight_kg)')
-      .eq('status', 'checked_in')
-      .lte('date_in', today)
-      .gte('date_out', today);
+    const [checkedIn, requested] = await Promise.all([
+      supabase
+        .from('cattery_bookings')
+        .select('id, status, date_in, date_out, cattery_daily_logs(log_date, weight_kg)')
+        .eq('status', 'checked_in')
+        .lte('date_in', today)
+        .gte('date_out', today),
+      supabase.from('cattery_bookings').select('id, status, date_in, date_out').eq('status', 'requested'),
+    ]);
+    const error = checkedIn.error || requested.error;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json(data || []);
+    return NextResponse.json([...(checkedIn.data || []), ...(requested.data || [])]);
   }
 
   const from = searchParams.get('from') || catteryToday();
@@ -70,7 +77,7 @@ export async function GET(request) {
   const { data, error } = await supabase
     .from('cattery_bookings')
     .select(BOOKING_FIELDS)
-    .neq('status', 'cancelled')
+    .in('status', PLANNER_STATUSES)
     .lte('date_in', to)
     .gte('date_out', from)
     .order('date_in', { ascending: true });

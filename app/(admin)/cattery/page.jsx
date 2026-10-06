@@ -1,18 +1,23 @@
 'use client';
 
 // app/(admin)/cattery/page.jsx
-// The cattery overview: the clinic's 7 boarding spaces as they stand today
-// (who's in each, who's arriving/leaving), the bookings coming up, and the
-// form to book a cat in. Each booking opens its daily care sheet
-// (/cattery/[id]) — editable here, printable for the cage, and shared
-// with the owner in the client app (/client-app/cattery/[id]).
+// The Cattery page: the availability planner (the 7 spaces across the
+// coming weeks, see CatteryPlanner), the client booking requests waiting
+// for approval (reviewed in CatteryRequestReview), today's weight alarms,
+// and the staff booking form. Dragging across free days on the planner
+// fills that form in. Each booking opens its daily care sheet
+// (/cattery/[id]): editable, printable for the cage, and shared with the
+// owner in the client app (/client-app/cattery/[id]).
 // Reached from the Cattery nav link, and from a patient's file
 // ("🐱 Cattery booking", which pre-picks that cat via ?patient_id=).
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
+import CatteryPlanner from '@/app/_components/CatteryPlanner';
+import CatteryRequestReview from '@/app/_components/CatteryRequestReview';
 import {
   CATTERY_SPACES,
   DEFAULT_DEWORMING_PRODUCT,
@@ -20,6 +25,8 @@ import {
   catteryToday,
   weightOverdue,
 } from '@/lib/cattery';
+
+const PLANNER_DAYS = 28;
 
 function addDaysISO(iso, n) {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -29,7 +36,11 @@ function addDaysISO(iso, n) {
 function shortDate(iso) {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
-const STATUS_LABELS = { booked: 'Booked', checked_in: 'Checked in', checked_out: 'Checked out', cancelled: 'Cancelled' };
+function hoursLeft(iso) {
+  if (!iso) return '';
+  const h = Math.round((new Date(iso).getTime() - Date.now()) / 3600000);
+  return h > 0 ? `expires in ${h} h` : 'expires within the hour';
+}
 
 const emptyForm = {
   space_number: '',
@@ -46,7 +57,8 @@ function CatteryPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const today = catteryToday();
-  const horizon = addDaysISO(today, 60);
+  const [start, setStart] = useState(today);
+  const end = addDaysISO(start, PLANNER_DAYS - 1);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -54,14 +66,28 @@ function CatteryPageInner() {
   const [form, setForm] = useState({ ...emptyForm, date_in: today });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [reviewing, setReviewing] = useState(null);
+  const [notice, setNotice] = useState(null);
+  const formRef = useRef(null);
 
+  // The planner range plus anything still checked in today, so the
+  // weight alarm below covers every cat in the cattery.
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/cattery?from=${addDaysISO(today, -1)}&to=${horizon}`, { cache: 'no-store' })
+    const from = start < today ? start : today;
+    fetch(`/api/cattery?from=${from}&to=${end}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => setBookings(Array.isArray(data) ? data : []))
       .finally(() => setLoading(false));
-  }, [refreshTick, today, horizon]);
+  }, [refreshTick, start, end, today]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('cattery-planner')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cattery_bookings' }, () => setRefreshTick((n) => n + 1))
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
 
   // Pre-pick the cat when opened from a patient's file.
   useEffect(() => {
@@ -72,13 +98,20 @@ function CatteryPageInner() {
       .then((p) => p && !p.error && setPatient(p));
   }, [searchParams]);
 
-  const active = bookings.filter((b) => b.status !== 'checked_out');
-  const bySpaceToday = useMemo(() => {
-    const map = {};
-    for (const b of active) if (b.date_in <= today && b.date_out >= today) map[b.space_number] = b;
-    return map;
-  }, [active, today]);
-  const upcoming = active.filter((b) => b.date_in > today);
+  const requests = bookings.filter((b) => b.status === 'requested').sort((a, b) => (a.request_expires_at || '').localeCompare(b.request_expires_at || ''));
+  const holding = bookings.filter((b) => ['requested', 'booked', 'checked_in'].includes(b.status));
+  const overdue = useMemo(() => bookings.filter((b) => weightOverdue(b, b.cattery_daily_logs)), [bookings]);
+
+  const pickRange = useCallback(({ space_number, date_in, date_out }) => {
+    setForm((f) => ({ ...f, space_number: String(space_number), date_in, date_out }));
+    setError(null);
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  function openBooking(b) {
+    if (b.status === 'requested') setReviewing(b);
+    else router.push(`/cattery/${b.id}`);
+  }
 
   async function createBooking(e) {
     e.preventDefault();
@@ -98,73 +131,61 @@ function CatteryPageInner() {
 
   function spaceIsFree(space) {
     if (!form.date_in || !form.date_out) return true;
-    return !active.some((b) => b.space_number === space && b.date_in <= form.date_out && b.date_out >= form.date_in);
+    return !holding.some((b) => b.space_number === space && b.date_in <= form.date_out && b.date_out >= form.date_in);
   }
 
   return (
     <div className="cattery-page">
-      <h1>🐱 Cattery</h1>
+      <div className="cattery-planner-head">
+        <h1>🐱 Cattery</h1>
+        <button type="button" className="secondary" onClick={() => setStart(addDaysISO(start, -7))} aria-label="Previous week">‹</button>
+        <button type="button" className="secondary" onClick={() => setStart(today)}>Today</button>
+        <button type="button" className="secondary" onClick={() => setStart(addDaysISO(start, 7))} aria-label="Next week">›</button>
+        <strong>{shortDate(start)} to {shortDate(end)}</strong>
+        <span className="spacer" />
+        <button type="button" onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>+ New booking</button>
+      </div>
 
-      <h2>Today, {shortDate(today)}</h2>
-      {loading ? (
-        <p className="visit-meta">Loading…</p>
-      ) : (
-        <div className="cattery-spaces">
-          {CATTERY_SPACES.map((space) => {
-            const b = bySpaceToday[space];
-            const overdue = b && weightOverdue(b, b.cattery_daily_logs);
-            return (
-              <a
-                key={space}
-                href={b ? `/cattery/${b.id}` : undefined}
-                onClick={b ? undefined : () => setForm((f) => ({ ...f, space_number: String(space) }))}
-                className={`cattery-space ${b ? 'occupied' : 'free'} ${overdue ? 'overdue' : ''}`}
-                title={overdue ? "Today's weight hasn't been recorded" : undefined}
-              >
-                <span className="cattery-space-number">Space {space}</span>
-                {b ? (
-                  <>
-                    <strong>{b.patients?.name}</strong>
-                    <span>{b.clients?.full_name}</span>
-                    <span className="visit-meta">
-                      {shortDate(b.date_in)} to {shortDate(b.date_out)} · {STATUS_LABELS[b.status]}
-                    </span>
-                    {overdue && <span className="cattery-overdue">⚖️ Weight not checked today</span>}
-                  </>
-                ) : (
-                  <span className="visit-meta">Free today</span>
-                )}
-              </a>
-            );
-          })}
+      {overdue.map((b) => (
+        <a key={b.id} href={`/cattery/${b.id}`} className="cattery-overdue-banner cattery-overdue-link">
+          ⚖️ {b.patients?.name} (space {b.space_number}) hasn&apos;t been weighed today. Tap to record the weight.
+        </a>
+      ))}
+
+      {notice && <p className="cattery-notice">{notice}</p>}
+
+      {requests.length > 0 && (
+        <div className="cattery-requests">
+          <h2>🔔 {requests.length} booking request{requests.length === 1 ? '' : 's'} waiting for approval</h2>
+          {requests.map((b) => (
+            <div key={b.id} className="cattery-request">
+              <strong>{b.patients?.name}</strong>
+              <span className="visit-meta">
+                {b.clients?.full_name}{b.clients?.client_number ? ` #${b.clients.client_number}` : ''} · Space {b.space_number} · {shortDate(b.date_in)} to {shortDate(b.date_out)}
+              </span>
+              <span className="cattery-request-expiry">{hoursLeft(b.request_expires_at)}</span>
+              <span className="spacer" />
+              <button type="button" onClick={() => setReviewing(b)}>Review</button>
+            </div>
+          ))}
         </div>
       )}
 
-      <h2>Coming up</h2>
-      {upcoming.length === 0 ? (
-        <p className="visit-meta">No upcoming bookings in the next 60 days.</p>
+      <div className="cattery-legend">
+        <span><i className="cattery-swatch checked" />Checked in</span>
+        <span><i className="cattery-swatch booked" />Booked (confirmed)</span>
+        <span><i className="cattery-swatch pending" />Requested by client, waiting for approval</span>
+        <span><i className="cattery-swatch out" />Checked out</span>
+      </div>
+      {loading && bookings.length === 0 ? (
+        <p className="visit-meta">Loading…</p>
       ) : (
-        <table className="cattery-list">
-          <thead>
-            <tr><th>Space</th><th>Cat</th><th>Client</th><th>In</th><th>Out</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            {upcoming.map((b) => (
-              <tr key={b.id} onClick={() => router.push(`/cattery/${b.id}`)}>
-                <td>{b.space_number}</td>
-                <td><a href={`/cattery/${b.id}`}>{b.patients?.name}</a></td>
-                <td>{b.clients?.full_name}{b.clients?.client_number ? ` #${b.clients.client_number}` : ''}</td>
-                <td>{shortDate(b.date_in)}</td>
-                <td>{shortDate(b.date_out)}</td>
-                <td>{STATUS_LABELS[b.status]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <CatteryPlanner start={start} days={PLANNER_DAYS} today={today} bookings={bookings} onOpen={openBooking} onPickRange={pickRange} />
       )}
+      <p className="visit-meta">Tap a bar to open that booking or review a request. Drag across free days in a space (or tap a free day) to start a new booking there.</p>
 
       <h2>New cattery booking</h2>
-      <form className="cattery-form" onSubmit={createBooking}>
+      <form className="cattery-form" onSubmit={createBooking} ref={formRef}>
         <label>
           Cat
           {patient ? (
@@ -216,6 +237,22 @@ function CatteryPageInner() {
         {error && <p className="error">{error}</p>}
         <button type="submit" disabled={saving}>{saving ? 'Booking…' : 'Book into the cattery'}</button>
       </form>
+
+      {reviewing && (
+        <CatteryRequestReview
+          booking={reviewing}
+          onClose={() => setReviewing(null)}
+          onDone={(data) => {
+            setReviewing(null);
+            setNotice(
+              data.status === 'declined'
+                ? `Request for ${reviewing.patients?.name} declined. The client has been told.`
+                : `${reviewing.patients?.name} is booked into space ${data.space_number}. ${data.consent?.whatsapp?.sent ? 'The consent form has been sent on WhatsApp.' : `Consent form not sent on WhatsApp${data.consent?.whatsapp?.reason ? `: ${data.consent.whatsapp.reason}` : ''}. You can resend it from the booking sheet.`}`
+            );
+            setRefreshTick((n) => n + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

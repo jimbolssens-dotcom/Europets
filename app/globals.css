@@ -10115,3 +10115,363 @@ form.card.admit-patient-form {
     print-color-adjust: exact;
   }
 }
+
+/* ===== Cattery planner + client requests (migration 170) ===== */
+.cattery-planner-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.cattery-planner-head h1 {
+  margin: 0 0.5rem 0 0;
+}
+.cattery-planner-head .spacer {
+  flex: 1;
+}
+.cattery-overdue-link {
+  display: block;
+  text-decoration: none;
+  margin-bottom: 0.5rem;
+}
+.cattery-notice {
+  background: #e3f8ee;
+  border: 1px solid #b5e6cc;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+}
+.cattery-requests {
+  background: #fff8e8;
+  border: 2px solid #f5c26b;
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.9rem;
+}
+.cattery-requests h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+.cattery-request {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-top: 1px dashed #f0d39a;
+}
+.cattery-request:first-of-type {
+  border-top: 0;
+}
+.cattery-request .spacer {
+  flex: 1;
+}
+.cattery-request-expiry {
+  color: #b26a00;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.cattery-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  font-size: 0.82rem;
+  color: #6b6b6b;
+  margin-bottom: 0.6rem;
+}
+.cattery-swatch {
+  display: inline-block;
+  width: 22px;
+  height: 12px;
+  border-radius: 4px;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+.cattery-swatch.checked,
+.cp-bar.checked {
+  background: #19a86b;
+}
+.cattery-swatch.booked,
+.cp-bar.booked {
+  background: var(--pink);
+}
+.cattery-swatch.out,
+.cp-bar.out {
+  background: #b7b1ad;
+}
+.cattery-swatch.pending,
+.cp-bar.pending {
+  background: repeating-linear-gradient(45deg, #fff2dc, #fff2dc 6px, #ffe6bd 6px, #ffe6bd 12px);
+  border: 2px dashed #e0932f;
+}
+.cattery-planner-wrap {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #e7e3e0;
+  border-radius: 12px;
+  margin-bottom: 0.4rem;
+}
+.cattery-planner {
+  display: grid;
+  width: max-content;
+  user-select: none;
+}
+.cp-cell {
+  height: 46px;
+  border-right: 1px solid #f1eeec;
+  border-bottom: 1px solid #f1eeec;
+}
+.cp-cell.weekend {
+  background: #f3f6fa;
+}
+.cp-cell.cp-drag {
+  background: var(--pink-tint);
+  box-shadow: inset 0 0 0 2px var(--pink);
+}
+.cp-rowhead {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  padding-left: 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--pink-dark);
+  border-right: 2px solid #e7e3e0;
+}
+.cp-dayhead {
+  height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  color: #6b6b6b;
+  background: #fcfbfa;
+}
+.cp-dayhead b {
+  color: var(--ink);
+  font-size: 0.82rem;
+}
+.cp-dayhead.today {
+  background: var(--pink-tint);
+  box-shadow: inset 0 -3px var(--pink);
+}
+.cp-bar {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  z-index: 2;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.15rem 0.45rem;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.cp-bar small {
+  display: block;
+  font-weight: 500;
+  opacity: 0.9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cp-bar.pending {
+  color: #8a5300;
+}
+.cp-bar:hover {
+  filter: brightness(0.95);
+}
+.cattery-modal-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6vh 16px;
+  overflow-y: auto;
+}
+.cattery-modal {
+  background: #fff;
+  border-radius: 14px;
+  width: min(540px, 100%);
+  padding: 1rem;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
+}
+.cattery-modal h3 {
+  margin: 0;
+}
+.cattery-modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  flex: 1;
+  min-width: 120px;
+}
+.cattery-kv {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 0.35rem 0.6rem;
+  margin: 0.75rem 0;
+}
+.cattery-kv dt {
+  color: #6b6b6b;
+}
+.cattery-kv dd {
+  margin: 0;
+}
+.cattery-kv .ok {
+  color: #3f8f5f;
+  font-weight: 600;
+}
+.cattery-kv .warn {
+  color: #b26a00;
+  font-weight: 600;
+}
+.cattery-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.cattery-decline {
+  color: #b00020;
+}
+.cattery-decline-confirm {
+  background: #b00020;
+}
+.cattery-modal-reason {
+  margin-top: 0.5rem;
+}
+
+/* Client app booking screens */
+.client-app-cattery-book {
+  display: block;
+  width: 100%;
+  text-align: center;
+  border: 0;
+  border-radius: 14px;
+  padding: 0.8rem;
+  margin: 0.5rem 0 1rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fff !important;
+  text-decoration: none;
+  background: linear-gradient(90deg, #e6186d, #ff3d8c);
+  cursor: pointer;
+}
+.client-app-cattery-book:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.client-app-cattery-pill {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+  background: rgba(25, 168, 107, 0.2);
+  color: #4fd39a;
+}
+.client-app-cattery-pill.requested {
+  background: rgba(224, 147, 47, 0.18);
+  color: #f5b45c;
+}
+.client-app-cattery-pill.declined,
+.client-app-cattery-pill.expired {
+  background: rgba(255, 255, 255, 0.08);
+  color: #a79ba3;
+}
+.client-app-cattery-pill.checked_out {
+  display: none;
+}
+.client-app-cattery-label {
+  display: block;
+  font-size: 0.78rem;
+  opacity: 0.75;
+  margin: 0.75rem 0 0.35rem;
+}
+.client-app-cattery-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.client-app-cattery-choice,
+.client-app-cattery-space {
+  border: 1px solid rgba(255, 168, 205, 0.25);
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+}
+.client-app-cattery-choice {
+  flex: 1;
+  min-width: 120px;
+}
+.client-app-cattery-choice.on,
+.client-app-cattery-space.on {
+  border-color: #ff3d8c;
+  background: rgba(255, 61, 140, 0.16);
+  box-shadow: 0 0 0 2px rgba(255, 61, 140, 0.35);
+}
+.client-app-cattery-dates {
+  display: flex;
+  gap: 0.5rem;
+}
+.client-app-cattery-dates label {
+  flex: 1;
+  min-width: 0;
+}
+.client-app-cattery-dates input,
+.client-app-cattery-notes textarea {
+  width: 100%;
+  min-width: 0;
+}
+.client-app-cattery-spaces {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+.client-app-cattery-space {
+  padding: 0.55rem 0.2rem;
+  font-size: 0.75rem;
+  text-align: center;
+}
+.client-app-cattery-space b {
+  display: block;
+  font-size: 1.1rem;
+}
+.client-app-cattery-space.taken {
+  opacity: 0.35;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+.client-app-cattery-notes {
+  display: block;
+}
+.client-app-cattery-sent {
+  text-align: center;
+  padding-top: 2.5rem;
+}
+.client-app-cattery-sent-icon {
+  font-size: 3rem;
+}

@@ -151,6 +151,9 @@ function isPublicPath(pathname, method) {
   // check additionally restricts a non-staff caller to just
   // profile_photo_url — see EDITABLE_FIELDS there.
   if (method === 'POST' && /^\/api\/clients\/[^/]+\/(request-message|app-seen)$/.test(pathname)) return true;
+  // A client's own cattery stay request (app/client-app/cattery/new) — the
+  // route requires a client-app session and checks the cat is theirs.
+  if (method === 'POST' && pathname === '/api/cattery/requests') return true;
   if (method === 'PATCH' && /^\/api\/patients\/[^/]+$/.test(pathname)) return true;
   return PUBLIC_PATTERNS.some((re) => re.test(pathname));
 }

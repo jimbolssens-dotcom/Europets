@@ -55,7 +55,7 @@ export default function MobileHomePage() {
   const pendingMessageCount = useClientMessagesPending();
   const { language } = useCleanerLanguage();
   const push = useStaffPush(staffId);
-  const catteryWeightOverdue = useCatteryAlarm();
+  const { weightOverdue: catteryWeightOverdue, pendingRequests: catteryRequests } = useCatteryAlarm();
 
   useEffect(() => {
     setStaffId(localStorage.getItem(MOBILE_STAFF_STORAGE_KEY));
@@ -156,9 +156,9 @@ export default function MobileHomePage() {
                   {dayProcedureAlarmLevel === 'red' || dayProcedureAlarmLevel === 'both' ? ' 🩺' : dayProcedureAlarmLevel === 'yellow' ? ' 🔔' : ''}
                 </span>
               </a>
-              <a href="/cattery" className={`mobile-square-tile${catteryWeightOverdue ? ' cage-doctor-checkup-requested' : ''}`}>
+              <a href="/cattery" className={`mobile-square-tile${catteryWeightOverdue ? ' cage-doctor-checkup-requested' : catteryRequests ? ' cage-update-requested' : ''}`}>
                 <span className="mobile-square-tile-icon">🐱</span>
-                <span>Cattery{catteryWeightOverdue ? ' ⚖️' : ''}</span>
+                <span>Cattery{catteryWeightOverdue ? ' ⚖️' : ''}{catteryRequests ? ' 🔔' : ''}</span>
               </a>
               <a href="/mobile/appointments" className="mobile-square-tile">
                 <span className="mobile-square-tile-icon">📅</span>

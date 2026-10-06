@@ -47,7 +47,7 @@ export default function AdminLayout({ children }) {
   // page/wall, so an alarm on one needs its own bell here rather than
   // lighting up a link with no cage anywhere to show it on.
   const hospitalizationAlarmLevel = useHospitalizationUpdatePending();
-  const catteryWeightOverdue = useCatteryAlarm();
+  const { weightOverdue: catteryWeightOverdue, pendingRequests: catteryRequests } = useCatteryAlarm();
   const hospitalizationAlarmClass = navAlarmClass(hospitalizationAlarmLevel);
   const hospitalizationAlarmIcon =
     hospitalizationAlarmLevel === 'red' || hospitalizationAlarmLevel === 'both' ? ' 🩺' : hospitalizationAlarmLevel === 'yellow' ? ' 🔔' : '';
@@ -250,10 +250,17 @@ export default function AdminLayout({ children }) {
           </a>
           <a
             href="/cattery"
-            className={catteryWeightOverdue ? 'nav-alarm-red' : ''}
-            title={catteryWeightOverdue ? "A cattery cat's weight hasn't been recorded today" : undefined}
+            className={catteryWeightOverdue ? 'nav-alarm-red' : catteryRequests ? 'nav-update-requested' : ''}
+            title={
+              [
+                catteryWeightOverdue && "A cattery cat's weight hasn't been recorded today",
+                catteryRequests && `${catteryRequests} cattery booking request${catteryRequests === 1 ? '' : 's'} waiting for approval`,
+              ]
+                .filter(Boolean)
+                .join(' · ') || undefined
+            }
           >
-            Cattery{catteryWeightOverdue && ' ⚖️'}
+            Cattery{catteryWeightOverdue && ' ⚖️'}{catteryRequests > 0 && ' 🔔'}
           </a>
           <a href="/invoices">Invoices</a>
         </div>

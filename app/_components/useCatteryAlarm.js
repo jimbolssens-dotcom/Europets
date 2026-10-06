@@ -1,9 +1,11 @@
 // app/_components/useCatteryAlarm.js
-// "Has any checked-in cattery cat gone without today's weight past 18:00
-// Dubai time?" — the Cattery nav link's alarm (desktop nav and the mobile
-// home tile), same shape as useHospitalizationUpdatePending: a one-minute
-// timer (the 18:00 deadline arrives with no database change) plus realtime
-// so it clears the moment a weight is saved. Returns true/false.
+// The Cattery nav link's alarm (desktop nav and the mobile home tile):
+// { weightOverdue } when a checked-in cat has gone without today's weight
+// past 18:00 Dubai time, and { pendingRequests } = how many client booking
+// requests are waiting for approval. Same shape as
+// useHospitalizationUpdatePending: a one-minute timer (the 18:00 deadline
+// arrives with no database change) plus realtime so it clears the moment
+// a weight is saved or a request answered.
 
 'use client';
 
@@ -12,7 +14,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { weightOverdue } from '@/lib/cattery';
 
 export function useCatteryAlarm() {
-  const [overdue, setOverdue] = useState(false);
+  const [state, setState] = useState({ weightOverdue: false, pendingRequests: 0 });
   const id = useId();
 
   useEffect(() => {
@@ -23,7 +25,10 @@ export function useCatteryAlarm() {
         .then((data) => {
           if (!active) return;
           const list = Array.isArray(data) ? data : [];
-          setOverdue(list.some((b) => weightOverdue(b, b.cattery_daily_logs)));
+          setState({
+            weightOverdue: list.some((b) => weightOverdue(b, b.cattery_daily_logs)),
+            pendingRequests: list.filter((b) => b.status === 'requested').length,
+          });
         })
         .catch(() => {});
 
@@ -41,5 +46,5 @@ export function useCatteryAlarm() {
     };
   }, [id]);
 
-  return overdue;
+  return state;
 }

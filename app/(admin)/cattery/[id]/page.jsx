@@ -32,7 +32,15 @@ import {
 
 const FOOD_OPTIONS = ['', 'All', 'Most', 'Some', 'None'];
 const LITTER_OPTIONS = ['', 'Normal', 'Changed', 'Diarrhoea', 'None'];
-const STATUS_LABELS = { booked: 'Booked', checked_in: 'Checked in', checked_out: 'Checked out', cancelled: 'Cancelled' };
+const STATUS_LABELS = {
+  requested: 'Requested by client, waiting for approval',
+  booked: 'Booked',
+  checked_in: 'Checked in',
+  checked_out: 'Checked out',
+  cancelled: 'Cancelled',
+  declined: 'Declined',
+  expired: 'Request expired',
+};
 
 function longDate(iso) {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -177,6 +185,16 @@ export default function CatteryBookingPage() {
         <p className="cattery-sheet-owner print-only">Owner: {c.full_name}{c.phone ? ` · ${c.phone}` : ''}</p>
       </div>
 
+      {booking.status === 'requested' && (
+        <p className="cattery-notice no-print">
+          ⏳ This is a client&apos;s booking request, not confirmed yet. <a href="/cattery">Review it on the Cattery planner</a> to approve or decline.
+        </p>
+      )}
+      {booking.status === 'declined' && booking.decline_reason && (
+        <p className="cattery-notes no-print">Declined: {booking.decline_reason}</p>
+      )}
+      {booking.owner_notes && <p className="cattery-notes no-print">💬 Owner&apos;s notes: {booking.owner_notes}</p>}
+
       {/* ===== Booking controls (screen only) ===== */}
       <div className="cattery-booking-controls no-print">
         {booking.status === 'booked' && <button type="button" onClick={() => patchBooking({ status: 'checked_in' })}>✅ Check in</button>}
@@ -192,7 +210,7 @@ export default function CatteryBookingPage() {
         </span>
       </div>
 
-      {(() => {
+      {!['requested', 'declined', 'expired'].includes(booking.status) && (() => {
         const requests = booking.consent_requests || [];
         const signed = requests.some((r) => r.status === 'submitted');
         return (
