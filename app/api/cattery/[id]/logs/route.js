@@ -8,7 +8,7 @@
 //
 //        When the owner update text is newly added or changed, the client
 //        gets a push notification (if they've turned them on in the client
-//        app) pointing at their cattery care page.
+//        app) that opens this stay in the client app.
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendPushToClient } from '@/lib/pushNotifications';
@@ -69,7 +69,7 @@ export async function PUT(request, { params }) {
     sendPushToClient(booking.client_id, {
       title: `Cattery update for ${booking.patients?.name || 'your cat'}`,
       body: data.update_for_owner.slice(0, 140),
-      url: `/portal/cattery/${booking.id}?app=1`,
+      url: `/client-app/cattery/${booking.id}`,
     }).catch((err) => console.error('Cattery update push failed', booking.id, err));
   }
 

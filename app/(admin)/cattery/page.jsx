@@ -5,7 +5,7 @@
 // (who's in each, who's arriving/leaving), the bookings coming up, and the
 // form to book a cat in. Each booking opens its daily care sheet
 // (/cattery/[id]) — editable here, printable for the cage, and shared
-// with the owner on their cattery care page (/portal/cattery/[id]).
+// with the owner in the client app (/client-app/cattery/[id]).
 // Reached from the Cattery nav link, and from a patient's file
 // ("🐱 Cattery booking", which pre-picks that cat via ?patient_id=).
 

@@ -1,10 +1,11 @@
 // app/api/cattery/[id]/route.js
-// GET   -> one cattery booking with its daily logs. Public (GET only, see
-//          middleware.js CATTERY_READ_PATTERNS) so the client's cattery care
-//          page (app/portal/cattery/[id]) can read it by its UUID link, the
-//          same model as the hospitalization portal. A non-staff caller gets
-//          the owner view only: the staff-internal booking notes and each
-//          day's internal comments are stripped.
+// GET   -> one cattery booking with its daily logs. Staff, or the
+//          logged-in client-app owner of this booking only (see middleware.js
+//          CLIENT_APP_READ_PATTERNS: the path is open GET-only, this route
+//          does the real check). Owners get the owner view: the
+//          staff-internal booking notes and each day's internal comments are
+//          stripped. There's deliberately no public link to a stay: owners
+//          see it in the client app (app/client-app/cattery/[id]).
 // PATCH -> staff: update dates, space, status (check in / check out /
 //          cancel), treatments or notes. Moving dates/space re-checks that
 //          the space is free.
@@ -12,6 +13,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isStaffRequest } from '@/lib/staffAuth';
+import { getClientSession } from '@/lib/clientAppAuth';
 import { findSpaceClash, validateBookingInput } from '@/lib/catteryServer';
 import { NextResponse } from 'next/server';
 
@@ -40,6 +42,10 @@ export async function GET(request, { params }) {
 
   data.cattery_daily_logs = (data.cattery_daily_logs || []).sort((a, b) => a.log_date.localeCompare(b.log_date));
   if (!(await isStaffRequest(request))) {
+    const sessionClientId = await getClientSession(request);
+    if (!sessionClientId || sessionClientId !== data.client_id) {
+      return NextResponse.json({ error: 'booking not found' }, { status: 404 });
+    }
     delete data.notes;
     if (data.clients) data.clients = { id: data.clients.id, full_name: data.clients.full_name };
     data.cattery_daily_logs = data.cattery_daily_logs.map(({ comments, recorded_by, ...owner }) => owner);

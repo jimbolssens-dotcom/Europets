@@ -152,7 +152,7 @@ export default function ClientAppPetsPage() {
           )}
           {cattery && (
             <a
-              href={`/portal/cattery/${cattery.id}?app=1`}
+              href={`/client-app/cattery/${cattery.id}`}
               className="client-app-pet-admitted-link"
               onClick={(e) => e.stopPropagation()}
             >
@@ -182,24 +182,6 @@ export default function ClientAppPetsPage() {
             <p className="mobile-subtitle">No pets on file yet.</p>
           ) : (
             <ul className="mobile-list">{activePets.map(renderPetCard)}</ul>
-          )}
-          {catteryBookings.length > 0 && (
-            <>
-              <h2 className="mobile-section-header">Cattery bookings</h2>
-              <ul className="mobile-list">
-                {catteryBookings.map((b) => (
-                  <li key={b.id}>
-                    <a href={`/portal/cattery/${b.id}?app=1`} className="mobile-list-item">
-                      <span className="mobile-list-title">🐱 {b.patients?.name}</span>
-                      <span className="mobile-list-meta">
-                        {shortDate(b.date_in)} to {shortDate(b.date_out)}
-                        {b.status === 'checked_in' ? ' · Staying with us now' : b.status === 'checked_out' ? ' · Back home' : ' · Booked'}
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </>
           )}
           {pastPets.length > 0 && (
             <details>

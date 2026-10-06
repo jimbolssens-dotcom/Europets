@@ -562,6 +562,10 @@ export default function ClientAppHomePage() {
             <HexIcon>💬</HexIcon>
             <span>Messages</span>
           </a>
+          <a href="/client-app/cattery" className="mobile-square-tile">
+            <HexIcon>🐱</HexIcon>
+            <span>Cattery</span>
+          </a>
           <button
             type="button"
             className="mobile-square-tile"

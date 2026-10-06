@@ -9820,7 +9820,7 @@ form.card.admit-patient-form {
   }
 }
 
-/* ============ Cattery (app/(admin)/cattery, app/portal/cattery) ============ */
+/* ============ Cattery (app/(admin)/cattery, app/client-app/cattery) ============ */
 .cattery-page h2 {
   margin-top: 1.5rem;
 }

@@ -5,7 +5,7 @@
 // paper sheet clipped to the cage. Staff fill in each day's weight, AM/PM
 // food, litter, a check tick and internal comments, plus an optional
 // "update for owner" with photos that the client sees on their cattery
-// care page (/portal/cattery/[id]). Every field saves as soon as it's
+// cattery page in the client app (/client-app/cattery/[id]). Every field saves as soon as it's
 // changed (PUT /api/cattery/[id]/logs).
 //
 // Print renders a clean cage sheet in the paper layout (cat, client #,
@@ -21,7 +21,6 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import { MOBILE_STAFF_STORAGE_KEY } from '@/app/_components/useMobileStaff';
-import { appOrigin } from '@/lib/appOrigin';
 import {
   CATTERY_SPACES,
   bookingDays,
@@ -52,7 +51,6 @@ export default function CatteryBookingPage() {
   const [openDay, setOpenDay] = useState(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(null);
-  const [copied, setCopied] = useState(false);
   const today = catteryToday();
 
   function load() {
@@ -114,14 +112,6 @@ export default function CatteryBookingPage() {
     return true;
   }
 
-  function copyPortalLink() {
-    const url = `${appOrigin()}/portal/cattery/${id}`;
-    navigator.clipboard?.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-
   if (loading) return <p className="visit-meta">Loading…</p>;
   if (!booking) return <p>Booking not found. <a href="/cattery">Back to the cattery</a></p>;
 
@@ -133,10 +123,9 @@ export default function CatteryBookingPage() {
       <div className="cattery-sheet-actions no-print">
         <a href="/cattery">&larr; Cattery</a>
         <span className="spacer" />
-        <button type="button" className="button-link" onClick={copyPortalLink}
-          title="Copy the owner's cattery care page link, to send them on WhatsApp">
-          {copied ? '✓ Copied' : '🔗 Copy owner link'}
-        </button>
+        <span className="visit-meta" title="Owners see this stay, its daily updates and photos under Cattery in the client app">
+          📱 Owner sees this in the client app
+        </span>
         <button type="button" className="button-link" onClick={() => window.print()}>🖨️ Print cage sheet</button>
       </div>
 

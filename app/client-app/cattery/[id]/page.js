@@ -1,18 +1,18 @@
 'use client';
 
-// app/portal/cattery/[id]/page.jsx
-// The owner's cattery care page: their cat's stay (space, dates,
-// deworming/flea treatment), a weight trend, and each day's update and
-// photos from the team. Opened from the link staff copy on the cattery
-// sheet ("Copy owner link"), or from the client app (?app=1 adds the
-// Home link), same model as app/portal/hospitalization/[id]: the booking's
-// UUID in the URL is the link, and GET /api/cattery/[id] strips the
-// staff-only notes/comments for anyone not logged in as staff.
-// Refreshes live as staff save the daily sheet.
+// app/client-app/cattery/[id]/page.js
+// One cattery stay, inside the logged-in client app: the cat's dates and
+// space, deworming/flea treatment, a weight trend, and each day's update
+// and photos from the team. Only the owner can open it: GET
+// /api/cattery/[id] checks the client-app session owns this booking (or
+// that the caller is staff) and strips the staff-only notes/comments.
+// Refreshes live as staff save the daily sheet. Reached from the Cattery
+// tile on the app home, the cat's card under My Pets, and the push
+// notification sent when staff post an update.
 
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
@@ -30,14 +30,19 @@ const STATUS_TEXT = {
 };
 const FOOD_TEXT = { All: 'ate everything', Most: 'ate most of it', Some: 'ate a little', None: "didn't eat" };
 
-export default function CatteryPortalPage() {
+export default function ClientAppCatteryStayPage() {
   const { id } = useParams();
-  const searchParams = useSearchParams();
-  const fromApp = searchParams.get('app') === '1';
+  const router = useRouter();
+  const { clientId, ready } = useClientAppSession();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (ready && !clientId) router.replace('/client-app');
+  }, [ready, clientId, router]);
+
+  useEffect(() => {
+    if (!ready || !clientId) return undefined;
     const load = () =>
       fetch(`/api/cattery/${id}`, { cache: 'no-store' })
         .then((res) => res.json())
@@ -45,16 +50,17 @@ export default function CatteryPortalPage() {
         .finally(() => setLoading(false));
     load();
     const channel = supabase
-      .channel(`portal-cattery-${id}`)
+      .channel(`client-app-cattery-${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cattery_daily_logs', filter: `booking_id=eq.${id}` }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cattery_bookings', filter: `id=eq.${id}` }, load)
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [id]);
+  }, [id, ready, clientId]);
 
-  if (loading) return <div className="client-app"><p className="portal-loading">Loading...</p></div>;
+  if (!ready || !clientId) return null;
+  if (loading) return <div className="mobile-page"><p className="mobile-subtitle">Loading...</p></div>;
   if (!booking || booking.status === 'cancelled') {
-    return <div className="client-app"><p className="portal-loading">We couldn&apos;t find that page.</p></div>;
+    return <div className="mobile-page"><p className="mobile-subtitle">We couldn&apos;t find that stay.</p></div>;
   }
 
   const name = booking.patients?.name || 'Your cat';
@@ -63,17 +69,9 @@ export default function CatteryPortalPage() {
   const shownDays = logs.filter((l) => l.weight_kg != null || l.food_am || l.food_pm || l.update_for_owner);
 
   return (
-    <div className="client-app">
+    <div className="mobile-page client-app-cattery-page">
       <div className="portal-page">
-        {fromApp && (
-          <Link href="/client-app" className="mobile-link-btn portal-home-link">
-            ← Home
-          </Link>
-        )}
-        <header className="portal-header">
-          <img src="/logo.png" alt="Europets Clinic" />
-          <p className="tagline">Kind, caring, and compassionate veterinary care</p>
-        </header>
+        <a href="/client-app/cattery" className="mobile-link-btn">← Cattery</a>
 
         <div className="portal-card">
           <h1>
