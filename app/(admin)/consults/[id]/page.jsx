@@ -1316,7 +1316,7 @@ export default function ConsultDetailPage() {
                         }
                         disabled={
                           generatingReportId === ultrasoundReport.id ||
-                          !(ultrasoundReport.findings || ultrasoundReport.notes)
+                          !(ultrasoundReport.findings || ultrasoundReport.notes || ultrasoundReport.ai_summary)
                         }
                       >
                         {generatingReportId === ultrasoundReport.id
@@ -1405,7 +1405,7 @@ export default function ConsultDetailPage() {
                         onClick={() =>
                           generateAiReport('/api/xray-reports', xrayReport.id, !!xrayReport.ai_summary, loadXrayReports)
                         }
-                        disabled={generatingReportId === xrayReport.id || !(xrayReport.findings || xrayReport.notes)}
+                        disabled={generatingReportId === xrayReport.id || !(xrayReport.findings || xrayReport.notes || xrayReport.ai_summary)}
                       >
                         {generatingReportId === xrayReport.id
                           ? 'Generating...'
@@ -1498,7 +1498,7 @@ export default function ConsultDetailPage() {
                             loadGastroscopyReports
                           )
                         }
-                        disabled={generatingReportId === gastroscopyReport.id || !(gastroscopyReport.findings || gastroscopyReport.notes)}
+                        disabled={generatingReportId === gastroscopyReport.id || !(gastroscopyReport.findings || gastroscopyReport.notes || gastroscopyReport.ai_summary)}
                       >
                         {generatingReportId === gastroscopyReport.id
                           ? 'Generating...'

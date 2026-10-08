@@ -126,7 +126,7 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
         <div className="home-links">
           {onOpenSource && group.sourceTab && <button type="button" onClick={() => onOpenSource(group.sourceTab)}>Open source notes</button>}
           <button type="button" onClick={() => onGenerate(group.apiBase, report.id, !!report.ai_summary, group.reload)}
-            disabled={generatingId === report.id || !(report.findings || report.procedures_performed || report.procedure_name || report.notes)}>
+            disabled={generatingId === report.id || !(report.findings || report.procedures_performed || report.procedure_name || report.notes || report.ai_summary)}>
             {generatingId === report.id ? 'Generating…' : report.ai_summary ? 'Regenerate report' : 'Generate report'}
           </button>
           <button type="button" onClick={() => deleteGroupReport(group, report)} disabled={deletingId === report.id}>
