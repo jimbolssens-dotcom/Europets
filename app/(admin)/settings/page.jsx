@@ -34,8 +34,6 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
-  const [cleaningUp, setCleaningUp] = useState(false);
-  const [cleanupResult, setCleanupResult] = useState(null);
 
   useEffect(() => {
     fetch('/api/clinic-settings')
@@ -86,26 +84,6 @@ export default function SettingsPage() {
     setSaving(false);
   }
 
-  async function cleanupOldAudio() {
-    if (
-      !confirm(
-        "Permanently delete the stored audio for every recording that's already been fully transcribed? This cannot be undone — transcripts and summaries are kept, only the raw audio files are removed."
-      )
-    )
-      return;
-    setCleaningUp(true);
-    setCleanupResult(null);
-    try {
-      const res = await fetch('/api/recordings/cleanup-audio', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Cleanup failed');
-      setCleanupResult(data);
-    } catch (err) {
-      setCleanupResult({ error: err.message });
-    }
-    setCleaningUp(false);
-  }
-
   if (loading) return <p>Loading settings...</p>;
 
   return (
@@ -133,26 +111,6 @@ export default function SettingsPage() {
         <a href="/policies">Policies</a>
         <a href="/accounting">Accounting</a>
         <a href="/empty-reports">Empty Reports</a>
-      </div>
-
-      <div className="settings-cleanup">
-        <button type="button" onClick={cleanupOldAudio} disabled={cleaningUp}>
-          {cleaningUp ? 'Cleaning up...' : 'Delete old recording audio'}
-        </button>
-        <InfoHint>
-          One-time cleanup for recordings made before automatic cleanup was turned on —
-          deletes their stored audio to free up Storage space. Transcripts and AI summaries
-          are kept; only the raw audio is removed. Safe to click more than once.
-        </InfoHint>
-        {cleanupResult &&
-          (cleanupResult.error ? (
-            <p className="error">{cleanupResult.error}</p>
-          ) : (
-            <p>
-              Deleted audio for {cleanupResult.deleted} recording{cleanupResult.deleted === 1 ? '' : 's'}.
-              {cleanupResult.more && ' More remain — click again to continue.'}
-            </p>
-          ))}
       </div>
 
       <h2>
