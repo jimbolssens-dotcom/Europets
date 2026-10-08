@@ -1,7 +1,11 @@
 // app/portal/hospitalization/[id]/page.jsx
 // Client-facing, read-only, live view of one hospitalization: status,
-// case photos, any dental/surgical/ultrasound/x-ray/gastroscopy reports
-// (each with its own photos — see GET /api/hospitalizations/:id/reports),
+// case photos, every test done for the stay (bloodwork, x-ray images, ...,
+// including those from the consult it was admitted from, see GET
+// /api/hospitalizations/:id/tests) with each file downloadable and all the
+// results as one PDF, any dental/surgical/ultrasound/x-ray/gastroscopy
+// reports (each with its own photos and PDF download — see GET
+// /api/hospitalizations/:id/reports),
 // and the day-to-day worksheet (with each entry's own photos). No staff
 // nav, no edit controls — shared as a link via WhatsApp from the staff
 // hospitalization page ("Share Client Portal Link"). Updates live as
@@ -40,6 +44,7 @@ export default function HospitalizationPortalPage() {
   const [notes, setNotes] = useState([]);
   const [messages, setMessages] = useState([]);
   const [reports, setReports] = useState([]);
+  const [tests, setTests] = useState({ tests: [], originating_visit_id: null });
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
@@ -68,11 +73,17 @@ export default function HospitalizationPortalPage() {
       .then((res) => res.json())
       .then((data) => setReports(Array.isArray(data) ? data : []));
 
+  const loadTests = () =>
+    fetch(`/api/hospitalizations/${id}/tests`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => setTests(Array.isArray(data?.tests) ? data : { tests: [], originating_visit_id: null }));
+
   useEffect(() => {
     loadAdmission();
     loadNotes();
     loadMessages();
     loadReports();
+    loadTests();
 
     const channel = supabase
       .channel(`portal-hospitalization-${id}`)
@@ -96,10 +107,27 @@ export default function HospitalizationPortalPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ultrasound_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'xray_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'gastroscopy_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'diagnostics', filter: `hospitalization_id=eq.${id}` }, loadTests)
       .subscribe();
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Tests and reports recorded on the consult the patient was admitted from
+  // (see lib/stayDiagnostics.js) carry that visit's id, not this stay's, so
+  // they need their own subscription once the visit id is known.
+  const originatingVisitId = tests.originating_visit_id;
+  useEffect(() => {
+    if (!originatingVisitId) return;
+    const channel = supabase
+      .channel(`portal-hospitalization-visit-${originatingVisitId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'diagnostics', filter: `visit_id=eq.${originatingVisitId}` }, loadTests)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'xray_reports', filter: `visit_id=eq.${originatingVisitId}` }, loadReports)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ultrasound_reports', filter: `visit_id=eq.${originatingVisitId}` }, loadReports)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [originatingVisitId]);
 
   // The thread is a fixed-height scroll box (see .portal-chat-thread) —
   // without this it stays scrolled to the top, so a growing conversation
@@ -219,6 +247,24 @@ export default function HospitalizationPortalPage() {
         />
       </div>
 
+      {tests.tests.length > 0 && (
+        <div className="portal-card">
+          <h2>Tests and X-rays</h2>
+          {tests.tests.map((t) => (
+            <div key={t.id} className="portal-note">
+              <div className="portal-note-date">
+                {t.label} · {formatDateTime(t.created_at)}
+              </div>
+              {t.result ? <p className="portal-test-result">{t.result}</p> : null}
+              <AttachmentGallery entityType="diagnostic" entityId={t.id} downloadable />
+            </div>
+          ))}
+          <a className="portal-download-btn" href={`/api/hospitalizations/${id}/test-report-pdf`} target="_blank" rel="noreferrer">
+            ⬇ Download all test results (PDF)
+          </a>
+        </div>
+      )}
+
       {reports.length > 0 && (
         <div className="portal-card">
           <h2>Reports</h2>
@@ -228,7 +274,12 @@ export default function HospitalizationPortalPage() {
                 {r.label} · {formatDateTime(r.performed_at)}
               </div>
               <p>{r.text}</p>
-              <AttachmentGallery entityType={r.entityType} entityId={r.id} />
+              <AttachmentGallery entityType={r.entityType} entityId={r.id} downloadable />
+              {r.pdf_url && (
+                <a className="portal-download-btn" href={r.pdf_url} target="_blank" rel="noreferrer">
+                  ⬇ Download {r.label.toLowerCase()} (PDF)
+                </a>
+              )}
             </div>
           ))}
         </div>

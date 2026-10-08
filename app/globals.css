@@ -10475,3 +10475,34 @@ form.card.admit-patient-form {
 .client-app-cattery-sent-icon {
   font-size: 3rem;
 }
+
+/* Client portal downloads: per-file links (AttachmentGallery downloadable)
+   and the PDF buttons on the hospitalization portal's tests/reports. */
+.attachment-download {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.portal-test-result {
+  white-space: pre-line;
+}
+
+.portal-download-btn {
+  display: inline-block;
+  margin-top: 0.75rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  background: #e6186d;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.client-app .portal-page .attachment-download {
+  color: var(--hot);
+}
+
+.client-app .portal-page .portal-download-btn {
+  background: var(--hot);
+  color: #fff;
+}

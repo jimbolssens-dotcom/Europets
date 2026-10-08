@@ -2,6 +2,8 @@
 // Read-only file/photo gallery — view and open only, no upload or delete.
 // Used on the client-facing hospitalization portal, and anywhere else a
 // view-only list of an entity's attachments is needed. Updates live.
+// With `downloadable`, each file also gets a Download link (Supabase
+// Storage's ?download= makes the browser save it rather than open it).
 
 'use client';
 
@@ -16,7 +18,11 @@ function isImage(attachment) {
   );
 }
 
-export default function AttachmentGallery({ entityType, entityId, emptyText }) {
+function downloadUrl(a) {
+  return `${attachmentUrl(a.file_path)}?download=${encodeURIComponent(a.file_name || 'file')}`;
+}
+
+export default function AttachmentGallery({ entityType, entityId, emptyText, downloadable = false }) {
   const [attachments, setAttachments] = useState([]);
 
   const load = () =>
@@ -50,12 +56,14 @@ export default function AttachmentGallery({ entityType, entityId, emptyText }) {
             <a href={attachmentUrl(a.file_path)} target="_blank" rel="noreferrer">
               <img className="attachment-thumb" src={attachmentUrl(a.file_path)} alt={a.file_name || 'photo'} />
             </a>
+            {downloadable && <a className="attachment-download" href={downloadUrl(a)}>⬇ Download</a>}
           </li>
         ) : (
           <li key={a.id}>
             <a href={attachmentUrl(a.file_path)} target="_blank" rel="noreferrer">
               {a.file_name || 'file'}
             </a>
+            {downloadable && <a className="attachment-download" href={downloadUrl(a)}>⬇ Download</a>}
           </li>
         )
       )}

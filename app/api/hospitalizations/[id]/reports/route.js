@@ -1,10 +1,14 @@
 // app/api/hospitalizations/[id]/reports/route.js
 // GET /api/hospitalizations/:id/reports -> every dental/surgical/
-// ultrasound/x-ray/gastroscopy report logged against this hospitalization,
-// in the shape the client portal needs: an id (for that report's own photo
+// ultrasound/x-ray/gastroscopy report logged against this hospitalization
+// or the consult it was admitted from (hospitalizations.
+// originating_visit_id, where pre-admission imaging is often recorded), in
+// the shape the client portal needs: an id (for that report's own photo
 // gallery — see AttachmentSection's entityType convention) and whichever
 // text is actually meant for the owner to read. Never the clinical
-// findings/notes/performed_by fields — those stay staff-only.
+// findings/notes/performed_by fields — those stay staff-only. Each also
+// carries pdf_url, that report's own public report-pdf (see middleware.js),
+// so the owner can download it.
 //
 // Public (GET-only — see HOSPITALIZATION_READ_PATTERNS in middleware.js),
 // same carve-out as this hospitalization's own /notes and /messages routes.
@@ -32,9 +36,19 @@ const REPORT_SOURCES = [
 export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
+  const { data: stay } = await supabase
+    .from('hospitalizations')
+    .select('id, originating_visit_id')
+    .eq('id', params.id)
+    .maybeSingle();
+  if (!stay) return NextResponse.json([]);
+  const filter = stay.originating_visit_id
+    ? `hospitalization_id.eq.${stay.id},visit_id.eq.${stay.originating_visit_id}`
+    : `hospitalization_id.eq.${stay.id}`;
+
   const results = await Promise.all(
     REPORT_SOURCES.map(({ table, textField }) =>
-      supabase.from(table).select(`id, performed_at, ${textField}`).eq('hospitalization_id', params.id)
+      supabase.from(table).select(`id, performed_at, ${textField}`).or(filter)
     )
   );
 
@@ -51,6 +65,7 @@ export async function GET(request, { params }) {
         label,
         text: row[textField],
         performed_at: row.performed_at,
+        pdf_url: `/api/${table.replace('_', '-')}/${row.id}/report-pdf`,
       }))
   );
 

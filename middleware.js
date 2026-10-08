@@ -119,6 +119,7 @@ const HOSPITALIZATION_READ_PATTERNS = [
   /^\/api\/hospitalizations\/[^/]+\/notes$/,
   /^\/api\/hospitalizations\/[^/]+\/messages$/,
   /^\/api\/hospitalizations\/[^/]+\/reports$/,
+  /^\/api\/hospitalizations\/[^/]+\/tests$/,
 ];
 
 // Same GET-only carve-out as hospitalizations above, for the video-consult

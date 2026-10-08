@@ -1,13 +1,15 @@
 // app/api/hospitalizations/[id]/test-report-pdf/route.js
 // GET /api/hospitalizations/:id/test-report-pdf -> a PDF of this
 // admission's diagnostic test results (bloodwork, PCR panels, ...) — one
-// section per test ordered during this stay, mirroring
+// section per test ordered during this stay or on the consult it was
+// admitted from (see lib/stayDiagnostics.js), mirroring
 // /api/visits/:id/test-report-pdf for a consult. Public — no staff
 // login — same carve-out as the other report-pdf routes (see
 // middleware.js).
 
 import { supabase } from '@/lib/supabaseClient';
 import { buildProcedureReportPdf } from '@/lib/procedureReportPdf';
+import { loadStayDiagnostics, diagnosticLabel } from '@/lib/stayDiagnostics';
 import { isImageAttachment, fetchAttachmentBytes } from '@/lib/pdfAttachments';
 import { NextResponse } from 'next/server';
 
@@ -30,11 +32,7 @@ export async function GET(request, { params }) {
 
   const [{ data: clinic }, { data: diagnostics, error: diagnosticError }] = await Promise.all([
     supabase.from('clinic_settings').select('*').eq('id', true).maybeSingle(),
-    supabase
-      .from('diagnostics')
-      .select('*, goods_services(name)')
-      .eq('hospitalization_id', params.id)
-      .order('created_at', { ascending: true }),
+    loadStayDiagnostics(supabase, params.id),
   ]);
   if (diagnosticError) return NextResponse.json({ error: 'Could not load test results.' }, { status: 500 });
 
@@ -46,7 +44,7 @@ export async function GET(request, { params }) {
   const photos = (await Promise.all(imageAttachments.map(fetchAttachmentBytes))).filter(Boolean);
 
   const sections = (diagnostics || []).map((d) => ({
-    label: d.goods_services?.name || d.description || 'Test',
+    label: diagnosticLabel(d),
     text: d.result || 'No result recorded yet.',
   }));
 
