@@ -791,7 +791,7 @@ export default function DayTreatmentPlan({
 
       {!transferHandled && consultTreatmentItems.length > 0 && (
         <div className="day-plan-consult-items">
-          <p className="day-plan-consult-heading">🩺 Given during the consult this stay started from</p>
+          <p className="day-plan-consult-heading">🩺 Given or done during the consult this stay started from</p>
           <ul className="day-plan-consult-list">
             {consultTreatmentItems.map((t) => (
               <li key={t.id}>
@@ -802,11 +802,12 @@ export default function DayTreatmentPlan({
             ))}
           </ul>
           <p className="day-plan-consult-help">
-            Add these to the plan as already given (not charged again — they're already on the consult's invoice).
-            Continue any of them daily afterward by long-pressing its tile.
+            <strong>Add</strong> logs these on this stay&apos;s record as already done, without charging them again
+            (they&apos;re already on the consult&apos;s invoice). Continue any of them daily afterward by long-pressing its tile.{' '}
+            <strong>Skip</strong> leaves them off this stay&apos;s record.
           </p>
           <div className="day-plan-consult-actions">
-            <button type="button" onClick={transferConsultMedsToPlan} disabled={transferring}>
+            <button type="button" className="day-plan-consult-add" onClick={transferConsultMedsToPlan} disabled={transferring}>
               {transferring ? 'Adding…' : '+ Add to Day Treatment Plan'}
             </button>
             <button type="button" className="day-plan-cancel-action" onClick={skipConsultMedsTransfer} disabled={transferring}>

@@ -6079,6 +6079,20 @@ button.secondary:hover {
   color: var(--pink-dark);
 }
 
+/* The main action: the shared button rule gives it white text, which
+   vanished on the white background above. */
+.day-plan-consult-actions .day-plan-consult-add {
+  background: var(--pink);
+  border-color: var(--pink);
+  color: white;
+}
+
+.day-plan-consult-actions .day-plan-consult-add:hover {
+  background: var(--pink-dark);
+  border-color: var(--pink-dark);
+  color: white;
+}
+
 .day-plan-edit-task {
   width: 100%;
   padding-top: 0.6rem;
