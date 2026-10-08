@@ -22,6 +22,7 @@ import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import TemperatureHistoryChart from '@/app/_components/TemperatureHistoryChart';
 import { formatTime, formatDateTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
+import { isDailyChargeOnlyNote } from '@/lib/dailyChargeNote';
 import { isWithinOfficeHours, OFFICE_HOURS_LABEL } from '@/lib/officeHours';
 
 // Belt-and-suspenders alongside the Cache-Control header in next.config.js:
@@ -169,6 +170,8 @@ export default function HospitalizationPortalPage() {
     .filter((n) => n.temperature_c != null)
     .map((n) => ({ date: n.created_at, temperature_c: n.temperature_c }));
 
+  const ownerNotes = notes.filter((n) => !isDailyChargeOnlyNote(n));
+
   if (loading) return <div className="client-app"><p className="portal-loading">Loading...</p></div>;
   if (!admission || admission.error)
     return <div className="client-app"><p className="portal-loading">We couldn&apos;t find that page.</p></div>;
@@ -287,8 +290,8 @@ export default function HospitalizationPortalPage() {
 
       <div className="portal-card">
         <h2>Daily Updates</h2>
-        {notes.length === 0 && <p className="visit-meta">No updates yet — check back soon.</p>}
-        {groupNotesByDate(notes).map((group) => (
+        {ownerNotes.length === 0 && <p className="visit-meta">No updates yet — check back soon.</p>}
+        {groupNotesByDate(ownerNotes).map((group) => (
           <div key={group.date} className="worksheet-day">
             <h3 className="worksheet-day-header">{formatDayHeader(group.date)}</h3>
             {group.entries.map((n) => (

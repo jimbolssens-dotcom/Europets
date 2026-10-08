@@ -67,6 +67,7 @@ export default function MobileHospitalizationPage() {
   const [saved, setSaved] = useState(false);
   const [savedNoteId, setSavedNoteId] = useState(null);
   const [uploadError, setUploadError] = useState(null);
+  const [saveError, setSaveError] = useState(null);
   const stagedCameraInputRef = useRef(null);
   const stagedFileInputRef = useRef(null);
 
@@ -157,9 +158,15 @@ export default function MobileHospitalizationPage() {
     const res = await fetch(`/api/hospitalizations/${id}/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, treatment_items: pendingItems }),
+      body: JSON.stringify({ ...form, treatment_items: pendingItems, has_photos: stagedPhotos.length > 0 }),
     });
     const data = await res.json();
+    if (!res.ok) {
+      setSaveError(data.error || 'Could not save the entry.');
+      setSubmitting(false);
+      return;
+    }
+    setSaveError(null);
 
     if (res.ok && stagedPhotos.length > 0) {
       // allSettled, not all — a failed upload must not be swallowed
@@ -337,6 +344,7 @@ export default function MobileHospitalizationPage() {
               </button>
             </fieldset>
 
+            {saveError && <p className="error">{saveError}</p>}
             <button type="submit" disabled={submitting}>
               {submitting ? 'Saving...' : 'Save'}
             </button>

@@ -78,7 +78,24 @@ export async function POST(request, { params }) {
     force_feeding_done,
     plan_item_id,
     plan_item_ids,
+    has_photos,
   } = body;
+
+  // An entry with nothing in it (no text, no readings, no check-in fields,
+  // no plan task, nothing given) used to be saved anyway, e.g. tapping
+  // Save on a form that had just been cleared by the previous save, and
+  // showed on the worksheet as an empty card. A photo-only entry is fine:
+  // the photo forms (mobile worksheet, Quick Check-In) upload right after
+  // this call, so they send has_photos: true.
+  const filled = (v) => v !== undefined && v !== null && String(v).trim() !== '';
+  const hasContent =
+    [appetite, condition, temperature_c, weight_kg, notes, stool, urine, vomit, drinking, mood, temperature_feel, medication_given, force_feeding_done, plan_item_id].some(filled) ||
+    (Array.isArray(plan_item_ids) && plan_item_ids.length > 0) ||
+    (Array.isArray(treatment_items) && treatment_items.length > 0) ||
+    has_photos === true;
+  if (!hasContent) {
+    return NextResponse.json({ error: 'Nothing to save: add a note, a reading, an item or a photo first.' }, { status: 400 });
+  }
 
   const checkinFields = { stool, urine, vomit, drinking, mood, temperature_feel, medication_given, force_feeding_done, appetite, temperature_c };
   let clientSummary = null;

@@ -74,6 +74,7 @@ export default function HospitalizationDetailPage() {
   const [pendingItems, setPendingItems] = useState([]);
   const [pendingItemForm, setPendingItemForm] = useState(emptyPendingItem);
   const [submitting, setSubmitting] = useState(false);
+  const [noteError, setNoteError] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [editNoteForm, setEditNoteForm] = useState(null);
   const [savingEditNote, setSavingEditNote] = useState(false);
@@ -397,11 +398,18 @@ export default function HospitalizationDetailPage() {
   async function addNote(e) {
     e.preventDefault();
     setSubmitting(true);
-    await fetch(`/api/hospitalizations/${id}/notes`, {
+    setNoteError(null);
+    const res = await fetch(`/api/hospitalizations/${id}/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...noteForm, treatment_items: pendingItems }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setNoteError(data.error || 'Could not save the entry.');
+      setSubmitting(false);
+      return;
+    }
     setNoteForm({ ...emptyNoteForm, note_date: todayISODate() });
     setPendingItems([]);
     loadNotes();
@@ -1890,6 +1898,7 @@ export default function HospitalizationDetailPage() {
         <button type="submit" disabled={submitting}>
           {submitting ? 'Saving...' : 'Add'}
         </button>
+        {noteError && <p className="error">{noteError}</p>}
       </form>
       </details>
       </div>

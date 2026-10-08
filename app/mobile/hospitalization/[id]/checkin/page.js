@@ -113,6 +113,7 @@ export default function MobileHospitalizationCheckinPage() {
         temperature_c: temperatureC !== '' ? temperatureC : undefined,
         temperature_feel: feelFromTemp(temperatureC),
         ...selection,
+        has_photos: stagedPhotos.length > 0,
       }),
     });
     const data = await res.json().catch(() => null);
