@@ -13,6 +13,15 @@ import { useClientAppSession } from './useClientAppSession';
 import HexIcon from './HexIcon';
 import { TABS } from './ClientAppNav';
 
+// The sidebar has room for one more entry than the phone's bottom tab bar:
+// Cattery (on the phone it's a tile on the Home screen instead), placed
+// just before Chat.
+const SIDEBAR_TABS = [
+  ...TABS.filter((t) => t.href !== '/client-app/messages'),
+  { href: '/client-app/cattery', label: 'Cattery', icon: '🐱' },
+  ...TABS.filter((t) => t.href === '/client-app/messages'),
+];
+
 export default function ClientAppSidebar() {
   const { clientId, ready, logout } = useClientAppSession();
   const pathname = usePathname();
@@ -30,7 +39,7 @@ export default function ClientAppSidebar() {
       </div>
 
       <nav className="client-app-sidebar-nav">
-        {TABS.map((tab) => (
+        {SIDEBAR_TABS.map((tab) => (
           <a
             key={tab.href}
             href={tab.href}
