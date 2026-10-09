@@ -9919,6 +9919,13 @@ form.card.admit-patient-form {
 .cattery-form .search-box {
   flex: none;
 }
+.cattery-form-flash {
+  animation: cattery-form-flash 1.2s ease-out;
+}
+@keyframes cattery-form-flash {
+  0%, 30% { box-shadow: 0 0 0 4px rgba(230, 24, 109, 0.45); }
+  100% { box-shadow: 0 0 0 0 rgba(230, 24, 109, 0); }
+}
 .cattery-has-update,
 .cattery-has-update:hover {
   background: transparent;

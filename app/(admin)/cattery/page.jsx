@@ -102,11 +102,24 @@ function CatteryPageInner() {
   const holding = bookings.filter((b) => ['requested', 'booked', 'checked_in'].includes(b.status));
   const overdue = useMemo(() => bookings.filter((b) => weightOverdue(b, b.cattery_daily_logs)), [bookings]);
 
+  // Brings the booking form into view, puts the cursor in its first box
+  // (the cat search) and flashes it, so the "+ New booking" button visibly
+  // does something even on a screen tall enough to show the form already.
+  const focusForm = useCallback(() => {
+    const el = formRef.current;
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.querySelector('input, select, textarea')?.focus({ preventScroll: true });
+    el.classList.remove('cattery-form-flash');
+    void el.offsetWidth; // restart the animation on repeated clicks
+    el.classList.add('cattery-form-flash');
+  }, []);
+
   const pickRange = useCallback(({ space_number, date_in, date_out }) => {
     setForm((f) => ({ ...f, space_number: String(space_number), date_in, date_out }));
     setError(null);
-    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+    focusForm();
+  }, [focusForm]);
 
   function openBooking(b) {
     if (b.status === 'requested') setReviewing(b);
@@ -143,7 +156,7 @@ function CatteryPageInner() {
         <button type="button" className="secondary" onClick={() => setStart(addDaysISO(start, 7))} aria-label="Next week">›</button>
         <strong>{shortDate(start)} to {shortDate(end)}</strong>
         <span className="spacer" />
-        <button type="button" onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>+ New booking</button>
+        <button type="button" onClick={focusForm}>+ New booking</button>
       </div>
 
       {overdue.map((b) => (
