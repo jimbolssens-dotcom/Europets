@@ -321,6 +321,16 @@ button:disabled {
   margin: 0;
 }
 
+/* The links/buttons that go with a page title, kept together on its row
+   (wrapping as a group only when the row is genuinely too narrow) instead
+   of each stacking on its own line and pushing the list down. */
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
 .button-link {
   display: inline-flex;
   align-items: center;
@@ -10586,4 +10596,32 @@ form.card.admit-patient-form {
 }
 .cattery-field-label {
   font-weight: 600;
+}
+
+/* Phones: use the whole width and keep page titles on one row with their
+   actions (see CLAUDE.md "Side by side, not stacked").
+   .content is centred with margin: auto inside the column-flex <body>,
+   which makes it shrink-to-fit its widest child, so a wide table used to
+   stretch the whole page past the screen (pushing a title's buttons off
+   to the right) instead of scrolling inside its .table-wrap. */
+@media (max-width: 700px) {
+  .content {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-inline: 1rem;
+  }
+  .page-header {
+    gap: 0.5rem;
+  }
+  .page-header h1 {
+    font-size: 1.6rem;
+  }
+  .page-header-actions {
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+  .page-header-actions button {
+    padding: 0.4rem 0.8rem;
+  }
 }

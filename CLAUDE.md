@@ -35,3 +35,17 @@ migrations to the live database. Whenever a change needs a new migration:
 Write migrations to be safe to re-run (`if not exists`, `drop ... if
 exists`). Ask before running anything destructive (dropping tables or
 columns, deleting or rewriting data).
+
+## Side by side, not stacked (especially on mobile)
+
+Wherever there's room, put things next to each other instead of stacking
+them one per line, so more of the actual list shows on screen. That means
+page titles with their links or buttons, small buttons, and short fields.
+Let a row wrap only when it genuinely doesn't fit.
+
+- A page title and its actions go in `.page-header` (title left), with
+  the actions grouped in `.page-header-actions` (right). Both compact
+  automatically on phones (see globals.css).
+- Never give a short link or button its own `<p>` or line under a title.
+- Keep mobile minimal. Show Jim a phone-width screenshot (390px) before
+  merging any layout change.

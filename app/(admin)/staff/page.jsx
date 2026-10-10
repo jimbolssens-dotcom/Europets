@@ -156,15 +156,15 @@ export default function StaffPage() {
 
   return (
     <div>
-      <h1>Staff</h1>
-      <p>
-        <a href="/staff/roster">📅 Staff Roster</a>
-      </p>
-      <p>
-        <button type="button" onClick={() => setShowAdd((v) => !v)} aria-expanded={showAdd}>
-          {showAdd ? 'Close' : '+ Add staff'}
-        </button>
-      </p>
+      <div className="page-header">
+        <h1>Staff</h1>
+        <div className="page-header-actions">
+          <a href="/staff/roster">📅 Staff Roster</a>
+          <button type="button" onClick={() => setShowAdd((v) => !v)} aria-expanded={showAdd}>
+            {showAdd ? 'Close' : '+ Add staff'}
+          </button>
+        </div>
+      </div>
       {showAdd && (
       <form className="card" onSubmit={handleSubmit}>
         <h2>Add Staff</h2>
