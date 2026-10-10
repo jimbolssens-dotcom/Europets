@@ -10515,3 +10515,63 @@ form.card.admit-patient-form {
   background: var(--hot);
   color: #fff;
 }
+
+/* "📎 File to a pet's record" under a client's chat photo/file
+   (FileToRecordButton on the staff message thread). */
+.file-to-record {
+  position: relative;
+  display: block;
+  margin: 0.35rem 0 0.15rem;
+}
+.file-to-record-btn,
+.file-to-record-again {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.78rem;
+  border-radius: 999px;
+}
+.file-to-record-done {
+  font-size: 0.8rem;
+  color: #13814a;
+  font-weight: 600;
+}
+.file-to-record-menu {
+  /* Opens inline (not floating) so it can't be clipped by the chat
+     thread's own scroll box, even under the last message. */
+  margin-top: 0.35rem;
+  min-width: 260px;
+  max-width: 340px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #fff;
+  color: #222;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem;
+}
+.file-to-record-pet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.file-to-record-pet:last-child {
+  border-bottom: none;
+}
+.file-to-record-pet button {
+  text-align: left;
+  background: #fdf0f5;
+  color: #222;
+  border: 1px solid #f6d3e1;
+  border-radius: 8px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+.file-to-record-pet button:hover:not(:disabled) {
+  border-color: #e6186d;
+}
+.file-to-record-pet small {
+  color: #777;
+}

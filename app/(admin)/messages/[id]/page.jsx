@@ -17,6 +17,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { uploadClientMessageMedia } from '@/lib/attachments';
+import FileToRecordButton from '@/app/_components/FileToRecordButton';
 
 export default function ClientMessageThreadPage() {
   const { id } = useParams();
@@ -300,6 +301,9 @@ export default function ClientMessageThreadPage() {
                   <img src={m.media_url} alt="" className="portal-chat-bubble-image" />
                 </a>
               )
+            )}
+            {m.sender === 'client' && m.media_url && m.media_type !== 'audio' && (
+              <FileToRecordButton messageId={m.id} staffId={replyStaffId} />
             )}
             {m.channel === 'email' && m.subject && <p><strong>{m.subject}</strong></p>}
             {m.body && <p>{m.body}</p>}
