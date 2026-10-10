@@ -14,6 +14,8 @@ export default function StaffPage() {
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  // The add form stays folded away (staff are rarely added) so it never sits over the list.
+  const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [rowError, setRowError] = useState(null);
@@ -51,6 +53,7 @@ export default function StaffPage() {
       setError(data.error || 'Failed to create staff member');
     } else {
       setForm(emptyForm);
+      setShowAdd(false);
       loadStaff();
     }
     setSubmitting(false);
@@ -157,9 +160,53 @@ export default function StaffPage() {
       <p>
         <a href="/staff/roster">📅 Staff Roster</a>
       </p>
+      <p>
+        <button type="button" onClick={() => setShowAdd((v) => !v)} aria-expanded={showAdd}>
+          {showAdd ? 'Close' : '+ Add staff'}
+        </button>
+      </p>
+      {showAdd && (
+      <form className="card" onSubmit={handleSubmit}>
+        <h2>Add Staff</h2>
+        {error && <p className="error">{error}</p>}
+        <input
+          placeholder="Full name"
+          required
+          value={form.full_name}
+          onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+        />
+        <select
+          value={form.role}
+          onChange={(e) => setForm({ ...form, role: e.target.value })}
+        >
+          <option value="vet">Vet</option>
+          <option value="tech">Tech</option>
+          <option value="reception">Reception</option>
+          <option value="cleaner">Cleaner</option>
+          <option value="driver">Driver</option>
+          <option value="admin">Admin</option>
+        </select>
+        <input
+          placeholder="Email"
+          type="email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+        />
+        <label>
+          Appointment schedule color
+          <input
+            type="color"
+            value={form.color || '#e6186d'}
+            onChange={(e) => setForm({ ...form, color: e.target.value })}
+          />
+        </label>
+        <button type="submit" disabled={submitting}>
+          {submitting ? 'Saving...' : 'Add'}
+        </button>
+      </form>
+      )}
       {rowError && <p className="error">{rowError}</p>}
-      <div className="split">
-      <div className="split-main">
+      <div className="table-wrap">
       <table>
         <thead>
           <tr>
@@ -299,48 +346,6 @@ export default function StaffPage() {
           )}
         </tbody>
       </table>
-      </div>
-
-      <div className="split-aside">
-      <form className="card" onSubmit={handleSubmit}>
-        <h2>Add Staff</h2>
-        {error && <p className="error">{error}</p>}
-        <input
-          placeholder="Full name"
-          required
-          value={form.full_name}
-          onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-        />
-        <select
-          value={form.role}
-          onChange={(e) => setForm({ ...form, role: e.target.value })}
-        >
-          <option value="vet">Vet</option>
-          <option value="tech">Tech</option>
-          <option value="reception">Reception</option>
-          <option value="cleaner">Cleaner</option>
-          <option value="driver">Driver</option>
-          <option value="admin">Admin</option>
-        </select>
-        <input
-          placeholder="Email"
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-        />
-        <label>
-          Appointment schedule color
-          <input
-            type="color"
-            value={form.color || '#e6186d'}
-            onChange={(e) => setForm({ ...form, color: e.target.value })}
-          />
-        </label>
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Saving...' : 'Add'}
-        </button>
-      </form>
-      </div>
       </div>
     </div>
   );
