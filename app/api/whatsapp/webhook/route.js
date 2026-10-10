@@ -18,6 +18,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { sendFallbackEmailForFailedWhatsApp } from '@/lib/emailFallback';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
 import { maybeRunConcierge, sendConciergeReply, sendEscalationNotice, sendEscalationFollowUpNotice, sendStaffHandoffNotice, flagEscalatedThread, isWhatsAppAiEnabled } from '@/lib/whatsappConcierge';
@@ -282,6 +283,11 @@ async function handleStatusUpdate(status) {
   const { error } = await supabaseAdmin.from('client_messages').update(update).eq('wa_message_id', status.id);
   if (error) {
     console.error('Failed to update WhatsApp message status', status.id, error);
+  }
+  // A reminder that never arrived goes out by email instead, if one was
+  // kept for it (see migration 171 and lib/emailFallback.js).
+  if (status.status === 'failed') {
+    await sendFallbackEmailForFailedWhatsApp(status.id);
   }
 }
 
