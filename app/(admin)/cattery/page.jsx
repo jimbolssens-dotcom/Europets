@@ -63,6 +63,9 @@ function CatteryPageInner() {
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
   const [patient, setPatient] = useState(null);
+  // Picking an owner (not a cat) in the search lists their pets to choose
+  // from; it used to do nothing, so the pick looked like it didn't register.
+  const [ownerPick, setOwnerPick] = useState(null); // { client, pets } | null
   const [form, setForm] = useState({ ...emptyForm, date_in: today });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -120,6 +123,24 @@ function CatteryPageInner() {
     setError(null);
     focusForm();
   }, [focusForm]);
+
+  function pickPatient(p) {
+    setOwnerPick(null);
+    setPatient(p);
+  }
+
+  function pickOwner(client) {
+    setOwnerPick({ client, pets: null });
+    fetch(`/api/patients?client_id=${client.id}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((pets) => {
+        const list = (Array.isArray(pets) ? pets : []).filter((p) => !p.deceased && !p.rehomed);
+        const cats = list.filter((p) => /cat|feline/i.test(p.species || ''));
+        // One cat: that's the one. Otherwise show the cats first, then any other pets.
+        if (cats.length === 1) return pickPatient({ ...cats[0], clients: client });
+        setOwnerPick({ client, pets: [...cats, ...list.filter((p) => !cats.includes(p))] });
+      });
+  }
 
   function openBooking(b) {
     if (b.status === 'requested') setReviewing(b);
@@ -199,17 +220,37 @@ function CatteryPageInner() {
 
       <h2>New cattery booking</h2>
       <form className="cattery-form" onSubmit={createBooking} ref={formRef}>
-        <label>
-          Cat
+        <div className="cattery-field">
+          <span className="cattery-field-label">Cat</span>
           {patient ? (
             <span className="cattery-picked">
               <strong>{patient.name}</strong> {patient.clients?.full_name ? `(${patient.clients.full_name})` : ''}
               <button type="button" className="mobile-link-btn" onClick={() => setPatient(null)}>Change</button>
             </span>
           ) : (
-            <ClientOrPatientSearch placeholder="Search the cat by name, owner or microchip…" onPickPatient={setPatient} onPickClient={() => {}} />
+            <>
+              <ClientOrPatientSearch placeholder="Search the cat by name, owner or microchip…" onPickPatient={pickPatient} onPickClient={pickOwner} />
+              {ownerPick && (
+                <span className="cattery-owner-pets">
+                  {ownerPick.pets === null ? (
+                    <span className="visit-meta">Loading {ownerPick.client.full_name}&apos;s pets…</span>
+                  ) : ownerPick.pets.length === 0 ? (
+                    <span className="visit-meta">{ownerPick.client.full_name} has no pets on file.</span>
+                  ) : (
+                    <>
+                      <span className="visit-meta">{ownerPick.client.full_name}&apos;s pets:</span>
+                      {ownerPick.pets.map((p) => (
+                        <button key={p.id} type="button" className="secondary" onClick={() => pickPatient({ ...p, clients: ownerPick.client })}>
+                          {/cat|feline/i.test(p.species || '') ? '🐱' : '🐾'} {p.name}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </span>
+              )}
+            </>
           )}
-        </label>
+        </div>
         <div className="cattery-form-row">
           <label>
             Date in

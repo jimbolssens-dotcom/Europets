@@ -9890,7 +9890,8 @@ form.card.admit-patient-form {
   border-radius: 12px;
   padding: 1rem;
 }
-.cattery-form label {
+.cattery-form label,
+.cattery-form .cattery-field {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -10574,4 +10575,15 @@ form.card.admit-patient-form {
 }
 .file-to-record-pet small {
   color: #777;
+}
+.cattery-owner-pets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 400;
+  margin-top: 0.35rem;
+}
+.cattery-field-label {
+  font-weight: 600;
 }
