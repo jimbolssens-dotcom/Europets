@@ -21,6 +21,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
 import { maybeRunConcierge, sendConciergeReply, sendEscalationNotice, sendEscalationFollowUpNotice, sendStaffHandoffNotice, flagEscalatedThread, isWhatsAppAiEnabled } from '@/lib/whatsappConcierge';
+import { isAssistantOwnerPhone, relayToAssistant } from '@/lib/personalAssistantRelay';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -213,6 +214,16 @@ async function runConciergeForInbound(message, clientId, digits) {
 
 async function handleInboundMessage(message, contactPhone) {
   const digits = (contactPhone || message.from || '').replace(/\D/g, '');
+
+  // The owner's own phone(s): hand off to the personal assistant and stop
+  // here, before any lookup, media download, storage or concierge — so none
+  // of it ever lands in the clinic's database, inbox or logs. See
+  // lib/personalAssistantRelay.js.
+  if (isAssistantOwnerPhone(digits)) {
+    await relayToAssistant(message, digits);
+    return;
+  }
+
   const clientId = await findClientIdForPhone(digits);
   const media = INBOUND_MEDIA_TYPES[message.type] ? await downloadInboundMedia(message) : {};
 
