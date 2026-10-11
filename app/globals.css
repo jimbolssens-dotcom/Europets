@@ -10689,3 +10689,57 @@ form.card.admit-patient-form {
 .storage-nowrap {
   white-space: nowrap;
 }
+
+/* Photo thumbnails under a consult/stay in the patient's history
+   (RecordPhotoStrip): small squares side by side, captioned with where on
+   the record each photo was filed. */
+.record-photo-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: flex-start;
+  margin: 0.35rem 0;
+}
+
+.record-photo {
+  display: flex;
+  flex-direction: column;
+  width: 72px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.record-photo img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #e5e5e5;
+  background: #f4f4f4;
+}
+
+.record-photo-label {
+  font-size: 0.68rem;
+  line-height: 1.2;
+  color: #666;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-photo-strip .record-photo-more {
+  width: 72px;
+  height: 72px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border-radius: 6px;
+  border: 1px solid #e5e5e5;
+  background: #f4f4f4;
+  color: #333;
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: none;
+}

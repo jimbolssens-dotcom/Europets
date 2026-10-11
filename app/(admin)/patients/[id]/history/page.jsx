@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { formatDateTime } from '@/lib/formatTimestamp';
+import RecordPhotoStrip from '@/app/_components/RecordPhotoStrip';
 
 const KIND_ICONS = {
   'Consult report': '🩺',
@@ -19,7 +20,13 @@ const KIND_ICONS = {
   'Surgical report': '🔪',
   'Ultrasound report': '🔊',
   'X-ray report': '🩻',
+  'Consult photos': '📷',
+  'Stay photos': '📷',
 };
+
+function recordHref(photo) {
+  return photo.record_type === 'visit' ? `/consults/${photo.record_id}` : `/hospitalization/${photo.record_id}`;
+}
 
 function iconFor(kind) {
   return KIND_ICONS[kind] || '🧪';
@@ -38,6 +45,7 @@ export default function PatientFullHistoryPage() {
   const [draft, setDraft] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState(null);
+  const [photos, setPhotos] = useState([]);
 
   function loadRows() {
     fetch(`/api/patients/${id}/report-overview`)
@@ -54,6 +62,10 @@ export default function PatientFullHistoryPage() {
       setRows(Array.isArray(rowsData) ? rowsData : []);
       setLoading(false);
     });
+    fetch(`/api/patients/${id}/photos`)
+      .then((res) => res.json())
+      .then((data) => setPhotos(Array.isArray(data) ? data : []))
+      .catch(() => setPhotos([]));
   }, [id]);
 
   function startEdit(row, text) {
@@ -99,6 +111,28 @@ export default function PatientFullHistoryPage() {
     }
   }
 
+  // Photos sit under the newest row for their consult/stay; a record with
+  // photos but no report or test yet gets a row of its own so they still show.
+  const photosByHref = new Map();
+  for (const p of photos) {
+    const href = recordHref(p);
+    if (!photosByHref.has(href)) photosByHref.set(href, []);
+    photosByHref.get(href).push(p);
+  }
+  const hrefsWithRows = new Set(rows.map((r) => r.href));
+  const photoOnlyRows = [...photosByHref.entries()]
+    .filter(([href]) => !hrefsWithRows.has(href))
+    .map(([href, list]) => ({
+      id: `photos-${href}`,
+      kind: list[0].record_type === 'visit' ? 'Consult photos' : 'Stay photos',
+      date: list[list.length - 1].created_at,
+      href,
+      photoOnly: true,
+    }));
+  const displayRows = [...rows, ...photoOnlyRows].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  const photoRowFor = new Map();
+  for (const r of displayRows) if (!photoRowFor.has(r.href)) photoRowFor.set(r.href, r.id);
+
   if (loading) return <p>Loading patient history...</p>;
   if (!patient || patient.error) return <p>Patient not found.</p>;
 
@@ -118,11 +152,11 @@ export default function PatientFullHistoryPage() {
 
       {error && <p className="error" role="alert">{error}</p>}
 
-      {rows.length === 0 ? (
+      {displayRows.length === 0 ? (
         <p>No reports or tests recorded for this patient yet.</p>
       ) : (
         <ul className="consult-history-list patient-full-history-list">
-          {rows.map((row) => {
+          {displayRows.map((row) => {
             const text = textFor(row);
             const canEdit = !!(row.editableField && row.apiBase && row.recordId);
             const isEditing = editingId === row.id;
@@ -149,9 +183,10 @@ export default function PatientFullHistoryPage() {
                   </div>
                 ) : text ? (
                   <p style={{ whiteSpace: 'pre-wrap' }}>{text}</p>
-                ) : (
+                ) : row.photoOnly ? null : (
                   <p className="visit-meta">No result recorded yet.</p>
                 )}
+                {photoRowFor.get(row.href) === row.id && <RecordPhotoStrip photos={photosByHref.get(row.href)} />}
                 {canEdit && !isEditing && (
                   <div className="home-links">
                     <button type="button" className="secondary" onClick={() => startEdit(row, text)} disabled={busyId === row.id}>

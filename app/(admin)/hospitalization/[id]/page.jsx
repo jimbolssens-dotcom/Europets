@@ -60,6 +60,8 @@ const emptyDayAddForm = { goods_service_id: '', instructions: '', quantity: '1' 
 export default function HospitalizationDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  // Count on the Case Photos & Files toggle, so it's clear there are some.
+  const [caseFileCount, setCaseFileCount] = useState(0);
   const [admission, setAdmission] = useState(null);
   const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState([]);
@@ -1176,8 +1178,8 @@ export default function HospitalizationDetailPage() {
           {moveToHospitalError && <p className="error" role="alert">{moveToHospitalError}</p>}
 
           <details className="case-files">
-            <summary>📎 Case Photos &amp; Files</summary>
-            <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} />
+            <summary>📎 Case Photos &amp; Files{caseFileCount > 0 ? ` (${caseFileCount})` : ''}</summary>
+            <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} onAttachmentsChange={setCaseFileCount} />
           </details>
 
           {/* Three columns side by side on desktop, same .workbench grid
@@ -1757,11 +1759,11 @@ export default function HospitalizationDetailPage() {
 
       <div className="split-aside">
       <details className="case-files">
-        <summary>📎 Case Photos &amp; Files</summary>
+        <summary>📎 Case Photos &amp; Files{caseFileCount > 0 ? ` (${caseFileCount})` : ''}</summary>
         <p className="visit-meta">
           Not tied to a single worksheet entry — admission photo, wound progress, etc.
         </p>
-        <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} />
+        <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} onAttachmentsChange={setCaseFileCount} />
       </details>
 
       <PreInvoiceOverview

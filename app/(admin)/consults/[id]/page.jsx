@@ -61,6 +61,10 @@ export default function ConsultDetailPage() {
   const { id } = useParams();
   const router = useRouter();
 
+  // How many photos/files are on the consult's own Photos list, shown on
+  // its (otherwise closed) button so it's clear photos were taken.
+  const [visitPhotoCount, setVisitPhotoCount] = useState(0);
+
   const [consult, setConsult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState([]);
@@ -934,11 +938,12 @@ export default function ConsultDetailPage() {
         </button>
         <PatientHistoryPanel patientId={consult.patient_id} clientId={consult.client_id} excludeVisitId={id} pill />
         <details className="consult-action-toggle">
-          <summary className="button-link">📷 Photos</summary>
+          <summary className="button-link">📷 Photos{visitPhotoCount > 0 ? ` (${visitPhotoCount})` : ''}</summary>
           <div className="consult-action-dropdown">
             <AttachmentSection
               entityType="visit"
               entityId={id}
+              onAttachmentsChange={setVisitPhotoCount}
               moveTargets={diagnostics.map((d) => ({
                 label: diagnosticLabel(d, catalog),
                 entityType: 'diagnostic',

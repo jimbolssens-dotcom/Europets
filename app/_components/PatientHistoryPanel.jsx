@@ -19,6 +19,7 @@
 import { useEffect, useState } from 'react';
 import { money, balanceDue, invoiceLabel } from '@/lib/paymentReminders';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import RecordPhotoStrip from './RecordPhotoStrip';
 
 function truncate(str, max = 160) {
   const s = (str || '').trim();
@@ -35,6 +36,9 @@ export default function PatientHistoryPanel({
   pill = false,
 }) {
   const [events, setEvents] = useState([]);
+  // Photos per consult/stay ("visit:<id>" / "hospitalization:<id>"), shown
+  // as thumbnails under each one. Only for a single pet's history.
+  const [photosByRecord, setPhotosByRecord] = useState({});
   const showPatientName = !patientId;
 
   useEffect(() => {
@@ -42,6 +46,17 @@ export default function PatientHistoryPanel({
 
     const visitsQuery = patientId ? `patient_id=${patientId}` : `client_id=${clientId}`;
     const hospQuery = patientId ? `patient_id=${patientId}` : `client_id=${clientId}`;
+
+    if (patientId) {
+      fetch(`/api/patients/${patientId}/photos`)
+        .then((res) => res.json())
+        .then((data) => {
+          const grouped = {};
+          for (const p of Array.isArray(data) ? data : []) (grouped[`${p.record_type}:${p.record_id}`] ||= []).push(p);
+          setPhotosByRecord(grouped);
+        })
+        .catch(() => setPhotosByRecord({}));
+    }
 
     Promise.all([
       fetch(`/api/visits?${visitsQuery}&status=complete`).then((res) => res.json()),
@@ -120,6 +135,7 @@ export default function PatientHistoryPanel({
                 {!e.data.anamnesis && !e.data.findings && !e.data.treatment_notes && (
                   <p className="note-empty">No record notes for this consult.</p>
                 )}
+                <RecordPhotoStrip photos={photosByRecord[`visit:${e.data.id}`]} />
               </li>
             );
           }
@@ -139,6 +155,7 @@ export default function PatientHistoryPanel({
                     <strong>Reason:</strong> {truncate(e.data.reason)}
                   </p>
                 )}
+                <RecordPhotoStrip photos={photosByRecord[`hospitalization:${e.data.id}`]} />
               </li>
             );
           }

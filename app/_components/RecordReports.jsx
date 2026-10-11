@@ -38,6 +38,8 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
   // its own — no result text or AI transcription required — so this just
   // tracks "does this diagnostic have at least one attachment" per id,
   // reported up by AttachmentSection once it loads.
+  // Files on each test / report (by id): marks a test done once its lab
+  // document is attached, and shows a 📎 count on each closed card.
   const [hasAttachment, setHasAttachment] = useState({});
 
   async function deleteGroupReport(group, report) {
@@ -109,7 +111,7 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
     {groups.map((group) => group.reports.length > 0 && <section key={group.apiBase} id={group.anchorId} aria-label={group.label}>
       <h4>{group.label}</h4>
       {group.reports.map((report) => <details className="card" key={report.id}>
-        <summary>{report.procedure_name || group.label} · {report.performed_at ? formatDateTime(report.performed_at) : 'Date not recorded'} · {report.ai_summary ? 'Report available' : 'Report pending'}</summary>
+        <summary>{report.procedure_name || group.label} · {report.performed_at ? formatDateTime(report.performed_at) : 'Date not recorded'} · {report.ai_summary ? 'Report available' : 'Report pending'}{hasAttachment[report.id] > 0 ? ` · 📎 ${hasAttachment[report.id]}` : ''}</summary>
         {group.staffField ? (
           <label className="visit-meta">
             Performed by:{' '}
@@ -140,7 +142,8 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
           savedReport={report.client_summary} onSaved={group.reload} field="client_summary" title="Client Summary" />}
         <ReportShareActions reportId={report.id} apiBase={group.apiBase} client={record.clients} patient={record.patients} reportLabel={group.label.toLowerCase()} />
         <AudioRecorder entityType={group.entityType} entityId={report.id} onRefresh={group.reload} />
-        <AttachmentSection entityType={group.entityType} entityId={report.id} />
+        <AttachmentSection entityType={group.entityType} entityId={report.id}
+          onAttachmentsChange={(count) => setHasAttachment((prev) => ({ ...prev, [report.id]: count }))} />
       </details>)}
     </section>)}
     {(diagnostics.length > 0 || record.test_results) && <section id="report-test-results" aria-label="Test results">
@@ -153,9 +156,9 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
       </details>}
       {diagnostics.map((diagnostic) => {
         const name = catalog.find((item) => item.id === diagnostic.goods_service_id)?.name || diagnostic.type?.replaceAll('_', ' ') || 'Test';
-        const done = !!diagnostic.result || !!hasAttachment[diagnostic.id];
+        const done = !!diagnostic.result || hasAttachment[diagnostic.id] > 0;
         return <details className="card" key={diagnostic.id}>
-          <summary>{name} · {done ? 'Result recorded' : 'Awaiting result'}</summary>
+          <summary>{name} · {done ? 'Result recorded' : 'Awaiting result'}{hasAttachment[diagnostic.id] > 0 ? ` · 📎 ${hasAttachment[diagnostic.id]}` : ''}</summary>
           {diagnostic.description && <p>{diagnostic.description}</p>}
           <label className="report-result-field">
             <span className="field-label-row">
@@ -183,8 +186,8 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
           {resultError?.id === diagnostic.id && <p className="error" role="alert">{resultError.message}</p>}
           <AttachmentSection entityType="diagnostic" entityId={diagnostic.id} refreshKey={attachmentVersions[diagnostic.id]}
             onUploaded={() => onUploaded(diagnostic.id)}
-            onAttachmentsChange={(count) => setHasAttachment((prev) => ({ ...prev, [diagnostic.id]: count > 0 }))} />
-          {!isImagingDiagnostic(diagnostic, name) && hasAttachment[diagnostic.id] && (
+            onAttachmentsChange={(count) => setHasAttachment((prev) => ({ ...prev, [diagnostic.id]: count }))} />
+          {!isImagingDiagnostic(diagnostic, name) && hasAttachment[diagnostic.id] > 0 && (
             <div className="diagnostic-card-actions">
               <button type="button" onClick={() => interpretResult(diagnostic, name)} disabled={interpreting[diagnostic.id]}>
                 {interpreting[diagnostic.id] ? 'Interpreting…' : '🤖 AI interpretation'}
