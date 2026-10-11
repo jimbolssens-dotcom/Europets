@@ -19,6 +19,10 @@
     {
       "path": "/api/appointments/send-due-reminders",
       "schedule": "30 13 * * *"
+    },
+    {
+      "path": "/api/attachments/compress-sweep",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
