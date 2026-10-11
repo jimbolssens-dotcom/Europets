@@ -4282,6 +4282,16 @@ button.secondary:hover {
   opacity: 0.85;
 }
 
+/* Appointment already taken in: a consult, day procedure or
+   hospitalisation has been started from it. A thicker outline all round
+   (same colour, not greyed) marks it as no longer just a booking. Dark surgery blocks get a
+   dark outline instead of their usual white one (set inline). */
+.schedule-block-taken-in {
+  border-width: 3px;
+  border-left-width: 6px;
+  padding: 0.1rem 0.3rem;
+}
+
 .schedule-block-inactive {
   cursor: default;
   opacity: 0.75;
