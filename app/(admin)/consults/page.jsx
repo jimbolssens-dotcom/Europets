@@ -13,10 +13,6 @@ import SearchSelect from '@/app/_components/SearchSelect';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import { formatDateTime } from '@/lib/formatTimestamp';
 
-function elapsedMinutes(startedAt) {
-  return Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 60000));
-}
-
 const emptyWalkIn = { client_id: '', patient_id: '', room_id: '', attending_vet_id: '' };
 
 export default function ConsultsPage() {
@@ -212,7 +208,7 @@ function ConsultsPageInner() {
               <th>Owner</th>
               <th>Room</th>
               <th>Vet</th>
-              <th>In progress</th>
+              <th>Started</th>
               <th></th>
             </tr>
           </thead>
@@ -229,7 +225,7 @@ function ConsultsPageInner() {
                 </td>
                 <td>{c.rooms?.name}</td>
                 <td>{c.staff?.full_name || 'unassigned'}</td>
-                <td>{elapsedMinutes(c.started_at)} min</td>
+                <td>{c.started_at ? formatDateTime(c.started_at) : '—'}</td>
                 <td>
                   <a href={`/consults/${c.id}`} className="button-link button-link-open">Open</a>
                   <button type="button" onClick={() => completeConsult(c)}>

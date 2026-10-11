@@ -874,6 +874,8 @@ export default function ConsultDetailPage() {
         </a>{' '}
         · Patient: <a href={`/patients/${consult.patients?.id}`}>record</a>{' '}
         · {consult.is_video ? '🎥 Video Consult' : `Room: ${consult.rooms?.name || ''}`}{' '}
+        {consult.started_at && <>· Started: {formatDateTime(consult.started_at)}{' '}</>}
+        {consult.ended_at && <>· Ended: {formatDateTime(consult.ended_at)}{' '}</>}
         · Vet:{' '}
         <select
           className="consult-vet-select"
