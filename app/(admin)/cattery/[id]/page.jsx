@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
+import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import { MOBILE_STAFF_STORAGE_KEY } from '@/app/_components/useMobileStaff';
 import {
   CATTERY_SPACES,
@@ -88,6 +89,13 @@ export default function CatteryBookingPage() {
 
   const days = useMemo(() => (booking ? bookingDays(booking.date_in, booking.date_out) : []), [booking]);
   const overdueToday = booking && weightOverdue(booking, Object.values(logs));
+  // This stay's daily weigh-ins, for the weight graph under the header.
+  const stayWeights = useMemo(
+    () => Object.values(logs)
+      .filter((l) => l.weight_kg != null && l.weight_kg !== '')
+      .map((l) => ({ date: `${l.log_date}T12:00:00+04:00`, weight_kg: l.weight_kg })),
+    [logs]
+  );
 
   async function saveLog(date, field, value) {
     setError(null);
@@ -184,6 +192,13 @@ export default function CatteryBookingPage() {
         </div>
         <p className="cattery-sheet-owner print-only">Owner: {c.full_name}{c.phone ? ` · ${c.phone}` : ''}</p>
       </div>
+
+      {stayWeights.length > 0 && (
+        <section className="cattery-weight-chart no-print" aria-label="Weight during this stay">
+          <h3>⚖️ Weight during this stay</h3>
+          <WeightHistoryChart data={stayWeights} />
+        </section>
+      )}
 
       {booking.status === 'requested' && (
         <p className="cattery-notice no-print">

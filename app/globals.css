@@ -9427,6 +9427,16 @@ form.card.admit-patient-form {
   vertical-align: middle;
 }
 
+/* The full chart is 640px wide; shrink it to fit a phone screen. */
+.weight-chart:not(.weight-chart-mini) {
+  max-width: 100%;
+}
+
+.weight-chart:not(.weight-chart-mini) svg {
+  max-width: 100%;
+  height: auto;
+}
+
 .weight-chart-line {
   stroke: var(--pink);
   stroke-width: 2;
@@ -10742,4 +10752,14 @@ form.card.admit-patient-form {
   font-size: 0.8rem;
   font-weight: 600;
   box-shadow: none;
+}
+
+/* Weight graph on a cattery stay's sheet (screen only). */
+.cattery-weight-chart {
+  margin: 0.75rem 0;
+}
+
+.cattery-weight-chart h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
 }

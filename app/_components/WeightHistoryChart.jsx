@@ -53,7 +53,8 @@ export default function WeightHistoryChart({ data, mini = false, unit = 'kg' }) 
 
   function handleMove(e) {
     const rect = svgRef.current.getBoundingClientRect();
-    const px = e.clientX - rect.left;
+    // In viewBox units, so hovering still lines up when the chart is scaled to fit.
+    const px = ((e.clientX - rect.left) / rect.width) * width;
     let closest = 0;
     let closestDist = Infinity;
     points.forEach((p, i) => {
