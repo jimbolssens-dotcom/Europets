@@ -10642,3 +10642,40 @@ form.card.admit-patient-form {
     padding: 0.4rem 0.8rem;
   }
 }
+
+/* Storage page (app/(admin)/storage): plan usage bars. */
+.storage-usage {
+  max-width: 760px;
+  margin-bottom: 0.9rem;
+}
+.storage-usage-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.5rem;
+}
+.storage-bar {
+  height: 14px;
+  border-radius: 999px;
+  background: #f1f1f1;
+  overflow: hidden;
+}
+.storage-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+.storage-bar-fill.ok {
+  background: #1aa564;
+}
+.storage-bar-fill.warn {
+  background: #e8a317;
+}
+.storage-bar-fill.danger {
+  background: #d93025;
+}
+.storage-nowrap {
+  white-space: nowrap;
+}

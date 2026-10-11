@@ -111,6 +111,7 @@ export default function SettingsPage() {
         <a href="/policies">Policies</a>
         <a href="/accounting">Accounting</a>
         <a href="/empty-reports">Empty Reports</a>
+        <a href="/storage">Storage</a>
       </div>
 
       <h2>
