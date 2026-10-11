@@ -21,16 +21,17 @@
 //        + staff roster checks as booking a new appointment (see
 //        lib/appointmentScheduling.js and app/api/appointments/route.js),
 //        excluding the appointment from its own conflict check.
-//        duration_minutes is only meaningful for a surgery or meeting
-//        appointment — consult and video are both a fixed 15 minutes, same
-//        rule as booking one; switching type to surgery/meeting without a
-//        duration defaults to one increment / 30 minutes respectively.
+//        duration_minutes: consult/video in 15-minute steps (default 15,
+//        see consultDurationError), surgery in 10, meeting in 5 — same
+//        rules as booking one. Switching type without a duration falls
+//        back to that type's default (15 / one increment / 30 minutes).
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import {
   CONSULT_DURATION_MINUTES,
+  consultDurationError,
   SURGERY_INCREMENT_MINUTES,
   MEETING_DEFAULT_DURATION_MINUTES,
   MEETING_MIN_DURATION_MINUTES,
@@ -152,7 +153,13 @@ export async function PATCH(request, { params }) {
 
   let nextDuration = current.duration_minutes;
   if (nextType === 'consult' || nextType === 'video') {
-    nextDuration = CONSULT_DURATION_MINUTES;
+    if (duration_minutes !== undefined) {
+      nextDuration = Number(duration_minutes);
+    } else if (current.type !== 'consult' && current.type !== 'video') {
+      nextDuration = CONSULT_DURATION_MINUTES;
+    }
+    const durationError = consultDurationError(nextDuration);
+    if (durationError) return NextResponse.json({ error: durationError }, { status: 400 });
   } else if (nextType === 'surgery') {
     if (duration_minutes !== undefined) {
       nextDuration = Number(duration_minutes);

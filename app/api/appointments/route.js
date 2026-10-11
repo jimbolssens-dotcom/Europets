@@ -28,6 +28,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import {
   CONSULT_DURATION_MINUTES,
+  consultDurationError,
   SURGERY_INCREMENT_MINUTES,
   MEETING_DEFAULT_DURATION_MINUTES,
   MEETING_MIN_DURATION_MINUTES,
@@ -123,7 +124,9 @@ export async function POST(request) {
 
   let duration;
   if (appointmentType === 'consult' || appointmentType === 'video') {
-    duration = CONSULT_DURATION_MINUTES;
+    duration = duration_minutes !== undefined && duration_minutes !== null && duration_minutes !== '' ? Number(duration_minutes) : CONSULT_DURATION_MINUTES;
+    const durationError = consultDurationError(duration);
+    if (durationError) return NextResponse.json({ error: durationError }, { status: 400 });
   } else if (appointmentType === 'surgery') {
     duration = Number(duration_minutes) || SURGERY_INCREMENT_MINUTES;
     if (duration < SURGERY_INCREMENT_MINUTES || duration % SURGERY_INCREMENT_MINUTES !== 0) {

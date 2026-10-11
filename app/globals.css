@@ -4312,6 +4312,23 @@ button.secondary:hover {
   background: rgba(0, 0, 0, 0.15);
 }
 
+/* Outlook-style grip in the block's bottom-right corner, so it's obvious
+   an appointment can be stretched; the whole bottom edge still works. */
+.schedule-resize-grip {
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  width: 10px;
+  height: 10px;
+  cursor: nwse-resize;
+  opacity: 0.55;
+  background:
+    linear-gradient(135deg, transparent 0 45%, currentColor 45% 55%, transparent 55% 70%, currentColor 70% 80%, transparent 80%);
+}
+.schedule-block:hover .schedule-resize-grip {
+  opacity: 1;
+}
+
 /* Ambient audio recorder (consults & surgeries) */
 
 /* Post-op instructions block on a surgical/dental report card (see

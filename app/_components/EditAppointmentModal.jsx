@@ -70,7 +70,7 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
       room_id: roomId || null,
       vet_id: vetId || null,
       type,
-      duration_minutes: type === 'surgery' || type === 'meeting' ? Number(duration) : undefined,
+      duration_minutes: Number(duration) || undefined,
       reason,
       start_time: startTime.toISOString(),
       date: dateStr,
@@ -165,13 +165,34 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
 
         <label>
           Type
-          <select value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="consult">Consult (15 min)</option>
-            <option value="video">Video Consult (15 min)</option>
+          <select
+            value={type}
+            onChange={(e) => {
+              // Keep the length valid for the new type (consults step in 15s, surgeries in 10s).
+              const next = e.target.value;
+              const step = next === 'surgery' ? 10 : next === 'meeting' ? 5 : 15;
+              setType(next);
+              setDuration((d) => String(Math.max(step, Math.ceil((Number(d) || step) / step) * step)));
+            }}
+          >
+            <option value="consult">Consult</option>
+            <option value="video">Video Consult</option>
             <option value="surgery">Surgery (10-min increments)</option>
             <option value="meeting">Staff Meeting / Other</option>
           </select>
         </label>
+
+        {(type === 'consult' || type === 'video') && (
+          <label>
+            Length
+            <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+              {[15, 30, 45, 60, 90, 120].map((m) => (
+                <option key={m} value={String(m)}>{m} min</option>
+              ))}
+              {![15, 30, 45, 60, 90, 120].includes(Number(duration)) && <option value={duration}>{duration} min</option>}
+            </select>
+          </label>
+        )}
 
         {(type === 'surgery' || type === 'meeting') && (
           <label>
