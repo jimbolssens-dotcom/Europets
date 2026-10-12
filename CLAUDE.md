@@ -49,3 +49,17 @@ Let a row wrap only when it genuinely doesn't fit.
 - Never give a short link or button its own `<p>` or line under a title.
 - Keep mobile minimal. Show Jim a phone-width screenshot (390px) before
   merging any layout change.
+
+## Squeeze to the top
+
+Header rows are packed, not stacked. Right-hand buttons go at the end of
+the first line they fit on (the title line, else the owner/meta line),
+never on a line of their own. Anything that's one short phrase (a reason,
+a status, a collapsed section like History or Consent) is a chip or small
+tab on an existing line, never a full-width row. Before showing a layout,
+check it with real-length data (long names, every chip present) so
+nothing wraps onto an empty line.
+
+On case pages (consult, day procedure, hospitalization) Invoice / Consult
+/ Day Procedure always sit together in the one oval `CrossRecordLinks`
+group, in the same place, so it reads the same on every page.
