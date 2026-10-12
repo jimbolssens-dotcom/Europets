@@ -25,6 +25,7 @@ export default function PatientHeader({
   promptAge = false,
   ageRequest = null, // { message, skipLabel, onSkip } to open the age box from the page
   onPatientUpdated,
+  actions = null, // buttons for the end of the second row (e.g. Doctor Checkup, Messages)
   children,
 }) {
   const p = patient || {};
@@ -135,7 +136,12 @@ export default function PatientHeader({
         </form>
       )}
 
-      {children && <div className="patient-header-row2">{children}</div>}
+      {(children || actions) && (
+        <div className="patient-header-row2">
+          {children}
+          {actions && <div className="patient-header-actions">{actions}</div>}
+        </div>
+      )}
     </div>
   );
 }

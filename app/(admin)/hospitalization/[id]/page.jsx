@@ -1018,6 +1018,50 @@ export default function HospitalizationDetailPage() {
         <PatientHeader
           patient={admission.patients}
           status={stayStatus}
+          actions={
+            admission.status === 'admitted' && (
+              <div className="hospitalization-header-actions">
+                <button
+                  type="button"
+                  className={`doctor-checkup-pill${admission.doctor_checkup_requested_at ? ' doctor-checkup-pending' : ''}`}
+                  onClick={admission.doctor_checkup_requested_at ? dismissDoctorCheckup : requestDoctorCheckup}
+                  title={
+                    admission.doctor_checkup_requested_at
+                      ? `Requested ${formatDateTime(admission.doctor_checkup_requested_at)} — click once a doctor has checked this case`
+                      : 'Flag this case for a doctor to check — stays on the alarm until dismissed here'
+                  }
+                >
+                  {admission.doctor_checkup_requested_at ? '🩺 Doctor Checkup Requested — Mark Checked' : '🩺 Request Doctor Checkup'}
+                </button>
+                {admission.weight_loss_alarm && (
+                  <button
+                    type="button"
+                    className="doctor-checkup-pill doctor-checkup-pending"
+                    onClick={acknowledgeWeightLossAlarm}
+                    title="Silences the alarm until a newer weight reading comes in"
+                  >
+                    ⚖️ Lost {admission.weight_loss_alarm.percent}% in {admission.weight_loss_alarm.days} days (
+                    {admission.weight_loss_alarm.fromWeight}kg → {admission.weight_loss_alarm.toWeight}kg) — Mark Attended
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={`chat-toggle-pill${admission.update_requested_at ? ' chat-toggle-pending' : ''}`}
+                  onClick={() => setChatOpen((v) => !v)}
+                  aria-expanded={chatOpen}
+                >
+                  {admission.update_requested_at ? (
+                    <>
+                      🔔 {admission.clients?.full_name || 'The owner'} is waiting on a reply
+                    </>
+                  ) : (
+                    <>💬 Messages{messages.length > 0 ? ` (${messages.length})` : ''}</>
+                  )}
+                  <span className="chat-toggle-chev">{chatOpen ? '▾' : '▸'}</span>
+                </button>
+              </div>
+            )
+          }
           onPatientUpdated={loadAdmission}
           chips={
             <>
@@ -1050,48 +1094,6 @@ export default function HospitalizationDetailPage() {
             </PatientMeta>
           )}
         </PatientHeader>
-        {admission.status === 'admitted' && (
-          <div className="hospitalization-header-actions">
-            <button
-              type="button"
-              className={`doctor-checkup-pill${admission.doctor_checkup_requested_at ? ' doctor-checkup-pending' : ''}`}
-              onClick={admission.doctor_checkup_requested_at ? dismissDoctorCheckup : requestDoctorCheckup}
-              title={
-                admission.doctor_checkup_requested_at
-                  ? `Requested ${formatDateTime(admission.doctor_checkup_requested_at)} — click once a doctor has checked this case`
-                  : 'Flag this case for a doctor to check — stays on the alarm until dismissed here'
-              }
-            >
-              {admission.doctor_checkup_requested_at ? '🩺 Doctor Checkup Requested — Mark Checked' : '🩺 Request Doctor Checkup'}
-            </button>
-            {admission.weight_loss_alarm && (
-              <button
-                type="button"
-                className="doctor-checkup-pill doctor-checkup-pending"
-                onClick={acknowledgeWeightLossAlarm}
-                title="Silences the alarm until a newer weight reading comes in"
-              >
-                ⚖️ Lost {admission.weight_loss_alarm.percent}% in {admission.weight_loss_alarm.days} days (
-                {admission.weight_loss_alarm.fromWeight}kg → {admission.weight_loss_alarm.toWeight}kg) — Mark Attended
-              </button>
-            )}
-            <button
-              type="button"
-              className={`chat-toggle-pill${admission.update_requested_at ? ' chat-toggle-pending' : ''}`}
-              onClick={() => setChatOpen((v) => !v)}
-              aria-expanded={chatOpen}
-            >
-              {admission.update_requested_at ? (
-                <>
-                  🔔 {admission.clients?.full_name || 'The owner'} is waiting on a reply
-                </>
-              ) : (
-                <>💬 Messages{messages.length > 0 ? ` (${messages.length})` : ''}</>
-              )}
-              <span className="chat-toggle-chev">{chatOpen ? '▾' : '▸'}</span>
-            </button>
-          </div>
-        )}
       </div>
       {admission.status === 'admitted' && chatOpen && (
         <div className="case-files hospitalization-chat">

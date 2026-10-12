@@ -11074,3 +11074,14 @@ button.patient-chip-age-missing {
   margin: 0;
   padding: 0.1rem 0.4rem;
 }
+
+/* Buttons at the right end of the owner line (e.g. Doctor Checkup and
+   Messages on a stay), never on a line of their own. */
+.patient-header-actions {
+  margin-left: auto;
+}
+
+.page-header > .patient-header {
+  flex: 1 1 auto;
+  min-width: 0;
+}
