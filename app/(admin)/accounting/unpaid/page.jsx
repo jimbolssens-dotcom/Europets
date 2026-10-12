@@ -8,7 +8,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { money, balanceDue, invoiceLabel, openWhatsAppReminder, sendReminderEmail } from '@/lib/paymentReminders';
+import { money, balanceDue, invoiceLabel, reminderBody, sendReminderEmail } from '@/lib/paymentReminders';
+import { sendPaymentMessage } from '@/lib/sendPaymentMessageClient';
 
 function daysSince(iso) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
@@ -33,8 +34,16 @@ export default function UnpaidInvoicesPage() {
       });
   }, []);
 
-  function remindViaWhatsApp(inv) {
-    openWhatsAppReminder(inv.clients?.phone, inv.clients?.full_name, [inv]);
+  // From the clinic's WhatsApp Business number; staff WhatsApp only while
+  // Meta is still approving the reminder message.
+  async function remindViaWhatsApp(inv) {
+    const result = await sendPaymentMessage({
+      invoiceId: inv.id,
+      kind: 'reminder',
+      phone: inv.clients?.phone,
+      fallbackMessage: reminderBody(inv.clients?.full_name, [inv]),
+    });
+    alert(result.note);
   }
 
   async function remindViaEmail(inv) {

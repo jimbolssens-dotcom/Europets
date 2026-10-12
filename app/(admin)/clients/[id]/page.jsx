@@ -10,8 +10,9 @@ import { supabase } from '@/lib/supabaseClient';
 import ClientPhonesEditor, { initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
 import InfoHint from '@/app/_components/InfoHint';
 import { EMIRATES } from '@/lib/emirates';
-import { money, balanceDue, invoiceLabel, totalBalanceDue, openWhatsAppReminder, sendReminderEmail } from '@/lib/paymentReminders';
+import { money, balanceDue, invoiceLabel, totalBalanceDue, reminderBody, sendReminderEmail } from '@/lib/paymentReminders';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
+import { sendPaymentMessage } from '@/lib/sendPaymentMessageClient';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
 import { appOrigin } from '@/lib/appOrigin';
@@ -157,14 +158,15 @@ export default function ClientDetailPage() {
   // the per-invoice "Send" button on the invoice page: no link is
   // generated here, the website builds the actual Nomod link lazily for
   // whatever the balance happens to be when the client opens it.
-  function sendPaymentLink() {
+  async function sendPaymentLink() {
     setPaymentLinkError(null);
     const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
     const url = `${websiteUrl}/settle-bill/owner/${id}`;
     const digits = (client.phone || '').replace(/\D/g, '');
     const message = `Hi ${client.full_name}! You can settle your outstanding balance with Europets Clinic online here: ${url}`;
     if (digits.length > 3) {
-      openWhatsApp(client.phone, message);
+      const result = await sendPaymentMessage({ clientId: id, phone: client.phone, fallbackMessage: message });
+      setPaymentLinkError(result.note);
     } else {
       navigator.clipboard.writeText(url);
       setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
@@ -713,7 +715,15 @@ export default function ClientDetailPage() {
             <div className="financial-overview-actions">
               <button
                 type="button"
-                onClick={() => openWhatsAppReminder(client.phone, client.full_name, outstandingInvoices)}
+                onClick={async () => {
+                  const result = await sendPaymentMessage({
+                    clientId: id,
+                    kind: 'reminder',
+                    phone: client.phone,
+                    fallbackMessage: reminderBody(client.full_name, outstandingInvoices),
+                  });
+                  setPaymentLinkError(result.note);
+                }}
                 disabled={!client.phone}
               >
                 💬 WhatsApp
@@ -731,7 +741,7 @@ export default function ClientDetailPage() {
             </div>
           </>
         )}
-        {paymentLinkError && <p className="error">{paymentLinkError}</p>}
+        {paymentLinkError && <p className={paymentLinkError.startsWith('✅') || paymentLinkError.startsWith('Opened') ? 'visit-meta' : 'error'}>{paymentLinkError}</p>}
 
         {outstandingInvoices.length > 0 ? (
           <table className="financial-overview-table">

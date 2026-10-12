@@ -19,6 +19,7 @@ import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import InvoiceDiscountPanel from '@/app/_components/InvoiceDiscountPanel';
 import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 import { formatShortDate, formatDateTime } from '@/lib/formatTimestamp';
+import { sendPaymentMessage } from '@/lib/sendPaymentMessageClient';
 import { openWhatsApp } from '@/lib/whatsapp';
 
 function money(n) {
@@ -195,14 +196,15 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
   // link is generated here, it just points the client at their "Settle
   // Your Bill" page (website/app/settle-bill/[id]), which creates the
   // actual Nomod link itself for whatever the balance happens to be.
-  function sendPaymentLink() {
+  async function sendPaymentLink() {
     setPaymentLinkError(null);
     const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
     const url = `${websiteUrl}/settle-bill/${summary.id}`;
     const digits = (invoice.clients?.phone || '').replace(/\D/g, '');
     const message = `Hi ${invoice.clients?.full_name || ''}! You can settle your Europets Clinic invoice online here: ${url}`;
     if (digits.length > 3) {
-      openWhatsApp(invoice.clients?.phone, message);
+      const result = await sendPaymentMessage({ invoiceId: summary.id, phone: invoice.clients?.phone, fallbackMessage: message });
+      setPaymentLinkError(result.note);
     } else {
       navigator.clipboard.writeText(url);
       setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
@@ -379,7 +381,7 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
                 }}
               />
 
-              {paymentLinkError && <p className="error">{paymentLinkError}</p>}
+              {paymentLinkError && <p className={paymentLinkError.startsWith('✅') || paymentLinkError.startsWith('Opened') ? 'visit-meta' : 'error'}>{paymentLinkError}</p>}
 
               <InvoicePaymentPanel
                 invoice={invoice}

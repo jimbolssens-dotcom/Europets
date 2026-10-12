@@ -21,6 +21,7 @@ import { printPdfUrl } from '@/lib/printPdf';
 import InfoHint from '@/app/_components/InfoHint';
 import { appOrigin } from '@/lib/appOrigin';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
+import { sendPaymentMessage } from '@/lib/sendPaymentMessageClient';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
@@ -322,14 +323,17 @@ export default function InvoiceDetailPage() {
   // which creates the actual Nomod link itself, for whatever the balance
   // due happens to be at the moment they open it (see
   // website/app/api/settle-bill/[id]).
-  function sendPaymentLink() {
+  // Sent from the clinic's WhatsApp Business number (lib/paymentMessages.js);
+  // staff WhatsApp only while Meta is still approving that message.
+  async function sendPaymentLink() {
     setPaymentLinkError(null);
     const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
     const url = `${websiteUrl}/settle-bill/${id}`;
     const digits = (invoice.clients?.phone || '').replace(/\D/g, '');
     const message = `Hi ${invoice.clients?.full_name || ''}! You can settle your Europets Clinic invoice online here: ${url}`;
     if (digits.length > 3) {
-      openWhatsApp(invoice.clients?.phone, message);
+      const result = await sendPaymentMessage({ invoiceId: id, phone: invoice.clients?.phone, fallbackMessage: message });
+      setPaymentLinkError(result.note);
     } else {
       navigator.clipboard.writeText(url);
       setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
@@ -564,7 +568,7 @@ export default function InvoiceDetailPage() {
         {linkError && <span className="error" role="alert">{linkError}</span>}
       </CrossRecordLinks>
       </div>
-      {paymentLinkError && <p className="error">{paymentLinkError}</p>}
+      {paymentLinkError && <p className={paymentLinkError.startsWith('✅') || paymentLinkError.startsWith('Opened') ? 'visit-meta' : 'error'}>{paymentLinkError}</p>}
       {lineItemEditError && <p className="error">{lineItemEditError}</p>}
 
       <table>
