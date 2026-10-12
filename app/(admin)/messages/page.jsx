@@ -654,6 +654,7 @@ export default function MessagesInboxPage() {
             { key: 'paymentReminderSecond', label: 'Payment reminder: second (1 month)', onSubmit: submitPaymentTemplates, submitting: submittingPaymentTemplates, result: paymentTemplatesResult },
             { key: 'paymentReminderFinal', label: 'Payment reminder: final (2 months)', onSubmit: submitPaymentTemplates, submitting: submittingPaymentTemplates, result: paymentTemplatesResult },
             { key: 'paymentLink', label: 'Payment link', onSubmit: submitPaymentTemplates, submitting: submittingPaymentTemplates, result: paymentTemplatesResult },
+            { key: 'paymentThankYou', label: 'Payment thank-you', onSubmit: submitPaymentTemplates, submitting: submittingPaymentTemplates, result: paymentTemplatesResult },
           ];
           const needsAttention = (t) => {
             const s = templateStatuses[t.key];
