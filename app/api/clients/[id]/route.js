@@ -35,7 +35,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { full_name, phones, emirates_id, trn, email, address, emirate, legacy_outstanding_balance } = body;
+  const { full_name, phones, emirates_id, trn, email, address, emirate, legacy_outstanding_balance, payment_reminders_off } = body;
 
   const update = {};
   if (full_name !== undefined) update.full_name = full_name;
@@ -44,6 +44,9 @@ export async function PATCH(request, { params }) {
   if (email !== undefined) update.email = email;
   if (address !== undefined) update.address = address;
   if (emirate !== undefined) update.emirate = emirate || null;
+  // The client page's "No automatic payment reminders" tick box (see
+  // lib/invoiceReminders.js).
+  if (payment_reminders_off !== undefined) update.payment_reminders_off = !!payment_reminders_off;
   if (legacy_outstanding_balance !== undefined) {
     update.legacy_outstanding_balance = legacy_outstanding_balance === '' ? null : legacy_outstanding_balance;
   }

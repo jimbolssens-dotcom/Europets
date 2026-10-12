@@ -41,6 +41,7 @@ const PUBLIC_PATTERNS = [
   /^\/api\/vaccinations\/send-due-reminders$/, // Vercel Cron's own daily trigger — can't carry a staff cookie; verified via its own CRON_SECRET bearer token instead (see the route)
   /^\/api\/backups\/nightly$/, // Vercel Cron's own daily trigger — same reasoning as send-due-reminders above. Deliberately not under /api/accounting, which needs its own separate password cookie a cron job has no way to carry either.
   /^\/api\/appointments\/send-due-reminders$/, // Vercel Cron's own daily 5:30pm-Dubai trigger — same reasoning as the other cron routes here.
+  /^\/api\/invoices\/send-due-reminders$/, // Vercel Cron's morning outstanding-invoice reminder runs; same CRON_SECRET check as the other cron routes.
   /^\/api\/attachments\/compress-sweep$/, // Vercel Cron's own ten-minute photo compression sweep — same CRON_SECRET check as the other cron routes.
   /^\/api\/whatsapp\/nudge-sweep$/, // Vercel Cron's own five-minute trigger — same reasoning as the other two cron routes above.
   // Report/invoice PDFs staff link directly to a client via WhatsApp/email

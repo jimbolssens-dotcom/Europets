@@ -240,6 +240,19 @@ export default function ClientDetailPage() {
     }
   }
 
+  async function togglePaymentReminders(off) {
+    setClient((c) => ({ ...c, payment_reminders_off: off }));
+    const res = await fetch(`/api/clients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payment_reminders_off: off }),
+    });
+    if (!res.ok) {
+      setClient((c) => ({ ...c, payment_reminders_off: !off }));
+      alert('Could not save the payment reminder setting.');
+    }
+  }
+
   function startEdit() {
     const phones = (client.client_phones || []).map(toEditableRow);
     setEditForm({
@@ -666,6 +679,16 @@ export default function ClientDetailPage() {
             AED {money(totalOutstanding)}
           </span>
         </div>
+
+        <label className="payment-reminders-toggle">
+          <input
+            type="checkbox"
+            checked={!!client.payment_reminders_off}
+            onChange={(e) => togglePaymentReminders(e.target.checked)}
+          />
+          No automatic payment reminders
+          <InfoHint>Open invoices get a WhatsApp and email reminder at 2 weeks, 1 month and 2 months. Tick this for clients on account, insurance or a disputed bill.</InfoHint>
+        </label>
 
         <p className="financial-overview-group-label">
           Send full statement <InfoHint>Every invoice and payment on file, with dates and running balance — a document, not just a reminder.</InfoHint>

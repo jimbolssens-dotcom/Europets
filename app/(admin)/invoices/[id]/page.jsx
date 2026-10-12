@@ -5,6 +5,7 @@
 
 'use client';
 
+import InvoiceReminderLog from '@/app/_components/InvoiceReminderLog';
 import { Fragment, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -769,6 +770,9 @@ export default function InvoiceDetailPage() {
 
       <h3>Payments</h3>
       <InvoicePaymentPanel invoice={invoice} staff={staff} onChanged={loadInvoice} />
+
+      <h3>Payment reminders</h3>
+      <InvoiceReminderLog invoiceId={invoice.id} paid={invoice.status === 'paid'} />
 
       {microchipModalOpen && (
         <MicrochipCaptureModal

@@ -10763,3 +10763,23 @@ form.card.admit-patient-form {
   margin: 0 0 0.25rem;
   font-size: 1rem;
 }
+
+/* Client page: "No automatic payment reminders" tick box in the
+   Financial Overview card. */
+.payment-reminders-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  margin: 0.5rem 0;
+}
+
+.payment-reminders-toggle input {
+  width: auto;
+  margin: 0;
+}
+
+/* Invoice page: log of automatic payment reminders. */
+.invoice-reminder-log {
+  font-size: 0.85rem;
+}
