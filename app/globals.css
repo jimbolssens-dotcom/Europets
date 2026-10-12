@@ -10784,21 +10784,85 @@ form.card.admit-patient-form {
   font-size: 0.85rem;
 }
 
-/* Messages: unregistered WhatsApp numbers, a compact collapsible bar above
-   the client conversations (opens by itself when one is waiting). */
-.unmatched-numbers {
-  margin: 0 0 0.75rem;
-  border: 1px solid #f0d9a8;
-  background: #fffaf0;
-  border-radius: 8px;
-  padding: 0.4rem 0.75rem;
+/* Messages: the Unregistered pill (WhatsApp numbers not linked to a
+   client) beside Invite. Flashes yellow while one is waiting for a reply;
+   opens a dropdown over the page, so the inbox below never moves. Desktop
+   only: hidden on phones. */
+.unregistered-pill-wrap {
+  position: relative;
+  display: inline-block;
 }
 
-.unmatched-numbers > summary {
-  cursor: pointer;
-  font-weight: 600;
+.unregistered-pill-waiting {
+  animation: unregistered-pill-flash 1.2s ease-in-out infinite;
 }
 
-.unmatched-numbers-waiting {
-  color: #b45309;
+@keyframes unregistered-pill-flash {
+  0%,
+  100% {
+    background: var(--pink);
+    color: #fff;
+  }
+  50% {
+    background: #ffc107;
+    color: #3d2c00;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unregistered-pill-waiting {
+    animation: none;
+    background: #ffc107;
+    color: #3d2c00;
+  }
+}
+
+.unregistered-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.unregistered-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 41;
+  width: 900px;
+  max-width: calc(100vw - 60px);
+  max-height: 70vh;
+  overflow: auto;
+  padding: 0.75rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  text-align: left;
+}
+
+.unregistered-popover table {
+  width: 100%;
+}
+
+.unregistered-popover td:last-child {
+  white-space: nowrap;
+}
+
+.unregistered-popover-head strong {
+  white-space: nowrap;
+}
+
+.unregistered-popover-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.unregistered-popover-close {
+  margin-left: auto;
+  padding: 0.1rem 0.5rem;
+}
+
+@media (max-width: 700px) {
+  .unregistered-pill-wrap {
+    display: none;
+  }
 }

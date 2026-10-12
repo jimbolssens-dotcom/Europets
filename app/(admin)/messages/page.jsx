@@ -305,6 +305,8 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
 
 export default function MessagesInboxPage() {
   const [conversations, setConversations] = useState([]);
+  // The Unregistered pill's dropdown (desktop only, see globals.css).
+  const [unregisteredOpen, setUnregisteredOpen] = useState(false);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState(false);
@@ -622,6 +624,52 @@ export default function MessagesInboxPage() {
             main bar. Each is still just a plain link to its own unchanged
             page. */}
         <div className="hospitalization-header-actions">
+          {/* WhatsApp numbers not linked to a client: a pill that flashes
+              yellow while one is waiting for a reply, opening a dropdown
+              over the page so the inbox below never moves. Desktop only. */}
+          {unmatched.length > 0 && (
+            <span className="unregistered-pill-wrap">
+              <button
+                type="button"
+                className={`button-link${unmatched.some((c) => c.pending) ? ' unregistered-pill-waiting' : ''}`}
+                onClick={() => setUnregisteredOpen((v) => !v)}
+                aria-expanded={unregisteredOpen}
+                title="WhatsApp messages from numbers not linked to a client"
+              >
+                📵 Unregistered ({unmatched.length}){unmatched.some((c) => c.pending) && ' 🔔'}
+              </button>
+              {unregisteredOpen && (
+                <>
+                  <div className="unregistered-popover-backdrop" onClick={() => setUnregisteredOpen(false)} />
+                  <div className="unregistered-popover card">
+                    <div className="unregistered-popover-head">
+                      <strong>📵 Unregistered numbers</strong>
+                      <span className="visit-meta">Open to reply or link to a client, or 📝 Register to send the new-patient form.</span>
+                      <button type="button" className="unregistered-popover-close" onClick={() => setUnregisteredOpen(false)} aria-label="Close">
+                        ✕
+                      </button>
+                    </div>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th></th>
+                          <th>Number</th>
+                          <th>Last message</th>
+                          <th>When</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {unmatched.map((c) => (
+                          <UnmatchedThreadRow key={c.thread_key} conv={c} staff={staff} onLinked={load} />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </span>
+          )}
           <a
             href="/intake"
             className={`button-link${hasPendingInviteRequest ? ' button-link-alarm' : ''}`}
@@ -745,33 +793,6 @@ export default function MessagesInboxPage() {
         <p>No conversations yet — messages clients send from the client app or WhatsApp will show up here.</p>
       ) : (
         <>
-          {unmatched.length > 0 && (
-            <details className="unmatched-numbers" open={unmatched.some((c) => c.pending)}>
-              <summary>
-                📵 Unregistered numbers ({unmatched.length})
-                {unmatched.some((c) => c.pending) && (
-                  <span className="unmatched-numbers-waiting"> · 🔔 {unmatched.filter((c) => c.pending).length} waiting</span>
-                )}
-              </summary>
-              <p className="visit-meta">Not linked to a client yet: open to reply or link, or 📝 Register to send the new-patient form.</p>
-              <table>
-                <thead>
-                  <tr>
-                    <th></th>
-                    <th>Number</th>
-                    <th>Last message</th>
-                    <th>When</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {unmatched.map((c) => (
-                    <UnmatchedThreadRow key={c.thread_key} conv={c} staff={staff} onLinked={load} />
-                  ))}
-                </tbody>
-              </table>
-            </details>
-          )}
           {matched.length > 0 && (
             <table>
               <thead>
