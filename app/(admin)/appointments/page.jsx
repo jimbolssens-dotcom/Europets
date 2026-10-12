@@ -314,8 +314,11 @@ function AppointmentsPageInner() {
     if (calendarView !== 'day' || e.button !== 0 || dragMove || dragResize) return;
     const rect = e.currentTarget.getBoundingClientRect(); const { minutesFromOpen } = computeSlot(e); setDragSelect({ roomId, startMinutes: minutesFromOpen, endMinutes: minutesFromOpen }); setHoverSlot(null);
     function onMove(moveEvent) { const raw = (moveEvent.clientY - rect.top) / pixelsPerMinute; const snapped = Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES; const clamped = Math.max(0, Math.min(snapped, (CLOSE_HOUR - OPEN_HOUR) * 60 - SNAP_MINUTES)); setDragSelect((prev) => prev ? { ...prev, endMinutes: clamped } : prev); }
-    function onUp() { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); setDragSelect((prev) => { if (prev) { const start = Math.min(prev.startMinutes, prev.endMinutes); const end = Math.max(prev.startMinutes, prev.endMinutes) + SNAP_MINUTES; applySlotSelection(prev.roomId, start, end - start); } return null; }); }
-    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+    function onUp() { window.removeEventListener('mousemove', onMove, true); window.removeEventListener('mouseup', onUp, true); setDragSelect((prev) => { if (prev) { const start = Math.min(prev.startMinutes, prev.endMinutes); const end = Math.max(prev.startMinutes, prev.endMinutes) + SNAP_MINUTES; applySlotSelection(prev.roomId, start, end - start); } return null; }); }
+    // Capture phase: an appointment block stops mouse events bubbling (so
+    // hovering it doesn't light up the grid), which would otherwise hide
+    // every move made over a block, e.g. dragging a block's bottom edge up.
+    window.addEventListener('mousemove', onMove, true); window.addEventListener('mouseup', onUp, true);
   }
   function hoverGrid(e, roomId, dateISO = selectedDate) { if (dragSelect || dragMove || dragResize) return; const { minutesFromOpen, time } = computeSlot(e); setHoverSlot({ roomId, dateISO, top: minutesFromOpen * pixelsPerMinute, label: formatSlotLabel(time) }); }
 
@@ -337,16 +340,22 @@ function AppointmentsPageInner() {
       return { roomId: el?.dataset.roomId || originalRoomId, dateISO: originalDateISO, startMinutes };
     }
     function onMove(moveEvent) { if (Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3) moved = true; setDragMove((prev) => prev ? { ...prev, ...resolve(moveEvent.clientX, moveEvent.clientY) } : prev); }
-    function onUp(upEvent) { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); setDragMove(null); if (!moved) { if (pendingClickTimeoutRef.current) { clearTimeout(pendingClickTimeoutRef.current); pendingClickTimeoutRef.current = null; } else pendingClickTimeoutRef.current = setTimeout(() => { pendingClickTimeoutRef.current = null; openEditModal(appointment); }, 250); return; } const next = resolve(upEvent.clientX, upEvent.clientY); if (next.roomId === originalRoomId && next.dateISO === originalDateISO && next.startMinutes === originalStartMinutes) return; patchAppointment(appointment.id, { room_id: next.roomId, start_time: startTimeFromMinutes(next.dateISO, next.startMinutes), date: next.dateISO, shift: OPEN_HOUR + Math.floor(next.startMinutes / 60) < 12 ? 'morning' : 'afternoon' }); }
-    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+    function onUp(upEvent) { window.removeEventListener('mousemove', onMove, true); window.removeEventListener('mouseup', onUp, true); setDragMove(null); if (!moved) { if (pendingClickTimeoutRef.current) { clearTimeout(pendingClickTimeoutRef.current); pendingClickTimeoutRef.current = null; } else pendingClickTimeoutRef.current = setTimeout(() => { pendingClickTimeoutRef.current = null; openEditModal(appointment); }, 250); return; } const next = resolve(upEvent.clientX, upEvent.clientY); if (next.roomId === originalRoomId && next.dateISO === originalDateISO && next.startMinutes === originalStartMinutes) return; patchAppointment(appointment.id, { room_id: next.roomId, start_time: startTimeFromMinutes(next.dateISO, next.startMinutes), date: next.dateISO, shift: OPEN_HOUR + Math.floor(next.startMinutes / 60) < 12 ? 'morning' : 'afternoon' }); }
+    // Capture phase: an appointment block stops mouse events bubbling (so
+    // hovering it doesn't light up the grid), which would otherwise hide
+    // every move made over a block, e.g. dragging a block's bottom edge up.
+    window.addEventListener('mousemove', onMove, true); window.addEventListener('mouseup', onUp, true);
   }
 
   function startResizeAppointment(e, appointment) {
     if (calendarView !== 'day' || e.button !== 0) return; e.stopPropagation(); e.preventDefault(); const trackEl = e.currentTarget.closest('.schedule-room-track'); if (!trackEl) return;
-    const rect = trackEl.getBoundingClientRect(); const startMinutes = minutesSinceOpen(appointment.start_time); const totalMinutes = (CLOSE_HOUR - OPEN_HOUR) * 60; const originalDuration = appointment.duration_minutes; setDragResize({ appointmentId: appointment.id, duration: originalDuration });
-    function onMove(moveEvent) { const raw = (moveEvent.clientY - rect.top) / pixelsPerMinute - startMinutes; const step = appointment.type === 'surgery' ? SURGERY_INCREMENT_MINUTES : appointment.type === 'meeting' ? 5 : SNAP_MINUTES; const maxLen = appointment.type === 'consult' || appointment.type === 'video' ? 240 : Infinity; const snapped = Math.round(raw / step) * step; const clamped = Math.max(step, Math.min(snapped, totalMinutes - startMinutes, maxLen)); setDragResize((prev) => prev ? { ...prev, duration: clamped } : prev); }
-    function onUp() { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); setDragResize((prev) => { if (prev && prev.duration !== originalDuration) patchAppointment(appointment.id, { duration_minutes: prev.duration, date: selectedDate, shift: startMinutes < (12 - OPEN_HOUR) * 60 ? 'morning' : 'afternoon' }); return null; }); }
-    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+    const rect = trackEl.getBoundingClientRect(); const startMinutes = minutesSinceOpen(appointment.start_time); const totalMinutes = (CLOSE_HOUR - OPEN_HOUR) * 60; const originalDuration = appointment.duration_minutes; setDragResize({ appointmentId: appointment.id, duration: originalDuration }); let latestDuration = originalDuration;
+    function onMove(moveEvent) { const raw = (moveEvent.clientY - rect.top) / pixelsPerMinute - startMinutes; const step = appointment.type === 'surgery' ? SURGERY_INCREMENT_MINUTES : appointment.type === 'meeting' ? 5 : SNAP_MINUTES; const maxLen = appointment.type === 'consult' || appointment.type === 'video' ? 240 : Infinity; const snapped = Math.round(raw / step) * step; const clamped = Math.max(step, Math.min(snapped, totalMinutes - startMinutes, maxLen)); latestDuration = clamped; setDragResize((prev) => prev ? { ...prev, duration: clamped } : prev); }
+    function onUp() { window.removeEventListener('mousemove', onMove, true); window.removeEventListener('mouseup', onUp, true); setDragResize(null); if (latestDuration !== originalDuration) patchAppointment(appointment.id, { duration_minutes: latestDuration, date: selectedDate, shift: startMinutes < (12 - OPEN_HOUR) * 60 ? 'morning' : 'afternoon' }); }
+    // Capture phase: an appointment block stops mouse events bubbling (so
+    // hovering it doesn't light up the grid), which would otherwise hide
+    // every move made over a block, e.g. dragging a block's bottom edge up.
+    window.addEventListener('mousemove', onMove, true); window.addEventListener('mouseup', onUp, true);
   }
 
   async function submitAppointment(payload) { const res = await fetch('/api/appointments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); const data = await res.json(); if (!res.ok) { if (data.code === 'not_on_roster') setRosterBlock({ message: `${data.vet_name} isn't on the staff roster for that ${data.shift} (${data.date}).`, vetId: data.vet_id, vetName: data.vet_name, date: data.date, shift: data.shift, payload }); else setError(data.error || 'Failed to book appointment'); } else { setRosterBlock(null); setForm({ ...emptyForm, client_id: form.client_id }); setRefreshTick((n) => n + 1); } return res.ok; }
