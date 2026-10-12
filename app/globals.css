@@ -10783,3 +10783,22 @@ form.card.admit-patient-form {
 .invoice-reminder-log {
   font-size: 0.85rem;
 }
+
+/* Messages: unregistered WhatsApp numbers, a compact collapsible bar above
+   the client conversations (opens by itself when one is waiting). */
+.unmatched-numbers {
+  margin: 0 0 0.75rem;
+  border: 1px solid #f0d9a8;
+  background: #fffaf0;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+}
+
+.unmatched-numbers > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.unmatched-numbers-waiting {
+  color: #b45309;
+}

@@ -19,6 +19,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 function formatWhen(iso) {
   return new Date(iso).toLocaleString('en-GB', {
@@ -79,8 +80,43 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
   const [sending, setSending] = useState(false);
   const [linking, setLinking] = useState(false);
   const [error, setError] = useState(null);
+  const [registering, setRegistering] = useState(false);
+  const [registerNote, setRegisterNote] = useState(null);
 
   const phone = conv.phone;
+
+  // Sends this number the new-patient registration form (the same intake
+  // link as the Invite page), from the clinic's WhatsApp number. Once they
+  // fill it in and it's approved, the client is created with this number
+  // and this conversation moves into their normal thread (see PATCH
+  // /api/intake-requests/:id).
+  async function sendRegistrationForm() {
+    setRegistering(true);
+    setRegisterNote(null);
+    const digits = String(phone).replace(/\D/g, '');
+    const res = await fetch('/api/intake-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sent_to_phone: `+${digits}` }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.id) {
+      setRegistering(false);
+      setRegisterNote({ ok: false, text: data.error || 'Could not create the registration form.' });
+      return;
+    }
+    const sendRes = await fetch(`/api/intake-requests/${data.id}/send-whatsapp`, { method: 'POST' });
+    const sendData = await sendRes.json().catch(() => ({}));
+    setRegistering(false);
+    if (sendRes.ok && sendData.sent) {
+      setRegisterNote({ ok: true, text: '✅ Registration form sent from the clinic WhatsApp.' });
+      loadMessages();
+      return;
+    }
+    const url = `${window.location.origin}/portal/intake/${data.id}`;
+    openWhatsApp(phone, `Hi! Thanks for contacting Europets Clinic. Please fill in your details and your pet's details here so we can help you: ${url}`);
+    setRegisterNote({ ok: true, text: 'Opened in your WhatsApp (the clinic number could not send it).' });
+  }
 
   const loadMessages = () =>
     fetch(`/api/client-messages/unmatched/${encodeURIComponent(phone)}`)
@@ -166,17 +202,28 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
         <td>{conv.pending && '🔔'}</td>
         <td>
           <button type="button" className="button-link" onClick={() => setExpanded((v) => !v)}>
-            {phone} <span className="visit-meta">(unmatched WhatsApp)</span>
+            +{phone}
           </button>
         </td>
         <td>
           {conv.last_sender === 'staff' ? 'You: ' : conv.last_sender === 'system' ? '🔔 ' : ''}
           {preview(conv.last_message)}
         </td>
-        <td>{formatWhen(conv.last_message_at)}</td>
+        <td>
+          {formatWhen(conv.last_message_at)}
+          {registerNote && <div className={registerNote.ok ? 'visit-meta' : 'error'}>{registerNote.text}</div>}
+        </td>
         <td>
           <button type="button" onClick={() => setExpanded((v) => !v)}>
             {expanded ? 'Close' : 'Open'}
+          </button>{' '}
+          <button
+            type="button"
+            onClick={sendRegistrationForm}
+            disabled={registering}
+            title="Send this number the new-patient registration form on WhatsApp"
+          >
+            {registering ? 'Sending…' : '📝 Register'}
           </button>{' '}
           <button type="button" onClick={toggleFlagged} title={conv.flagged ? 'Clear the needs-attention flag' : 'Flag as still needing attention'}>
             {conv.flagged ? '🔔' : '🏳️'}
@@ -698,6 +745,33 @@ export default function MessagesInboxPage() {
         <p>No conversations yet — messages clients send from the client app or WhatsApp will show up here.</p>
       ) : (
         <>
+          {unmatched.length > 0 && (
+            <details className="unmatched-numbers" open={unmatched.some((c) => c.pending)}>
+              <summary>
+                📵 Unregistered numbers ({unmatched.length})
+                {unmatched.some((c) => c.pending) && (
+                  <span className="unmatched-numbers-waiting"> · 🔔 {unmatched.filter((c) => c.pending).length} waiting</span>
+                )}
+              </summary>
+              <p className="visit-meta">Not linked to a client yet: open to reply or link, or 📝 Register to send the new-patient form.</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Number</th>
+                    <th>Last message</th>
+                    <th>When</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unmatched.map((c) => (
+                    <UnmatchedThreadRow key={c.thread_key} conv={c} staff={staff} onLinked={load} />
+                  ))}
+                </tbody>
+              </table>
+            </details>
+          )}
           {matched.length > 0 && (
             <table>
               <thead>
@@ -737,31 +811,6 @@ export default function MessagesInboxPage() {
             </table>
           )}
 
-          {unmatched.length > 0 && (
-            <>
-              <h3>Unmatched WhatsApp numbers</h3>
-              <p className="visit-meta">
-                Messages from a number that isn&apos;t linked to a client yet — reply below, or link it to a client to
-                fold it into their normal conversation.
-              </p>
-              <table>
-                <thead>
-                  <tr>
-                    <th></th>
-                    <th>Number</th>
-                    <th>Last message</th>
-                    <th>When</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {unmatched.map((c) => (
-                    <UnmatchedThreadRow key={c.thread_key} conv={c} staff={staff} onLinked={load} />
-                  ))}
-                </tbody>
-              </table>
-            </>
-          )}
         </>
       )}
     </>
