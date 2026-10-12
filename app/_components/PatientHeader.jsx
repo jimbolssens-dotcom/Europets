@@ -15,7 +15,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { petAgeLabel, estimatedDateOfBirth, sexLabel, speciesEmoji } from '@/lib/petAge';
 
 export default function PatientHeader({
@@ -36,6 +36,50 @@ export default function PatientHeader({
   const [months, setMonths] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // `actions` (e.g. Doctor Checkup, Messages) go at the right end of the
+  // highest row with room for them: the name row if it has the space,
+  // else the owner row; never on a line of their own unless neither fits.
+  const row1Ref = useRef(null);
+  const actionsRef = useRef(null);
+  const [actionsRow, setActionsRow] = useState(2);
+  const actionsMoves = useRef(0); // safety stop: never flip back and forth for ever
+  useLayoutEffect(() => {
+    if (!actions) return undefined;
+    function spareWidth(row) {
+      if (!row) return 0;
+      const kids = [...row.children].filter((k) => k !== actionsRef.current);
+      if (kids.length === 0) return row.clientWidth;
+      const left = row.getBoundingClientRect().left;
+      const firstTop = kids[0].getBoundingClientRect().top;
+      // The row already wraps on its own: no room on its first line.
+      if (kids.some((k) => k.getBoundingClientRect().top > firstTop + kids[0].offsetHeight)) return 0;
+      const used = Math.max(...kids.map((k) => k.getBoundingClientRect().right)) - left;
+      return row.clientWidth - used;
+    }
+    function place() {
+      const el = actionsRef.current;
+      if (!el) return;
+      const needed = el.scrollWidth + 16;
+      const next = spareWidth(row1Ref.current) >= needed ? 1 : 2;
+      setActionsRow((prev) => {
+        if (prev === next || actionsMoves.current > 4) return prev;
+        actionsMoves.current += 1;
+        return next;
+      });
+    }
+    place();
+    const ro = new ResizeObserver(place);
+    if (row1Ref.current) ro.observe(row1Ref.current);
+    const onWindowResize = () => {
+      actionsMoves.current = 0;
+    };
+    window.addEventListener('resize', onWindowResize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', onWindowResize);
+    };
+  });
 
   // "Not now" on the automatic box is remembered for this browser session,
   // so it doesn't reappear on every reload of the same consult.
@@ -82,7 +126,7 @@ export default function PatientHeader({
 
   return (
     <div className="patient-header">
-      <div className="patient-header-row1">
+      <div className="patient-header-row1" ref={row1Ref}>
         {p.profile_photo_url ? (
           <img className="patient-header-avatar" src={p.profile_photo_url} alt="" />
         ) : (
@@ -105,6 +149,11 @@ export default function PatientHeader({
         {sexLabel(p.sex) && <span className="patient-chip">{sexLabel(p.sex)}</span>}
         {chips}
         {status && <span className={`patient-status patient-status-${status.tone || 'progress'}`}>{status.label}</span>}
+        {actions && actionsRow === 1 && (
+          <div className="patient-header-actions" ref={actionsRef}>
+            {actions}
+          </div>
+        )}
       </div>
 
       {ageOpen && (
@@ -139,7 +188,11 @@ export default function PatientHeader({
       {(children || actions) && (
         <div className="patient-header-row2">
           {children}
-          {actions && <div className="patient-header-actions">{actions}</div>}
+          {actions && actionsRow === 2 && (
+            <div className="patient-header-actions" ref={actionsRef}>
+              {actions}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -151,6 +204,27 @@ export function PatientMeta({ label, children }) {
   return (
     <span className="patient-meta">
       <span className="patient-meta-label">{label}</span> {children}
+    </span>
+  );
+}
+
+// Weight or temperature in the title row: just the icon and its little
+// graph, no number and no chip around it (hover shows the latest reading,
+// and each point on the graph shows its own). With fewer than two
+// readings there's no graph to show, so the number stands in as a chip.
+export function PatientTrend({ icon, value, unit, readings = 0, children }) {
+  if (value == null) return null;
+  if (readings < 2) {
+    return (
+      <span className="patient-chip">
+        {icon} {value} {unit}
+      </span>
+    );
+  }
+  return (
+    <span className="patient-trend" title={`Latest: ${value} ${unit}`}>
+      <span aria-hidden="true">{icon}</span>
+      {children}
     </span>
   );
 }

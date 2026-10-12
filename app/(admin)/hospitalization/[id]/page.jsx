@@ -37,7 +37,7 @@ import HospitalizationReportsSection from '@/app/_components/HospitalizationRepo
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
-import PatientHeader, { PatientMeta } from '@/app/_components/PatientHeader';
+import PatientHeader, { PatientMeta, PatientTrend } from '@/app/_components/PatientHeader';
 import TemperatureHistoryChart from '@/app/_components/TemperatureHistoryChart';
 import { useVaccinations } from '@/app/_components/useVaccinations';
 import VaccinationForm from '@/app/_components/VaccinationForm';
@@ -920,9 +920,15 @@ export default function HospitalizationDetailPage() {
     </details>
   );
 
-  const consentSignPanel = (
-    <details className="case-files" open={consentForms.length === 0}>
-      <summary>📝 Sign a Consent Form</summary>
+  // A small tab next to History and Photos (amber until a form is signed)
+  // that opens the signed forms and the "sign a new one" form in a dropdown.
+  const consentTab = (
+    <details className="case-tab-menu" name="case-tabs">
+      <summary className={`case-tab${consentForms.length === 0 ? ' case-tab-warn' : ''}`}>
+        📝 Consent {consentForms.length === 0 ? '· not signed' : <b>✓ {consentForms.length}</b>}
+      </summary>
+      <div className="case-tab-dropdown case-tab-dropdown-wide">
+      {signedConsentFormsList}
       <form className="card" onSubmit={addConsentForm}>
         <h3>Sign {CONSENT_FORM_LABELS[consentFormType]}</h3>
         {consentError && <p className="error">{consentError}</p>}
@@ -973,6 +979,7 @@ export default function HospitalizationDetailPage() {
           </button>
         </div>
       </form>
+      </div>
     </details>
   );
 
@@ -982,7 +989,21 @@ export default function HospitalizationDetailPage() {
       clientId={admission.client_id}
       excludeHospitalizationId={id}
       excludeVisitId={admission.originating_visit_id}
+      tab
     />
+  );
+
+  // One AttachmentSection per page: the case photos & files, in a tab.
+  const photosTab = (
+    <details className="case-tab-menu" name="case-tabs">
+      <summary className="case-tab">
+        📎 Photos{caseFileCount > 0 && <b> {caseFileCount}</b>}
+      </summary>
+      <div className="case-tab-dropdown case-tab-dropdown-wide">
+        <p className="visit-meta">Not tied to a single worksheet entry: admission photo, wound progress, etc.</p>
+        <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} onAttachmentsChange={setCaseFileCount} />
+      </div>
+    </details>
   );
 
   // Just this stay's own weigh-ins (including any linked day procedure's,
@@ -1031,7 +1052,7 @@ export default function HospitalizationDetailPage() {
                       : 'Flag this case for a doctor to check — stays on the alarm until dismissed here'
                   }
                 >
-                  {admission.doctor_checkup_requested_at ? '🩺 Doctor Checkup Requested — Mark Checked' : '🩺 Request Doctor Checkup'}
+                  {admission.doctor_checkup_requested_at ? '🩺 Doctor Checkup Requested — Mark Checked' : <>🩺 <span className="phone-hide">Request </span>Doctor Checkup</>}
                 </button>
                 {admission.weight_loss_alarm && (
                   <button
@@ -1065,18 +1086,12 @@ export default function HospitalizationDetailPage() {
           onPatientUpdated={loadAdmission}
           chips={
             <>
-              {latestWeight != null && (
-                <span className="patient-chip">
-                  ⚖️ {latestWeight} kg
-                  <WeightHistoryChart data={stayWeightHistory} mini />
-                </span>
-              )}
-              {latestTemperature != null && (
-                <span className="patient-chip">
-                  🌡️ {latestTemperature} °C
-                  <TemperatureHistoryChart data={stayTemperatureHistory} mini />
-                </span>
-              )}
+              <PatientTrend icon="⚖️" value={latestWeight} unit="kg" readings={stayWeightHistory.length}>
+                <WeightHistoryChart data={stayWeightHistory} mini />
+              </PatientTrend>
+              <PatientTrend icon="🌡️" value={latestTemperature} unit="°C" readings={stayTemperatureHistory.length}>
+                <TemperatureHistoryChart data={stayTemperatureHistory} mini />
+              </PatientTrend>
               <MiniCageStrip currentHospitalizationId={id} />
             </>
           }
@@ -1092,6 +1107,29 @@ export default function HospitalizationDetailPage() {
             <PatientMeta label="From">
               <a href={`/consults/${admission.originating_visit_id}`}>the consult</a>
             </PatientMeta>
+          )}
+          {editingReason ? (
+            <span className="patient-reason reason-edit">
+              <input
+                value={reasonDraft}
+                onChange={(e) => setReasonDraft(e.target.value)}
+                placeholder="Reason for admission"
+                autoFocus
+              />
+              <button type="button" onClick={saveReason}>
+                Save
+              </button>
+              <button type="button" onClick={() => setEditingReason(false)}>
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <span className="patient-reason">
+              <span className="patient-meta-label">Reason</span> <strong>{admission.reason || <em>none given</em>}</strong>{' '}
+              <button type="button" className="reason-edit-btn" onClick={startEditReason}>
+                Edit
+              </button>
+            </span>
           )}
         </PatientHeader>
       </div>
@@ -1141,32 +1179,15 @@ export default function HospitalizationDetailPage() {
           </form>
         </div>
       )}
-      {editingReason ? (
-        <p className="reason-edit">
-          <input
-            value={reasonDraft}
-            onChange={(e) => setReasonDraft(e.target.value)}
-            placeholder="Reason for admission"
-            autoFocus
-          />
-          <button type="button" onClick={saveReason}>
-            Save
-          </button>
-          <button type="button" onClick={() => setEditingReason(false)}>
-            Cancel
-          </button>
-        </p>
-      ) : (
-        <p>
-          Reason: {admission.reason || <em>none given</em>}{' '}
-          <button type="button" className="reason-edit-btn" onClick={startEditReason}>
-            Edit
-          </button>
-        </p>
-      )}
       {admission.kind === 'day_procedure' ? (
         <>
-          <div className="hospitalization-actions" role="group" aria-label="Day procedure actions">
+          <div className="case-bar">
+            <div className="case-tabs" role="group" aria-label="Case sections">
+              {patientHistorySection}
+              {consentTab}
+              {photosTab}
+            </div>
+            <div className="case-bar-actions" role="group" aria-label="Day procedure actions">
             {admission.status === 'admitted' && (
               <button type="button" className="button-link" onClick={discharge}>Complete</button>
             )}
@@ -1180,7 +1201,6 @@ export default function HospitalizationDetailPage() {
                 Move to Hospital
               </button>
             )}
-            <a className="button-link" href="/day-procedures">Day Procedures</a>
             <CrossRecordLinks>
               <button type="button" className={`button-link${invoiceInfo ? ' button-link-invoice' : ''}`} onClick={createInvoice} disabled={creatingInvoice}
                 title={invoiceInfo ? `Open the invoice (${invoiceInfo.status}), syncing in anything new from the checklist` : 'Create an invoice from the medications, goods and services on the checklist'}>
@@ -1207,14 +1227,10 @@ export default function HospitalizationDetailPage() {
               ) : null}
               {addConsultError && <span className="error" role="alert">{addConsultError}</span>}
             </CrossRecordLinks>
+            </div>
           </div>
           {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
           {moveToHospitalError && <p className="error" role="alert">{moveToHospitalError}</p>}
-
-          <details className="case-files">
-            <summary>📎 Case Photos &amp; Files{caseFileCount > 0 ? ` (${caseFileCount})` : ''}</summary>
-            <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} onAttachmentsChange={setCaseFileCount} />
-          </details>
 
           {/* Three columns side by side on desktop, same .workbench grid
               (and the same h3-above-a-pink-topped-card title styling) as
@@ -1234,10 +1250,6 @@ export default function HospitalizationDetailPage() {
                 onOpenReport={openReportFromChecklist}
                 onHasVaccineItem={setHasVaccineOnChecklist}
               />
-              {/* Right under the checklist, not buried at the very bottom
-                  of the page — this is reached for every same-day case, so
-                  it needs to be one glance away, not a scroll away. */}
-              {consentSignPanel}
             </div>
 
             <section aria-label="Day Procedure Report">
@@ -1296,37 +1308,46 @@ export default function HospitalizationDetailPage() {
               />
             </div>
           </div>
-
-          {patientHistorySection}
         </>
       ) : (
         <>
-      <div className="hospitalization-actions" role="group" aria-label="Hospitalization actions">
+      <div className="case-bar">
+        <div className="case-tabs" role="group" aria-label="Case sections">
+          {patientHistorySection}
+          {consentTab}
+          {photosTab}
+          <button type="button" className={`case-tab${reportsOpen ? ' case-tab-on' : ''}`} onClick={() => setReportsOpen((v) => !v)}>
+            📑 Reports
+          </button>
+          <details className="case-tab-menu" name="case-tabs">
+            <summary className="case-tab">📤 Share ▾</summary>
+            <div className="case-tab-dropdown case-tab-menu-list">
+              <button
+                type="button"
+                onClick={shareViaWhatsApp}
+                title="Send the live care-update link over WhatsApp — opens your own WhatsApp to send it by hand only if the automatic send can't"
+              >
+                {shareStatus === 'sent'
+                  ? '✅ Sent!'
+                  : shareStatus === 'already_sent'
+                    ? '✅ Already sent'
+                    : shareStatus === 'opened_whatsapp'
+                      ? '✅ Opened WhatsApp'
+                      : '💬 Send care updates on WhatsApp'}
+              </button>
+              <button type="button" onClick={copyPortalLink} title="Copy the live care-update link">
+                {linkCopied ? '✅ Copied!' : '🔗 Copy the care-update link'}
+              </button>
+              <button type="button" onClick={downloadSummaryPdf} title="Download the summary PDF">
+                📄 Summary PDF
+              </button>
+            </div>
+          </details>
+        </div>
+        <div className="case-bar-actions" role="group" aria-label="Hospitalization actions">
         {admission.status === 'admitted' && (
           <button type="button" className="button-link" onClick={discharge}>Discharge</button>
         )}
-        <button type="button" className="button-link" onClick={downloadSummaryPdf} title="Download the summary PDF">Summary</button>
-        <button
-          type="button"
-          className="button-link"
-          onClick={shareViaWhatsApp}
-          title="Send the live care-update link over WhatsApp — opens your own WhatsApp to send it by hand only if the automatic send can't"
-        >
-          {shareStatus === 'sent'
-            ? '✅ Sent!'
-            : shareStatus === 'already_sent'
-              ? '✅ Already sent'
-              : shareStatus === 'opened_whatsapp'
-                ? '✅ Opened WhatsApp'
-                : 'Share'}
-        </button>
-        <button type="button" className="button-link" onClick={copyPortalLink} title="Copy the live care-update link">
-          {linkCopied ? 'Copied!' : 'Copy'}
-        </button>
-        <button type="button" className="button-link report-overview-pill" onClick={() => setReportsOpen((v) => !v)}>
-          📑 {reportsOpen ? 'Hide Reports' : 'Reports'}
-        </button>
-        <a className="button-link" href="/hospitalization">Cage Layout</a>
         <CrossRecordLinks>
           <button type="button" className={`button-link${invoiceInfo ? ' button-link-invoice' : ''}`} onClick={createInvoice} disabled={creatingInvoice}
             title={invoiceInfo ? `Open the invoice (${invoiceInfo.status}), syncing in anything new from the worksheet` : 'Create an invoice from the medications, goods and services in this worksheet'}>
@@ -1366,6 +1387,7 @@ export default function HospitalizationDetailPage() {
           )}
           {bookDayProcedureError && <span className="error" role="alert">{bookDayProcedureError}</span>}
         </CrossRecordLinks>
+        </div>
       </div>
       {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
 
@@ -1387,8 +1409,6 @@ export default function HospitalizationDetailPage() {
         </section>
       )}
 
-      {patientHistorySection}
-      {consentSignPanel}
 
       <DayTreatmentPlan
         key={`${id}-${noteDeleteVersion}`}
@@ -1792,14 +1812,6 @@ export default function HospitalizationDetailPage() {
       </div>
 
       <div className="split-aside">
-      <details className="case-files">
-        <summary>📎 Case Photos &amp; Files{caseFileCount > 0 ? ` (${caseFileCount})` : ''}</summary>
-        <p className="visit-meta">
-          Not tied to a single worksheet entry — admission photo, wound progress, etc.
-        </p>
-        <AttachmentSection entityType="hospitalization" entityId={id} refreshKey={noteDeleteVersion} onAttachmentsChange={setCaseFileCount} />
-      </details>
-
       <PreInvoiceOverview
         hospitalizationId={id}
         catalog={catalog}

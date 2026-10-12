@@ -681,6 +681,15 @@ button:disabled {
    would silently skip this rule while .messages-thread-page's own
    max-height:none below still applied, leaving the message list
    unbounded instead of filled — worse than doing nothing). */
+.content:has(.patient-header) {
+  /* Consult / day procedure / stay pages: always the full width (up to
+     the 1440px cap) instead of shrinking to fit whatever is on the page,
+     so every case page lines up the same and the header can place its
+     buttons against a width that doesn't move. */
+  box-sizing: border-box;
+  width: 100%;
+}
+
 .content.content-fill {
   display: flex;
   flex-direction: column;
@@ -2779,9 +2788,11 @@ button.secondary:hover {
   flex-shrink: 0;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 0.8rem;
+  padding: 0.45rem 0.55rem;
   border: 2px solid var(--pink);
-  border-radius: 14px;
+  /* One big oval around Invoice / Consult / Day Procedure (or
+     Hospitalization), the same on every page that has them. */
+  border-radius: 999px;
   background: var(--pink-tint);
   /* Sits inline at the end of the same action row on every page (a flex
      container itself) instead of dropping to its own line — pushed to
@@ -9451,6 +9462,13 @@ form.card.admit-patient-form {
   stroke-width: 2;
 }
 
+/* The small graphs in a page's title row: plain coloured dots, no white
+   ring around each one. */
+.weight-chart-mini .weight-chart-dot,
+.temp-chart-mini .temp-chart-dot {
+  stroke: none;
+}
+
 .weight-chart-gridline {
   stroke: #e4e0da;
   stroke-width: 1;
@@ -11081,7 +11099,187 @@ button.patient-chip-age-missing {
   margin-left: auto;
 }
 
+@media (min-width: 701px) {
+  /* One row of buttons, so the header can tell which line it fits on. */
+  .patient-header-actions > * {
+    flex-wrap: nowrap;
+  }
+
+  .patient-header-actions button {
+    white-space: nowrap;
+  }
+}
+
 .page-header > .patient-header {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* Weight / temperature in the title row: icon + graph, no chip. */
+.patient-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+/* "Reason paralyzed  Edit" on the owner line. */
+.patient-reason {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #fff7e6;
+  border: 1px solid #f5d79e;
+  border-radius: 8px;
+  padding: 0.1rem 0.5rem;
+}
+
+.patient-reason .patient-meta-label {
+  color: #a0700f;
+}
+
+.patient-reason.reason-edit input {
+  min-width: 220px;
+}
+
+/* Under the patient header: small tabs (History, Consent, Photos,
+   Reports, Share) on the left, the page's own actions and the oval
+   Invoice / Consult / Day Procedure group on the right, one line. */
+.case-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.case-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.case-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.case-bar-actions .cross-record-links {
+  margin-left: 0;
+}
+
+.case-tab-menu {
+  position: relative;
+}
+
+.case-tab-menu > summary {
+  list-style: none;
+}
+
+.case-tab-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.case-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  background: white;
+  color: var(--ink);
+  border: 1px solid #e6e2df;
+  border-radius: 8px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.case-tab:hover,
+.case-tab-menu[open] > .case-tab,
+.case-tab-on {
+  border-color: var(--pink);
+  background: white;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--pink);
+}
+
+.case-tab b {
+  color: var(--pink-dark);
+}
+
+.case-tab-warn {
+  color: #a35f00;
+  background: #fff8e6;
+  border-color: #f1cf8a;
+}
+
+.case-tab-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  background: white;
+  border: 1px solid #eee;
+  border-top: 3px solid var(--pink);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+  padding: 0.9rem 1rem;
+  min-width: 240px;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+.case-tab-dropdown-wide {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.case-tab-menu-list {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.5rem;
+}
+
+.case-tab-menu-list button {
+  text-align: left;
+  background: white;
+  color: var(--ink);
+  border: 0;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.case-tab-menu-list button:hover {
+  background: var(--pink-tint);
+}
+
+@media (max-width: 700px) {
+  /* Words dropped from a button label on a phone to keep buttons side
+     by side ("Request Doctor Checkup" -> "Doctor Checkup"). */
+  .phone-hide {
+    display: none;
+  }
+
+  /* The Invoice / Consult / Day Procedure oval may wrap on a phone
+     rather than run off the screen. */
+  .case-bar .cross-record-links {
+    flex-wrap: wrap;
+    flex-shrink: 1;
+    border-radius: 24px;
+  }
+
+  /* On a phone a tab's dropdown spans the screen instead of running off
+     its right edge. */
+  .case-tab-dropdown {
+    position: fixed;
+    top: auto;
+    left: 16px;
+    right: 16px;
+    width: auto;
+  }
 }

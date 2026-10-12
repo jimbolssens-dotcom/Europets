@@ -29,7 +29,7 @@ import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
-import PatientHeader, { PatientMeta } from '@/app/_components/PatientHeader';
+import PatientHeader, { PatientMeta, PatientTrend } from '@/app/_components/PatientHeader';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
@@ -888,12 +888,14 @@ export default function ConsultDetailPage() {
           if (ageRequest?.thenComplete) finishCompleteConsult();
         }}
         chips={
-          (consult.weight_kg || consult.patients?.current_weight_kg) && (
-            <span className="patient-chip">
-              ⚖️ {consult.weight_kg || consult.patients?.current_weight_kg} kg
-              <WeightHistoryChart data={weightHistory} mini />
-            </span>
-          )
+          <PatientTrend
+            icon="⚖️"
+            value={consult.weight_kg || consult.patients?.current_weight_kg || null}
+            unit="kg"
+            readings={(weightHistory || []).filter((w) => w.weight_kg != null).length}
+          >
+            <WeightHistoryChart data={weightHistory} mini />
+          </PatientTrend>
         }
       >
         <PatientMeta label="Owner">

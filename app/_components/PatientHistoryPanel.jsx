@@ -34,6 +34,7 @@ export default function PatientHistoryPanel({
   showHospitalizations = true,
   title = 'Patient History',
   pill = false,
+  tab = false, // a small tab (see .case-tab) opening the list in a dropdown
 }) {
   const [events, setEvents] = useState([]);
   // Photos per consult/stay ("visit:<id>" / "hospitalization:<id>"), shown
@@ -177,6 +178,17 @@ export default function PatientHistoryPanel({
         })}
     </ul>
   );
+
+  if (tab) {
+    return (
+      <details className="case-tab-menu" name="case-tabs">
+        <summary className="case-tab">
+          🕓 History <b>{events.length}</b>
+        </summary>
+        <div className="case-tab-dropdown case-tab-dropdown-wide">{list}</div>
+      </details>
+    );
+  }
 
   if (pill) {
     return (
