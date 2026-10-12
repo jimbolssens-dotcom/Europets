@@ -10,13 +10,14 @@ import { supabase } from '@/lib/supabaseClient';
 import ClientPhonesEditor, { initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
 import InfoHint from '@/app/_components/InfoHint';
 import { EMIRATES } from '@/lib/emirates';
-import { money, balanceDue, invoiceLabel, totalBalanceDue, reminderBody, sendReminderEmail } from '@/lib/paymentReminders';
+import { money, balanceDue, invoiceLabel, totalBalanceDue } from '@/lib/paymentReminders';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import { sendPaymentMessage } from '@/lib/sendPaymentMessageClient';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
 import { appOrigin } from '@/lib/appOrigin';
 import { DEFAULT_LEGACY_PAYMENT_METHODS } from '@/lib/legacyPayments';
+import { nextReminderDate, stageShort } from '@/lib/reminderStages';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -29,22 +30,64 @@ export default function ClientDetailPage() {
   const [paymentLinkError, setPaymentLinkError] = useState(null);
   const [statementEmailSending, setStatementEmailSending] = useState(false);
   const [statementEmailSent, setStatementEmailSent] = useState(false);
-  const [balanceReminderEmailSending, setBalanceReminderEmailSending] = useState(false);
-  const [balanceReminderEmailSent, setBalanceReminderEmailSent] = useState(false);
+  const [clientAppLinkError, setClientAppLinkError] = useState(null);
+  // Outstanding card: automatic reminders already sent to this client
+  // (newest first), which button is sending, and the folded invoice list.
+  const [reminderLog, setReminderLog] = useState([]);
+  const [outstandingSending, setOutstandingSending] = useState(null); // 'whatsapp' | 'email' | null
+  const [showAllOutstanding, setShowAllOutstanding] = useState(false);
+  useEffect(() => {
+    fetch(`/api/clients/${id}/payment-reminders`)
+      .then((res) => res.json())
+      .then((data) => setReminderLog(Array.isArray(data) ? data : []))
+      .catch(() => setReminderLog([]));
+  }, [id]);
 
-  async function remindBalanceViaEmail() {
+  function payAllUrl() {
+    return `${process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet'}/settle-bill/owner/${id}`;
+  }
+
+  // One message for "please pay": the balance and the pay-everything link
+  // (whose page also offers the statement download), from the clinic's
+  // WhatsApp number. Staff WhatsApp only while Meta is still approving it.
+  async function sendOutstandingWhatsApp() {
     setPaymentLinkError(null);
-    setBalanceReminderEmailSent(false);
-    setBalanceReminderEmailSending(true);
-    const result = await sendReminderEmail(id, client.email, client.full_name, outstandingInvoices);
-    setBalanceReminderEmailSending(false);
-    if (result.ok) {
-      setBalanceReminderEmailSent(true);
-    } else {
-      setPaymentLinkError(result.error);
+    setOutstandingSending('whatsapp');
+    const statementUrl = `${appOrigin()}/api/clients/${id}/statement-pdf`;
+    const result = await sendPaymentMessage({
+      clientId: id,
+      kind: 'link',
+      phone: client.phone,
+      fallbackMessage: `Hi ${client.full_name}, here is your secure link to settle your balance of AED ${money(totalOutstanding)} with Europets Clinic: ${payAllUrl()}\n\nYour full statement: ${statementUrl}\n\nIf you have any questions about the bill, just reply to this message. Thank you!`,
+    });
+    setOutstandingSending(null);
+    setPaymentLinkError(result.note);
+  }
+
+  // Same by email: each open invoice with its own amount, the
+  // pay-everything link and the statement link.
+  async function sendOutstandingEmail() {
+    setPaymentLinkError(null);
+    setOutstandingSending('email');
+    const statementUrl = `${appOrigin()}/api/clients/${id}/statement-pdf`;
+    const lines = outstandingInvoices.map((inv) => `${invoiceLabel(inv)}: AED ${money(balanceDue(inv))}`).join('\n');
+    const text = `Hi ${client.full_name},\n\nWe hope you and your pet are doing well! Here is an overview of your open balance with Europets Clinic, a total of AED ${money(totalOutstanding)}:\n\n${lines}\n\nYou can settle everything securely online here: ${payAllUrl()}\nYour full statement of account: ${statementUrl}\n\nIf you have any questions about the bill, just reply to this email and we will be happy to help.\n\nWarm regards,\nThe Europets Clinic team`;
+    try {
+      const res = await fetch(`/api/clients/${id}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: 'Your Europets Clinic balance', text }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to send');
+      setPaymentLinkError('✅ Sent by email');
+    } catch (err) {
+      setPaymentLinkError(err.message);
+    } finally {
+      setOutstandingSending(null);
     }
   }
-  const [clientAppLinkError, setClientAppLinkError] = useState(null);
+
 
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
@@ -150,29 +193,6 @@ export default function ClientDetailPage() {
     }
   }
 
-  // Points the client at a "Settle Your Bill" page scoped to their whole
-  // account (website/app/settle-bill/owner/[clientId]) rather than one
-  // invoice — for a campaign link that pays off whatever they currently
-  // owe across all their outstanding invoices, oldest-first (see
-  // website/lib/nomodPayments#recordNomodOwnerPayment). Same pattern as
-  // the per-invoice "Send" button on the invoice page: no link is
-  // generated here, the website builds the actual Nomod link lazily for
-  // whatever the balance happens to be when the client opens it.
-  async function sendPaymentLink() {
-    setPaymentLinkError(null);
-    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
-    const url = `${websiteUrl}/settle-bill/owner/${id}`;
-    const digits = (client.phone || '').replace(/\D/g, '');
-    const message = `Hi ${client.full_name}! You can settle your outstanding balance with Europets Clinic online here: ${url}`;
-    if (digits.length > 3) {
-      const result = await sendPaymentMessage({ clientId: id, phone: client.phone, fallbackMessage: message });
-      setPaymentLinkError(result.note);
-    } else {
-      navigator.clipboard.writeText(url);
-      setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
-    }
-  }
-
   // Sent from staff's own WhatsApp, not the clinic's Meta Business API
   // number — this is a one-off, staff-triggered send (never automated), so
   // there's no real upside to routing it through a template that Meta
@@ -196,23 +216,6 @@ export default function ClientDetailPage() {
   // same statement after another payment or invoice has landed.
   function downloadStatement() {
     window.open(`/api/clients/${id}/statement-pdf?t=${Date.now()}`, '_blank');
-  }
-
-  // No cache-busting here — a client-facing link, same reasoning as the
-  // invoice page's own sendInvoiceViaWhatsApp/sendInvoiceViaEmail: the
-  // route's no-store headers already guarantee a fresh statement every
-  // time they open it themselves.
-  function sendStatementViaWhatsApp() {
-    setPaymentLinkError(null);
-    const url = `${appOrigin()}/api/clients/${id}/statement-pdf`;
-    const message = `Hi ${client.full_name}! Here is your statement of account from Europets Clinic: ${url}`;
-    const digits = (client.phone || '').replace(/\D/g, '');
-    if (digits.length > 3) {
-      openWhatsApp(client.phone, message);
-    } else {
-      navigator.clipboard.writeText(url);
-      setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
-    }
   }
 
   async function sendStatementViaEmail() {
@@ -413,6 +416,18 @@ export default function ClientDetailPage() {
     .filter((inv) => inv.status === 'unpaid' || inv.status === 'partially_paid')
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   const totalOutstanding = totalBalanceDue(outstandingInvoices);
+  const lastReminder = reminderLog[0] || null;
+  const nextReminder = client.payment_reminders_off ? null : nextReminderDate(outstandingInvoices, reminderLog, balanceDue);
+  // "14 Sep": the year is noise in a list of recent open invoices.
+  function dayMonth(iso) {
+    return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  }
+  function ageLabel(createdAt) {
+    const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);
+    if (days < 14) return `${days} d`;
+    if (days < 60) return `${Math.floor(days / 7)} wk`;
+    return `${Math.floor(days / 30)} mo`;
+  }
 
   // A client with several pets can have outstanding invoices for more than
   // one of them — this list has no other way to tell those apart. Not
@@ -548,231 +563,228 @@ export default function ClientDetailPage() {
         </p>
       )}
 
-      {client.legacy_outstanding_balance > 0 && (
-        <details className="legacy-balance-note">
-          <summary>
-            ⚠️ Old system balance: AED {money(client.legacy_outstanding_balance)}{' '}
-            <InfoHint>
-              Carried over from the previous clinic software at import — not reflected in any
-              invoice here. Record what they pay off below as it comes in, or correct the figure
-              itself if it doesn't match what's actually owed.
-            </InfoHint>
-          </summary>
-          <form className="legacy-balance-payment-form" onSubmit={recordLegacyPayment}>
-            {legacyPaymentError && <p className="error">{legacyPaymentError}</p>}
-            <label>
-              Record payment (AED)
+      <div className="card financial-overview">
+        <div className="financial-overview-head">
+          <div className="financial-overview-total">
+            <span className="financial-overview-total-label">Total Outstanding</span>
+            <span className={`financial-overview-total-amount${totalOutstanding > 0 ? ' financial-overview-total-amount-due' : ''}`}>
+              AED {money(totalOutstanding)}
+            </span>
+          </div>
+          <div className="financial-overview-auto">
+            <label className="payment-reminders-toggle">
               <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                placeholder="Amount paid"
-                value={legacyPaymentAmount}
-                onChange={(e) => setLegacyPaymentAmount(e.target.value)}
+                type="checkbox"
+                checked={!client.payment_reminders_off}
+                onChange={(e) => togglePaymentReminders(!e.target.checked)}
               />
+              Automatic reminders
+              <InfoHint>Open invoices get a WhatsApp and email reminder at 2 weeks, 1 month and 2 months. Switch off for clients on account, insurance or a disputed bill.</InfoHint>
             </label>
-            <label>
-              Origin
-              <select
-                value={legacyPaymentMethod}
-                onChange={(e) => {
-                  if (e.target.value === '__add_new__') {
-                    setAddingLegacyPaymentMethod(true);
-                    return;
-                  }
-                  setLegacyPaymentMethod(e.target.value);
-                }}
-              >
-                <option value="">Select...</option>
-                {legacyPaymentMethods.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-                <option value="__add_new__">+ Add new origin...</option>
-              </select>
-            </label>
-            {addingLegacyPaymentMethod && (
-              <div className="legacy-balance-payment-form">
-                {legacyPaymentMethodError && <p className="error">{legacyPaymentMethodError}</p>}
-                <label>
-                  New origin name
-                  <input
-                    type="text"
-                    placeholder="e.g. Nomod, Tap, PayPal"
-                    value={newLegacyPaymentMethodName}
-                    onChange={(e) => setNewLegacyPaymentMethodName(e.target.value)}
-                  />
-                </label>
-                <button type="button" onClick={addLegacyPaymentMethod} disabled={savingLegacyPaymentMethod}>
-                  {savingLegacyPaymentMethod ? 'Adding...' : 'Add'}
-                </button>{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAddingLegacyPaymentMethod(false);
-                    setNewLegacyPaymentMethodName('');
-                    setLegacyPaymentMethodError(null);
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-            <label>
-              Note (optional)
-              <input
-                type="text"
-                placeholder="e.g. which old invoice this covers"
-                value={legacyPaymentNote}
-                onChange={(e) => setLegacyPaymentNote(e.target.value)}
-              />
-            </label>
-            <label>
-              Date paid
-              <input
-                type="date"
-                value={legacyPaymentDate}
-                onChange={(e) => setLegacyPaymentDate(e.target.value)}
-              />
-            </label>
-            <button type="submit" disabled={recordingLegacyPayment}>
-              {recordingLegacyPayment ? 'Saving...' : 'Record Payment'}
-            </button>
-          </form>
+            <span className="visit-meta">
+              {client.payment_reminders_off
+                ? 'Off for this client'
+                : [
+                    lastReminder ? `Last: ${stageShort(lastReminder.stage)}, ${dayMonth(lastReminder.sent_at)}` : 'None sent yet',
+                    nextReminder ? `next: ${dayMonth(nextReminder)}` : null,
+                  ].filter(Boolean).join(' · ')}
+            </span>
+          </div>
+        </div>
 
-          {/* A straight correction to the carried-over figure itself —
-              distinct from Record Payment above (which logs real money
-              received and feeds the P&L). This just fixes a wrong number,
-              e.g. an import discrepancy — no legacy_payments row, no
-              accounting effect. */}
-          {correctingLegacyBalance ? (
-            <form className="legacy-balance-payment-form" onSubmit={saveLegacyBalanceCorrection}>
-              {legacyCorrectionError && <p className="error">{legacyCorrectionError}</p>}
+        {client.legacy_outstanding_balance > 0 && (
+          <details className="legacy-balance-note">
+            <summary>
+              ⚠️ Old system balance: AED {money(client.legacy_outstanding_balance)}{' '}
+              <InfoHint>
+                Carried over from the previous clinic software at import — not reflected in any
+                invoice here. Record what they pay off below as it comes in, or correct the figure
+                itself if it doesn't match what's actually owed.
+              </InfoHint>
+            </summary>
+            <form className="legacy-balance-payment-form" onSubmit={recordLegacyPayment}>
+              {legacyPaymentError && <p className="error">{legacyPaymentError}</p>}
               <label>
-                Correct balance to (AED)
+                Record payment (AED)
                 <input
                   type="number"
                   step="0.01"
-                  autoFocus
-                  value={legacyBalanceCorrection}
-                  onChange={(e) => setLegacyBalanceCorrection(e.target.value)}
+                  min="0.01"
+                  placeholder="Amount paid"
+                  value={legacyPaymentAmount}
+                  onChange={(e) => setLegacyPaymentAmount(e.target.value)}
                 />
               </label>
-              <button type="submit" disabled={savingLegacyCorrection}>
-                {savingLegacyCorrection ? 'Saving...' : 'Save Correction'}
-              </button>
-              <button type="button" onClick={() => setCorrectingLegacyBalance(false)} disabled={savingLegacyCorrection}>
-                Cancel
+              <label>
+                Origin
+                <select
+                  value={legacyPaymentMethod}
+                  onChange={(e) => {
+                    if (e.target.value === '__add_new__') {
+                      setAddingLegacyPaymentMethod(true);
+                      return;
+                    }
+                    setLegacyPaymentMethod(e.target.value);
+                  }}
+                >
+                  <option value="">Select...</option>
+                  {legacyPaymentMethods.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                  <option value="__add_new__">+ Add new origin...</option>
+                </select>
+              </label>
+              {addingLegacyPaymentMethod && (
+                <div className="legacy-balance-payment-form">
+                  {legacyPaymentMethodError && <p className="error">{legacyPaymentMethodError}</p>}
+                  <label>
+                    New origin name
+                    <input
+                      type="text"
+                      placeholder="e.g. Nomod, Tap, PayPal"
+                      value={newLegacyPaymentMethodName}
+                      onChange={(e) => setNewLegacyPaymentMethodName(e.target.value)}
+                    />
+                  </label>
+                  <button type="button" onClick={addLegacyPaymentMethod} disabled={savingLegacyPaymentMethod}>
+                    {savingLegacyPaymentMethod ? 'Adding...' : 'Add'}
+                  </button>{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddingLegacyPaymentMethod(false);
+                      setNewLegacyPaymentMethodName('');
+                      setLegacyPaymentMethodError(null);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+              <label>
+                Note (optional)
+                <input
+                  type="text"
+                  placeholder="e.g. which old invoice this covers"
+                  value={legacyPaymentNote}
+                  onChange={(e) => setLegacyPaymentNote(e.target.value)}
+                />
+              </label>
+              <label>
+                Date paid
+                <input
+                  type="date"
+                  value={legacyPaymentDate}
+                  onChange={(e) => setLegacyPaymentDate(e.target.value)}
+                />
+              </label>
+              <button type="submit" disabled={recordingLegacyPayment}>
+                {recordingLegacyPayment ? 'Saving...' : 'Record Payment'}
               </button>
             </form>
+
+            {/* A straight correction to the carried-over figure itself —
+                distinct from Record Payment above (which logs real money
+                received and feeds the P&L). This just fixes a wrong number,
+                e.g. an import discrepancy — no legacy_payments row, no
+                accounting effect. */}
+            {correctingLegacyBalance ? (
+              <form className="legacy-balance-payment-form" onSubmit={saveLegacyBalanceCorrection}>
+                {legacyCorrectionError && <p className="error">{legacyCorrectionError}</p>}
+                <label>
+                  Correct balance to (AED)
+                  <input
+                    type="number"
+                    step="0.01"
+                    autoFocus
+                    value={legacyBalanceCorrection}
+                    onChange={(e) => setLegacyBalanceCorrection(e.target.value)}
+                  />
+                </label>
+                <button type="submit" disabled={savingLegacyCorrection}>
+                  {savingLegacyCorrection ? 'Saving...' : 'Save Correction'}
+                </button>
+                <button type="button" onClick={() => setCorrectingLegacyBalance(false)} disabled={savingLegacyCorrection}>
+                  Cancel
+                </button>
+              </form>
+            ) : (
+              <button type="button" className="legacy-balance-correct-link" onClick={startLegacyBalanceCorrection}>
+                ✏️ Correct this number
+              </button>
+            )}
+          </details>
+        )}
+
+
+        <div className="financial-overview-actions">
+          {totalOutstanding > 0 ? (
+            <>
+              <button type="button" onClick={sendOutstandingWhatsApp} disabled={!client.phone || outstandingSending === 'whatsapp'}
+                title="Balance and a pay-everything link (with a statement download), from the clinic WhatsApp">
+                {outstandingSending === 'whatsapp' ? 'Sending...' : <>💬 <span className="fo-long">Send on </span>WhatsApp</>}
+              </button>
+              <button type="button" onClick={sendOutstandingEmail} disabled={!client.email || outstandingSending === 'email'}
+                title="Balance, each invoice, a pay-everything link and the statement">
+                {outstandingSending === 'email' ? 'Sending...' : <>✉️ <span className="fo-long">Send by </span>Email</>}
+              </button>
+            </>
           ) : (
-            <button type="button" className="legacy-balance-correct-link" onClick={startLegacyBalanceCorrection}>
-              ✏️ Correct this number
+            <button type="button" onClick={sendStatementViaEmail} disabled={!client.email || statementEmailSending}>
+              {statementEmailSending ? 'Sending...' : statementEmailSent ? '✅ Sent' : '✉️ Email statement'}
             </button>
           )}
-        </details>
-      )}
-
-      <div className="card financial-overview">
-        <div className="financial-overview-total">
-          <span className="financial-overview-total-label">Total Outstanding</span>
-          <span className={`financial-overview-total-amount${totalOutstanding > 0 ? ' financial-overview-total-amount-due' : ''}`}>
-            AED {money(totalOutstanding)}
-          </span>
-        </div>
-
-        <label className="payment-reminders-toggle">
-          <input
-            type="checkbox"
-            checked={!!client.payment_reminders_off}
-            onChange={(e) => togglePaymentReminders(e.target.checked)}
-          />
-          No automatic payment reminders
-          <InfoHint>Open invoices get a WhatsApp and email reminder at 2 weeks, 1 month and 2 months. Tick this for clients on account, insurance or a disputed bill.</InfoHint>
-        </label>
-
-        <p className="financial-overview-group-label">
-          Send full statement <InfoHint>Every invoice and payment on file, with dates and running balance — a document, not just a reminder.</InfoHint>
-        </p>
-        <div className="financial-overview-actions">
-          <button type="button" onClick={downloadStatement}>
-            📄 Download
-          </button>
-          <button type="button" onClick={sendStatementViaWhatsApp} disabled={!client.phone}>
-            💬 WhatsApp
-          </button>
-          <button type="button" onClick={sendStatementViaEmail} disabled={!client.email || statementEmailSending}>
-            {statementEmailSending ? 'Sending...' : statementEmailSent ? '✅ Sent' : '✉️ Email'}
+          <button type="button" className="secondary" onClick={downloadStatement}>
+            📄 <span className="fo-long">Statement </span>PDF
           </button>
         </div>
-
-        {totalOutstanding > 0 && (
-          <>
-            <p className="financial-overview-group-label">
-              Remind to pay <InfoHint>A short message naming what's still owed, with a link to pay online — no attachment.</InfoHint>
-            </p>
-            <div className="financial-overview-actions">
-              <button
-                type="button"
-                onClick={async () => {
-                  const result = await sendPaymentMessage({
-                    clientId: id,
-                    kind: 'reminder',
-                    phone: client.phone,
-                    fallbackMessage: reminderBody(client.full_name, outstandingInvoices),
-                  });
-                  setPaymentLinkError(result.note);
-                }}
-                disabled={!client.phone}
-              >
-                💬 WhatsApp
-              </button>
-              <button
-                type="button"
-                onClick={remindBalanceViaEmail}
-                disabled={!client.email || balanceReminderEmailSending}
-              >
-                {balanceReminderEmailSending ? 'Sending...' : balanceReminderEmailSent ? '✅ Sent' : '✉️ Email'}
-              </button>
-              <button type="button" onClick={sendPaymentLink}>
-                💳 Pay All
-              </button>
-            </div>
-          </>
-        )}
         {paymentLinkError && <p className={paymentLinkError.startsWith('✅') || paymentLinkError.startsWith('Opened') ? 'visit-meta' : 'error'}>{paymentLinkError}</p>}
 
         {outstandingInvoices.length > 0 ? (
-          <table className="financial-overview-table">
-            <thead>
-              <tr>
-                <th>Invoice</th>
-                <th>Date</th>
-                <th>Patient</th>
-                <th>Status</th>
-                <th>Balance Due</th>
-              </tr>
-            </thead>
-            <tbody>
-              {outstandingInvoices.map((inv) => {
-                const patient = patientFor(inv);
-                return (
-                  <tr key={inv.id}>
-                    <td>
-                      <a href={`/invoices/${inv.id}`}>{invoiceLabel(inv)}</a>
-                    </td>
-                    <td>{formatShortDate(inv.created_at)}</td>
-                    <td>
-                      {patient ? `${patient.name}${patient.patient_number ? ` (#${patient.patient_number})` : ''}` : '—'}
-                    </td>
-                    <td>{inv.status === 'partially_paid' ? 'partially paid' : 'unpaid'}</td>
-                    <td>AED {money(balanceDue(inv))}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <>
+            <div className="financial-overview-table-wrap">
+            <table className="financial-overview-table">
+              <thead>
+                <tr>
+                  <th>Invoice</th>
+                  <th>Date</th>
+                  <th>Pet</th>
+                  <th>Due</th>
+                  <th>Age</th>
+                  <th>Reminded</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(showAllOutstanding ? outstandingInvoices : outstandingInvoices.slice(0, 5)).map((inv) => {
+                  const patient = patientFor(inv);
+                  const reminded = reminderLog.find((r) => r.invoice_id === inv.id);
+                  return (
+                    <tr key={inv.id}>
+                      <td>
+                        <a href={`/invoices/${inv.id}`}>{invoiceLabel(inv)}</a>
+                      </td>
+                      <td>{dayMonth(inv.created_at)}</td>
+                      <td>{patient ? patient.name : '—'}</td>
+                      <td>
+                        AED {money(balanceDue(inv))}
+                        {inv.status === 'partially_paid' && <span className="visit-meta"> part paid</span>}
+                      </td>
+                      <td>{ageLabel(inv.created_at)}</td>
+                      <td>{reminded ? `🔔 ${stageShort(reminded.stage)}, ${dayMonth(reminded.sent_at)}` : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            </div>
+            {outstandingInvoices.length > 5 && (
+              <button type="button" className="secondary financial-overview-more" onClick={() => setShowAllOutstanding((v) => !v)}>
+                {showAllOutstanding ? 'Show fewer' : `Show all ${outstandingInvoices.length}`}
+              </button>
+            )}
+          </>
         ) : (
           <p className="visit-meta">No outstanding invoices.</p>
         )}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { CONTACT } from '@/lib/content';
+import { CONTACT, APP_URL } from '@/lib/content';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -115,8 +115,8 @@ export default function SettleBillOwnerPage() {
           {invoice.client_first_name ? `Hi ${invoice.client_first_name}, settle your bill` : 'Settle your bill'}
         </h1>
         <p className="page-lede">
-          Pay securely online with Nomod — this covers everything currently outstanding on your
-          account. No need to come in with cash or a card.
+          Pay securely online with Nomod. This covers everything currently outstanding on your
+          account, so there&apos;s no need to come in with cash or a card.
         </p>
 
         {returnedFromNomod === 'success' && (
@@ -142,6 +142,16 @@ export default function SettleBillOwnerPage() {
           <button type="button" className="btn btn-primary" onClick={payNow} disabled={paying}>
             {paying ? 'Redirecting to Nomod...' : 'Pay Now'}
           </button>
+          {/* Every invoice and payment on their account, as a PDF from the
+              clinic app (its statement-pdf route is public by design). */}
+          <a
+            className="btn btn-ghost settle-bill-statement"
+            href={`${APP_URL}/api/clients/${clientId}/statement-pdf`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            📄 Download statement
+          </a>
         </div>
       </div>
     </div>

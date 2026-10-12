@@ -1401,6 +1401,10 @@ p {
   justify-content: center;
 }
 
+.settle-bill-card .settle-bill-statement {
+  margin-top: 0.75rem;
+}
+
 .settle-bill-notice {
   margin-top: 1.5rem;
   padding: 0.9rem 1.1rem;
