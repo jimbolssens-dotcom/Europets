@@ -10999,6 +10999,15 @@ form.card.admit-patient-form {
   font-size: 0.9rem;
 }
 
+a.patient-header-number {
+  text-decoration: none;
+}
+
+a.patient-header-number:hover {
+  color: var(--pink-dark);
+  text-decoration: underline;
+}
+
 .patient-chip {
   display: inline-flex;
   align-items: center;

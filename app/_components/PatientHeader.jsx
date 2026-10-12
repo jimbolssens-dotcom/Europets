@@ -135,7 +135,11 @@ export default function PatientHeader({
         <h1>
           <a href={`/patients/${p.id}`} title="Open the patient record">{p.name || 'Patient'}</a>
         </h1>
-        {p.patient_number && <span className="patient-header-number">#{p.patient_number}</span>}
+        {p.patient_number && (
+          <a className="patient-header-number" href={`/patients/${p.id}`} title="Open the patient file">
+            #{p.patient_number}
+          </a>
+        )}
         {age ? (
           <span className="patient-chip patient-chip-age" title={p.date_of_birth_estimated ? 'Estimated age' : `Born ${p.date_of_birth}`}>
             {age}
