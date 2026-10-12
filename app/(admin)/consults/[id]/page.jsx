@@ -29,6 +29,7 @@ import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
+import PatientHeader, { PatientMeta } from '@/app/_components/PatientHeader';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
@@ -56,6 +57,11 @@ const CONSULT_TABS = [
   { id: 'vaccinations', label: '💉 Vaccinations' },
   { id: 'reports', label: 'Reports' },
 ];
+
+// "Sun 11 Oct, 5:13 pm" for the header's second row.
+function headerDateTime(iso) {
+  return new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
+}
 
 export default function ConsultDetailPage() {
   const { id } = useParams();
@@ -452,7 +458,24 @@ export default function ConsultDetailPage() {
     loadConsult();
   }
 
+  // Age still not recorded: offer the quick age box once more before
+  // completing (never blocking: "Complete without age" carries on).
+  const [ageRequest, setAgeRequest] = useState(null);
   async function completeConsult() {
+    if (!consult?.patients?.date_of_birth && !ageRequest) {
+      setAgeRequest({
+        message: `Age still not recorded for ${consult?.patients?.name || 'this pet'}: add it now?`,
+        skipLabel: 'Complete without age',
+        onSkip: finishCompleteConsult,
+        thenComplete: true,
+      });
+      return;
+    }
+    await finishCompleteConsult();
+  }
+
+  async function finishCompleteConsult() {
+    setAgeRequest(null);
     await fetch(`/api/visits/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -855,43 +878,49 @@ export default function ConsultDetailPage() {
 
   return (
     <div>
-      <div className="hospitalization-header-name">
-        <h1>
-          {consult.patients?.name}
-          {consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''}{' '}
-          <span>
-            ({consult.patients?.species}) — {consult.status}
-          </span>
-        </h1>
-        <WeightHistoryChart data={weightHistory} mini />
-      </div>
+      <PatientHeader
+        patient={consult.patients}
+        status={consult.status === 'complete' ? { label: '✓ Consult complete', tone: 'done' } : { label: '● Consult in progress', tone: 'progress' }}
+        promptAge={consult.status === 'in_progress'}
+        ageRequest={ageRequest}
+        onPatientUpdated={() => {
+          loadConsult();
+          if (ageRequest?.thenComplete) finishCompleteConsult();
+        }}
+        chips={
+          (consult.weight_kg || consult.patients?.current_weight_kg) && (
+            <span className="patient-chip">
+              ⚖️ {consult.weight_kg || consult.patients?.current_weight_kg} kg
+              <WeightHistoryChart data={weightHistory} mini />
+            </span>
+          )
+        }
+      >
+        <PatientMeta label="Owner">
+          <a href={`/clients/${consult.clients?.id}`}>{consult.clients?.full_name}</a>
+          {consult.clients?.client_number && <span className="patient-header-number"> #{consult.clients.client_number}</span>}
+        </PatientMeta>
+        <PatientMeta label={consult.is_video ? '🎥' : 'Room'}>{consult.is_video ? 'Video consult' : consult.rooms?.name || '—'}</PatientMeta>
+        <PatientMeta label="Vet">
+          <select
+            className="consult-vet-select"
+            value={consult.attending_vet_id || ''}
+            onChange={(e) => changeVet(e.target.value)}
+          >
+            <option value="">Unassigned</option>
+            {staff
+              .filter((s) => s.role === 'vet')
+              .map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.full_name}
+                </option>
+              ))}
+          </select>
+        </PatientMeta>
+        {consult.started_at && <PatientMeta label="Started">{headerDateTime(consult.started_at)}</PatientMeta>}
+        {consult.ended_at && <PatientMeta label="Ended">{headerDateTime(consult.ended_at)}</PatientMeta>}
+      </PatientHeader>
       {vetChangeError && <p className="error">{vetChangeError}</p>}
-      <p>
-        Owner:{' '}
-        <a href={`/clients/${consult.clients?.id}`}>
-          {consult.clients?.full_name}
-          {consult.clients?.client_number ? ` (Client #${consult.clients.client_number})` : ''}
-        </a>{' '}
-        · Patient: <a href={`/patients/${consult.patients?.id}`}>record</a>{' '}
-        · {consult.is_video ? '🎥 Video Consult' : `Room: ${consult.rooms?.name || ''}`}{' '}
-        {consult.started_at && <>· Started: {formatDateTime(consult.started_at)}{' '}</>}
-        {consult.ended_at && <>· Ended: {formatDateTime(consult.ended_at)}{' '}</>}
-        · Vet:{' '}
-        <select
-          className="consult-vet-select"
-          value={consult.attending_vet_id || ''}
-          onChange={(e) => changeVet(e.target.value)}
-        >
-          <option value="">Unassigned</option>
-          {staff
-            .filter((s) => s.role === 'vet')
-            .map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.full_name}
-              </option>
-            ))}
-        </select>
-      </p>
 
       {consult.is_video && (
         <div className="video-consult-panel">

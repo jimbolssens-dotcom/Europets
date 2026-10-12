@@ -37,6 +37,7 @@ import HospitalizationReportsSection from '@/app/_components/HospitalizationRepo
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
+import PatientHeader, { PatientMeta } from '@/app/_components/PatientHeader';
 import TemperatureHistoryChart from '@/app/_components/TemperatureHistoryChart';
 import { useVaccinations } from '@/app/_components/useVaccinations';
 import VaccinationForm from '@/app/_components/VaccinationForm';
@@ -56,6 +57,11 @@ const emptyNoteForm = {
 
 const emptyPendingItem = { goods_service_id: '', instructions: '', quantity: '1' };
 const emptyDayAddForm = { goods_service_id: '', instructions: '', quantity: '1' };
+
+// "Tue 22 Sep, 2:08 pm" for the header's second row.
+function headerDateTime(iso) {
+  return new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
+}
 
 export default function HospitalizationDetailPage() {
   const { id } = useParams();
@@ -991,21 +997,59 @@ export default function HospitalizationDetailPage() {
   const stayTemperatureHistory = notes
     .filter((n) => n.temperature_c != null)
     .map((n) => ({ date: n.created_at, temperature_c: n.temperature_c }));
+  const lastOf = (list, key) => {
+    const sorted = [...list].sort((x, y) => new Date(y.date) - new Date(x.date));
+    return sorted.length ? sorted[0][key] : null;
+  };
+  const latestWeight = lastOf(stayWeightHistory, 'weight_kg') ?? admission.patients?.current_weight_kg ?? null;
+  const latestTemperature = lastOf(stayTemperatureHistory, 'temperature_c');
+  const stayDay = Math.floor((Date.now() - new Date(admission.admitted_at).getTime()) / 86400000) + 1;
+  const stayStatus = admission.kind === 'day_procedure'
+    ? admission.status === 'admitted'
+      ? { label: '📋 Day procedure · in clinic', tone: 'dayproc' }
+      : { label: '📋 Day procedure · done', tone: 'done' }
+    : admission.status === 'admitted'
+      ? { label: `🏥 Admitted · day ${stayDay}`, tone: 'admitted' }
+      : { label: '🏥 Discharged', tone: 'done' };
 
   return (
     <div>
       <div className="page-header">
-        <div className="hospitalization-header-name">
-          <h1>
-            {admission.patients?.name}
-            {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''}{' '}
-            <span>({admission.status})</span>{' '}
-            {admission.kind === 'day_procedure' && <span className="day-procedure-badge">📋 Day Procedure</span>}
-          </h1>
-          <WeightHistoryChart data={stayWeightHistory} mini />
-          <TemperatureHistoryChart data={stayTemperatureHistory} mini />
-          <MiniCageStrip currentHospitalizationId={id} />
-        </div>
+        <PatientHeader
+          patient={admission.patients}
+          status={stayStatus}
+          onPatientUpdated={loadAdmission}
+          chips={
+            <>
+              {latestWeight != null && (
+                <span className="patient-chip">
+                  ⚖️ {latestWeight} kg
+                  <WeightHistoryChart data={stayWeightHistory} mini />
+                </span>
+              )}
+              {latestTemperature != null && (
+                <span className="patient-chip">
+                  🌡️ {latestTemperature} °C
+                  <TemperatureHistoryChart data={stayTemperatureHistory} mini />
+                </span>
+              )}
+              <MiniCageStrip currentHospitalizationId={id} />
+            </>
+          }
+        >
+          <PatientMeta label="Owner">
+            <a href={`/clients/${admission.clients?.id}`}>{admission.clients?.full_name}</a>
+            {admission.clients?.client_number && <span className="patient-header-number"> #{admission.clients.client_number}</span>}
+          </PatientMeta>
+          {admission.cages?.name && <PatientMeta label="Cage">{admission.cages.name}</PatientMeta>}
+          <PatientMeta label="Admitted">{headerDateTime(admission.admitted_at)}</PatientMeta>
+          {admission.discharged_at && <PatientMeta label="Discharged">{headerDateTime(admission.discharged_at)}</PatientMeta>}
+          {admission.originating_visit_id && (
+            <PatientMeta label="From">
+              <a href={`/consults/${admission.originating_visit_id}`}>the consult</a>
+            </PatientMeta>
+          )}
+        </PatientHeader>
         {admission.status === 'admitted' && (
           <div className="hospitalization-header-actions">
             <button
@@ -1095,18 +1139,6 @@ export default function HospitalizationDetailPage() {
           </form>
         </div>
       )}
-      <p>
-        Owner:{' '}
-        <a href={`/clients/${admission.clients?.id}`}>
-          {admission.clients?.full_name}
-          {admission.clients?.client_number ? ` (Client #${admission.clients.client_number})` : ''}
-        </a>{' '}
-        · Patient: <a href={`/patients/${admission.patients?.id}`}>record</a> ·
-        Cage: {admission.cages?.name || '—'} · Admitted:{' '}
-        {formatDateTime(admission.admitted_at)}
-        {admission.discharged_at &&
-          ` · Discharged: ${formatDateTime(admission.discharged_at)}`}
-      </p>
       {editingReason ? (
         <p className="reason-edit">
           <input

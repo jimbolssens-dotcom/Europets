@@ -15,6 +15,7 @@ const EDITABLE_FIELDS = [
   'breed',
   'color',
   'date_of_birth',
+  'date_of_birth_estimated',
   'sex',
   'current_weight_kg',
   'microchip_number',

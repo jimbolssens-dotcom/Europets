@@ -10932,3 +10932,145 @@ form.card.admit-patient-form {
     display: none;
   }
 }
+
+/* PatientHeader: consult / day procedure / hospitalization top bar. */
+.patient-header {
+  margin-bottom: 0.75rem;
+}
+
+.patient-header-row1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.6rem;
+}
+
+.patient-header-row1 h1 {
+  margin: 0;
+  line-height: 1.1;
+}
+
+.patient-header-row1 h1 a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+
+.patient-header-row1 h1 a:hover {
+  border-bottom-color: var(--pink);
+}
+
+.patient-header-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.patient-header-avatar-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8d9e6;
+  font-size: 22px;
+}
+
+.patient-header-number {
+  color: #999;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.patient-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: #f2f0ec;
+  color: #333;
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.patient-chip-age {
+  background: #1f1f1f;
+  color: #fff;
+  font-size: 1rem;
+  padding: 0.25rem 0.85rem;
+}
+
+button.patient-chip-age-missing {
+  background: #fff4d6;
+  color: #8a5a00;
+  border: 2px dashed #e0a800;
+  font-size: 0.95rem;
+  padding: 0.2rem 0.8rem;
+  box-shadow: none;
+  min-height: 0;
+}
+
+.patient-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.patient-status-progress { background: #e8f5ee; color: #16794a; }
+.patient-status-admitted { background: #fde8f0; color: #b8105a; }
+.patient-status-dayproc { background: #eef0ff; color: #3a46a8; }
+.patient-status-done { background: #f0f0f0; color: #666; }
+
+.patient-age-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  background: #fffaf0;
+  border: 1px solid #f0d9a8;
+  border-radius: 10px;
+  font-size: 0.92rem;
+}
+
+.patient-age-box input {
+  width: auto;
+  margin: 0;
+}
+
+.patient-age-box .patient-age-num {
+  width: 4rem;
+}
+
+.patient-age-skip {
+  background: none !important;
+  color: #888 !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+.patient-header-row2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1.2rem;
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #eee;
+  color: #444;
+  font-size: 0.95rem;
+}
+
+.patient-meta-label {
+  color: #999;
+}
+
+.patient-header-row2 select {
+  width: auto;
+  margin: 0;
+  padding: 0.1rem 0.4rem;
+}
