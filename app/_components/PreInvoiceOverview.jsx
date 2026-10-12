@@ -506,7 +506,26 @@ export default function PreInvoiceOverview({
                     const draft = drafts[li.id];
                     return (
                       <tr key={li.id}>
-                        <td>{li.description}</td>
+                        <td>
+                          {li.description}
+                          {/* Fix the charge (migration 179): only lines that
+                              keep growing with each dose logged on the stay. */}
+                          {li.consolidation_key && (
+                            <button
+                              type="button"
+                              className={`pre-invoice-fix${li.fixed_quantity ? ' pre-invoice-fix-on' : ''}`}
+                              onClick={() => saveLineItemField(li, { fixed_quantity: !li.fixed_quantity })}
+                              title={
+                                li.fixed_quantity
+                                  ? 'Fixed: new doses are recorded but not charged. Tap to charge per dose again.'
+                                  : 'Fix this charge: new doses are still recorded but no longer added (e.g. one bottle for the whole course)'
+                              }
+                              aria-pressed={!!li.fixed_quantity}
+                            >
+                              {li.fixed_quantity ? '🔒 fixed' : '🔓'}
+                            </button>
+                          )}
+                        </td>
                         <td>
                           <input
                             type="number"

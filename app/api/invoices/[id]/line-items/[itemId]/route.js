@@ -54,10 +54,13 @@ export async function PATCH(request, { params }) {
   const hasQuantity = body.quantity !== undefined;
   const hasTimesGiven = body.times_given !== undefined;
   const hasAdministrationMethod = body.administration_method !== undefined;
+  // Fixed charge (migration 179): new doses logged later link to this line
+  // without changing its quantity or total.
+  const hasFixedQuantity = typeof body.fixed_quantity === 'boolean';
 
-  if (!hasInstructions && !hasVoiceNote && !hasQuantity && !hasTimesGiven && !hasAdministrationMethod) {
+  if (!hasInstructions && !hasVoiceNote && !hasQuantity && !hasTimesGiven && !hasAdministrationMethod && !hasFixedQuantity) {
     return NextResponse.json(
-      { error: 'instructions, voice_note_path, quantity, times_given, or administration_method is required' },
+      { error: 'instructions, voice_note_path, quantity, times_given, administration_method or fixed_quantity is required' },
       { status: 400 }
     );
   }
@@ -81,6 +84,7 @@ export async function PATCH(request, { params }) {
   const update = {};
   if (hasInstructions) update.instructions = body.instructions === '' ? null : body.instructions;
   if (hasVoiceNote) update.voice_note_path = body.voice_note_path || null;
+  if (hasFixedQuantity) update.fixed_quantity = body.fixed_quantity;
 
   if (hasQuantity || hasTimesGiven || hasAdministrationMethod) {
     const quantity = hasQuantity ? Number(body.quantity) : Number(current.quantity);

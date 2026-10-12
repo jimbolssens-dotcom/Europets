@@ -11296,3 +11296,32 @@ button.patient-chip-age-missing {
     width: auto;
   }
 }
+
+/* Pre-Invoice Overview: fix a line's charge (migration 179). A faint
+   open lock after the item name; once fixed, a small amber "🔒 fixed". */
+.pre-invoice-fix {
+  margin-left: 0.35rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 0.8rem;
+  opacity: 0.4;
+  cursor: pointer;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.pre-invoice-fix:hover {
+  opacity: 1;
+}
+
+.pre-invoice-fix-on {
+  opacity: 1;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #8a5a10;
+  background: #fdf1da;
+  border: 1px solid #e0b96b;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+}
