@@ -28,7 +28,7 @@ export async function reconcilePendingNomodLink(invoiceId) {
 
   if (!pending?.nomod_link_id) return;
 
-  const remoteLink = await fetchIfPaid(pending.nomod_link_id);
+  const remoteLink = await fetchIfPaid(pending.nomod_link_id, pending.id);
   if (!remoteLink) return;
 
   await recordNomodPayment(pending, invoiceId);
@@ -49,20 +49,45 @@ export async function reconcilePendingNomodOwnerLink(clientId) {
 
   if (!pending?.nomod_link_id) return;
 
-  const remoteLink = await fetchIfPaid(pending.nomod_link_id);
+  const remoteLink = await fetchIfPaid(pending.nomod_link_id, pending.id);
   if (!remoteLink) return;
 
   await recordNomodOwnerPayment(pending, clientId);
 }
 
-async function fetchIfPaid(nomodLinkId) {
+// Each check also stores Nomod's raw answer in nomod_link_checks
+// (migration 176, staff-only): which status Nomod reports for a paid link
+// was never confirmed, so this shows the real value. Only a check whose
+// status changed since the last one is stored, so the page's polling
+// doesn't fill the table.
+async function fetchIfPaid(nomodLinkId, paymentLinkId) {
   let remoteLink;
   try {
     remoteLink = await getPaymentLink(nomodLinkId);
-  } catch {
+  } catch (err) {
+    await logCheck(paymentLinkId, nomodLinkId, { error: err.message });
     return null;
   }
+  await logCheck(paymentLinkId, nomodLinkId, { remoteStatus: remoteLink?.status ?? null, payload: remoteLink });
   return isPaidLinkStatus(remoteLink.status) ? remoteLink : null;
+}
+
+async function logCheck(paymentLinkId, nomodLinkId, { remoteStatus = null, payload = null, error = null }) {
+  try {
+    const { data: last } = await supabaseServerAdmin
+      .from('nomod_link_checks')
+      .select('remote_status, error')
+      .eq('payment_link_id', paymentLinkId)
+      .order('checked_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (last && last.remote_status === remoteStatus && last.error === error) return;
+    await supabaseServerAdmin.from('nomod_link_checks').insert([
+      { payment_link_id: paymentLinkId, nomod_link_id: nomodLinkId, remote_status: remoteStatus, payload, error },
+    ]);
+  } catch {
+    // Diagnostics only: never let logging break the payment page.
+  }
 }
 
 // `link` needs just { id, amount } — the nomod_payment_links row, however
