@@ -11211,6 +11211,10 @@ button.patient-chip-age-missing {
   color: var(--pink-dark);
 }
 
+.case-tab-danger {
+  color: #b71c1c;
+}
+
 .case-tab-warn {
   color: #a35f00;
   background: #fff8e6;

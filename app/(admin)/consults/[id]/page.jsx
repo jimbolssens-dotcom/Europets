@@ -55,7 +55,7 @@ function diagnosticLabel(d, catalog) {
 const CONSULT_TABS = [
   { id: 'exam', label: '🩺 Exam, Diagnostics & Treatment' },
   { id: 'vaccinations', label: '💉 Vaccinations' },
-  { id: 'reports', label: 'Reports' },
+  { id: 'reports', label: '📑 Reports' },
 ];
 
 // "Sun 11 Oct, 5:13 pm" for the header's second row.
@@ -960,60 +960,66 @@ export default function ConsultDetailPage() {
         </div>
       )}
 
-      <div className="action-row">
+      {/* Small tabs on the left (History, Photos, Record open a dropdown;
+          Vaccinations and Reports switch the page, clicking again comes
+          back to the exam), Complete Consult and the Invoice /
+          Hospitalization / Day Procedure oval on the right: one line, the
+          same layout as the day procedure and hospitalization pages. */}
+      <div className="case-bar">
+        <div className="case-tabs" role="group" aria-label="Consult sections">
+          <PatientHistoryPanel patientId={consult.patient_id} clientId={consult.client_id} excludeVisitId={id} tab />
+          <details className="case-tab-menu" name="case-tabs">
+            <summary className="case-tab">📷 Photos{visitPhotoCount > 0 && <b> {visitPhotoCount}</b>}</summary>
+            <div className="case-tab-dropdown case-tab-dropdown-wide">
+              <AttachmentSection
+                entityType="visit"
+                entityId={id}
+                onAttachmentsChange={setVisitPhotoCount}
+                moveTargets={diagnostics.map((d) => ({
+                  label: diagnosticLabel(d, catalog),
+                  entityType: 'diagnostic',
+                  entityId: d.id,
+                }))}
+              />
+            </div>
+          </details>
+          {/* Not in the one-open-at-a-time group: opening another tab
+              mustn't hide a recording that's running. */}
+          <details className="case-tab-menu">
+            <summary className="case-tab">🎙️ Record</summary>
+            <div className="case-tab-dropdown case-tab-dropdown-wide">
+              <AudioRecorder
+                entityType="visit"
+                entityId={id}
+                onRefresh={() => {
+                  loadConsult();
+                  loadDiagnostics();
+                  loadTreatmentItems();
+                }}
+              />
+            </div>
+          </details>
+          {CONSULT_TABS.filter((tab) => tab.id !== 'exam').map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`case-tab${activeTab === tab.id ? ' case-tab-on' : ''}`}
+              onClick={() => setActiveTab((prev) => (prev === tab.id ? 'exam' : tab.id))}
+              title={activeTab === tab.id ? 'Back to the exam' : undefined}
+            >
+              {tab.label}
+            </button>
+          ))}
+          <button type="button" className="case-tab case-tab-danger" onClick={deleteConsult}>
+            🗑️ Delete
+          </button>
+        </div>
+        <div className="case-bar-actions" role="group" aria-label="Consult actions">
         {consult.status === 'in_progress' && (
           <button type="button" className="button-link" onClick={completeConsult}>
             Complete Consult
           </button>
         )}
-        <button type="button" className="button-link" onClick={deleteConsult}>
-          Delete Consult
-        </button>
-        <PatientHistoryPanel patientId={consult.patient_id} clientId={consult.client_id} excludeVisitId={id} pill />
-        <details className="consult-action-toggle">
-          <summary className="button-link">📷 Photos{visitPhotoCount > 0 ? ` (${visitPhotoCount})` : ''}</summary>
-          <div className="consult-action-dropdown">
-            <AttachmentSection
-              entityType="visit"
-              entityId={id}
-              onAttachmentsChange={setVisitPhotoCount}
-              moveTargets={diagnostics.map((d) => ({
-                label: diagnosticLabel(d, catalog),
-                entityType: 'diagnostic',
-                entityId: d.id,
-              }))}
-            />
-          </div>
-        </details>
-        <details className="consult-action-toggle">
-          <summary className="button-link">🎙️ Record</summary>
-          <div className="consult-action-dropdown">
-            <AudioRecorder
-              entityType="visit"
-              entityId={id}
-              onRefresh={() => {
-                loadConsult();
-                loadDiagnostics();
-                loadTreatmentItems();
-              }}
-            />
-          </div>
-        </details>
-      </div>
-
-      <div className="consult-tabs-row">
-        <div className="consult-tabs">
-          {CONSULT_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={`consult-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab((prev) => (tab.id === 'reports' && prev === 'reports' ? null : tab.id))}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
         <CrossRecordLinks>
         <button
           type="button"
@@ -1085,6 +1091,7 @@ export default function ConsultDetailPage() {
         )}
         {hospitalizationError && <span className="error" role="alert">{hospitalizationError}</span>}
         </CrossRecordLinks>
+        </div>
       </div>
 
       {/* Exam, Diagnostics & Treatment — the vet's own record (vitals, exam
