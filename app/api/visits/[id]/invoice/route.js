@@ -48,19 +48,21 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'consult not found' }, { status: 404 });
     }
 
-    const invoiceInsert = { client_id: visit.client_id, visit_id: visitId };
-    if (hospitalizationIds.length === 1) invoiceInsert.hospitalization_id = hospitalizationIds[0];
-
-    const { data: invoice, error: invoiceError } = await supabaseAdmin
-      .from('invoices')
-      .insert([invoiceInsert])
-      .select()
-      .single();
+    // Finds an open invoice on this consult OR its stay (a consult added to
+    // a day procedure that was already invoiced reuses that invoice instead
+    // of starting a second one), and creates one only if neither has one,
+    // under a per-client lock so simultaneous clicks can't make two
+    // (migration 175).
+    const { data: createdId, error: invoiceError } = await supabaseAdmin.rpc('find_or_create_invoice', {
+      p_client_id: visit.client_id,
+      p_hospitalization_id: hospitalizationIds.length === 1 ? hospitalizationIds[0] : null,
+      p_visit_id: visitId,
+    });
 
     if (invoiceError) {
       return NextResponse.json({ error: invoiceError.message }, { status: 500 });
     }
-    invoiceId = invoice.id;
+    invoiceId = createdId;
   } else if (hospitalizationIds.length === 1 && existing.hospitalization_id !== hospitalizationIds[0]) {
     // The consult was invoiced before the hospitalization existed (or
     // before it was the only one) — link them now so the hospitalization

@@ -81,7 +81,30 @@ export default function PreInvoiceOverview({
   // than silently dropped, which is exactly what used to happen here.
   const [blockedCharges, setBlockedCharges] = useState(null); // { count, status, reason, closedLabel } | null
 
+  // One sync at a time: a burst of treatment item changes (several items
+  // added together, a transfer from the consult) used to fire several
+  // syncs at once, which is how cases ended up with duplicate invoices.
+  // Changes arriving mid-sync just queue one more sync for afterwards.
+  const syncInFlightRef = useRef(false);
+  const syncQueuedRef = useRef(false);
   async function syncAndLoad(dogSize) {
+    if (syncInFlightRef.current && !dogSize) {
+      syncQueuedRef.current = true;
+      return;
+    }
+    syncInFlightRef.current = true;
+    try {
+      await syncAndLoadOnce(dogSize);
+    } finally {
+      syncInFlightRef.current = false;
+      if (syncQueuedRef.current) {
+        syncQueuedRef.current = false;
+        syncAndLoad();
+      }
+    }
+  }
+
+  async function syncAndLoadOnce(dogSize) {
     setError(null);
     const syncRes = await fetch(`/api/hospitalizations/${hospitalizationId}/invoice`, {
       method: 'POST',
