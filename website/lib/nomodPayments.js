@@ -8,7 +8,7 @@
 
 import { supabaseServer } from '@/lib/supabaseServer';
 import { supabaseServerAdmin } from '@/lib/supabaseServerAdmin';
-import { getPaymentLink, isPaidLinkStatus } from '@/lib/nomod';
+import { getPaymentLink, isPaidLinkStatus, listLinkCharges, successfulChargeTotal } from '@/lib/nomod';
 
 // Looks up the most recent still-pending Nomod link for this invoice,
 // asks Nomod for its current status, and — if it's now paid — logs the
@@ -60,16 +60,26 @@ export async function reconcilePendingNomodOwnerLink(clientId) {
 // was never confirmed, so this shows the real value. Only a check whose
 // status changed since the last one is stored, so the page's polling
 // doesn't fill the table.
+// A link counts as paid once Nomod has a successful charge on it (the
+// link's own status stays "enabled" after payment, see lib/nomod.js).
 async function fetchIfPaid(nomodLinkId, paymentLinkId) {
   let remoteLink;
+  let charges;
   try {
     remoteLink = await getPaymentLink(nomodLinkId);
+    charges = await listLinkCharges(nomodLinkId);
   } catch (err) {
     await logCheck(paymentLinkId, nomodLinkId, { error: err.message });
     return null;
   }
-  await logCheck(paymentLinkId, nomodLinkId, { remoteStatus: remoteLink?.status ?? null, payload: remoteLink });
-  return isPaidLinkStatus(remoteLink.status) ? remoteLink : null;
+  const paidTotal = successfulChargeTotal(charges.charges);
+  const chargeStatuses = charges.charges.map((c) => c?.status).join(',');
+  await logCheck(paymentLinkId, nomodLinkId, {
+    remoteStatus: `link:${remoteLink?.status ?? ''} charges:${chargeStatuses || 'none'}`,
+    payload: { link: remoteLink, charges: charges.raw },
+  });
+  if (paidTotal > 0 || isPaidLinkStatus(remoteLink.status)) return remoteLink;
+  return null;
 }
 
 async function logCheck(paymentLinkId, nomodLinkId, { remoteStatus = null, payload = null, error = null }) {

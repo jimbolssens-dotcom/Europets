@@ -77,6 +77,39 @@ export async function getPaymentLink(linkId) {
   return res.json();
 }
 
+// Confirmed by the first real test payment (INV-602, 12 Oct 2026): a
+// link's own status stays "enabled" after it's been paid (links can be
+// paid more than once), so the link alone never says it was paid. The
+// payment is a charge: GET /v1/charges?link_id=... (Nomod's "List
+// Charges" reference) lists the charges made through that link.
+export async function listLinkCharges(linkId) {
+  const apiKey = process.env.NOMOD_API_KEY;
+  if (!apiKey) {
+    throw new Error('NOMOD_API_KEY is not configured');
+  }
+  const res = await fetch(`${NOMOD_API_BASE}/charges?link_id=${encodeURIComponent(linkId)}`, {
+    headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Nomod API error (${res.status}): ${text || res.statusText}`);
+  }
+  const data = await res.json();
+  const charges = Array.isArray(data) ? data : data?.results || data?.data || data?.items || [];
+  return { charges, raw: data };
+}
+
+// Charge statuses that mean the money came in. Nomod's List Charges example
+// shows "authorised"; the others are the usual words for a completed card
+// payment. Failed / declined / refunded / voided charges never count.
+const SUCCESSFUL_CHARGE_STATUSES = ['authorised', 'authorized', 'captured', 'paid', 'succeeded', 'success', 'completed', 'settled'];
+
+export function successfulChargeTotal(charges) {
+  return (charges || [])
+    .filter((c) => SUCCESSFUL_CHARGE_STATUSES.includes(String(c?.status || '').toLowerCase()))
+    .reduce((sum, c) => sum + Number(c.amount ?? c.total ?? c.total_amount ?? 0), 0);
+}
+
 // UNCONFIRMED — Nomod's own "Create Link"/"Get Link" reference pages only
 // ever show "enabled" (a fresh, unpaid link) in their example response;
 // neither documents the value `status` takes on once a link is actually
