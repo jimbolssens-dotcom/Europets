@@ -24,6 +24,7 @@ import { seedCoreVaccinationsFromLastGiven, seedVaccinationFromIntake } from '@/
 import { findAppointmentConflict } from '@/lib/appointmentScheduling';
 import { phoneSearchDigits, clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { isStaffRequest } from '@/lib/staffAuth';
+import { ensureWhatsAppNumberOnFile } from '@/lib/whatsappNumberOnFile';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
@@ -399,6 +400,12 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
         .insert([{ client_id: client.id, phone: intake.phone, label: 'Mobile', is_whatsapp: true }]);
     }
   }
+
+  // The number this form was sent to over WhatsApp is the one they really
+  // message us from, even if they typed another (e.g. a landline) on the
+  // form: keep it on file as their WhatsApp number so their messages (and
+  // our reminders) find them.
+  if (intake.sent_to_phone) await ensureWhatsAppNumberOnFile(client.id, intake.sent_to_phone, { makeMain: true });
 
   await linkUnmatchedMessagesToClient(client.id);
 

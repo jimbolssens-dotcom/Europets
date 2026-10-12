@@ -11,6 +11,7 @@
 // PATCH -> { client_id } links every message on this phone to that client,
 //    folding this thread into their normal /messages/[id] page from then on.
 
+import { ensureWhatsAppNumberOnFile } from '@/lib/whatsappNumberOnFile';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendWhatsAppText } from '@/lib/metaWhatsapp';
 import { withoutDashes } from '@/lib/noDashes';
@@ -89,5 +90,8 @@ export async function PATCH(request, { params }) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  // Save the number on their file too, so their next WhatsApp message
+  // matches them instead of showing up as unregistered again.
+  await ensureWhatsAppNumberOnFile(body.client_id, phone);
   return NextResponse.json({ ok: true });
 }
