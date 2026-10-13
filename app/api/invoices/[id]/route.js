@@ -53,6 +53,13 @@ export async function GET(request, { params }) {
     invoice.hospitalizations = hospitalization || null;
   }
 
+  // The cattery stay(s) this invoice bills (migration 182).
+  const { data: catteryBookings } = await supabase
+    .from('cattery_bookings')
+    .select('id, date_in, date_out, patients(id, name, patient_number)')
+    .eq('invoice_id', params.id);
+  invoice.cattery_bookings = catteryBookings || [];
+
   const { data: lineItems, error: itemsError } = await supabase
     .from('invoice_line_items')
     .select('*, goods_services(name, pricing_type, unit, main_category)')

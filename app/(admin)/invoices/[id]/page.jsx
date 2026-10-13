@@ -460,7 +460,7 @@ export default function InvoiceDetailPage() {
   if (invoice.error) return <p>Invoice not found.</p>;
 
   const selected = catalog.find((c) => c.id === goodsServiceId);
-  const patient = invoice.visits?.patients || invoice.hospitalizations?.patients;
+  const patient = invoice.visits?.patients || invoice.hospitalizations?.patients || invoice.cattery_bookings?.[0]?.patients;
   const patientName = patient?.name;
   const invoiceSections = groupLineItemsBySection(invoice.line_items);
   const editable = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
@@ -565,6 +565,11 @@ export default function InvoiceDetailPage() {
             {linking === 'dayproc' ? 'Starting…' : 'Day Procedure'}
           </button>
         ) : null}
+        {(invoice.cattery_bookings || []).map((b) => (
+          <a key={b.id} className="button-link" href={`/cattery/${b.id}`}>
+            Cattery{invoice.cattery_bookings.length > 1 ? `: ${b.patients?.name || ''}` : ''}
+          </a>
+        ))}
         {linkError && <span className="error" role="alert">{linkError}</span>}
       </CrossRecordLinks>
       </div>

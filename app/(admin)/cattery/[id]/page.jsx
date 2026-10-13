@@ -21,6 +21,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
+import CatteryInvoiceButton from '@/app/_components/CatteryInvoiceButton';
 import { MOBILE_STAFF_STORAGE_KEY } from '@/app/_components/useMobileStaff';
 import {
   CATTERY_SPACES,
@@ -159,9 +160,12 @@ export default function CatteryBookingPage() {
         <a href="/cattery">&larr; Cattery</a>
         <span className="spacer" />
         <span className="visit-meta" title="Owners see this stay, its daily updates and photos under Cattery in the client app">
-          📱 Owner sees this in the client app
+          📱<span className="phone-hide"> Owner sees this in the client app</span>
         </span>
-        <button type="button" className="button-link" onClick={() => window.print()}>🖨️ Print cage sheet</button>
+        {!['declined', 'expired'].includes(booking.status) && (
+          <CatteryInvoiceButton bookingId={id} canCreate={!['requested', 'cancelled'].includes(booking.status)} />
+        )}
+        <button type="button" className="button-link" onClick={() => window.print()} title="Print cage sheet">🖨️<span className="phone-hide"> Print cage sheet</span></button>
       </div>
 
       {overdueToday && (

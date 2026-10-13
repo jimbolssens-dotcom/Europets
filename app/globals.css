@@ -11457,3 +11457,13 @@ button.patient-chip-age-missing {
 .booking-confirmation-notice button { flex: none; white-space: nowrap; }
 .booking-confirmation-error { opacity: 0.85; }
 .booking-confirmation-notice .booking-confirmation-dismiss { background: none; color: inherit; border: none; padding: 0 4px; font-size: 1.1rem; box-shadow: none; }
+
+/* Cattery booking: its invoice, on the top action line. */
+.cattery-invoice { display: inline-flex; align-items: center; gap: 4px; }
+.cattery-sheet-actions { position: relative; }
+.cattery-invoice-unlink { background: none; border: none; color: inherit; opacity: 0.6; padding: 0 4px; box-shadow: none; }
+.cattery-invoice-link > summary { cursor: pointer; font-size: 0.9rem; list-style: none; padding: 4px 8px; border-radius: 999px; border: 1px solid currentColor; opacity: 0.8; }
+.cattery-invoice-link > summary::-webkit-details-marker { display: none; }
+.cattery-invoice-choices { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--card-bg, #fff); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); min-width: 260px; max-width: calc(100vw - 32px); }
+@media (min-width: 700px) { .cattery-invoice-choices { left: auto; max-width: 420px; } }
+.cattery-invoice-choices button { text-align: left; white-space: nowrap; font-size: 0.85rem; }
