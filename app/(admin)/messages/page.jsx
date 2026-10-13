@@ -342,6 +342,19 @@ export default function MessagesInboxPage() {
         setLoading(false);
       });
 
+  // Tapping a row's 🔔 switches its alarm off without opening the thread:
+  // marks it read and clears a "still needs attention" flag, the same as
+  // opening it does (PATCH /api/client-messages/thread-state).
+  async function clearAlarm(conv) {
+    setConversations((prev) => prev.map((c) => (c.thread_key === conv.thread_key ? { ...c, pending: false, flagged: false } : c)));
+    await fetch('/api/client-messages/thread-state', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thread_key: conv.thread_key, mark_read: true, flagged: false }),
+    });
+    load();
+  }
+
   useEffect(() => {
     load();
     fetch('/api/staff')
@@ -807,7 +820,13 @@ export default function MessagesInboxPage() {
               <tbody>
                 {matched.map((c) => (
                   <tr key={c.client_id} className={c.pending ? 'cage-update-requested' : ''}>
-                    <td>{c.pending && '🔔'}</td>
+                    <td>
+                      {c.pending && (
+                        <button type="button" className="message-bell-off" onClick={() => clearAlarm(c)} title="Switch off this alarm (marks the conversation read)">
+                          🔔
+                        </button>
+                      )}
+                    </td>
                     <td>
                       <a href={`/clients/${c.client_id}`}>
                         {c.client?.full_name}

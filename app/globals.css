@@ -11432,3 +11432,18 @@ button.patient-chip-age-missing {
   text-decoration-color: var(--pink);
   text-underline-offset: 3px;
 }
+
+/* Messages list: the 🔔 on a row switches its alarm off in place. */
+.message-bell-off {
+  background: none;
+  border: 0;
+  padding: 0.1rem 0.25rem;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.message-bell-off:hover {
+  background: #fff3c4;
+}
