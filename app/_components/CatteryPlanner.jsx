@@ -10,7 +10,7 @@
 // to start a new booking for those dates.
 
 import { useEffect, useRef, useState } from 'react';
-import { CATTERY_SPACES, isWeekend } from '@/lib/cattery';
+import { CATTERY_SPACES, catNames, isWeekend } from '@/lib/cattery';
 
 const COL = 38;
 const HEAD = 96;
@@ -92,10 +92,10 @@ export default function CatteryPlanner({ start, days, today, bookings, onOpen, o
                           style={{ left: from * COL + 3, width: (to - from + 1) * COL - 6 }}
                           onPointerDown={(e) => e.stopPropagation()}
                           onClick={() => onOpen(b)}
-                          title={`${b.patients?.name || ''} · ${b.clients?.full_name || ''} · ${b.date_in} to ${b.date_out}`}
+                          title={`${catNames(b)} · ${b.clients?.full_name || ''} · ${b.date_in} to ${b.date_out}`}
                         >
                           {kind === 'pending' ? '⏳ ' : ''}
-                          {b.patients?.name}
+                          {catNames(b)}
                           <small>{b.clients?.full_name}</small>
                         </button>
                       );

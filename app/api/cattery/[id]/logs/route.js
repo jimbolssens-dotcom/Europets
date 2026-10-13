@@ -1,8 +1,9 @@
 // app/api/cattery/[id]/logs/route.js
 // PUT -> staff: save one day of a cattery booking's daily sheet
 //        { log_date, weight_kg?, food_am?, food_pm?, litter?, checked?,
-//          comments?, update_for_owner?, recorded_by? } — one row per
-//        booking per day (upsert on booking_id + log_date). Returns the
+//          comments?, update_for_owner?, recorded_by?, patient_id? } — one
+//        row per cat per day (upsert on booking_id + patient_id + log_date;
+//        patient_id defaults to the booking's own cat, see migration 183). Returns the
 //        saved row, whose id is what that day's photos attach to
 //        (attachments.entity_type 'cattery_log').
 //
@@ -25,19 +26,29 @@ export async function PUT(request, { params }) {
 
   const { data: booking } = await supabaseAdmin
     .from('cattery_bookings')
-    .select('id, client_id, date_in, date_out, patients(name)')
+    .select('id, client_id, patient_id, date_in, date_out, patients(name), cattery_booking_cats(patient_id, patients(name))')
     .eq('id', params.id)
     .single();
   if (!booking) return NextResponse.json({ error: 'booking not found' }, { status: 404 });
+
+  // Which cat this row is for: a shared bungalow (migration 183) has one
+  // row per cat per day. Defaults to the booking's own cat.
+  const patientId = body.patient_id || booking.patient_id;
+  const extra = (booking.cattery_booking_cats || []).find((c) => c.patient_id === patientId);
+  if (patientId !== booking.patient_id && !extra) {
+    return NextResponse.json({ error: 'That cat is not on this booking' }, { status: 400 });
+  }
+  const catName = (extra ? extra.patients?.name : booking.patients?.name) || 'your cat';
 
   const { data: existing } = await supabaseAdmin
     .from('cattery_daily_logs')
     .select('*')
     .eq('booking_id', params.id)
+    .eq('patient_id', patientId)
     .eq('log_date', body.log_date)
     .maybeSingle();
 
-  const row = { booking_id: params.id, log_date: body.log_date, updated_at: new Date().toISOString() };
+  const row = { booking_id: params.id, patient_id: patientId, log_date: body.log_date, updated_at: new Date().toISOString() };
   for (const key of FIELDS) {
     if (!(key in body)) continue;
     let value = body[key];
@@ -59,7 +70,7 @@ export async function PUT(request, { params }) {
 
   const { data, error } = await supabaseAdmin
     .from('cattery_daily_logs')
-    .upsert([{ ...(existing || {}), ...row }], { onConflict: 'booking_id,log_date' })
+    .upsert([{ ...(existing || {}), ...row }], { onConflict: 'booking_id,patient_id,log_date' })
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -67,7 +78,7 @@ export async function PUT(request, { params }) {
   const ownerUpdateChanged = data.update_for_owner && data.update_for_owner !== existing?.update_for_owner;
   if (ownerUpdateChanged && booking.client_id) {
     sendPushToClient(booking.client_id, {
-      title: `Cattery update for ${booking.patients?.name || 'your cat'}`,
+      title: `Cattery update for ${catName}`,
       body: data.update_for_owner.slice(0, 140),
       url: `/client-app/cattery/${booking.id}`,
     }).catch((err) => console.error('Cattery update push failed', booking.id, err));

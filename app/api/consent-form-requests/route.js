@@ -14,6 +14,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { CONSENT_FORM_TYPES, CONSENT_FORM_LABELS } from '@/lib/consentTemplates';
 import { createConsentFormRequest } from '@/lib/consentForms';
+import { catNames } from '@/lib/cattery';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
@@ -37,7 +38,7 @@ export async function GET(request) {
   const [{ data: visits }, { data: admissions }, { data: catteryStays }] = await Promise.all([
     supabase.from('visits').select('id, patients(name)').eq('client_id', clientId),
     supabase.from('hospitalizations').select('id, patients(name)').eq('client_id', clientId),
-    supabase.from('cattery_bookings').select('id, patients(name)').eq('client_id', clientId),
+    supabase.from('cattery_bookings').select('id, patients(name), cattery_booking_cats(patients(name))').eq('client_id', clientId),
   ]);
 
   const visitIds = (visits || []).map((v) => v.id);
@@ -46,7 +47,7 @@ export async function GET(request) {
   if (visitIds.length === 0 && hospitalizationIds.length === 0 && catteryBookingIds.length === 0) {
     return NextResponse.json([]);
   }
-  const patientNameByCatteryBooking = Object.fromEntries((catteryStays || []).map((b) => [b.id, b.patients?.name || null]));
+  const patientNameByCatteryBooking = Object.fromEntries((catteryStays || []).map((b) => [b.id, catNames(b) || null]));
 
   const patientNameByVisit = Object.fromEntries((visits || []).map((v) => [v.id, v.patients?.name || null]));
   const patientNameByHospitalization = Object.fromEntries(

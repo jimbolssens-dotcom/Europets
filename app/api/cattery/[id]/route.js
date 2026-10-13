@@ -7,7 +7,9 @@
 //          stripped. There's deliberately no public link to a stay: owners
 //          see it in the client app (app/client-app/cattery/[id]).
 // PATCH -> staff: update dates, space, status (check in / check out /
-//          cancel), treatments or notes. Moving dates/space re-checks that
+//          cancel), treatments or notes. { add_cat: patient_id } /
+//          { remove_cat: patient_id } adds or removes another cat from the
+//          same household sharing the space (migration 183). Moving dates/space re-checks that
 //          the space is free. For a client's request (status 'requested',
 //          migration 170): { action: 'approve' } (optionally with changed
 //          space/dates) confirms it as 'booked', sends the cattery consent
@@ -18,7 +20,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
-import { findSpaceClash, validateBookingInput, notifyCatteryClient } from '@/lib/catteryServer';
+import { findSpaceClash, validateBookingInput, notifyCatteryClient, addBookingCats } from '@/lib/catteryServer';
 import { createConsentFormRequest } from '@/lib/consentForms';
 import { NextResponse } from 'next/server';
 
@@ -44,7 +46,7 @@ function prettyDate(iso) {
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('cattery_bookings')
-    .select('*, patients(id, name, species, patient_number, sex, breed), clients(id, full_name, phone, client_number), cattery_daily_logs(*)')
+    .select('*, patients(id, name, species, patient_number, sex, breed), cattery_booking_cats(patient_id, patients(id, name, species, patient_number, sex, breed)), clients(id, full_name, phone, client_number), cattery_daily_logs(*)')
     .eq('id', params.id)
     .single();
   if (error || !data) return NextResponse.json({ error: 'booking not found' }, { status: 404 });
@@ -75,6 +77,23 @@ export async function PATCH(request, { params }) {
   const body = await request.json().catch(() => ({}));
   const { data: current, error: readError } = await supabaseAdmin.from('cattery_bookings').select('*').eq('id', params.id).single();
   if (readError || !current) return NextResponse.json({ error: 'booking not found' }, { status: 404 });
+
+  // A second cat from the same household sharing this space, or taking
+  // one off again (migration 183). Rows already saved on its sheet stay.
+  if (body.add_cat) {
+    const added = await addBookingCats(current, [body.add_cat]);
+    if (added.error) return NextResponse.json({ error: added.error }, { status: 400 });
+    return NextResponse.json({ added: added.added });
+  }
+  if (body.remove_cat) {
+    const { error } = await supabaseAdmin
+      .from('cattery_booking_cats')
+      .delete()
+      .eq('booking_id', params.id)
+      .eq('patient_id', body.remove_cat);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ removed: true });
+  }
 
   const action = body.action;
   if (action && current.status !== 'requested') {

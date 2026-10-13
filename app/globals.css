@@ -11467,3 +11467,15 @@ button.patient-chip-age-missing {
 .cattery-invoice-choices { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--card-bg, #fff); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); min-width: 260px; max-width: calc(100vw - 32px); }
 @media (min-width: 700px) { .cattery-invoice-choices { left: auto; max-width: 420px; } }
 .cattery-invoice-choices button { text-align: left; white-space: nowrap; font-size: 0.85rem; }
+
+/* Cattery: other cats from the household sharing one space (migration 183). */
+.cattery-picked { flex-wrap: wrap; }
+.cattery-sharing { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.cattery-share-chip { font-size: 0.85rem; padding: 2px 10px; border-radius: 999px; background: transparent; color: inherit; border: 1px dashed currentColor; box-shadow: none; }
+.cattery-share-chip.on { border-style: solid; background: var(--accent-soft, #fde7ef); font-weight: 600; }
+.cattery-sheet .cattery-cat { font-weight: 600; white-space: nowrap; }
+.cattery-cats-line { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.cattery-sheet tr.cattery-cat-row td { border-top-style: dashed; }
+.client-app-cattery-cat-weights { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin: 0 0 6px; }
+.cattery-weight-charts { display: flex; gap: 12px; }
+.cattery-weight-charts > .cattery-weight-chart { flex: 1 1 0; min-width: 0; }

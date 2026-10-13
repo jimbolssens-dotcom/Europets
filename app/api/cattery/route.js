@@ -8,7 +8,8 @@
 //        client's own bookings only, newest first — same "public path, route
 //        does the real check" split as GET /api/hospitalizations (see
 //        middleware.js CLIENT_APP_READ_PATTERNS).
-// POST /api/cattery -> staff: create a booking. Refuses one that overlaps
+// POST /api/cattery -> staff: create a booking (extra_patient_ids: the owner's
+//        other cats sharing the space, migration 183). Refuses one that overlaps
 //        another non-cancelled booking in the same space. Then sends the
 //        owner the cattery consent form over WhatsApp automatically (see
 //        lib/consentForms.js createConsentFormRequest; a send failure never
@@ -19,16 +20,16 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
 import { catteryToday } from '@/lib/cattery';
-import { findSpaceClash, validateBookingInput, expireStaleRequests } from '@/lib/catteryServer';
+import { findSpaceClash, validateBookingInput, expireStaleRequests, addBookingCats } from '@/lib/catteryServer';
 import { createConsentFormRequest } from '@/lib/consentForms';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 const BOOKING_FIELDS =
-  '*, patients(id, name, species, patient_number), clients(id, full_name, phone, client_number), cattery_daily_logs(*)';
+  '*, patients(id, name, species, patient_number), cattery_booking_cats(patient_id, patients(id, name, species, patient_number)), clients(id, full_name, phone, client_number), cattery_daily_logs(*)';
 const CLIENT_BOOKING_FIELDS =
-  'id, patient_id, client_id, space_number, date_in, date_out, status, deworming_done, deworming_product, external_parasite_done, external_parasite_product, owner_notes, decline_reason, request_expires_at, requested_by_client, created_at, patients(id, name, species)';
+  'id, patient_id, client_id, space_number, date_in, date_out, status, deworming_done, deworming_product, external_parasite_done, external_parasite_product, owner_notes, decline_reason, request_expires_at, requested_by_client, created_at, patients(id, name, species), cattery_booking_cats(patient_id, patients(id, name, species))';
 const PLANNER_STATUSES = ['requested', 'booked', 'checked_in', 'checked_out'];
 
 export async function GET(request) {
@@ -61,7 +62,7 @@ export async function GET(request) {
     const [checkedIn, requested] = await Promise.all([
       supabase
         .from('cattery_bookings')
-        .select('id, status, date_in, date_out, cattery_daily_logs(log_date, weight_kg)')
+        .select('id, status, date_in, date_out, patient_id, cattery_booking_cats(patient_id), cattery_daily_logs(log_date, weight_kg, patient_id)')
         .eq('status', 'checked_in')
         .lte('date_in', today)
         .gte('date_out', today),
@@ -120,6 +121,13 @@ export async function POST(request) {
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Other cats from the same household sharing the space (migration 183).
+  const extraIds = [...new Set((body.extra_patient_ids || []).filter((pid) => pid && pid !== body.patient_id))];
+  if (extraIds.length) {
+    const added = await addBookingCats(data, extraIds);
+    if (added.error) return NextResponse.json({ ...data, error: added.error }, { status: 400 });
+  }
 
   const consent = await createConsentFormRequest({ catteryBookingId: data.id, formType: 'cattery' }).catch((err) => ({
     error: err.message,

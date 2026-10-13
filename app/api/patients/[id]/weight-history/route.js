@@ -17,16 +17,13 @@ export async function GET(request, { params }) {
   const [
     { data: visits, error: visitsError },
     { data: hospitalizations, error: hospError },
-    { data: catteryBookings, error: catteryError },
   ] = await Promise.all([
     supabase.from('visits').select('weight_kg, started_at').eq('patient_id', params.id).not('weight_kg', 'is', null),
     supabase.from('hospitalizations').select('id').eq('patient_id', params.id),
-    supabase.from('cattery_bookings').select('id').eq('patient_id', params.id),
   ]);
 
   if (visitsError) return NextResponse.json({ error: visitsError.message }, { status: 500 });
   if (hospError) return NextResponse.json({ error: hospError.message }, { status: 500 });
-  if (catteryError) return NextResponse.json({ error: catteryError.message }, { status: 500 });
 
   const hospitalizationIds = (hospitalizations || []).map((h) => h.id);
   let notes = [];
@@ -40,22 +37,19 @@ export async function GET(request, { params }) {
     notes = data || [];
   }
 
-  const bookingIds = (catteryBookings || []).map((b) => b.id);
-  let catteryLogs = [];
-  if (bookingIds.length > 0) {
-    const { data, error } = await supabase
-      .from('cattery_daily_logs')
-      .select('weight_kg, log_date')
-      .in('booking_id', bookingIds)
-      .not('weight_kg', 'is', null);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    catteryLogs = data || [];
-  }
+  // Every cattery weigh-in of this cat, its own bookings and any shared
+  // bungalow it was the second cat in (rows carry patient_id, migration 183).
+  const { data: catteryLogs, error: catteryError } = await supabase
+    .from('cattery_daily_logs')
+    .select('weight_kg, log_date')
+    .eq('patient_id', params.id)
+    .not('weight_kg', 'is', null);
+  if (catteryError) return NextResponse.json({ error: catteryError.message }, { status: 500 });
 
   const points = [
     ...(visits || []).map((v) => ({ date: v.started_at, weight_kg: v.weight_kg })),
     ...notes.map((n) => ({ date: n.created_at, weight_kg: n.weight_kg })),
-    ...catteryLogs.map((l) => ({ date: `${l.log_date}T12:00:00+04:00`, weight_kg: l.weight_kg })),
+    ...(catteryLogs || []).map((l) => ({ date: `${l.log_date}T12:00:00+04:00`, weight_kg: l.weight_kg })),
   ].sort((a, b) => new Date(a.date) - new Date(b.date));
 
   return NextResponse.json(points);

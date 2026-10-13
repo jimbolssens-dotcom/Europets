@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
-import { catteryToday } from '@/lib/cattery';
+import { catNames, catteryToday } from '@/lib/cattery';
 
 const STATUS_PILL = {
   requested: '⏳ Waiting for confirmation',
@@ -58,7 +58,7 @@ export default function ClientAppCatteryPage() {
           <span className="client-app-pet-avatar-sm client-app-pet-avatar-placeholder">🐱</span>
           <div>
             <span className="mobile-list-title">
-              {b.patients?.name}
+              {catNames(b)}
               <span className={`client-app-cattery-pill ${b.status}`}>{STATUS_PILL[b.status] || ''}</span>
             </span>
             <span className="mobile-list-meta">

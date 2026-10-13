@@ -16,6 +16,7 @@ import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import { supabase } from '@/lib/supabaseClient';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
+import { bookingCats, catNames, logPatientId } from '@/lib/cattery';
 
 function longDate(iso) {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
@@ -66,9 +67,18 @@ export default function ClientAppCatteryStayPage() {
     return <div className="mobile-page"><p className="mobile-subtitle">We couldn&apos;t find that stay.</p></div>;
   }
 
-  const name = booking.patients?.name || 'Your cat';
+  const name = catNames(booking, 'Your cat');
+  // A shared bungalow (two or more of your cats in one space) has a row
+  // per cat per day.
+  const cats = bookingCats(booking);
+  const shared = cats.length > 1;
+  const catName = (l) => cats.find((c) => c.id === logPatientId(l, booking))?.name || '';
   const logs = (booking.cattery_daily_logs || []).slice().sort((a, b) => b.log_date.localeCompare(a.log_date));
-  const weights = logs.filter((l) => l.weight_kg != null).map((l) => ({ date: `${l.log_date}T12:00:00Z`, weight_kg: l.weight_kg }));
+  const weightsFor = (catId) =>
+    logs
+      .filter((l) => l.weight_kg != null && logPatientId(l, booking) === catId)
+      .map((l) => ({ date: `${l.log_date}T12:00:00Z`, weight_kg: l.weight_kg }));
+  const weights = weightsFor(cats[0]?.id);
   const shownDays = logs.filter((l) => l.weight_kg != null || l.food_am || l.food_pm || l.update_for_owner);
 
   return (
@@ -82,8 +92,17 @@ export default function ClientAppCatteryStayPage() {
             <span className={`portal-status portal-status-${booking.status === 'checked_in' ? 'admitted' : 'discharged'}`}>
               {STATUS_TEXT[booking.status] || ''}
             </span>
-            <WeightHistoryChart data={weights} mini />
+            {!shared && <WeightHistoryChart data={weights} mini />}
           </h1>
+          {shared && (
+            <p className="client-app-cattery-cat-weights">
+              {cats.map((c) => (
+                <span key={c.id}>
+                  {c.name} <WeightHistoryChart data={weightsFor(c.id)} mini />
+                </span>
+              ))}
+            </p>
+          )}
           <p className="visit-meta">
             Cattery stay · {shortDate(booking.date_in)} to {shortDate(booking.date_out)} · Space {booking.space_number}
           </p>
@@ -112,7 +131,10 @@ export default function ClientAppCatteryStayPage() {
           {shownDays.length === 0 && <p className="visit-meta">No updates yet, check back soon.</p>}
           {shownDays.map((l) => (
             <div key={l.id} className="portal-note">
-              <div className="portal-note-date">{longDate(l.log_date)}</div>
+              <div className="portal-note-date">
+                {shared ? `${catName(l)} · ` : ''}
+                {longDate(l.log_date)}
+              </div>
               <p className="visit-meta">
                 {[
                   l.weight_kg != null && `Weight ${Number(l.weight_kg).toFixed(2)} kg`,

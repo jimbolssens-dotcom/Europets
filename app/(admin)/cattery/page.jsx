@@ -24,6 +24,8 @@ import {
   DEFAULT_EXTERNAL_PARASITE_PRODUCT,
   catteryToday,
   weightOverdue,
+  bookingCats,
+  catNames,
 } from '@/lib/cattery';
 
 const PLANNER_DAYS = 28;
@@ -67,6 +69,10 @@ function CatteryPageInner() {
   // from; it used to do nothing, so the pick looked like it didn't register.
   const [ownerPick, setOwnerPick] = useState(null); // { client, pets } | null
   const [form, setForm] = useState({ ...emptyForm, date_in: today });
+  // The owner's other cats, and which of them share the space (one
+  // booking, one row per cat on the daily sheet, migration 183).
+  const [householdCats, setHouseholdCats] = useState([]);
+  const [sharing, setSharing] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [reviewing, setReviewing] = useState(null);
@@ -100,6 +106,22 @@ function CatteryPageInner() {
       .then((res) => (res.ok ? res.json() : null))
       .then((p) => p && !p.error && setPatient(p));
   }, [searchParams]);
+
+  useEffect(() => {
+    setSharing([]);
+    setHouseholdCats([]);
+    const clientId = patient?.client_id || patient?.clients?.id;
+    if (!clientId) return;
+    fetch(`/api/patients?client_id=${clientId}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((pets) =>
+        setHouseholdCats(
+          (Array.isArray(pets) ? pets : []).filter(
+            (p) => p.id !== patient.id && !p.deceased && !p.rehomed && /cat|feline/i.test(p.species || '')
+          )
+        )
+      );
+  }, [patient]);
 
   const requests = bookings.filter((b) => b.status === 'requested').sort((a, b) => (a.request_expires_at || '').localeCompare(b.request_expires_at || ''));
   const holding = bookings.filter((b) => ['requested', 'booked', 'checked_in'].includes(b.status));
@@ -155,7 +177,7 @@ function CatteryPageInner() {
     const res = await fetch('/api/cattery', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, patient_id: patient.id }),
+      body: JSON.stringify({ ...form, patient_id: patient.id, extra_patient_ids: sharing }),
     });
     const data = await res.json().catch(() => ({}));
     setSaving(false);
@@ -182,7 +204,7 @@ function CatteryPageInner() {
 
       {overdue.map((b) => (
         <a key={b.id} href={`/cattery/${b.id}`} className="cattery-overdue-banner cattery-overdue-link">
-          ⚖️ {b.patients?.name} (space {b.space_number}) hasn&apos;t been weighed today. Tap to record the weight.
+          ⚖️ {catNames(b)} (space {b.space_number}) {bookingCats(b).length > 1 ? 'haven\u2019t all' : 'hasn\u2019t'} been weighed today. Tap to record the weight.
         </a>
       ))}
 
@@ -193,7 +215,7 @@ function CatteryPageInner() {
           <h2>🔔 {requests.length} booking request{requests.length === 1 ? '' : 's'} waiting for approval</h2>
           {requests.map((b) => (
             <div key={b.id} className="cattery-request">
-              <strong>{b.patients?.name}</strong>
+              <strong>{catNames(b)}</strong>
               <span className="visit-meta">
                 {b.clients?.full_name}{b.clients?.client_number ? ` #${b.clients.client_number}` : ''} · Space {b.space_number} · {shortDate(b.date_in)} to {shortDate(b.date_out)}
               </span>
@@ -226,6 +248,27 @@ function CatteryPageInner() {
             <span className="cattery-picked">
               <strong>{patient.name}</strong> {patient.clients?.full_name ? `(${patient.clients.full_name})` : ''}
               <button type="button" className="mobile-link-btn" onClick={() => setPatient(null)}>Change</button>
+              {householdCats.length > 0 && (
+                <span className="cattery-sharing">
+                  <span className="visit-meta">Same space:</span>
+                  {householdCats.map((c) => {
+                    const on = sharing.includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={`cattery-share-chip ${on ? 'on' : ''}`}
+                        aria-pressed={on}
+                        title="Another cat from this household sharing the space, on the same booking"
+                        onClick={() => setSharing(on ? sharing.filter((x) => x !== c.id) : [...sharing, c.id])}
+                      >
+                        {on ? '✓ ' : '+ '}
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </span>
+              )}
             </span>
           ) : (
             <>

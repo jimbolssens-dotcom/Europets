@@ -30,6 +30,9 @@ import {
   isWeekend,
   weekdayName,
   weightOverdue,
+  bookingCats,
+  catNames,
+  logPatientId,
 } from '@/lib/cattery';
 
 const FOOD_OPTIONS = ['', 'All', 'Most', 'Some', 'None'];
@@ -47,6 +50,10 @@ const STATUS_LABELS = {
 function longDate(iso) {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
+// "Plomo's", "Chubbers'".
+function possessive(name) {
+  return /s$/i.test(name || '') ? `${name}'` : `${name}'s`;
+}
 function shortDate(iso) {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit', timeZone: 'UTC' });
 }
@@ -54,7 +61,8 @@ function shortDate(iso) {
 export default function CatteryBookingPage() {
   const { id } = useParams();
   const [booking, setBooking] = useState(null);
-  const [logs, setLogs] = useState({}); // log_date -> row
+  const [logs, setLogs] = useState({}); // `${patient_id}|${log_date}` -> row (one per cat per day)
+  const [householdCats, setHouseholdCats] = useState(null); // the owner's other cats, to add to a shared space
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState(null);
   const [error, setError] = useState(null);
@@ -72,7 +80,7 @@ export default function CatteryBookingPage() {
         if (data.error) return setBooking(null);
         setBooking(data);
         const map = {};
-        for (const l of data.cattery_daily_logs || []) map[l.log_date] = l;
+        for (const l of data.cattery_daily_logs || []) map[`${logPatientId(l, data)}|${l.log_date}`] = l;
         setLogs(map);
       })
       .finally(() => setLoading(false));
@@ -83,36 +91,77 @@ export default function CatteryBookingPage() {
     const channel = supabase
       .channel(`cattery-sheet-${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cattery_daily_logs', filter: `booking_id=eq.${id}` }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cattery_booking_cats', filter: `booking_id=eq.${id}` }, load)
       .subscribe();
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const days = useMemo(() => (booking ? bookingDays(booking.date_in, booking.date_out) : []), [booking]);
+  // Every cat on the booking: a shared bungalow (migration 183) has one
+  // row per cat per day on the sheet.
+  const cats = useMemo(() => bookingCats(booking), [booking]);
+  const shared = cats.length > 1;
   const overdueToday = booking && weightOverdue(booking, Object.values(logs));
-  // This stay's daily weigh-ins, for the weight graph under the header.
+  const overdueNames = cats
+    .filter((cat) => booking && weightOverdue(booking, Object.values(logs), undefined, cat.id))
+    .map((cat) => cat.name)
+    .join(' and ');
+  // This stay's daily weigh-ins per cat, for the weight graph(s) under the header.
   const stayWeights = useMemo(
-    () => Object.values(logs)
-      .filter((l) => l.weight_kg != null && l.weight_kg !== '')
-      .map((l) => ({ date: `${l.log_date}T12:00:00+04:00`, weight_kg: l.weight_kg })),
-    [logs]
+    () =>
+      cats.map((cat) => ({
+        cat,
+        points: Object.values(logs)
+          .filter((l) => logPatientId(l, booking) === cat.id && l.weight_kg != null && l.weight_kg !== '')
+          .map((l) => ({ date: `${l.log_date}T12:00:00+04:00`, weight_kg: l.weight_kg })),
+      })),
+    [logs, cats, booking]
   );
 
-  async function saveLog(date, field, value) {
+  async function saveLog(date, field, value, catId) {
     setError(null);
-    setLogs((prev) => ({ ...prev, [date]: { ...(prev[date] || { log_date: date }), [field]: value } }));
-    setSavingKey(`${date}:${field}`);
+    const key = `${catId}|${date}`;
+    setLogs((prev) => ({ ...prev, [key]: { ...(prev[key] || { log_date: date, patient_id: catId }), [field]: value } }));
+    setSavingKey(`${key}:${field}`);
     let recordedBy = null;
     try { recordedBy = localStorage.getItem(MOBILE_STAFF_STORAGE_KEY); } catch {}
     const res = await fetch(`/api/cattery/${id}/logs`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ log_date: date, [field]: value, ...(recordedBy ? { recorded_by: recordedBy } : {}) }),
+      body: JSON.stringify({ log_date: date, patient_id: catId, [field]: value, ...(recordedBy ? { recorded_by: recordedBy } : {}) }),
     });
     const data = await res.json().catch(() => ({}));
     setSavingKey(null);
     if (!res.ok) return setError(data.error || 'Could not save.');
-    setLogs((prev) => ({ ...prev, [date]: data }));
+    setLogs((prev) => ({ ...prev, [key]: data }));
+  }
+
+  // The owner's other cats, for "+ Add cat" (sharing this space).
+  function loadHouseholdCats() {
+    if (!booking?.client_id) return;
+    fetch(`/api/patients?client_id=${booking.client_id}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((pets) =>
+        setHouseholdCats(
+          (Array.isArray(pets) ? pets : []).filter(
+            (p) => !cats.some((c) => c.id === p.id) && !p.deceased && !p.rehomed && /cat|feline/i.test(p.species || '')
+          )
+        )
+      );
+  }
+
+  async function changeCats(update) {
+    setError(null);
+    const res = await fetch(`/api/cattery/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(update),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return setError(data.error || 'Could not change the cats on this booking.');
+    setHouseholdCats(null);
+    load();
   }
 
   // Sends (or resends) the cattery consent form to the owner on WhatsApp.
@@ -169,13 +218,15 @@ export default function CatteryBookingPage() {
       </div>
 
       {overdueToday && (
-        <p className="cattery-overdue-banner no-print">⚖️ Today&apos;s weight for {p.name} hasn&apos;t been recorded yet. Please weigh {p.name} now.</p>
+        <p className="cattery-overdue-banner no-print">
+          ⚖️ Today&apos;s weight for {overdueNames} hasn&apos;t been recorded yet. Please weigh {overdueNames} now.
+        </p>
       )}
 
       {/* ===== Header: matches the paper cage sheet ===== */}
       <div className="cattery-sheet-header">
         <div className="cattery-sheet-title">
-          <h1>{p.name}</h1>
+          <h1>{catNames(booking, p.name)}</h1>
           <span className="cattery-sheet-number">{c.client_number ? `#${c.client_number}` : ''}</span>
         </div>
         <div className="cattery-sheet-meta">
@@ -197,11 +248,17 @@ export default function CatteryBookingPage() {
         <p className="cattery-sheet-owner print-only">Owner: {c.full_name}{c.phone ? ` · ${c.phone}` : ''}</p>
       </div>
 
-      {stayWeights.length > 0 && (
-        <section className="cattery-weight-chart no-print" aria-label="Weight during this stay">
-          <h3>⚖️ Weight during this stay</h3>
-          <WeightHistoryChart data={stayWeights} />
-        </section>
+      {stayWeights.some((w) => w.points.length > 0) && (
+        <div className="cattery-weight-charts no-print">
+          {stayWeights
+            .filter((w) => w.points.length > 0)
+            .map((w) => (
+              <section key={w.cat.id} className="cattery-weight-chart" aria-label={`Weight during this stay${shared ? `: ${w.cat.name}` : ''}`}>
+                <h3>⚖️ {shared ? `${possessive(w.cat.name)} weight` : 'Weight during this stay'}</h3>
+                <WeightHistoryChart data={w.points} />
+              </section>
+            ))}
+        </div>
       )}
 
       {booking.status === 'requested' && (
@@ -224,8 +281,38 @@ export default function CatteryBookingPage() {
         <button type="button" className="secondary" onClick={() => { setDraft({ ...booking }); setEditing((e) => !e); }}>
           {editing ? 'Close' : '✏️ Edit booking'}
         </button>
-        <span className="visit-meta">
-          Owner: <a href={`/clients/${c.id}`}>{c.full_name}</a> · <a href={`/patients/${p.id}`}>{p.name}&apos;s file</a>
+        <span className="visit-meta cattery-cats-line">
+          Owner: <a href={`/clients/${c.id}`}>{c.full_name}</a> ·{' '}
+          {cats.map((cat, i) => (
+            <span key={cat.id}>
+              <a href={`/patients/${cat.id}`}>{possessive(cat.name)} file</a>
+              {i > 0 && (
+                <button
+                  type="button"
+                  className="cattery-invoice-unlink"
+                  title={`Take ${cat.name} off this booking`}
+                  onClick={() => confirm(`Take ${cat.name} off this booking? Days already filled in for ${cat.name} stay saved.`) && changeCats({ remove_cat: cat.id })}
+                >
+                  ×
+                </button>
+              )}
+              {i < cats.length - 1 ? ' · ' : ''}
+            </span>
+          ))}
+          {!['cancelled', 'checked_out', 'declined', 'expired'].includes(booking.status) &&
+            (householdCats === null ? (
+              <button type="button" className="cattery-share-chip" title="Another cat from this household sharing the same space" onClick={loadHouseholdCats}>
+                + Same space
+              </button>
+            ) : householdCats.length === 0 ? (
+              <span>No other cats on file for this owner.</span>
+            ) : (
+              householdCats.map((cat) => (
+                <button key={cat.id} type="button" className="cattery-share-chip" onClick={() => changeCats({ add_cat: cat.id })}>
+                  + {cat.name}
+                </button>
+              ))
+            ))}
         </span>
       </div>
 
@@ -301,6 +388,7 @@ export default function CatteryBookingPage() {
           <tr>
             <th rowSpan={2}>Date</th>
             <th rowSpan={2} />
+            {shared && <th rowSpan={2}>Cat</th>}
             <th rowSpan={2}>Kg</th>
             <th colSpan={2}>Food</th>
             <th rowSpan={2}>Litter</th>
@@ -311,88 +399,101 @@ export default function CatteryBookingPage() {
           <tr><th>AM</th><th>PM</th></tr>
         </thead>
         <tbody>
-          {days.map((date) => {
-            const log = logs[date] || {};
-            const isToday = date === today;
-            const rowOverdue = isToday && overdueToday;
-            const saving = (field) => savingKey === `${date}:${field}`;
-            return [
-              <tr key={date} className={`${isWeekend(date) ? 'weekend' : ''} ${isToday ? 'today' : ''} ${rowOverdue ? 'overdue' : ''}`}>
-                <td className="cattery-date">{longDate(date)}</td>
-                <td className="cattery-day">{weekdayName(date)}</td>
-                <td>
-                  <input
-                    type="number" step="0.01" min="0" inputMode="decimal"
-                    defaultValue={log.weight_kg ?? ''}
-                    key={`w-${date}-${log.weight_kg ?? ''}`}
-                    onBlur={(e) => e.target.value !== String(log.weight_kg ?? '') && saveLog(date, 'weight_kg', e.target.value)}
-                    className={saving('weight_kg') ? 'saving' : ''}
-                    aria-label={`Weight on ${date}`}
-                  />
-                  <span className="print-only">{log.weight_kg ?? ''}</span>
-                </td>
-                {['food_am', 'food_pm'].map((field) => (
-                  <td key={field}>
-                    <select value={log[field] || ''} onChange={(e) => saveLog(date, field, e.target.value)} aria-label={`${field === 'food_am' ? 'AM' : 'PM'} food on ${date}`}>
-                      {FOOD_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+          {days.flatMap((date) =>
+            cats.map((cat, catIndex) => {
+              const key = `${cat.id}|${date}`;
+              const log = logs[key] || {};
+              const isToday = date === today;
+              const rowOverdue = isToday && weightOverdue(booking, Object.values(logs), undefined, cat.id);
+              const saving = (field) => savingKey === `${key}:${field}`;
+              const save = (field, value) => saveLog(date, field, value, cat.id);
+              const label = (what) => `${what}${shared ? ` for ${cat.name}` : ''} on ${date}`;
+              return [
+                <tr
+                  key={key}
+                  className={`${isWeekend(date) ? 'weekend' : ''} ${isToday ? 'today' : ''} ${rowOverdue ? 'overdue' : ''} ${shared && catIndex > 0 ? 'cattery-cat-row' : ''}`}
+                >
+                  {catIndex === 0 && (
+                    <>
+                      <td className="cattery-date" rowSpan={cats.length}>{longDate(date)}</td>
+                      <td className="cattery-day" rowSpan={cats.length}>{weekdayName(date)}</td>
+                    </>
+                  )}
+                  {shared && <td className="cattery-cat">{cat.name}</td>}
+                  <td>
+                    <input
+                      type="number" step="0.01" min="0" inputMode="decimal"
+                      defaultValue={log.weight_kg ?? ''}
+                      key={`w-${key}-${log.weight_kg ?? ''}`}
+                      onBlur={(e) => e.target.value !== String(log.weight_kg ?? '') && save('weight_kg', e.target.value)}
+                      className={saving('weight_kg') ? 'saving' : ''}
+                      aria-label={label('Weight')}
+                    />
+                    <span className="print-only">{log.weight_kg ?? ''}</span>
+                  </td>
+                  {['food_am', 'food_pm'].map((field) => (
+                    <td key={field}>
+                      <select value={log[field] || ''} onChange={(e) => save(field, e.target.value)} aria-label={label(`${field === 'food_am' ? 'AM' : 'PM'} food`)}>
+                        {FOOD_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                      <span className="print-only">{log[field] || ''}</span>
+                    </td>
+                  ))}
+                  <td>
+                    <select value={log.litter || ''} onChange={(e) => save('litter', e.target.value)} aria-label={label('Litter')}>
+                      {LITTER_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
-                    <span className="print-only">{log[field] || ''}</span>
+                    <span className="print-only">{log.litter || ''}</span>
                   </td>
-                ))}
-                <td>
-                  <select value={log.litter || ''} onChange={(e) => saveLog(date, 'litter', e.target.value)} aria-label={`Litter on ${date}`}>
-                    {LITTER_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                  <span className="print-only">{log.litter || ''}</span>
-                </td>
-                <td className="cattery-checkcell">
-                  <input type="checkbox" checked={Boolean(log.checked)} onChange={(e) => saveLog(date, 'checked', e.target.checked)} aria-label={`Checked on ${date}`} />
-                  <span className="print-only">{log.checked ? '✓' : ''}</span>
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    defaultValue={log.comments || ''}
-                    key={`c-${date}-${log.comments || ''}`}
-                    onBlur={(e) => e.target.value !== (log.comments || '') && saveLog(date, 'comments', e.target.value)}
-                    aria-label={`Comments on ${date}`}
-                  />
-                  <span className="print-only">{log.comments || ''}</span>
-                </td>
-                <td className="no-print">
-                  <button type="button" className={`mobile-link-btn ${log.update_for_owner ? 'cattery-has-update' : ''}`} onClick={() => {
-                      const opening = openDay !== date;
-                      setOpenDay(opening ? date : null);
-                      // Photos attach to the day's row, so make sure it exists.
-                      if (opening && !log.id) saveLog(date, 'checked', Boolean(log.checked));
-                    }}>
-                    {log.update_for_owner ? '💬 Sent' : '📷 Add'}
-                  </button>
-                </td>
-              </tr>,
-              openDay === date && (
-                <tr key={`${date}-owner`} className="cattery-owner-row no-print">
-                  <td colSpan={9}>
-                    <label>
-                      Update for the owner (shown on their cattery page, they get a notification)
-                      <textarea
-                        rows={2}
-                        defaultValue={log.update_for_owner || ''}
-                        key={`o-${date}-${log.update_for_owner || ''}`}
-                        placeholder={`e.g. ${p.name} ate everything this morning and is enjoying the sunny spot by the window.`}
-                        onBlur={(e) => e.target.value !== (log.update_for_owner || '') && saveLog(date, 'update_for_owner', e.target.value)}
-                      />
-                    </label>
-                    {log.id ? (
-                      <AttachmentSection entityType="cattery_log" entityId={log.id} />
-                    ) : (
-                      <p className="visit-meta">Getting the photo upload ready…</p>
-                    )}
+                  <td className="cattery-checkcell">
+                    <input type="checkbox" checked={Boolean(log.checked)} onChange={(e) => save('checked', e.target.checked)} aria-label={label('Checked')} />
+                    <span className="print-only">{log.checked ? '✓' : ''}</span>
                   </td>
-                </tr>
-              ),
-            ];
-          })}
+                  <td>
+                    <input
+                      type="text"
+                      defaultValue={log.comments || ''}
+                      key={`c-${key}-${log.comments || ''}`}
+                      onBlur={(e) => e.target.value !== (log.comments || '') && save('comments', e.target.value)}
+                      aria-label={label('Comments')}
+                    />
+                    <span className="print-only">{log.comments || ''}</span>
+                  </td>
+                  <td className="no-print">
+                    <button type="button" className={`mobile-link-btn ${log.update_for_owner ? 'cattery-has-update' : ''}`} onClick={() => {
+                        const opening = openDay !== key;
+                        setOpenDay(opening ? key : null);
+                        // Photos attach to the day's row, so make sure it exists.
+                        if (opening && !log.id) save('checked', Boolean(log.checked));
+                      }}>
+                      {log.update_for_owner ? '💬 Sent' : '📷 Add'}
+                    </button>
+                  </td>
+                </tr>,
+                openDay === key && (
+                  <tr key={`${key}-owner`} className="cattery-owner-row no-print">
+                    <td colSpan={shared ? 10 : 9}>
+                      <label>
+                        Update for the owner{shared ? ` about ${cat.name}` : ''} (shown on their cattery page, they get a notification)
+                        <textarea
+                          rows={2}
+                          defaultValue={log.update_for_owner || ''}
+                          key={`o-${key}-${log.update_for_owner || ''}`}
+                          placeholder={`e.g. ${cat.name || p.name} ate everything this morning and is enjoying the sunny spot by the window.`}
+                          onBlur={(e) => e.target.value !== (log.update_for_owner || '') && save('update_for_owner', e.target.value)}
+                        />
+                      </label>
+                      {log.id ? (
+                        <AttachmentSection entityType="cattery_log" entityId={log.id} />
+                      ) : (
+                        <p className="visit-meta">Getting the photo upload ready…</p>
+                      )}
+                    </td>
+                  </tr>
+                ),
+              ];
+            })
+          )}
         </tbody>
       </table>
     </div>

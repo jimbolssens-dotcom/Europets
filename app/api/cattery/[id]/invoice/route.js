@@ -3,7 +3,8 @@
 // GET  -> the booking's invoice (if linked) and the owner's other invoices
 //         that aren't linked to a stay yet, to pick from.
 // POST {}              -> create the stay's invoice: one boarding line per
-//                         cat for the nights booked. Every cat of the same
+//                         cat for the nights booked (a shared bungalow's
+//                         cats included, see migration 183). Every cat of the same
 //                         owner staying over the same dates without an
 //                         invoice goes on it too: the first at "Boarding -
 //                         Cattery", each further cat at "Boarding - Cattery
@@ -37,7 +38,7 @@ function shortDate(iso) {
 async function loadBooking(id) {
   const { data } = await supabase
     .from('cattery_bookings')
-    .select('id, client_id, patient_id, date_in, date_out, status, invoice_id, patients(name)')
+    .select('id, client_id, patient_id, date_in, date_out, status, invoice_id, patients(name), cattery_booking_cats(patient_id, patients(name))')
     .eq('id', id)
     .single();
   return data;
@@ -97,7 +98,12 @@ export async function POST(request, { params }) {
     .eq('client_id', booking.client_id)
     .is('invoice_id', null)
     .neq('id', booking.id);
-  const together = [booking];
+  // A shared bungalow's other cats (migration 183) are on this booking
+  // itself: same dates, billed at the further-cat rate.
+  const together = [
+    booking,
+    ...(booking.cattery_booking_cats || []).map((c) => ({ ...booking, patient_id: c.patient_id, patients: c.patients })),
+  ];
   for (const b of siblings || []) {
     if (NOT_STAYING.includes(b.status)) continue;
     if (!rangesOverlap(b.date_in, b.date_out, booking.date_in, booking.date_out)) continue;
@@ -140,10 +146,7 @@ export async function POST(request, { params }) {
   const { error: linkError } = await supabaseAdmin
     .from('cattery_bookings')
     .update({ invoice_id: invoice.id })
-    .in(
-      'id',
-      together.map((b) => b.id)
-    );
+    .in('id', [...new Set(together.map((b) => b.id))]);
   if (linkError) return NextResponse.json({ error: linkError.message }, { status: 500 });
 
   return NextResponse.json({ invoice_id: invoice.id, cats: together.length }, { status: 201 });
