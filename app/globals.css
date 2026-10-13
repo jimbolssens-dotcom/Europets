@@ -11447,3 +11447,13 @@ button.patient-chip-age-missing {
 .message-bell-off:hover {
   background: #fff3c4;
 }
+
+/* After approving a self-booking: did its confirmation go out? */
+.booking-confirmation-notices { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.booking-confirmation-notice { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; font-size: 0.9rem; }
+.booking-confirmation-notice.is-sent { background: #e9f7ef; color: #1e6b3a; }
+.booking-confirmation-notice.is-failed { background: #fdecec; color: #8a1c1c; }
+.booking-confirmation-text { flex: 1 1 0; min-width: 0; }
+.booking-confirmation-notice button { flex: none; white-space: nowrap; }
+.booking-confirmation-error { opacity: 0.85; }
+.booking-confirmation-notice .booking-confirmation-dismiss { background: none; color: inherit; border: none; padding: 0 4px; font-size: 1.1rem; box-shadow: none; }

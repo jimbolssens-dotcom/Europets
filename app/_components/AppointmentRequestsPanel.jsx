@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useIntakeReview } from '@/lib/useIntakeReview';
 import { usePossibleClientMatches } from '@/lib/usePossibleClientMatches';
 import IntakeReviewCard from '@/app/_components/IntakeReviewCard';
+import BookingConfirmationNotices from '@/app/_components/BookingConfirmationNotices';
 
 export default function AppointmentRequestsPanel({ rooms, vets, onApproved }) {
   const [requests, setRequests] = useState([]);
@@ -28,11 +29,20 @@ export default function AppointmentRequestsPanel({ rooms, vets, onApproved }) {
         setLoading(false);
       });
 
-  const { approvalRoom, setApprovalRoom, customBooking, setCustomBooking, reviewing, reviewErrors, review } =
-    useIntakeReview(() => {
-      load();
-      onApproved?.();
-    });
+  const {
+    approvalRoom,
+    setApprovalRoom,
+    customBooking,
+    setCustomBooking,
+    reviewing,
+    reviewErrors,
+    review,
+    confirmations,
+    dismissConfirmation,
+  } = useIntakeReview(() => {
+    load();
+    onApproved?.();
+  });
 
   useEffect(() => {
     load();
@@ -46,11 +56,14 @@ export default function AppointmentRequestsPanel({ rooms, vets, onApproved }) {
 
   const possibleMatches = usePossibleClientMatches(requests);
 
-  if (loading || requests.length === 0) return null;
+  const notices = <BookingConfirmationNotices confirmations={confirmations} dismiss={dismissConfirmation} />;
+  if (loading || requests.length === 0)
+    return confirmations.length ? <div className="appointment-requests-panel">{notices}</div> : null;
 
   return (
     <div className="appointment-requests-panel">
       <h3>📅 Appointment Requests</h3>
+      {notices}
       {requests.map((r) => (
         <IntakeReviewCard
           key={r.id}

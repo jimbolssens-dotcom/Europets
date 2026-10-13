@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useIntakeReview } from '@/lib/useIntakeReview';
 import { usePossibleClientMatches } from '@/lib/usePossibleClientMatches';
 import IntakeReviewCard from '@/app/_components/IntakeReviewCard';
+import BookingConfirmationNotices from '@/app/_components/BookingConfirmationNotices';
 import InfoHint from '@/app/_components/InfoHint';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { appOrigin } from '@/lib/appOrigin';
@@ -43,8 +44,17 @@ export default function IntakePage() {
         setLoading(false);
       });
 
-  const { approvalRoom, setApprovalRoom, customBooking, setCustomBooking, reviewing, reviewErrors, review } =
-    useIntakeReview(load);
+  const {
+    approvalRoom,
+    setApprovalRoom,
+    customBooking,
+    setCustomBooking,
+    reviewing,
+    reviewErrors,
+    review,
+    confirmations,
+    dismissConfirmation,
+  } = useIntakeReview(load);
 
   useEffect(() => {
     load();
@@ -318,6 +328,7 @@ export default function IntakePage() {
         </>
       )}
 
+      <BookingConfirmationNotices confirmations={confirmations} dismiss={dismissConfirmation} />
       {submitted.length > 0 && (
         <>
           <h2>

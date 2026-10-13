@@ -18,7 +18,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
-import { sendBookingConfirmation } from '@/lib/metaWhatsapp';
+import { sendBookingConfirmationToClient } from '@/lib/bookingConfirmation';
 import { CLIENT_APPOINTMENT_TYPES, CLIENT_APPOINTMENT_TYPE_LABELS, appointmentTypeAllowedForSex } from '@/lib/appointmentBooking';
 import { seedCoreVaccinationsFromLastGiven, seedVaccinationFromIntake } from '@/lib/vaccinationSeeding';
 import { findAppointmentConflict } from '@/lib/appointmentScheduling';
@@ -512,7 +512,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
       appointment_id: appointmentId,
     })
     .eq('id', id)
-    .select('*, clients(id, full_name, phone)')
+    .select('*, clients(id, full_name, phone, email)')
     .single();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -530,55 +530,26 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
     patient_name = bookingPatient?.name || null;
   }
 
-  // Sent from the clinic's own WhatsApp Business number, not staff's own
-  // personal WhatsApp (see lib/useIntakeReview.js — that used to be the
-  // only way this went out, via a wa.me/whatsapp:// link staff had to
-  // click and send by hand). A send failure here (template not approved
-  // yet, no phone on file, etc.) doesn't undo the booking — it's already
-  // real — so it's reported back for the UI to fall back to the old
-  // manual-send button rather than failing the whole approval.
-  let confirmation_sent = false;
-  let confirmation_error = null;
-  if (appointmentId && data.clients?.phone) {
-    try {
-      // This runs server-side (a Vercel serverless function, whose runtime
-      // clock is UTC, not Dubai) — toLocaleDateString/toLocaleTimeString
-      // with no explicit timeZone format in the SERVER's zone, not the
-      // clinic's, so a 9:30am Dubai (UTC+4) booking went out to the client
-      // as "05:30 AM". lib/dubaiTime.js's helpers don't cover formatting a
-      // human-readable label, so this sets the zone directly instead.
-      const dateLabel = appointmentStart.toLocaleDateString('en-GB', {
-        weekday: 'long',
-        day: '2-digit',
-        month: '2-digit',
-        timeZone: 'Asia/Dubai',
-      });
-      // hour12 forced explicitly — en-GB otherwise defaults to a 24-hour
-      // clock (same gotcha lib/formatTimestamp.js's formatDateTime works
-      // around), which would silently change "09:30 AM" to "09:30".
-      const timeLabel = appointmentStart.toLocaleTimeString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-        timeZone: 'Asia/Dubai',
-      });
-      await sendBookingConfirmation(data.clients.phone.replace(/\D/g, ''), {
-        clientName: data.clients.full_name,
-        patientName: patient_name,
-        dateLabel,
-        timeLabel,
-      });
-      confirmation_sent = true;
-    } catch (err) {
-      confirmation_error = err.message;
-    }
+  // Sent automatically from the clinic's WhatsApp number (email if that
+  // fails), and logged in the client's thread. A send failure doesn't undo
+  // the booking (it's already real); it's reported back so the review
+  // screen can say so and offer the message to send by hand.
+  let confirmation = null;
+  if (appointmentId && data.clients) {
+    confirmation = await sendBookingConfirmationToClient({
+      client: data.clients,
+      patientName: patient_name,
+      start: appointmentStart,
+    });
   }
 
   return NextResponse.json({
     ...data,
     patient_name,
-    confirmation_sent,
-    confirmation_error,
+    confirmation_sent: !!confirmation?.sent,
+    confirmation_channel: confirmation?.channel || null,
+    confirmation_error: confirmation?.error || null,
+    confirmation_message: confirmation?.message || null,
     appointment: appointmentId
       ? {
           id: appointmentId,
