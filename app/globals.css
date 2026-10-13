@@ -11325,3 +11325,102 @@ button.patient-chip-age-missing {
   border-radius: 999px;
   padding: 0.05rem 0.45rem;
 }
+
+/* Patient page: transfer to another owner (migration 181). */
+.patient-transfer-box {
+  flex-basis: 100%;
+  background: white;
+  border: 1px solid #eee;
+  border-top: 3px solid var(--pink);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.patient-transfer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.patient-transfer-close {
+  background: none;
+  border: 0;
+  color: #999;
+  font-size: 1.3rem;
+  padding: 0 0.3rem;
+  cursor: pointer;
+}
+
+.patient-transfer-route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+}
+
+.patient-transfer-change {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--pink-dark);
+  text-decoration: underline;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.patient-transfer-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.5rem 1.5rem;
+}
+
+.patient-transfer-cols h4 {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.patient-transfer-cols ul {
+  margin: 0 0 0.6rem;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+}
+
+.patient-transfer-bills {
+  border: 1px solid #f1cf8a;
+  background: #fff8e6;
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  margin: 0 0 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.5rem;
+}
+
+.patient-transfer-bills legend {
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0 0.3rem;
+}
+
+.patient-transfer-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.patient-transfer-confirm select {
+  width: auto;
+  margin: 0;
+}
+
+.patient-previous-owners {
+  margin: 0.2rem 0 0.6rem;
+  font-size: 0.85rem;
+  color: #777;
+}

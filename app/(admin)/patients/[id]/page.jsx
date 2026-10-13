@@ -18,6 +18,7 @@ import PatientAlerts from '@/app/_components/PatientAlerts';
 import DentalChart from '@/app/_components/DentalChart';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
+import PatientTransfer, { PreviousOwners } from '@/app/_components/PatientTransfer';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import TemperatureHistoryChart from '@/app/_components/TemperatureHistoryChart';
 import SpeciesField from '@/app/_components/SpeciesField';
@@ -385,6 +386,7 @@ export default function PatientDetailPage() {
         </details>
       </div>
 
+      <PreviousOwners patientId={patient.id} />
       {videoConsultError && <p className="error">{videoConsultError}</p>}
       {reviewLinkError && <p className="error">{reviewLinkError}</p>}
 
@@ -421,6 +423,7 @@ export default function PatientDetailPage() {
         <button type="button" className="button-link" onClick={toggleRehomed}>
           {patient.rehomed ? 'Undo Rehomed' : 'Mark as Rehomed'}
         </button>
+        <PatientTransfer patient={patient} staff={staff} onTransferred={() => window.location.reload()} />
         {/* Same color-coded pattern as the Consult/Hospitalization/Invoice
             pages' own cross-record links: colored + linked straight to the
             open record when one exists, plain pink "start one" when not —
