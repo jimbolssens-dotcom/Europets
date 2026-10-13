@@ -113,8 +113,13 @@ export async function POST(request, { params }) {
     .select('url')
     .single();
 
+  // The Nomod link already exists and can be paid, so the client always
+  // gets it. Answering "try again" here made every retry create one more
+  // live link (Sep 2026: eight for one invoice). A link that couldn't be
+  // saved won't be matched automatically; staff reconcile it from Nomod.
   if (insertError) {
-    return NextResponse.json({ error: 'something went wrong, please try again' }, { status: 500 });
+    console.error('Nomod link created but not saved', nomodLink.id, insertError.message);
+    return NextResponse.json({ url: nomodLink.url });
   }
   return NextResponse.json({ url: link.url });
 }
