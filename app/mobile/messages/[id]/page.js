@@ -268,7 +268,14 @@ export default function MobileMessageThreadPage() {
         <button type="button" className="mobile-link-btn" onClick={() => router.push('/mobile/messages')}>
           ← Back
         </button>
-        <span className="mobile-messages-header-name">{headerName}</span>
+        {/* Tapping the name / client number opens the client's file. */}
+        {isMatched ? (
+          <a className="mobile-messages-header-name mobile-messages-header-link" href={`/clients/${id}`} title="Open the client file">
+            {headerName}
+          </a>
+        ) : (
+          <span className="mobile-messages-header-name">{headerName}</span>
+        )}
         <button
           type="button"
           onClick={toggleFlagged}
