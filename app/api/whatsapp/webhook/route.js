@@ -199,7 +199,7 @@ async function runConciergeForInbound(message, clientId, digits) {
         message.id,
         result.reason
       );
-      const { alreadyFlagged } = await flagEscalatedThread(clientId);
+      const { alreadyFlagged } = await flagEscalatedThread(clientId, result.reason);
       if (alreadyFlagged) {
         await sendEscalationFollowUpNotice(digits);
       } else if (result.handoff) {

@@ -50,6 +50,8 @@ export default function MobileMessageThreadPage() {
   const [staffList, setStaffList] = useState([]);
   const [assignedStaffId, setAssignedStaffId] = useState('');
   const [flagged, setFlagged] = useState(false);
+  const [escalationReason, setEscalationReason] = useState(null); // why the AI handed this over (migration 186)
+  const [aiAnswering, setAiAnswering] = useState(false);
   const threadRef = useRef(null);
   const composerRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -116,6 +118,7 @@ export default function MobileMessageThreadPage() {
       .then((data) => {
         setAssignedStaffId(data?.assigned_staff_id || '');
         setFlagged(Boolean(data?.flagged));
+        setEscalationReason(data?.flagged ? data?.escalation_reason || null : null);
       });
 
     const channel = supabase
@@ -260,7 +263,32 @@ export default function MobileMessageThreadPage() {
     ? `${client?.full_name || 'Loading...'}${client?.client_number ? ` (#${client.client_number})` : ''}`
     : `${id} (unmatched)`;
 
+  // Same as the desktop thread's "AI answer" (POST /api/whatsapp/concierge-answer).
+  async function askAiToAnswer() {
+    if (!confirm('Let the AI answer the latest WhatsApp message from this client?')) return;
+    setAiAnswering(true);
+    setError(null);
+    const res = await fetch('/api/whatsapp/concierge-answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setAiAnswering(false);
+    if (!res.ok) return setError(data.error || 'The AI could not answer.');
+    if (data.sent) {
+      setFlagged(false);
+      setEscalationReason(null);
+    } else {
+      setEscalationReason(data.reason);
+    }
+  }
+
   if (loading || !staffReady) return <p className="mobile-loading">Loading...</p>;
+
+  // The AI's reason for handing the thread over (migration 186) shows
+  // under the client message it didn't answer.
+  const lastClientMessageId = [...messages].reverse().find((m) => m.sender === 'client')?.id;
 
   return (
     <div className="mobile-messages-thread-page">
@@ -288,6 +316,18 @@ export default function MobileMessageThreadPage() {
             <path d="M5 21V4m0 0h11l-2 4 2 4H5" fill={flagged ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
           </svg>
         </button>
+        {isMatched && messages.some((m) => m.channel === 'whatsapp' && m.sender === 'client') && (
+          <button
+            type="button"
+            onClick={askAiToAnswer}
+            disabled={aiAnswering}
+            className="mobile-messages-flag"
+            aria-label="Let the AI answer"
+            title="Let the AI concierge answer the client's latest WhatsApp message now"
+          >
+            {aiAnswering ? '…' : '🤖'}
+          </button>
+        )}
         <select
           value={assignedStaffId}
           onChange={(e) => assignTo(e.target.value)}
@@ -305,7 +345,6 @@ export default function MobileMessageThreadPage() {
             ))}
         </select>
       </div>
-
       {error && <p className="error">{error}</p>}
 
       <div className="portal-chat-thread staff-chat-thread" ref={threadRef}>
@@ -326,6 +365,9 @@ export default function MobileMessageThreadPage() {
               )
             )}
             {m.body && <p>{m.body}</p>}
+            {escalationReason && m.id === lastClientMessageId && (
+              <span className="thread-escalation-note">🤖 Handed to staff: {escalationReason}</span>
+            )}
             <span className="portal-chat-bubble-meta">
               {m.sender === 'staff'
                 ? m.staff?.full_name || 'Staff'

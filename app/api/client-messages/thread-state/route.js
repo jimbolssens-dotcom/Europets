@@ -34,7 +34,7 @@ export async function GET(request) {
   }
   const { data, error } = await supabase
     .from('client_message_thread_state')
-    .select('thread_key, last_read_at, flagged, assigned_staff_id')
+    .select('thread_key, last_read_at, flagged, assigned_staff_id, escalation_reason, escalated_at')
     .eq('thread_key', threadKey)
     .maybeSingle();
   if (error) {

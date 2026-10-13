@@ -33,6 +33,8 @@ export default function ClientMessageThreadPage() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [channelOverride, setChannelOverride] = useState(null); // 'app' | 'whatsapp' | 'email' | null (auto)
   const [flagged, setFlagged] = useState(false);
+  const [escalationReason, setEscalationReason] = useState(null); // why the AI handed this thread over (migration 186)
+  const [aiAnswering, setAiAnswering] = useState(false);
   const [assignedStaffId, setAssignedStaffId] = useState('');
   const [error, setError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
@@ -84,9 +86,34 @@ export default function ClientMessageThreadPage() {
       .then((res) => res.json())
       .then((data) => {
         setFlagged(Boolean(data?.flagged));
+        setEscalationReason(data?.flagged ? data?.escalation_reason || null : null);
         setAssignedStaffId(data?.assigned_staff_id || '');
       });
   }, [id]);
+
+  // "AI answer": the concierge replies to the client's latest WhatsApp
+  // message even though it handed the thread over or staff wrote recently
+  // (POST /api/whatsapp/concierge-answer). If it still won't, its reason
+  // shows next to the flag.
+  async function askAiToAnswer() {
+    if (!confirm('Let the AI answer the latest WhatsApp message from this client?')) return;
+    setAiAnswering(true);
+    setError(null);
+    const res = await fetch('/api/whatsapp/concierge-answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setAiAnswering(false);
+    if (!res.ok) return setError(data.error || 'The AI could not answer.');
+    if (data.sent) {
+      setFlagged(false);
+      setEscalationReason(null);
+    } else {
+      setEscalationReason(data.reason);
+    }
+  }
 
   async function toggleFlagged() {
     const next = !flagged;
@@ -189,7 +216,12 @@ export default function ClientMessageThreadPage() {
   // reload; the thread's own postgres_changes subscription (above) picks
   // up the delete and refreshes on its own.
   async function deleteFailedMessage(messageId) {
-    if (!confirm('Remove this failed message from the thread? It was never delivered — this just clears it from the record.')) return;
+    if (
+      !confirm(
+        'Remove this failed message from the thread? It was never delivered — this just clears it from the record.'
+      )
+    )
+      return;
     setDeletingId(messageId);
     setError(null);
     const res = await fetch(`/api/clients/${id}/messages?message_id=${messageId}`, { method: 'DELETE' });
@@ -248,6 +280,10 @@ export default function ClientMessageThreadPage() {
 
   if (loading) return <p>Loading...</p>;
 
+  // The AI's reason for handing the thread over (migration 186) shows
+  // under the client message it didn't answer.
+  const lastClientMessageId = [...messages].reverse().find((m) => m.sender === 'client')?.id;
+
   return (
     <div className="messages-thread-page">
       <div className="page-header">
@@ -264,23 +300,41 @@ export default function ClientMessageThreadPage() {
             this is the explicit override for "no, keep this flagged" (or
             to re-flag something already read/replied to as still needing
             follow-up). Independent of read status either way. */}
-        <button type="button" onClick={toggleFlagged} className={flagged ? 'button-link' : ''} title={flagged ? 'Clear the needs-attention flag' : 'Flag this conversation as still needing attention'}>
-          {flagged ? '🔔 Flagged' : '🏳️ Flag as needing attention'}
-        </button>
-        <select
-          value={assignedStaffId}
-          onChange={(e) => assignTo(e.target.value)}
-          title="Assign this conversation to one doctor or nurse — pushes a notification to their phone if they have one set up"
-        >
-          <option value="">Assign to...</option>
-          {staff
-            .filter((s) => s.role === 'vet' || s.role === 'tech')
-            .map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.full_name}
-              </option>
-            ))}
-        </select>
+        <div className="page-header-actions">
+          <button
+            type="button"
+            onClick={toggleFlagged}
+            className={flagged ? 'button-link' : ''}
+            title={flagged ? 'Clear the needs-attention flag' : 'Flag this conversation as still needing attention'}
+          >
+            {flagged ? '🔔 Flagged' : '🏳️ Flag as needing attention'}
+          </button>
+          {messages.some((m) => m.channel === 'whatsapp' && m.sender === 'client') && (
+            <button
+              type="button"
+              className="secondary"
+              onClick={askAiToAnswer}
+              disabled={aiAnswering}
+              title="Let the AI concierge answer the client's latest WhatsApp message now"
+            >
+              {aiAnswering ? 'AI answering…' : '🤖 AI answer'}
+            </button>
+          )}
+          <select
+            value={assignedStaffId}
+            onChange={(e) => assignTo(e.target.value)}
+            title="Assign this conversation to one doctor or nurse — pushes a notification to their phone if they have one set up"
+          >
+            <option value="">Assign to...</option>
+            {staff
+              .filter((s) => s.role === 'vet' || s.role === 'tech')
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.full_name}
+                </option>
+              ))}
+          </select>
+        </div>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -288,7 +342,10 @@ export default function ClientMessageThreadPage() {
       <div className="portal-chat-thread staff-chat-thread" ref={threadRef}>
         {messages.length === 0 && <p className="visit-meta">No messages yet.</p>}
         {messages.map((m) => (
-          <div key={m.id} className={`portal-chat-bubble portal-chat-bubble-${m.sender === 'client' ? 'theirs' : 'mine'}`}>
+          <div
+            key={m.id}
+            className={`portal-chat-bubble portal-chat-bubble-${m.sender === 'client' ? 'theirs' : 'mine'}`}
+          >
             {m.media_url && m.media_type === 'file' ? (
               <a href={m.media_url} target="_blank" rel="noopener noreferrer">
                 📎 Download file
@@ -305,8 +362,15 @@ export default function ClientMessageThreadPage() {
             {m.sender === 'client' && m.media_url && m.media_type !== 'audio' && (
               <FileToRecordButton messageId={m.id} staffId={replyStaffId} />
             )}
-            {m.channel === 'email' && m.subject && <p><strong>{m.subject}</strong></p>}
+            {m.channel === 'email' && m.subject && (
+              <p>
+                <strong>{m.subject}</strong>
+              </p>
+            )}
             {m.body && <p>{m.body}</p>}
+            {escalationReason && m.id === lastClientMessageId && (
+              <span className="thread-escalation-note">🤖 Handed to staff: {escalationReason}</span>
+            )}
             <span className="portal-chat-bubble-meta">
               {m.sender === 'staff'
                 ? m.staff?.full_name || 'Staff'
@@ -315,8 +379,7 @@ export default function ClientMessageThreadPage() {
                   : m.sender === 'system'
                     ? '🔔 Automated'
                     : client?.full_name || 'Client'}{' '}
-              ·{' '}
-              {formatDateTime(m.created_at)} ·{' '}
+              · {formatDateTime(m.created_at)} ·{' '}
               {m.channel === 'whatsapp' ? '💬 WhatsApp' : m.channel === 'email' ? '✉️ Email' : '📱 App'}
               {/* Delivery status only applies to our own outbound WhatsApp
                   sends — Meta's send API can accept a message and only
@@ -413,10 +476,18 @@ export default function ClientMessageThreadPage() {
             onChange={(e) => setReplyDraft(e.target.value)}
             onKeyDown={handleReplyKeyDown}
           />
-          <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={uploadingFile || currentChannel() === 'email'}>
+          <button
+            type="button"
+            onClick={() => cameraInputRef.current?.click()}
+            disabled={uploadingFile || currentChannel() === 'email'}
+          >
             📷
           </button>
-          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingFile || currentChannel() === 'email'}>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingFile || currentChannel() === 'email'}
+          >
             📎
           </button>
           <button
