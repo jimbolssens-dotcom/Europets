@@ -10,7 +10,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { buildProcedureReportPdf } from '@/lib/procedureReportPdf';
 import { loadStayDiagnostics, diagnosticLabel } from '@/lib/stayDiagnostics';
-import { isImageAttachment, fetchAttachmentBytes } from '@/lib/pdfAttachments';
+import { isImageAttachment, isPdfAttachment, fetchAttachmentBytes, attachedLabReportText, appendPdfAttachments } from '@/lib/pdfAttachments';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -43,10 +43,16 @@ export async function GET(request, { params }) {
   const imageAttachments = (attachments || []).filter(isImageAttachment).slice(0, MAX_PHOTOS);
   const photos = (await Promise.all(imageAttachments.map(fetchAttachmentBytes))).filter(Boolean);
 
-  const sections = (diagnostics || []).map((d) => ({
-    label: diagnosticLabel(d),
-    text: d.result || 'No result recorded yet.',
-  }));
+  // A lab result attached as a PDF (not typed in) is added to the end of
+  // this report, and its section points to it instead of "No result".
+  const labPdfs = (attachments || []).filter(isPdfAttachment);
+  const sections = (diagnostics || []).map((d) => {
+    const files = labPdfs.filter((a) => a.entity_id === d.id);
+    return {
+      label: diagnosticLabel(d),
+      text: [d.result, files.length ? attachedLabReportText(files) : null].filter(Boolean).join('\n\n') || 'No result recorded yet.',
+    };
+  });
 
   const pdfBytes = await buildProcedureReportPdf({
     procedureTitle: 'Test Results Report',
@@ -57,8 +63,9 @@ export async function GET(request, { params }) {
     sections,
     photos,
   });
+  const fullPdf = await appendPdfAttachments(pdfBytes, labPdfs);
 
-  return new NextResponse(Buffer.from(pdfBytes), {
+  return new NextResponse(Buffer.from(fullPdf), {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `inline; filename="test-results-${params.id}.pdf"`,

@@ -45,6 +45,18 @@ export async function GET(request, { params }) {
     fetchByPatient('gastroscopy_reports', 'id, visit_id, hospitalization_id, performed_at, ai_summary, findings', visitIds, hospIds),
     fetchByPatient('diagnostics', 'id, visit_id, hospitalization_id, created_at, type, result, goods_services(name)', visitIds, hospIds),
   ]);
+  // A test result attached as a lab PDF (not typed in): its file names, so
+  // the client app says it's attached instead of "No result recorded yet"
+  // (the test report PDF includes the file's pages).
+  const diagnosticIds = diagnostics.map((d) => d.id);
+  const { data: diagnosticFiles } = diagnosticIds.length
+    ? await supabase.from('attachments').select('entity_id, file_name, content_type').eq('entity_type', 'diagnostic').in('entity_id', diagnosticIds)
+    : { data: [] };
+  const labFilesByDiagnostic = {};
+  for (const a of diagnosticFiles || []) {
+    if (a.content_type !== 'application/pdf' && !/\.pdf$/i.test(a.file_name || '')) continue;
+    (labFilesByDiagnostic[a.entity_id] ||= []).push(a.file_name || 'lab report');
+  }
   const visitDate = Object.fromEntries((visits || []).map((v) => [v.id, v.started_at]));
   const hospDate = Object.fromEntries((hospitalizations || []).map((h) => [h.id, h.admitted_at]));
   const recordDate = (r) => (r.visit_id ? visitDate[r.visit_id] : hospDate[r.hospitalization_id]);
@@ -61,7 +73,7 @@ export async function GET(request, { params }) {
     ...ultrasound.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: 'Ultrasound report', date: r.performed_at || recordDate(r), href: recordHref(r), reportType: 'ultrasound', apiBase: '/api/ultrasound-reports', recordId: r.id, editableField: 'ai_summary', deleteMode: 'remove' })),
     ...xray.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: 'X-ray report', date: r.performed_at || recordDate(r), href: recordHref(r), reportType: 'xray', apiBase: '/api/xray-reports', recordId: r.id, editableField: 'ai_summary', deleteMode: 'remove' })),
     ...gastroscopy.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: 'Gastroscopy report', date: r.performed_at || recordDate(r), href: recordHref(r), reportType: 'gastroscopy', apiBase: '/api/gastroscopy-reports', recordId: r.id, editableField: 'ai_summary', deleteMode: 'remove' })),
-    ...diagnostics.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: r.goods_services?.name || r.type || 'Diagnostic test', date: r.created_at, href: recordHref(r), reportType: 'diagnostic', apiBase: '/api/diagnostics', recordId: r.id, editableField: 'result', deleteMode: 'remove' })),
+    ...diagnostics.map((r) => ({ ...r, source: r.visit_id ? 'consult' : 'hospitalization', kind: r.goods_services?.name || r.type || 'Diagnostic test', date: r.created_at, lab_report_files: labFilesByDiagnostic[r.id] || [], href: recordHref(r), reportType: 'diagnostic', apiBase: '/api/diagnostics', recordId: r.id, editableField: 'result', deleteMode: 'remove' })),
   ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
   return NextResponse.json(rows);
 }
