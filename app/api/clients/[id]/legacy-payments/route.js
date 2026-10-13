@@ -80,7 +80,7 @@ export async function POST(request, { params }) {
 
   const newBalance = Math.max(0, Math.round(((client.legacy_outstanding_balance || 0) - amount) * 100) / 100);
 
-  const { paymentNumber, error: numberError } = await nextPaymentNumber(supabaseAdmin, paidAt || new Date().toISOString());
+  const { paymentNumber, error: numberError } = await nextPaymentNumber(supabaseAdmin, paidAt || new Date().toISOString(), 'old_system');
   if (numberError) return NextResponse.json({ error: numberError.message }, { status: 500 });
 
   const { data: payment, error: insertError } = await supabaseAdmin
