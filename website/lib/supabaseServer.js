@@ -11,7 +11,10 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseKey = process.env.SUPABASE_KEY || 'placeholder-key';
+// Prefer the service role key (server-only, set on this Vercel project) so
+// the shared project's anon key can be locked down to what the staff
+// app's browser pages need. Falls back to SUPABASE_KEY where it isn't set.
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || 'placeholder-key';
 
 export const supabaseServer = createClient(supabaseUrl, supabaseKey, {
   global: {
