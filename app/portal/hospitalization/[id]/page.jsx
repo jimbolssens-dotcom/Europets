@@ -16,7 +16,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { pollWhileVisible, keepIfSame } from '@/lib/pollWhileVisible';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import TemperatureHistoryChart from '@/app/_components/TemperatureHistoryChart';
@@ -55,29 +55,29 @@ export default function HospitalizationPortalPage() {
     fetch(`/api/hospitalizations/${id}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
-        setAdmission(data);
+        setAdmission((prev) => keepIfSame(prev, data));
         setLoading(false);
       });
 
   const loadNotes = () =>
     fetch(`/api/hospitalizations/${id}/notes`, { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data) => setNotes(Array.isArray(data) ? data : []));
+      .then((data) => setNotes((prev) => keepIfSame(prev, Array.isArray(data) ? data : [])));
 
   const loadMessages = () =>
     fetch(`/api/hospitalizations/${id}/messages`, { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data) => setMessages(Array.isArray(data) ? data : []));
+      .then((data) => setMessages((prev) => keepIfSame(prev, Array.isArray(data) ? data : [])));
 
   const loadReports = () =>
     fetch(`/api/hospitalizations/${id}/reports`, { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data) => setReports(Array.isArray(data) ? data : []));
+      .then((data) => setReports((prev) => keepIfSame(prev, Array.isArray(data) ? data : [])));
 
   const loadTests = () =>
     fetch(`/api/hospitalizations/${id}/tests`, { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data) => setTests(Array.isArray(data?.tests) ? data : { tests: [], originating_visit_id: null }));
+      .then((data) => setTests((prev) => keepIfSame(prev, Array.isArray(data?.tests) ? data : { tests: [], originating_visit_id: null })));
 
   useEffect(() => {
     loadAdmission();
@@ -86,49 +86,17 @@ export default function HospitalizationPortalPage() {
     loadReports();
     loadTests();
 
-    const channel = supabase
-      .channel(`portal-hospitalization-${id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'hospitalizations', filter: `id=eq.${id}` },
-        loadAdmission
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'hospitalization_notes', filter: `hospitalization_id=eq.${id}` },
-        loadNotes
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'hospitalization_messages', filter: `hospitalization_id=eq.${id}` },
-        loadMessages
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dental_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'surgical_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ultrasound_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'xray_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'gastroscopy_reports', filter: `hospitalization_id=eq.${id}` }, loadReports)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'diagnostics', filter: `hospitalization_id=eq.${id}` }, loadTests)
-      .subscribe();
-    return () => supabase.removeChannel(channel);
+    const loadAll = () => {
+      loadAdmission();
+      loadNotes();
+      loadMessages();
+      loadReports();
+      loadTests();
+    };
+    return pollWhileVisible(loadAll, 15000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Tests and reports recorded on the consult the patient was admitted from
-  // (see lib/stayDiagnostics.js) carry that visit's id, not this stay's, so
-  // they need their own subscription once the visit id is known.
-  const originatingVisitId = tests.originating_visit_id;
-  useEffect(() => {
-    if (!originatingVisitId) return;
-    const channel = supabase
-      .channel(`portal-hospitalization-visit-${originatingVisitId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'diagnostics', filter: `visit_id=eq.${originatingVisitId}` }, loadTests)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'xray_reports', filter: `visit_id=eq.${originatingVisitId}` }, loadReports)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ultrasound_reports', filter: `visit_id=eq.${originatingVisitId}` }, loadReports)
-      .subscribe();
-    return () => supabase.removeChannel(channel);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [originatingVisitId]);
 
   // The thread is a fixed-height scroll box (see .portal-chat-thread) —
   // without this it stays scrolled to the top, so a growing conversation

@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
-import { supabase } from '@/lib/supabaseClient';
+import { pollWhileVisible, keepIfSame } from '@/lib/pollWhileVisible';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { isWithinOfficeHours, OFFICE_HOURS_LABEL } from '@/lib/officeHours';
 
@@ -37,21 +37,13 @@ export default function ClientAppMessagesPage() {
       fetch(`/api/clients/${clientId}/messages`)
         .then((res) => (res.ok ? res.json() : []))
         .then((data) => {
-          setMessages(Array.isArray(data) ? data : []);
+          setMessages((prev) => keepIfSame(prev, Array.isArray(data) ? data : []));
           setLoading(false);
         });
 
     loadMessages();
 
-    const channel = supabase
-      .channel(`client-app-messages-${clientId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'client_messages', filter: `client_id=eq.${clientId}` },
-        loadMessages
-      )
-      .subscribe();
-    return () => supabase.removeChannel(channel);
+    return pollWhileVisible(loadMessages, 10000);
   }, [ready, clientId]);
 
   // Also depends on `loading`: the page renders nothing (see the `if

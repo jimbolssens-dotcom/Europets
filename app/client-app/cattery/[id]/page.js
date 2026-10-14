@@ -13,7 +13,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
-import { supabase } from '@/lib/supabaseClient';
+import { pollWhileVisible, keepIfSame } from '@/lib/pollWhileVisible';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import { bookingCats, catNames, logPatientId } from '@/lib/cattery';
@@ -50,15 +50,10 @@ export default function ClientAppCatteryStayPage() {
     const load = () =>
       fetch(`/api/cattery/${id}`, { cache: 'no-store' })
         .then((res) => res.json())
-        .then((data) => setBooking(data && !data.error ? data : null))
+        .then((data) => setBooking((prev) => keepIfSame(prev, data && !data.error ? data : null)))
         .finally(() => setLoading(false));
     load();
-    const channel = supabase
-      .channel(`client-app-cattery-${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cattery_daily_logs', filter: `booking_id=eq.${id}` }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cattery_bookings', filter: `id=eq.${id}` }, load)
-      .subscribe();
-    return () => supabase.removeChannel(channel);
+    return pollWhileVisible(load, 30000);
   }, [id, ready, clientId]);
 
   if (!ready || !clientId) return null;

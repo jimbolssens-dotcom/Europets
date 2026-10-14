@@ -8,7 +8,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, isOwnerFacingPage } from '@/lib/supabaseClient';
+import { pollWhileVisible, keepIfSame } from '@/lib/pollWhileVisible';
 import { attachmentUrl } from '@/lib/attachments';
 
 function isImage(attachment) {
@@ -28,10 +29,11 @@ export default function AttachmentGallery({ entityType, entityId, emptyText, dow
   const load = () =>
     fetch(`/api/attachments?entity_type=${entityType}&entity_id=${entityId}`)
       .then((res) => res.json())
-      .then((data) => setAttachments(Array.isArray(data) ? data : []));
+      .then((data) => setAttachments((prev) => keepIfSame(prev, Array.isArray(data) ? data : [])));
 
   useEffect(() => {
     load();
+    if (isOwnerFacingPage()) return pollWhileVisible(load, 30000);
     const channel = supabase
       .channel(`attachment-gallery-${entityType}-${entityId}`)
       .on(
