@@ -1,6 +1,6 @@
 // app/api/attachments/compress-sweep/route.js
 // GET /api/attachments/compress-sweep -> compresses the next batch of
-// photos that are ready (about 300 KB each, x-rays about 900 KB; see
+// photos that are ready (about 300 KB each, x-rays about 2 MB; see
 // lib/attachmentCompression.js's compressPendingAttachments and migration
 // 172 for which ones). Run every 10 minutes by Vercel Cron (vercel.json),
 // so the backlog of full-size photos on closed cases drains over a few
