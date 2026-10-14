@@ -73,6 +73,7 @@ const PUBLIC_PATTERNS = [
   // actually being requested — see lib/clientAppAuth.js's getClientSession
   // and every route below that imports it.
   /^\/client-app(\/.*)?$/,
+  /^\/client-app-sw\.js$/, // the client app's push-notification service worker (public/client-app-sw.js): a browser refuses to register one that redirects, and clients have no staff cookie, so the staff gate below sent every client's to /login
   /^\/api\/client-app\/.*$/,
   // A logged-in client requesting their own appointment (any type,
   // including a video consult) still goes through the same staff-approved
