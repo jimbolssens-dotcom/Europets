@@ -38,6 +38,8 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
 ) {
   const [diagnostics, setDiagnostics] = useState([]);
   const [diagForm, setDiagForm] = useState({ goods_service_id: '', description: '' });
+  const [orderingTest, setOrderingTest] = useState(false);
+  const orderingRef = useRef(false);
   const [diagError, setDiagError] = useState(null);
   const [resultDrafts, setResultDrafts] = useState({});
   const [savingResultId, setSavingResultId] = useState(null);
@@ -164,22 +166,34 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopeKey]);
 
+  // One order per press: while the request is out the button is disabled,
+  // and the ref also stops presses queued up while the page was busy
+  // (a slow page once turned one press into 12 orders).
   async function addDiagnostic(e) {
     e.preventDefault();
-    if (!diagForm.goods_service_id) return;
+    if (!diagForm.goods_service_id || orderingRef.current) return;
+    orderingRef.current = true;
+    setOrderingTest(true);
     setDiagError(null);
-    const res = await fetch('/api/diagnostics', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hospitalization_id: hospitalizationId, ...diagForm }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setDiagError(data.error || 'Failed to order test');
-      return;
+    try {
+      const res = await fetch('/api/diagnostics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hospitalization_id: hospitalizationId, ...diagForm }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDiagError(data.error || 'Failed to order test');
+        return;
+      }
+      setDiagForm({ goods_service_id: '', description: '' });
+      loadDiagnostics();
+    } catch {
+      setDiagError('Could not reach the server, check before ordering again');
+    } finally {
+      orderingRef.current = false;
+      setOrderingTest(false);
     }
-    setDiagForm({ goods_service_id: '', description: '' });
-    loadDiagnostics();
   }
 
   async function saveDiagnosticResult(diagId) {
@@ -537,7 +551,7 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
             value={diagForm.description}
             onChange={(e) => setDiagForm({ ...diagForm, description: e.target.value })}
           />
-          <button type="submit">Order test</button>
+          <button type="submit" disabled={orderingTest}>{orderingTest ? 'Ordering…' : 'Order test'}</button>
         </form>
 
         {diagnostics.map((d) => {

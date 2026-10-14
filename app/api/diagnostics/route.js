@@ -59,6 +59,22 @@ export async function POST(request) {
     return NextResponse.json({ error: 'goods_service_id must be a Test catalog item' }, { status: 400 });
   }
 
+  // The same test ordered again for the same case within a few seconds is
+  // a repeated press (a busy page once queued 12), not a second test:
+  // hand back the order that already exists instead of adding another.
+  {
+    let recent = supabase
+      .from('diagnostics')
+      .select('*')
+      .eq('goods_service_id', goods_service_id)
+      .gte('created_at', new Date(Date.now() - 15000).toISOString())
+      .order('created_at', { ascending: true })
+      .limit(1);
+    recent = visit_id ? recent.eq('visit_id', visit_id) : recent.eq('hospitalization_id', hospitalization_id);
+    const { data: existing } = await recent;
+    if (existing?.length) return NextResponse.json(existing[0], { status: 200 });
+  }
+
   // A consult's treatment_items line hangs straight off the visit; a
   // hospitalization's billable items hang off a specific day's worksheet
   // entry (see migration 019) — so ordering a test during a stay first
