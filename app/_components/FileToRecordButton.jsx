@@ -78,7 +78,7 @@ export default function FileToRecordButton({ messageId, staffId }) {
               <strong>🐾 {p.name}</strong>
               <button type="button" disabled={busy} onClick={() => fileTo('patient_history', p.id, `${p.name}'s history`)}
                 title="Outside history & results on the patient file; the owner sees it in the app">
-                📁 {p.name}&apos;s history &amp; results
+                📁 History &amp; results
               </button>
               {p.stays.map((s) => {
                 const label = `${p.name}'s ${s.kind === 'day_procedure' ? 'day procedure' : 'hospital stay'} (${shortDate(s.admitted_at)})`;

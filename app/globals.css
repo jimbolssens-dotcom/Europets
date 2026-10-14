@@ -10605,8 +10605,8 @@ form.card.admit-patient-form {
   /* Opens inline (not floating) so it can't be clipped by the chat
      thread's own scroll box, even under the last message. */
   margin-top: 0.35rem;
-  min-width: 260px;
-  max-width: 340px;
+  min-width: min(260px, 100%);
+  max-width: min(340px, 100%);
   max-height: 320px;
   overflow-y: auto;
   background: #fff;

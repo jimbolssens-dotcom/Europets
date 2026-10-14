@@ -28,6 +28,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useMobileStaff } from '@/app/_components/useMobileStaff';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { uploadClientMessageMedia } from '@/lib/attachments';
+import FileToRecordButton from '@/app/_components/FileToRecordButton';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -363,6 +364,9 @@ export default function MobileMessageThreadPage() {
                   <img src={m.media_url} alt="" className="portal-chat-bubble-image" />
                 </a>
               )
+            )}
+            {m.sender === 'client' && m.media_url && m.media_type !== 'audio' && (
+              <FileToRecordButton messageId={m.id} staffId={staffId} />
             )}
             {m.body && <p>{m.body}</p>}
             {escalationReason && m.id === lastClientMessageId && (
