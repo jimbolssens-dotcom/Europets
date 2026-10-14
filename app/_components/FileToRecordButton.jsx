@@ -4,7 +4,8 @@
 // "📎 File to a pet's record" under a photo/file a client sent in the chat
 // (app/(admin)/messages/[id]). Opens a small menu of that client's pets,
 // each with any open hospital stay or day procedure and their 5 latest
-// consults; picking one copies the file onto that record (see
+// consults, plus the pet's outside history & results (migration 189);
+// picking one copies the file onto that record (see
 // /api/client-messages/[id]/attach) and says where it went.
 
 import { useEffect, useRef, useState } from 'react';
@@ -51,7 +52,9 @@ export default function FileToRecordButton({ messageId, staffId }) {
     const data = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) return setError(data.error || 'Could not file it.');
-    setDone({ label, href: entityType === 'visit' ? `/consults/${entityId}` : `/hospitalization/${entityId}` });
+    const href =
+      entityType === 'visit' ? `/consults/${entityId}` : entityType === 'patient_history' ? `/patients/${entityId}` : `/hospitalization/${entityId}`;
+    setDone({ label, href });
     setOpen(false);
   }
 
@@ -73,7 +76,10 @@ export default function FileToRecordButton({ messageId, staffId }) {
           {pets?.map((p) => (
             <div key={p.id} className="file-to-record-pet">
               <strong>🐾 {p.name}</strong>
-              {p.stays.length === 0 && p.visits.length === 0 && <span className="visit-meta">No consults yet</span>}
+              <button type="button" disabled={busy} onClick={() => fileTo('patient_history', p.id, `${p.name}'s history`)}
+                title="Outside history & results on the patient file; the owner sees it in the app">
+                📁 {p.name}&apos;s history &amp; results
+              </button>
               {p.stays.map((s) => {
                 const label = `${p.name}'s ${s.kind === 'day_procedure' ? 'day procedure' : 'hospital stay'} (${shortDate(s.admitted_at)})`;
                 return (

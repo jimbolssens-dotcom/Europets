@@ -17,6 +17,7 @@ import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
 import DentalChart from '@/app/_components/DentalChart';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
+import PatientHistoryFiles from '@/app/_components/PatientHistoryFiles';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import PatientTransfer, { PreviousOwners } from '@/app/_components/PatientTransfer';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
@@ -58,6 +59,7 @@ export default function PatientDetailPage() {
   const [temperatureHistory, setTemperatureHistory] = useState([]);
   const [sendingReviewLink, setSendingReviewLink] = useState(false);
   const [reviewLinkError, setReviewLinkError] = useState(null);
+  const [addingHistoryFiles, setAddingHistoryFiles] = useState(false);
 
   const load = () =>
     fetch(`/api/patients/${id}`)
@@ -405,6 +407,10 @@ export default function PatientDetailPage() {
         <a href={`/patients/${patient.id}/history`} className="button-link">
           📖 Full Patient History
         </a>
+        <button type="button" className="button-link" onClick={() => setAddingHistoryFiles(true)}
+          title="Add history from another clinic, old results, x-rays, photos, PDFs or Word files">
+          📁 Add History / Results
+        </button>
         <a href={`/cattery?patient_id=${patient.id}`} className="button-link" title="Book this cat into one of the 7 cattery spaces">
           🐱 Cattery booking
         </a>
@@ -668,6 +674,8 @@ export default function PatientDetailPage() {
           </table>
         </>
       )}
+
+      <PatientHistoryFiles patientId={patient.id} adding={addingHistoryFiles} onAddingChange={setAddingHistoryFiles} />
 
       <PatientHistoryPanel
         patientId={patient.id}

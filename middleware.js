@@ -98,6 +98,7 @@ const CLIENT_APP_READ_PATTERNS = [
   /^\/api\/patients$/,
   /^\/api\/patients\/[^/]+$/,
   /^\/api\/patients\/[^/]+\/report-overview$/,
+  /^\/api\/patients\/[^/]+\/history-files$/, // owner sees only files shared with them (in-route check)
   /^\/api\/appointments$/,
   /^\/api\/clients\/[^/]+$/,
   /^\/api\/clients\/[^/]+\/messages$/,

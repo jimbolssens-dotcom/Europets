@@ -11482,3 +11482,65 @@ button.patient-chip-age-missing {
 
 /* Why the AI concierge handed a thread to staff (migration 186), under the client message it didn't answer. */
 .thread-escalation-note { display: block; margin-top: 4px; font-size: 0.8rem; padding: 2px 8px; border-radius: 8px; background: #fff4d6; color: #7a5600; }
+
+/* Outside history & results on the patient page (PatientHistoryFiles) */
+.history-files-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.history-files-form input[type='file'] { max-width: 100%; }
+.history-files-form input:not([type]),
+.history-files-form input[type='text'] { flex: 1 1 220px; min-width: 0; }
+.history-files-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+.history-files-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.history-files-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: start;
+  column-gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid #f1d3e0;
+}
+.history-files-list li > .visit-meta { grid-column: 1 / -1; }
+.history-files .page-header h3 { margin: 0; }
+.history-files-cancel {
+  border: none;
+  background: none;
+  color: #c2185b;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.history-files-name { font-weight: 600; font-size: 0.95em; min-width: 0; overflow-wrap: anywhere; }
+.history-files-share {
+  white-space: nowrap;
+  font-size: 0.8em;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid #ccc;
+  background: #f5f5f5;
+  color: #555;
+  cursor: pointer;
+}
+.history-files-share.on { background: #e6f6ec; border-color: #9fd8b4; color: #1e6b3c; }
+.history-files-remove {
+  border: none;
+  background: none;
+  color: #c2185b;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 0 4px;
+}

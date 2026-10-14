@@ -8,6 +8,7 @@
 
 'use client';
 
+import { historyCategory } from '@/lib/patientHistoryFiles';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -42,6 +43,7 @@ export default function ClientAppPetHistoryPage() {
   const router = useRouter();
   const [pet, setPet] = useState(null);
   const [rows, setRows] = useState([]);
+  const [historyFiles, setHistoryFiles] = useState([]);
   const [vaccinationsDue, setVaccinationsDue] = useState([]);
   const [admission, setAdmission] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +70,8 @@ export default function ClientAppPetHistoryPage() {
       fetch(`/api/patients/${id}/report-overview`).then((res) => (res.ok ? res.json() : [])),
       fetch(`/api/hospitalizations?patient_id=${id}&status=admitted`).then((res) => (res.ok ? res.json() : [])),
       fetch(`/api/vaccinations?patient_id=${id}&due=true&within_days=180`).then((res) => (res.ok ? res.json() : [])),
-    ]).then(([petData, rowsData, admissions, dueVaccinations]) => {
+      fetch(`/api/patients/${id}/history-files`).then((res) => (res.ok ? res.json() : [])).catch(() => []),
+    ]).then(([petData, rowsData, admissions, dueVaccinations, files]) => {
       if (cancelled) return;
       // Not this client's pet — don't leak another client's history via a
       // guessed/typed-in patient id.
@@ -79,6 +82,7 @@ export default function ClientAppPetHistoryPage() {
       }
       setPet(petData);
       setRows(Array.isArray(rowsData) ? rowsData : []);
+      setHistoryFiles(Array.isArray(files) ? files : []);
       setAdmission(Array.isArray(admissions) && admissions.length > 0 ? admissions[0] : null);
       setVaccinationsDue(
         (Array.isArray(dueVaccinations) ? dueVaccinations : []).sort(
@@ -306,6 +310,30 @@ export default function ClientAppPetHistoryPage() {
             );
           })}
         </ul>
+      )}
+
+      {historyFiles.length > 0 && (
+        <>
+          <p className="mobile-section-header">Documents &amp; Results</p>
+          <ul className="mobile-list">
+            {historyFiles.map((f) => {
+              const cat = historyCategory(f.category);
+              return (
+                <li key={f.id}>
+                  <a href={f.url} target="_blank" rel="noopener noreferrer" className="mobile-list-item">
+                    <span className="mobile-list-title">
+                      {cat.icon} {f.title || f.file_name}
+                    </span>
+                    <span className="mobile-list-meta">
+                      {cat.label}
+                      {f.document_date ? ` · ${formatDate(f.document_date)}` : ''}
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
 
       <p className="mobile-section-header">Full History</p>
