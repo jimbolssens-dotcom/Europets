@@ -25,6 +25,7 @@
 // accrual P&L.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { VAT_RATE } from '@/lib/invoicing';
 
@@ -77,7 +78,8 @@ export async function GET(request) {
     // Failing this one query alone never takes down the rest of the P&L —
     // most obviously so the whole Accounting page doesn't 500 for a clinic
     // that hasn't run migration 149 yet.
-    supabase.from('legacy_payments').select('amount').gte('paid_at', start).lt('paid_at', end),
+    // Server-only table (RLS on, no public policy, migration 187).
+    supabaseAdmin.from('legacy_payments').select('amount').gte('paid_at', start).lt('paid_at', end),
   ]);
 
   for (const res of [invoicedRes, paymentsRes, expensesRes, outstandingRes]) {

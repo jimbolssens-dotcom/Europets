@@ -5,7 +5,7 @@
 // (see app/api/clients/[id]/legacy-payments). Powers
 // app/(admin)/accounting/legacy-payments.
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 // Next.js can otherwise cache a GET route handler's response (it has no
@@ -19,7 +19,8 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const month = searchParams.get('month');
 
-  let query = supabase
+  // Server-only table (RLS on, no public policy, migration 187).
+  let query = supabaseAdmin
     .from('legacy_payments')
     .select('id, amount, payment_method, note, payment_number, paid_at, client_id, clients(full_name, client_number)')
     .order('paid_at', { ascending: false });

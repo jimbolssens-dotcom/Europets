@@ -24,7 +24,6 @@
 //   lib/paymentSequence.js. Payments imported before this field existed
 //   are left without one, same as payment_method's own history.
 
-import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { nextPaymentNumber } from '@/lib/paymentSequence';
@@ -35,7 +34,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
   const { id } = await params;
-  const { data, error } = await supabase
+  // Server-only table (RLS on, no public policy, migration 187).
+  const { data, error } = await supabaseAdmin
     .from('legacy_payments')
     .select('id, amount, payment_method, note, payment_number, paid_at, created_at')
     .eq('client_id', id)
