@@ -23,6 +23,7 @@ import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
 import { maybeRunConcierge, sendConciergeReply, sendEscalationNotice, sendEscalationFollowUpNotice, sendStaffHandoffNotice, flagEscalatedThread, isWhatsAppAiEnabled } from '@/lib/whatsappConcierge';
 import { isAssistantOwnerPhone, relayToAssistant } from '@/lib/personalAssistantRelay';
+import { transcribeVoiceNote } from '@/lib/assemblyai';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -179,6 +180,12 @@ async function runConciergeForInbound(message, clientId, digits) {
     const result = await maybeRunConcierge({ clientId, phone: digits });
     if (result.sent) {
       await sendConciergeReply({ clientId, phone: digits, reply: result.reply });
+    } else if (result.withStaff) {
+      // Already handed to staff and nobody has replied yet: the AI stays
+      // out, and the client just gets the short "still with our team" line
+      // so a new message never meets silence. The thread keeps the reason
+      // it was first handed over for.
+      await sendEscalationFollowUpNotice(digits, clientId);
     } else if (result.escalated || result.handoff) {
       // Two different reasons land here — the model itself chose to
       // escalate (result.escalated), or the concierge stayed out entirely
@@ -256,6 +263,18 @@ async function handleInboundMessage(message, contactPhone) {
   // needs a human's eyes.
   if (message.type === 'text' || message.type === 'button' || message.type === 'interactive') {
     await runConciergeForInbound(message, clientId, digits);
+    return;
+  }
+
+  // A voice note is transcribed (migration 196): staff see the text under
+  // the player, and the concierge reads it like a typed message. If it
+  // can't be transcribed it goes to staff as before (the unanswered sweep).
+  if (message.type === 'audio' && media.media_url) {
+    const transcript = await transcribeVoiceNote(media.media_url);
+    if (transcript) {
+      await supabaseAdmin.from('client_messages').update({ transcript }).eq('wa_message_id', message.id);
+      await runConciergeForInbound(message, clientId, digits);
+    }
   }
 }
 
@@ -290,6 +309,9 @@ async function handleStatusUpdate(status) {
     await sendFallbackEmailForFailedWhatsApp(status.id);
   }
 }
+
+// Room for a voice-note transcription plus the concierge's reply.
+export const maxDuration = 60;
 
 export async function POST(request) {
   const rawBody = await request.text();
