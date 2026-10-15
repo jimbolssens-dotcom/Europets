@@ -201,11 +201,11 @@ async function runConciergeForInbound(message, clientId, digits) {
       );
       const { alreadyFlagged } = await flagEscalatedThread(clientId, result.reason);
       if (alreadyFlagged) {
-        await sendEscalationFollowUpNotice(digits);
+        await sendEscalationFollowUpNotice(digits, clientId);
       } else if (result.handoff) {
-        await sendStaffHandoffNotice(digits);
+        await sendStaffHandoffNotice(digits, clientId);
       } else {
-        await sendEscalationNotice(digits);
+        await sendEscalationNotice(digits, clientId);
       }
     }
   } catch (err) {

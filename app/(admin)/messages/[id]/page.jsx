@@ -375,7 +375,7 @@ export default function ClientMessageThreadPage() {
               {m.sender === 'staff'
                 ? m.staff?.full_name || 'Staff'
                 : m.sender === 'ai'
-                  ? '🤖 AI concierge'
+                  ? m.is_notice ? '🤖 Automatic notice' : '🤖 AI concierge'
                   : m.sender === 'system'
                     ? '🔔 Automated'
                     : client?.full_name || 'Client'}{' '}

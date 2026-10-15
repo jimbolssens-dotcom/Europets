@@ -16,7 +16,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import { openWhatsApp } from '@/lib/whatsapp';
@@ -84,6 +84,11 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
   const [registerNote, setRegisterNote] = useState(null);
 
   const phone = conv.phone;
+  // Open on the newest message, not the oldest.
+  const threadRef = useRef(null);
+  useEffect(() => {
+    if (expanded && threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight;
+  }, [expanded, messages, loading]);
 
   // Sends this number the new-patient registration form (the same intake
   // link as the Invite page), from the clinic's WhatsApp number. Once they
@@ -237,7 +242,7 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
             {loading ? (
               <p>Loading...</p>
             ) : (
-              <div className="portal-chat-thread staff-chat-thread">
+              <div className="portal-chat-thread staff-chat-thread" ref={threadRef}>
                 {messages.length === 0 && <p className="visit-meta">No messages yet.</p>}
                 {messages.map((m) => (
                   <div
@@ -256,7 +261,7 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
                         : m.sender === 'system'
                           ? '🔔 Automated'
                           : m.sender === 'ai'
-                            ? '🤖 AI concierge'
+                            ? m.is_notice ? '🤖 Automatic notice' : '🤖 AI concierge'
                             : phone}{' '}
                       · {formatWhen(m.created_at)}
                     </span>

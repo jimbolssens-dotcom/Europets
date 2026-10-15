@@ -33,7 +33,7 @@ export async function GET() {
     supabase
       .from('client_messages')
       .select(
-        'id, client_id, phone, channel, sender, body, media_type, created_at, clients(full_name, client_number, phone)'
+        'id, client_id, phone, channel, sender, body, media_type, created_at, is_notice, clients(full_name, client_number, phone)'
       )
       .order('created_at', { ascending: false }),
     supabase.from('client_message_thread_state').select('thread_key, last_read_at, flagged, assigned_staff_id, staff:assigned_staff_id(full_name)'),
@@ -50,6 +50,10 @@ export async function GET() {
 
   const byThread = new Map();
   for (const row of data) {
+    // The concierge's automatic holding notices (migration 194) are shown
+    // inside the thread, but a thread still reads as waiting on staff:
+    // its preview and 🔔 come from the newest real message.
+    if (row.is_notice) continue;
     const threadKey = row.client_id || `phone:${row.phone}`;
     if (!byThread.has(threadKey)) {
       const state = stateByThread[threadKey];
