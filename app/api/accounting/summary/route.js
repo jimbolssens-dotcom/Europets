@@ -24,6 +24,7 @@
 // — simple and honest for a small clinic's day-to-day view, not a full
 // accrual P&L.
 
+import { selectAll } from '@/lib/selectAll';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
@@ -70,7 +71,8 @@ export async function GET(request) {
       .gte('paid_at', start)
       .lt('paid_at', end),
     supabase.from('expenses').select('amount, vat_amount, total').gte('expense_date', dateStart).lt('expense_date', dateEnd),
-    supabase.from('invoices').select('total, amount_paid').in('status', ['unpaid', 'partially_paid']),
+    // Paged: an all-time total must never stop at the 1000-row limit.
+    selectAll(() => supabase.from('invoices').select('id, total, amount_paid').in('status', ['unpaid', 'partially_paid']).order('id')),
     // Real cash received this month against a client's old-system balance
     // (migration 149) — not tied to any invoice here and not a fresh
     // taxable supply, so it's kept out of the VAT figures below, but it's

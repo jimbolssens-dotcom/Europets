@@ -15,6 +15,7 @@
 //                                      self-bookable)
 // DELETE /api/intake-requests/:id  -> cancel an unused link
 
+import { selectAll } from '@/lib/selectAll';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
@@ -265,11 +266,9 @@ async function linkUnmatchedMessagesToClient(clientId) {
     const suffixes = new Set(candidates.map(phoneSearchDigits).filter((s) => s.length >= 6));
     if (suffixes.size === 0) return;
 
-    const { data: unmatched } = await supabaseAdmin
-      .from('client_messages')
-      .select('phone')
-      .is('client_id', null)
-      .not('phone', 'is', null);
+    const { data: unmatched } = await selectAll(() =>
+      supabaseAdmin.from('client_messages').select('id, phone').is('client_id', null).not('phone', 'is', null).order('id')
+    );
     const phonesToLink = new Set(
       (unmatched || []).map((r) => r.phone).filter((phone) => suffixes.has(phoneSearchDigits(phone)))
     );

@@ -39,27 +39,29 @@ export async function GET(request) {
   // vaccinations, then the involved patients (with their client info,
   // an embed that's existed since day one) as a second query, and join
   // them here instead.
-  let query = supabase.from('vaccinations').select('*, staff(full_name)');
+  // Paged (lib/selectAll.js): a single request stops at 1000 rows.
+  const { data, error } = await selectAll(() => {
+    let query = supabase.from('vaccinations').select('*, staff(full_name)');
 
-  if (patientId) {
-    // Scheduled-but-not-given rows (date_given null — a rabies reminder
-    // from a Primary Booster whose rabies wasn't given) sort after actual
-    // history, not before.
-    query = query.eq('patient_id', patientId).order('date_given', { ascending: false, nullsFirst: false });
-  } else {
-    query = query.order('next_due_date', { ascending: true, nullsFirst: false });
-  }
+    if (patientId) {
+      // Scheduled-but-not-given rows (date_given null — a rabies reminder
+      // from a Primary Booster whose rabies wasn't given) sort after actual
+      // history, not before.
+      query = query.eq('patient_id', patientId).order('date_given', { ascending: false, nullsFirst: false });
+    } else {
+      query = query.order('next_due_date', { ascending: true, nullsFirst: false });
+    }
 
-  if (due === 'true') {
-    const withinDays = Number(searchParams.get('within_days')) || 30;
-    const horizon = new Date();
-    horizon.setDate(horizon.getDate() + withinDays);
-    query = query
-      .not('next_due_date', 'is', null)
-      .lte('next_due_date', horizon.toISOString().slice(0, 10));
-  }
-
-  const { data, error } = await query;
+    if (due === 'true') {
+      const withinDays = Number(searchParams.get('within_days')) || 30;
+      const horizon = new Date();
+      horizon.setDate(horizon.getDate() + withinDays);
+      query = query
+        .not('next_due_date', 'is', null)
+        .lte('next_due_date', horizon.toISOString().slice(0, 10));
+    }
+    return query.order('id');
+  });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

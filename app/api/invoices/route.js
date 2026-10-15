@@ -32,22 +32,24 @@ export async function GET(request) {
     }
   }
 
-  let query = supabase
-    .from('invoices')
-    .select(
-      '*, clients(full_name, phone, email, client_number), visits(patient_id, patients(name, patient_number)), hospitalizations(patient_id, patients(name, patient_number))'
-    )
-    .order('created_at', { ascending: false });
+  // Paged (lib/selectAll.js): a single request stops at 1000 rows.
+  const { data, error } = await selectAll(() => {
+    let query = supabase
+      .from('invoices')
+      .select(
+        '*, clients(full_name, phone, email, client_number), visits(patient_id, patients(name, patient_number)), hospitalizations(patient_id, patients(name, patient_number))'
+      )
+      .order('created_at', { ascending: false });
 
-  if (clientId) query = query.eq('client_id', clientId);
-  if (status) {
-    const statuses = status.split(',').map((s) => s.trim()).filter(Boolean);
-    query = statuses.length > 1 ? query.in('status', statuses) : query.eq('status', statuses[0]);
-  }
-  if (visitId) query = query.eq('visit_id', visitId);
-  if (hospitalizationId) query = query.eq('hospitalization_id', hospitalizationId);
-
-  const { data, error } = await query;
+    if (clientId) query = query.eq('client_id', clientId);
+    if (status) {
+      const statuses = status.split(',').map((s) => s.trim()).filter(Boolean);
+      query = statuses.length > 1 ? query.in('status', statuses) : query.eq('status', statuses[0]);
+    }
+    if (visitId) query = query.eq('visit_id', visitId);
+    if (hospitalizationId) query = query.eq('hospitalization_id', hospitalizationId);
+    return query.order('id');
+  });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

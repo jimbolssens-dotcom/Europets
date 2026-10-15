@@ -183,34 +183,36 @@ export async function GET(request) {
     }
   }
 
-  let query = supabase
-    .from('hospitalizations')
-    .select('*, patients(name, species, patient_number, current_weight_kg), clients(full_name, phone, client_number), rooms(name)')
-    .order('admitted_at', { ascending: false });
+  // Paged (lib/selectAll.js): a single request stops at 1000 rows.
+  const { data, error } = await selectAll(() => {
+    let query = supabase
+      .from('hospitalizations')
+      .select('*, patients(name, species, patient_number, current_weight_kg), clients(full_name, phone, client_number), rooms(name)')
+      .order('admitted_at', { ascending: false });
 
-  if (status) {
-    query = query.eq('status', status);
-  }
-  if (patientId) {
-    query = query.eq('patient_id', patientId);
-  }
-  if (clientId) {
-    query = query.eq('client_id', clientId);
-  }
-  if (originatingVisitId) {
-    query = query.eq('originating_visit_id', originatingVisitId);
-  }
-  if (appointmentId) {
-    query = query.eq('appointment_id', appointmentId);
-  }
-  if (originatingHospitalizationId) {
-    query = query.eq('originating_hospitalization_id', originatingHospitalizationId);
-  }
-  if (kind) {
-    query = query.eq('kind', kind);
-  }
-
-  const { data, error } = await query;
+    if (status) {
+      query = query.eq('status', status);
+    }
+    if (patientId) {
+      query = query.eq('patient_id', patientId);
+    }
+    if (clientId) {
+      query = query.eq('client_id', clientId);
+    }
+    if (originatingVisitId) {
+      query = query.eq('originating_visit_id', originatingVisitId);
+    }
+    if (appointmentId) {
+      query = query.eq('appointment_id', appointmentId);
+    }
+    if (originatingHospitalizationId) {
+      query = query.eq('originating_hospitalization_id', originatingHospitalizationId);
+    }
+    if (kind) {
+      query = query.eq('kind', kind);
+    }
+    return query.order('id');
+  });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

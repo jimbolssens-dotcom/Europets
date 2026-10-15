@@ -28,23 +28,25 @@ export async function GET(request) {
   const category = searchParams.get('category');
   const staffId = searchParams.get('staff_id');
 
-  let query = supabase.from('expenses').select('*').order('expense_date', { ascending: false });
+  // Paged (lib/selectAll.js): a single request stops at 1000 rows.
+  const { data, error } = await selectAll(() => {
+    let query = supabase.from('expenses').select('*').order('expense_date', { ascending: false });
 
-  if (month) {
-    const monthStart = `${month}-01`;
-    const monthEndDate = new Date(`${month}-01T00:00:00Z`);
-    monthEndDate.setUTCMonth(monthEndDate.getUTCMonth() + 1);
-    const monthEnd = monthEndDate.toISOString().slice(0, 10);
-    query = query.gte('expense_date', monthStart).lt('expense_date', monthEnd);
-  }
-  if (category) {
-    query = query.eq('category', category);
-  }
-  if (staffId) {
-    query = query.eq('staff_id', staffId);
-  }
-
-  const { data, error } = await query;
+    if (month) {
+      const monthStart = `${month}-01`;
+      const monthEndDate = new Date(`${month}-01T00:00:00Z`);
+      monthEndDate.setUTCMonth(monthEndDate.getUTCMonth() + 1);
+      const monthEnd = monthEndDate.toISOString().slice(0, 10);
+      query = query.gte('expense_date', monthStart).lt('expense_date', monthEnd);
+    }
+    if (category) {
+      query = query.eq('category', category);
+    }
+    if (staffId) {
+      query = query.eq('staff_id', staffId);
+    }
+    return query.order('id');
+  });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

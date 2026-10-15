@@ -37,33 +37,35 @@ export async function GET(request) {
   const patientId = searchParams.get('patient_id');
   const clientId = searchParams.get('client_id');
 
-  let query = supabase
-    .from('visits')
-    .select(
-      // hospitalizations(id, status) is a reverse embed via hospitalizations.originating_visit_id
-      // — lets the Consults board split out visits currently admitted to
-      // hospitalization (see app/(admin)/consults/page.jsx) without a second fetch.
-      '*, patients(name, species, patient_number, current_weight_kg), clients(full_name, phone, client_number), rooms(name), staff(full_name), hospitalizations(id, status, admitted_at)'
-    )
-    .order('started_at', { ascending: true });
+  // Paged (lib/selectAll.js): a single request stops at 1000 rows.
+  const { data, error } = await selectAll(() => {
+    let query = supabase
+      .from('visits')
+      .select(
+        // hospitalizations(id, status) is a reverse embed via hospitalizations.originating_visit_id
+        // — lets the Consults board split out visits currently admitted to
+        // hospitalization (see app/(admin)/consults/page.jsx) without a second fetch.
+        '*, patients(name, species, patient_number, current_weight_kg), clients(full_name, phone, client_number), rooms(name), staff(full_name), hospitalizations(id, status, admitted_at)'
+      )
+      .order('started_at', { ascending: true });
 
-  if (status) {
-    query = query.eq('status', status);
-  }
-  if (roomId) {
-    query = query.eq('room_id', roomId);
-  }
-  if (appointmentId) {
-    query = query.eq('appointment_id', appointmentId);
-  }
-  if (patientId) {
-    query = query.eq('patient_id', patientId);
-  }
-  if (clientId) {
-    query = query.eq('client_id', clientId);
-  }
-
-  const { data, error } = await query;
+    if (status) {
+      query = query.eq('status', status);
+    }
+    if (roomId) {
+      query = query.eq('room_id', roomId);
+    }
+    if (appointmentId) {
+      query = query.eq('appointment_id', appointmentId);
+    }
+    if (patientId) {
+      query = query.eq('patient_id', patientId);
+    }
+    if (clientId) {
+      query = query.eq('client_id', clientId);
+    }
+    return query.order('id');
+  });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
