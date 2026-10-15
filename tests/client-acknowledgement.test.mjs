@@ -57,3 +57,34 @@ test('Debra Al Hajeri: "Ok" to the automated reminder after a staff message', ()
   ];
   assert.equal(burstIsAcknowledgementOnly(rows), true);
 });
+
+import { replyingToAutomatedMessage } from '../lib/clientAcknowledgement.js';
+import { decideSweepAction } from '../lib/whatsappSweepDecision.js';
+
+test('Reem: "Okay" to the reminder after staff answered', () => {
+  const rows = [
+    m('client', 'Could you please tell me when the appointment will be tomorrow', 0),
+    m('ai', 'Thanks, a member of our team will be with you shortly.', 0.1, { is_notice: true }),
+    m('staff', "It's at 4.30", 140),
+    m('system', 'This is a reminder that Yumi has an appointment', 223),
+    m('client', 'Okay', 225),
+  ];
+  assert.equal(replyingToAutomatedMessage(rows), true);
+  assert.equal(burstIsAcknowledgementOnly(rows), true);
+  assert.equal(decideSweepAction(rows, false).action, 'nothing');
+});
+
+test('Aarti: a real reply to the reminder goes to the AI, not "still with our team"', () => {
+  const rows = [
+    m('staff', 'The tag is from Dubai Municipality', 0),
+    m('client', '', 72, { media_type: 'audio' }),
+    m('ai', 'Thanks, a member of our team will be with you shortly.', 72.1, { is_notice: true }),
+    m('client', 'Ok', 73),
+    m('system', 'This is a reminder that Waffle has an appointment', 380),
+    m('client', 'Hello ! Yes 👍🏼', 381),
+    m('client', 'Could you confirm that please?', 381.3),
+  ];
+  assert.equal(replyingToAutomatedMessage(rows), true);
+  assert.equal(burstIsAcknowledgementOnly(rows), false);
+  assert.equal(noticeRecentlySent(rows, Date.parse(rows.at(-1).created_at)), false);
+});
