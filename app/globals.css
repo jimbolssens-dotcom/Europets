@@ -11643,3 +11643,17 @@ button.patient-chip-age-missing {
   margin: 4px 0 0;
   overflow-wrap: anywhere;
 }
+
+/* Consent text (app/_components/ConsentText.jsx): paragraphs keep their
+   own line breaks; an all-capitals warning stands out. */
+.consent-text-box p,
+.client-app-report-text p {
+  margin: 0 0 0.75em;
+}
+.consent-warning {
+  font-weight: 700;
+  color: #c2185b;
+}
+.client-app-report-text .consent-warning {
+  color: #ff7eb3;
+}

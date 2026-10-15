@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import ConsentText from '@/app/_components/ConsentText';
 import HexIcon from '@/app/_components/HexIcon';
 
 export default function ClientAppConsentPage() {
@@ -106,7 +107,7 @@ export default function ClientAppConsentPage() {
       {request.patient_name && <p className="mobile-subtitle">For {request.patient_name}</p>}
       <p className="mobile-subtitle">Please read the form below, then type your full name to sign it.</p>
 
-      <p className="client-app-report-text">{request.form_text}</p>
+      <ConsentText text={request.form_text} className="client-app-report-text" />
 
       <form onSubmit={handleSubmit} className="client-app-login-form">
         {error && <p className="client-app-login-error">{error}</p>}

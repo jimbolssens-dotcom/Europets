@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import ConsentText from '@/app/_components/ConsentText';
 
 export default function ConsentSigningPage() {
   const { id } = useParams();
@@ -119,7 +120,7 @@ export default function ConsentSigningPage() {
         {request.patient_name && <p className="visit-meta">For {request.patient_name}</p>}
         <p>Please read the form below, then type your full name at the bottom to sign it.</p>
 
-        <div className="consent-text-box">{request.form_text}</div>
+        <ConsentText text={request.form_text} />
 
         <form onSubmit={handleSubmit}>
           {error && <p className="error">{error}</p>}

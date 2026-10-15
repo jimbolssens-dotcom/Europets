@@ -29,6 +29,8 @@ import InfoHint from '@/app/_components/InfoHint';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
+import SmallPetConsentTab from '@/app/_components/SmallPetConsentTab';
+import { isSmallPet } from '@/lib/smallPet';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import PatientHeader, { PatientMeta, PatientTrend } from '@/app/_components/PatientHeader';
 import { openWhatsApp } from '@/lib/whatsapp';
@@ -982,6 +984,18 @@ export default function ConsultDetailPage() {
           same layout as the day procedure and hospitalization pages. */}
       <div className="case-bar">
         <div className="case-tabs" role="group" aria-label="Consult sections">
+          {/* Small pets and exotics: the handling risk consent comes first,
+              signed before the animal is touched (lib/smallPet.js). */}
+          {isSmallPet(consult.patients?.species) && (
+            <SmallPetConsentTab
+              visitId={id}
+              patient={consult.patients}
+              client={consult.clients}
+              staff={staff}
+              treatmentItems={treatmentItems}
+              treatmentNotes={consult.treatment_notes}
+            />
+          )}
           <PatientHistoryPanel patientId={consult.patient_id} clientId={consult.client_id} excludeVisitId={id} tab />
           <details className="case-tab-menu" name="case-tabs">
             <summary className="case-tab">📷 Photos{visitPhotoCount > 0 && <b> {visitPhotoCount}</b>}</summary>

@@ -23,6 +23,7 @@ import CatalogPicker from '@/app/_components/CatalogPicker';
 import { ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 import { ADMINISTRATION_METHOD_LABELS, resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
+import ConsentText from '@/app/_components/ConsentText';
 import { printPdfUrl } from '@/lib/printPdf';
 import { appOrigin } from '@/lib/appOrigin';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
@@ -946,9 +947,9 @@ export default function HospitalizationDetailPage() {
             form sent below also shows up there under Consent Forms, so WhatsApp may not be necessary.
           </p>
         )}
-        <div className="consent-text-box">
-          {buildConsentFormText(consentFormType, { name: admission.patients?.name }, consentPreviewPlan)}
-        </div>
+        <ConsentText
+          text={buildConsentFormText(consentFormType, { name: admission.patients?.name, species: admission.patients?.species }, consentPreviewPlan)}
+        />
         <input
           placeholder="Signed by (full name)"
           required
