@@ -184,8 +184,9 @@ async function runConciergeForInbound(message, clientId, digits) {
       // Already handed to staff and nobody has replied yet: the AI stays
       // out, and the client just gets the short "still with our team" line
       // so a new message never meets silence. The thread keeps the reason
-      // it was first handed over for.
-      await sendEscalationFollowUpNotice(digits, clientId);
+      // it was first handed over for. Skipped when a notice already went
+      // out a few minutes ago (see lib/clientAcknowledgement.js).
+      if (!result.noticeAlreadySent) await sendEscalationFollowUpNotice(digits, clientId);
     } else if (result.escalated || result.handoff) {
       // Two different reasons land here — the model itself chose to
       // escalate (result.escalated), or the concierge stayed out entirely
@@ -207,7 +208,9 @@ async function runConciergeForInbound(message, clientId, digits) {
         result.reason
       );
       const { alreadyFlagged } = await flagEscalatedThread(clientId, result.reason);
-      if (alreadyFlagged) {
+      if (result.noticeAlreadySent) {
+        // The client was told a few minutes ago; the flag above is enough.
+      } else if (alreadyFlagged) {
         await sendEscalationFollowUpNotice(digits, clientId);
       } else if (result.handoff) {
         await sendStaffHandoffNotice(digits, clientId);
