@@ -8,6 +8,7 @@
 
 'use client';
 
+import { dubaiDateISO, isBookedAhead, shortDayLabel } from '@/lib/dayProcedureSchedule';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
@@ -68,6 +69,7 @@ export default function MobileDayProceduresPage() {
                     {d.clients?.full_name}
                     {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
                     {d.reason ? ` · ${d.reason}` : ''}
+                    {isBookedAhead(d, dubaiDateISO()) ? ` · 🌙 Overnight, procedure ${shortDayLabel(d.scheduled_for)}` : ''}
                   </span>
                 </a>
               </li>

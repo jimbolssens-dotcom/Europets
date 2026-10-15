@@ -11544,3 +11544,53 @@ button.patient-chip-age-missing {
   cursor: pointer;
   padding: 0 4px;
 }
+
+/* Consult → Day Procedure menu: Today | Tomorrow (DayProcedureStartForm) */
+.day-procedure-start { display: flex; flex-direction: column; gap: 8px; max-width: min(420px, 92vw); }
+.day-procedure-start-row { display: flex; gap: 6px; align-items: center; }
+.day-procedure-start-row input { flex: 1 1 auto; min-width: 0; }
+.day-procedure-when {
+  display: inline-flex;
+  border: 1px solid var(--pink);
+  border-radius: 999px;
+  overflow: hidden;
+  flex: none;
+}
+.day-procedure-when button {
+  background: white;
+  color: var(--pink-dark);
+  border: none;
+  border-radius: 0;
+  padding: 3px 10px;
+  font-size: 0.8em;
+  font-weight: 600;
+}
+.day-procedure-when button.on { background: var(--pink); color: white; }
+.day-procedure-start-date { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 0.9em; }
+.day-procedure-start-date small { color: #777; }
+.day-procedure-link-banner {
+  background: var(--pink-tint, #fdeef4);
+  border: 1px solid var(--pink, #e6186d);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.9em;
+}
+.booked-ahead-chip {
+  display: inline-block;
+  font-size: 0.78em;
+  padding: 1px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.booked-ahead-chip.ok { background: #e6f6ec; color: #1e6b3c; }
+.booked-ahead-chip.warn { background: #fff4d6; color: #8a5a00; border: 1px solid #f0c860; }
+.cage-overnight-tag {
+  display: inline-block;
+  font-size: 0.72em;
+  font-weight: 600;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ece8ff;
+  color: #4b3b9a;
+  white-space: nowrap;
+}

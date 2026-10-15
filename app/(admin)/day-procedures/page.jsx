@@ -18,6 +18,7 @@
 
 'use client';
 
+import { dayProcedureDate, isBookedAhead, shortDayLabel } from '@/lib/dayProcedureSchedule';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
@@ -84,10 +85,15 @@ export default function DayProceduresPage() {
   // go overdue. Surfaced in its own section below so that alarm is always
   // resolvable from here instead of a dead end.
   const today = todayISODate();
-  const todaysDayProcedures = dayProcedures.filter((d) => d.admitted_at?.slice(0, 10) === today);
+  // A day procedure booked ahead from a consult (migration 193) belongs to
+  // its scheduled_for day, not the day it was admitted to wait overnight.
+  const todaysDayProcedures = dayProcedures.filter((d) => dayProcedureDate(d) === today);
   const inProgress = todaysDayProcedures.filter((d) => d.status === 'admitted');
   const completed = todaysDayProcedures.filter((d) => d.status === 'discharged');
-  const carriedOver = dayProcedures.filter((d) => d.status === 'admitted' && d.admitted_at?.slice(0, 10) !== today);
+  const bookedAhead = dayProcedures
+    .filter((d) => isBookedAhead(d, today))
+    .sort((a, b) => a.scheduled_for.localeCompare(b.scheduled_for));
+  const carriedOver = dayProcedures.filter((d) => d.status === 'admitted' && dayProcedureDate(d) < today);
 
   // Every day procedure completed on a day before today — "Completed
   // Today" above only ever shows today's, so without this a discharged
@@ -96,7 +102,7 @@ export default function DayProceduresPage() {
   // was a pure frontend gap, the API already returns everything). Already
   // sorted newest-first by the API itself (order('admitted_at', {
   // ascending: false })).
-  const pastDayProcedures = dayProcedures.filter((d) => d.status === 'discharged' && d.admitted_at?.slice(0, 10) !== today);
+  const pastDayProcedures = dayProcedures.filter((d) => d.status === 'discharged' && dayProcedureDate(d) !== today);
   const historyQuery = historySearch.trim().toLowerCase();
   const filteredHistory = historyQuery
     ? pastDayProcedures.filter(
@@ -169,6 +175,53 @@ export default function DayProceduresPage() {
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {bookedAhead.length > 0 && (
+        <>
+          <h2>🌙 Booked Ahead</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Owner</th>
+                <th>Reason</th>
+                <th>Procedure</th>
+                <th>Cage</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {bookedAhead.map((d) => (
+                <tr key={d.id}>
+                  <td>
+                    {d.patients?.name}
+                    {d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}
+                  </td>
+                  <td>{d.clients?.full_name}</td>
+                  <td>{d.reason || '—'}</td>
+                  <td>
+                    {shortDayLabel(d.scheduled_for)}{' '}
+                    {d.appointment_id ? (
+                      <span className="booked-ahead-chip ok">📅 In calendar</span>
+                    ) : (
+                      <a
+                        className="booked-ahead-chip warn"
+                        href={`/appointments?${new URLSearchParams({ client_id: d.client_id, patient_id: d.patient_id, type: 'surgery', date: d.scheduled_for, reason: d.reason || '', day_procedure_id: d.id })}`}
+                      >
+                        Not in calendar yet · Book
+                      </a>
+                    )}
+                  </td>
+                  <td>{d.cages?.name || '—'}</td>
+                  <td>
+                    <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </>

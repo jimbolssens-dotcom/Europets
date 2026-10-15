@@ -5,6 +5,7 @@
 
 'use client';
 
+import DayProcedureStartForm from '@/app/_components/DayProcedureStartForm';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -1089,16 +1090,13 @@ export default function ConsultDetailPage() {
             ) : (
               <details className="consult-action-toggle">
                 <summary className="button-link">📋 Day Procedure</summary>
-                <form className="consult-action-dropdown" onSubmit={(e) => admitToHospital(e, 'day_procedure')}>
-                  <input
-                    placeholder="Reason"
-                    value={hospReason}
-                    onChange={(e) => setHospReason(e.target.value)}
-                  />
-                  <button type="submit" disabled={admitting}>
-                    {admitting ? 'Starting...' : 'Start Day Procedure'}
-                  </button>
-                </form>
+                <DayProcedureStartForm
+                  consult={{ id, client_id: consult.client_id, patient_id: consult.patient_id }}
+                  reason={hospReason}
+                  onReasonChange={setHospReason}
+                  onStartToday={(e) => admitToHospital(e, 'day_procedure')}
+                  admitting={admitting}
+                />
               </details>
             )}
           </>

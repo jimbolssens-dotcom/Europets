@@ -9,6 +9,7 @@
 
 'use client';
 
+import { shortDayLabel } from '@/lib/dayProcedureSchedule';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -1093,6 +1094,11 @@ export default function HospitalizationDetailPage() {
                 <TemperatureHistoryChart data={stayTemperatureHistory} mini />
               </PatientTrend>
               <MiniCageStrip currentHospitalizationId={id} />
+              {admission.kind === 'day_procedure' && admission.scheduled_for && admission.status === 'admitted' && (
+                <span className="cage-overnight-tag" title="Booked ahead from a consult: overnight in the cage, procedure on this day">
+                  🌙 Procedure {shortDayLabel(admission.scheduled_for)}
+                </span>
+              )}
             </>
           }
         >

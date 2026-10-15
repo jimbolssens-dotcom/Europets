@@ -80,6 +80,8 @@ export async function PATCH(request, { params }) {
     hospitalization_rate_override_id,
     acknowledge_weight_loss_alarm,
     mark_consult_meds_transfer_handled,
+    appointment_id,
+    scheduled_for,
   } = body;
 
   const update = {};
@@ -96,6 +98,10 @@ export async function PATCH(request, { params }) {
   if (room_id !== undefined) update.room_id = room_id;
   if (cage_id !== undefined) update.cage_id = cage_id;
   if (reason !== undefined) update.reason = reason;
+  // Linking a booked-ahead day procedure to its calendar slot, or moving
+  // its day (migration 193).
+  if (appointment_id !== undefined) update.appointment_id = appointment_id || null;
+  if (scheduled_for !== undefined) update.scheduled_for = scheduled_for || null;
   if (ai_summary !== undefined) update.ai_summary = ai_summary || null;
   if (kind !== undefined) {
     if (!['admission', 'day_procedure'].includes(kind)) {

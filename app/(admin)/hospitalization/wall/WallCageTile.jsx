@@ -1,5 +1,6 @@
 'use client';
 
+import { shortDayLabel } from '@/lib/dayProcedureSchedule';
 import { useEffect, useRef, useState } from 'react';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
@@ -187,6 +188,9 @@ export default function WallCageTile({ cage, hospitalization, details, authorId,
     <div className={styles.tileHeader}>
       <span className={styles.cageName}>{cage.name}</span>
       {hospitalization && <span className={styles.patient}>{patientName}</span>}
+      {hospitalization?.kind === 'day_procedure' && hospitalization.scheduled_for && (
+        <span className="cage-overnight-tag">🌙 {shortDayLabel(hospitalization.scheduled_for)}</span>
+      )}
     </div>
     {!hospitalization ? <span className={styles.noPlan}>Empty</span> : <>
       {needsAttention && <span className={styles.attentionLabel}>Needs attention</span>}

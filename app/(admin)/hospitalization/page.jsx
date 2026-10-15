@@ -14,6 +14,7 @@
 
 'use client';
 
+import { shortDayLabel } from '@/lib/dayProcedureSchedule';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -90,6 +91,9 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
           {hosp.patients?.patient_number ? ` (Patient #${hosp.patients.patient_number})` : ''}
         </div>
         <div className="cage-patient-species">{hosp.patients?.species}</div>
+        {hosp.kind === 'day_procedure' && hosp.scheduled_for && (
+          <div className="cage-overnight-tag">🌙 Procedure {shortDayLabel(hosp.scheduled_for)}</div>
+        )}
       </div>
     );
   }
@@ -130,6 +134,9 @@ export default function HospitalizationPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('layout');
   const [admissions, setAdmissions] = useState([]);
+  // Day procedures waiting overnight in a cage (booked ahead from a
+  // consult, migration 193): not admissions, but their cage is taken.
+  const [cagedDayProcedures, setCagedDayProcedures] = useState([]);
   const [cages, setCages] = useState([]);
   const [selectedOwner, setSelectedOwner] = useState(null); // { id, full_name } for the owner currently picked in the admit form
   const [clientPatients, setClientPatients] = useState([]); // that owner's own pets, for the patient picker below
@@ -144,10 +151,13 @@ export default function HospitalizationPage() {
   const [admitError, setAdmitError] = useState(null);
 
   const loadAdmissions = () =>
-    fetch('/api/hospitalizations?kind=admission')
-      .then((res) => res.json())
-      .then((data) => {
+    Promise.all([
+      fetch('/api/hospitalizations?kind=admission').then((res) => res.json()),
+      fetch('/api/hospitalizations?kind=day_procedure&status=admitted').then((res) => res.json()).catch(() => []),
+    ])
+      .then(([data, dayProcs]) => {
         setAdmissions(Array.isArray(data) ? data : []);
+        setCagedDayProcedures((Array.isArray(dayProcs) ? dayProcs : []).filter((d) => d.cage_id));
         setLoading(false);
       })
       .catch(() => {
@@ -378,7 +388,7 @@ export default function HospitalizationPage() {
 
   const admitted = admissions.filter((a) => a.status === 'admitted');
   const discharged = admissions.filter((a) => a.status === 'discharged').slice(0, 20);
-  const occupancy = Object.fromEntries(admitted.filter((a) => a.cage_id).map((a) => [a.cage_id, a]));
+  const occupancy = Object.fromEntries([...cagedDayProcedures, ...admitted].filter((a) => a.cage_id).map((a) => [a.cage_id, a]));
   const unassignedAdmitted = admitted.filter((a) => !a.cage_id);
   const occupiedCageIds = new Set(Object.keys(occupancy));
   const attentionCount = admitted.filter((a) => hospitalizationAlarmLevel(a) !== 'none').length;

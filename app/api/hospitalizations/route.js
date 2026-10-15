@@ -24,6 +24,8 @@ import { dubaiDayBoundaries } from '@/lib/dubaiTime';
 import { seedVitalsFromOrigin, seedVitalsFromVisit } from '@/lib/hospitalizationVitalsSync';
 import { createConsentFormRequest } from '@/lib/consentForms';
 import { detectWeightLossAlarm } from '@/lib/weightLossAlarm';
+import { dubaiDateISO, nightsBetween, shortDayLabel } from '@/lib/dayProcedureSchedule';
+import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
@@ -220,10 +222,26 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  let { patient_id, client_id, originating_visit_id, appointment_id, originating_hospitalization_id, room_id, cage_id, reason, kind } = body;
+  let { patient_id, client_id, originating_visit_id, appointment_id, originating_hospitalization_id, room_id, cage_id, reason, kind, scheduled_for } = body;
 
   if (kind && !['admission', 'day_procedure'].includes(kind)) {
     return NextResponse.json({ error: "kind must be 'admission' or 'day_procedure'" }, { status: 400 });
+  }
+
+  // Booked ahead (migration 193): the procedure is on a later day and the
+  // patient waits in a cage overnight, charged one "Overnight" per night.
+  const today = dubaiDateISO();
+  if (scheduled_for) {
+    if (kind !== 'day_procedure') {
+      return NextResponse.json({ error: 'Only a day procedure can be booked for a later day' }, { status: 400 });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduled_for) || scheduled_for <= today) {
+      return NextResponse.json({ error: 'Pick a date after today' }, { status: 400 });
+    }
+    if (nightsBetween(today, scheduled_for) > 14) {
+      return NextResponse.json({ error: 'That is more than two weeks away; book an appointment instead' }, { status: 400 });
+    }
+    if (!cage_id) return NextResponse.json({ error: 'Pick the cage the patient stays in overnight' }, { status: 400 });
   }
 
   // A stale consult page should open its existing admission, not book it again.
@@ -246,7 +264,12 @@ export async function POST(request) {
       .order('admitted_at', { ascending: false });
     if (linkedError) return NextResponse.json({ error: 'Could not check the linked day procedure. Please try again.' }, { status: 500 });
     const existing = linked?.find((row) => row.status === 'admitted') || linked?.[0];
-    if (existing) return NextResponse.json(existing);
+    if (existing) {
+      // A day procedure booked ahead and put in the calendar: checking in
+      // its appointment on the day opens the record that already exists.
+      await supabaseAdmin.from('appointments').update({ status: 'checked_in' }).eq('id', appointment_id).eq('status', 'booked');
+      return NextResponse.json(existing);
+    }
   }
 
   if (originating_visit_id && (!patient_id || !client_id)) {
@@ -342,6 +365,7 @@ export async function POST(request) {
         cage_id: cage_id || null,
         reason: reason || null,
         kind: resolvedKind,
+        scheduled_for: scheduled_for || null,
       },
     ])
     .select('*, patients(name, species, patient_number, current_weight_kg), clients(full_name, phone, client_number), rooms(name)')
@@ -397,5 +421,43 @@ export async function POST(request) {
     await seedVitalsFromVisit(data.id, originating_visit_id);
   }
 
+  if (scheduled_for) {
+    await addOvernightCharge(data, nightsBetween(today, scheduled_for), scheduled_for);
+  }
+
   return NextResponse.json(await attachCages(data), { status: 201 });
+}
+
+// One "Overnight - Cat" / "Overnight - Dog" per night before a procedure
+// booked ahead, logged on its worksheet so it reaches the invoice like any
+// other worksheet charge. Other species get none (no catalog item).
+async function addOvernightCharge(hosp, nights, scheduledFor) {
+  const species = (hosp.patients?.species || '').toLowerCase();
+  if (nights < 1 || !['cat', 'dog'].includes(species)) return;
+  const { data: items } = await supabaseAdmin
+    .from('goods_services')
+    .select('id, name, administration_method')
+    .ilike('name', `overnight%${species}`);
+  const item = (items || [])[0];
+  if (!item) return;
+  const { data: note } = await supabaseAdmin
+    .from('hospitalization_notes')
+    .insert([
+      {
+        hospitalization_id: hosp.id,
+        note_date: dubaiDateISO(),
+        notes: `Overnight before the procedure on ${shortDayLabel(scheduledFor)}${nights > 1 ? ` (${nights} nights)` : ''}`,
+      },
+    ])
+    .select('id')
+    .single();
+  if (!note) return;
+  await supabaseAdmin.from('treatment_items').insert([
+    {
+      hospitalization_note_id: note.id,
+      goods_service_id: item.id,
+      quantity: nights,
+      administration_method: resolveAdministrationMethod(item.administration_method).administration_method,
+    },
+  ]);
 }
