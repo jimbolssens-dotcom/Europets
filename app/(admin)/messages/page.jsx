@@ -249,7 +249,12 @@ function UnmatchedThreadRow({ conv, staff, onLinked }) {
                     key={m.id}
                     className={`portal-chat-bubble portal-chat-bubble-${m.sender === 'client' ? 'theirs' : 'mine'}`}
                   >
-                    {m.media_url && (
+                    {m.media_url && m.media_type === 'audio' ? (
+                      <>
+                        <audio controls src={m.media_url} className="portal-chat-bubble-audio" />
+                        {m.transcript && <p className="voice-note-transcript">🎤 {m.transcript}</p>}
+                      </>
+                    ) : m.media_url && (
                       <a href={m.media_url} target="_blank" rel="noopener noreferrer">
                         <img src={m.media_url} alt="" className="portal-chat-bubble-image" />
                       </a>

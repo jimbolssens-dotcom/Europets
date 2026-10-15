@@ -85,7 +85,7 @@ export async function GET() {
         channel: row.channel,
         // A photo with no caption has an empty body — fall back to a
         // short label so the inbox row isn't just blank.
-        last_message: row.body || (row.media_type === 'image' ? '📷 Photo' : row.body),
+        last_message: row.body || (row.media_type === 'image' ? '📷 Photo' : row.media_type === 'audio' ? '🎤 Voice note' : row.body),
         last_sender: row.sender,
         last_message_at: row.created_at,
         flagged: state?.flagged || false,

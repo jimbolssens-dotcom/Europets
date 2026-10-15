@@ -357,7 +357,10 @@ export default function MobileMessageThreadPage() {
                 📎 Download file
               </a>
             ) : m.media_url && m.media_type === 'audio' ? (
-              <audio controls src={m.media_url} className="portal-chat-bubble-audio" />
+              <>
+                <audio controls src={m.media_url} className="portal-chat-bubble-audio" />
+                {m.transcript && <p className="voice-note-transcript">🎤 {m.transcript}</p>}
+              </>
             ) : (
               m.media_url && (
                 <a href={m.media_url} target="_blank" rel="noopener noreferrer">
