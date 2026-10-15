@@ -26,6 +26,7 @@ import { createConsentFormRequest } from '@/lib/consentForms';
 import { detectWeightLossAlarm } from '@/lib/weightLossAlarm';
 import { dubaiDateISO, nightsBetween, shortDayLabel } from '@/lib/dayProcedureSchedule';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
+import { selectAll } from '@/lib/selectAll';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';

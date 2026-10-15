@@ -20,6 +20,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { selectAll } from '@/lib/selectAll';
 import { NextResponse } from 'next/server';
 
 // The video-consult flow polls this route (both the staff consult page and
