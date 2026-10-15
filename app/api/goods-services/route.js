@@ -6,6 +6,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { selectAll } from '@/lib/selectAll';
 import { NextResponse } from 'next/server';
 
 const PRICING_TYPES = ['flat', 'per_kg', 'per_unit'];
@@ -17,18 +18,21 @@ export async function GET(request) {
   const subcategoryId = searchParams.get('subcategory_id');
   const active = searchParams.get('active');
 
-  let query = supabase.from('goods_services').select('*').order('name', { ascending: true });
-  if (mainCategory) {
-    query = query.eq('main_category', mainCategory);
-  }
-  if (subcategoryId) {
-    query = query.eq('subcategory_id', subcategoryId);
-  }
-  if (active !== null) {
-    query = query.eq('active', active === 'true');
-  }
-
-  const { data, error } = await query;
+  // Paged (lib/selectAll.js): the catalog is past 1000 items, and a single
+  // request silently stopped there, dropping the last names alphabetically.
+  const { data, error } = await selectAll(() => {
+    let query = supabase.from('goods_services').select('*').order('name', { ascending: true }).order('id');
+    if (mainCategory) {
+      query = query.eq('main_category', mainCategory);
+    }
+    if (subcategoryId) {
+      query = query.eq('subcategory_id', subcategoryId);
+    }
+    if (active !== null) {
+      query = query.eq('active', active === 'true');
+    }
+    return query;
+  });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

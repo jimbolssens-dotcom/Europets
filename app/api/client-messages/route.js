@@ -23,20 +23,26 @@
 // UI which of the two it's looking at (a client link vs. a "link this
 // number" action), and is also the key thread-state rows are looked up by.
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { selectAll } from '@/lib/selectAll';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const [{ data, error }, { data: threadStates, error: stateError }] = await Promise.all([
-    supabase
-      .from('client_messages')
-      .select(
-        'id, client_id, phone, channel, sender, body, media_type, created_at, is_notice, clients(full_name, client_number, phone)'
-      )
-      .order('created_at', { ascending: false }),
-    supabase.from('client_message_thread_state').select('thread_key, last_read_at, flagged, assigned_staff_id, staff:assigned_staff_id(full_name)'),
+  // One row per thread straight from the database (migration 195): reading
+  // every message here and keeping the newest per thread silently dropped
+  // older threads once there were more than the 1000 rows a request
+  // returns. Automatic notices (migration 194) are already left out, so a
+  // thread's preview and 🔔 come from its newest real message.
+  const [{ data: latest, error }, { data: threadStates, error: stateError }] = await Promise.all([
+    selectAll(() => supabaseAdmin.rpc('client_message_thread_latest').order('created_at', { ascending: false }).order('id')),
+    selectAll(() =>
+      supabaseAdmin
+        .from('client_message_thread_state')
+        .select('thread_key, last_read_at, flagged, assigned_staff_id, staff:assigned_staff_id(full_name)')
+        .order('thread_key')
+    ),
   ]);
 
   if (error) {
@@ -45,6 +51,19 @@ export async function GET() {
   if (stateError) {
     return NextResponse.json({ error: stateError.message }, { status: 500 });
   }
+
+  const clientIds = [...new Set((latest || []).map((r) => r.client_id).filter(Boolean))];
+  const clientsById = {};
+  for (let i = 0; i < clientIds.length; i += 200) {
+    const { data: clients } = await supabaseAdmin
+      .from('clients')
+      .select('id, full_name, client_number, phone')
+      .in('id', clientIds.slice(i, i + 200));
+    for (const c of clients || []) clientsById[c.id] = c;
+  }
+  const data = (latest || [])
+    .map((r) => ({ ...r, clients: r.client_id ? clientsById[r.client_id] || null : null }))
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 
   const stateByThread = Object.fromEntries((threadStates || []).map((s) => [s.thread_key, s]));
 
