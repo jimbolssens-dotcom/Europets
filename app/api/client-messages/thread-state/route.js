@@ -40,7 +40,17 @@ export async function GET(request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data || { thread_key: threadKey, last_read_at: null, flagged: false, assigned_staff_id: null });
+  // When staff last handed the conversation to the AI (migration 197),
+  // read on its own so the thread still loads if that column isn't there.
+  const { data: takeover } = await supabase
+    .from('client_message_thread_state')
+    .select('ai_takeover_at')
+    .eq('thread_key', threadKey)
+    .maybeSingle();
+  return NextResponse.json({
+    ...(data || { thread_key: threadKey, last_read_at: null, flagged: false, assigned_staff_id: null }),
+    ai_takeover_at: takeover?.ai_takeover_at || null,
+  });
 }
 
 export async function PATCH(request) {

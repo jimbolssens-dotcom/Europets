@@ -35,6 +35,8 @@ export default function ClientMessageThreadPage() {
   const [flagged, setFlagged] = useState(false);
   const [escalationReason, setEscalationReason] = useState(null); // why the AI handed this thread over (migration 186)
   const [aiAnswering, setAiAnswering] = useState(false);
+  // When staff handed this conversation to the AI (migration 197).
+  const [aiTakeoverAt, setAiTakeoverAt] = useState(null);
   const [assignedStaffId, setAssignedStaffId] = useState('');
   const [error, setError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
@@ -87,6 +89,7 @@ export default function ClientMessageThreadPage() {
       .then((data) => {
         setFlagged(Boolean(data?.flagged));
         setEscalationReason(data?.flagged ? data?.escalation_reason || null : null);
+        setAiTakeoverAt(data?.ai_takeover_at || null);
         setAssignedStaffId(data?.assigned_staff_id || '');
       });
   }, [id]);
@@ -96,7 +99,7 @@ export default function ClientMessageThreadPage() {
   // (POST /api/whatsapp/concierge-answer). If it still won't, its reason
   // shows next to the flag.
   async function askAiToAnswer() {
-    if (!confirm('Let the AI answer the latest WhatsApp message from this client?')) return;
+    if (!confirm('Hand this conversation to the AI? If the client is waiting it answers now; otherwise it takes over from their next message. Writing a message yourself takes it back.')) return;
     setAiAnswering(true);
     setError(null);
     const res = await fetch('/api/whatsapp/concierge-answer', {
@@ -107,10 +110,12 @@ export default function ClientMessageThreadPage() {
     const data = await res.json().catch(() => ({}));
     setAiAnswering(false);
     if (!res.ok) return setError(data.error || 'The AI could not answer.');
-    if (data.sent) {
+    if (data.takeover) {
+      setAiTakeoverAt(new Date().toISOString());
       setFlagged(false);
       setEscalationReason(null);
     } else {
+      setFlagged(true);
       setEscalationReason(data.reason);
     }
   }
@@ -284,6 +289,9 @@ export default function ClientMessageThreadPage() {
   // under the client message it didn't answer.
   const lastClientMessageId = [...messages].reverse().find((m) => m.sender === 'client')?.id;
 
+  // The AI is in charge until a member of staff writes after the takeover.
+  const aiHandling = Boolean(aiTakeoverAt) && !messages.some((m) => m.sender === 'staff' && new Date(m.created_at) > new Date(aiTakeoverAt));
+
   return (
     <div className="messages-thread-page">
       <div className="page-header">
@@ -312,12 +320,16 @@ export default function ClientMessageThreadPage() {
           {messages.some((m) => m.channel === 'whatsapp' && m.sender === 'client') && (
             <button
               type="button"
-              className="secondary"
+              className={aiHandling ? 'button-link' : 'secondary'}
               onClick={askAiToAnswer}
-              disabled={aiAnswering}
-              title="Let the AI concierge answer the client's latest WhatsApp message now"
+              disabled={aiAnswering || aiHandling}
+              title={
+                aiHandling
+                  ? 'The AI is handling this conversation. Writing a message yourself takes it back.'
+                  : 'Hand this conversation to the AI: it answers now if the client is waiting, otherwise from their next message'
+              }
             >
-              {aiAnswering ? 'AI answering…' : '🤖 AI answer'}
+              {aiAnswering ? 'Handing over…' : aiHandling ? '🤖 AI handling' : '🤖 AI take over'}
             </button>
           )}
           <select

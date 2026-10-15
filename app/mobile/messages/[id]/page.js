@@ -53,6 +53,8 @@ export default function MobileMessageThreadPage() {
   const [flagged, setFlagged] = useState(false);
   const [escalationReason, setEscalationReason] = useState(null); // why the AI handed this over (migration 186)
   const [aiAnswering, setAiAnswering] = useState(false);
+  // When staff handed this conversation to the AI (migration 197).
+  const [aiTakeoverAt, setAiTakeoverAt] = useState(null);
   const threadRef = useRef(null);
   const composerRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -120,6 +122,7 @@ export default function MobileMessageThreadPage() {
         setAssignedStaffId(data?.assigned_staff_id || '');
         setFlagged(Boolean(data?.flagged));
         setEscalationReason(data?.flagged ? data?.escalation_reason || null : null);
+        setAiTakeoverAt(data?.ai_takeover_at || null);
       });
 
     const channel = supabase
@@ -266,7 +269,7 @@ export default function MobileMessageThreadPage() {
 
   // Same as the desktop thread's "AI answer" (POST /api/whatsapp/concierge-answer).
   async function askAiToAnswer() {
-    if (!confirm('Let the AI answer the latest WhatsApp message from this client?')) return;
+    if (!confirm('Hand this conversation to the AI? If the client is waiting it answers now; otherwise it takes over from their next message. Writing a message yourself takes it back.')) return;
     setAiAnswering(true);
     setError(null);
     const res = await fetch('/api/whatsapp/concierge-answer', {
@@ -277,15 +280,20 @@ export default function MobileMessageThreadPage() {
     const data = await res.json().catch(() => ({}));
     setAiAnswering(false);
     if (!res.ok) return setError(data.error || 'The AI could not answer.');
-    if (data.sent) {
+    if (data.takeover) {
+      setAiTakeoverAt(new Date().toISOString());
       setFlagged(false);
       setEscalationReason(null);
     } else {
+      setFlagged(true);
       setEscalationReason(data.reason);
     }
   }
 
   if (loading || !staffReady) return <p className="mobile-loading">Loading...</p>;
+
+  // The AI is in charge until a member of staff writes after the takeover.
+  const aiHandling = Boolean(aiTakeoverAt) && !messages.some((m) => m.sender === 'staff' && new Date(m.created_at) > new Date(aiTakeoverAt));
 
   // The AI's reason for handing the thread over (migration 186) shows
   // under the client message it didn't answer.
@@ -321,12 +329,12 @@ export default function MobileMessageThreadPage() {
           <button
             type="button"
             onClick={askAiToAnswer}
-            disabled={aiAnswering}
-            className="mobile-messages-flag"
-            aria-label="Let the AI answer"
-            title="Let the AI concierge answer the client's latest WhatsApp message now"
+            disabled={aiAnswering || aiHandling}
+            className={`mobile-messages-flag${aiHandling ? ' on' : ''}`}
+            aria-label={aiHandling ? 'The AI is handling this conversation' : 'Hand this conversation to the AI'}
+            title={aiHandling ? 'The AI is handling this conversation. Writing a message yourself takes it back.' : 'Hand this conversation to the AI'}
           >
-            {aiAnswering ? '…' : '🤖'}
+            {aiAnswering ? '…' : aiHandling ? '🤖✓' : '🤖'}
           </button>
         )}
         <select
