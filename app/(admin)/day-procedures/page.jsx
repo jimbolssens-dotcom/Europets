@@ -23,6 +23,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 import { formatShortDate, formatDateTime } from '@/lib/formatTimestamp';
+import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -41,11 +42,20 @@ export default function DayProceduresPage() {
       .then((data) => {
         setDayProcedures(Array.isArray(data) ? data : []);
         setLoading(false);
+        if (Array.isArray(data)) writeViewCache('europets-day-procedures-v1', data);
       })
       .catch(() => {
         setError('Failed to load day procedures');
         setLoading(false);
       });
+
+  // The list as it last loaded, shown at once while the fresh one loads
+  // (lib/viewCache.js).
+  useRestoredView('europets-day-procedures-v1', (data) => {
+    if (!Array.isArray(data)) return;
+    setDayProcedures(data);
+    setLoading(false);
+  });
 
   async function deleteDayProcedure(d) {
     const patientLabel = `${d.patients?.name}${d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}`;

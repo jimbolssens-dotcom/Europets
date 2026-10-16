@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useVaccinations } from '@/app/_components/useVaccinations';
@@ -27,6 +27,7 @@ import PetAttributeField from '@/app/_components/PetAttributeField';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
 import { formatShortDate } from '@/lib/formatTimestamp';
 import { openWhatsApp } from '@/lib/whatsapp';
+import { readViewCacheEntry, writeViewCacheEntry } from '@/lib/viewCache';
 
 const SEX_LABELS = {
   male: 'Male',
@@ -67,7 +68,17 @@ export default function PatientDetailPage() {
       .then((data) => {
         setPatient(data);
         setLoading(false);
+        if (data && !data.error) writeViewCacheEntry('europets-patient-v1', id, data, 30);
       });
+
+  // This patient as they last loaded here, shown at once while the fresh
+  // copy loads (lib/viewCache.js; the last 30 patients opened are kept).
+  useLayoutEffect(() => {
+    const cached = readViewCacheEntry('europets-patient-v1', id);
+    if (!cached || cached.error) return;
+    setPatient(cached);
+    setLoading(false);
+  }, [id]);
 
   const loadStatusOverview = () =>
     fetch(`/api/patients/${id}/status-overview`)

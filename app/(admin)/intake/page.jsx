@@ -19,6 +19,7 @@ import BookingConfirmationNotices from '@/app/_components/BookingConfirmationNot
 import InfoHint from '@/app/_components/InfoHint';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { appOrigin } from '@/lib/appOrigin';
+import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 
 function formatDateTime(dateStr) {
   return new Date(dateStr).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -42,7 +43,16 @@ export default function IntakePage() {
       .then((data) => {
         setRequests(Array.isArray(data) ? data : []);
         setLoading(false);
+        if (Array.isArray(data)) writeViewCache('europets-intake-v1', data);
       });
+
+  // The list as it last loaded, shown at once while the fresh one loads
+  // (lib/viewCache.js).
+  useRestoredView('europets-intake-v1', (data) => {
+    if (!Array.isArray(data)) return;
+    setRequests(data);
+    setLoading(false);
+  });
 
   const {
     approvalRoom,

@@ -21,6 +21,7 @@ import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping
 import { formatShortDate, formatDateTime } from '@/lib/formatTimestamp';
 import { sendPaymentMessage } from '@/lib/sendPaymentMessageClient';
 import { openWhatsApp } from '@/lib/whatsapp';
+import { readViewCache, useRestoredView, writeViewCache } from '@/lib/viewCache';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -432,29 +433,51 @@ function InvoicesPageInner() {
   const [quotes, setQuotes] = useState([]);
   const [discardingQuoteId, setDiscardingQuoteId] = useState(null);
 
-  const loadInvoices = (status) =>
-    fetch(`/api/invoices${status ? `?status=${status}` : ''}`)
+  // Switching the filter quickly (or realtime reloads) can bring replies
+  // back out of order: only the newest request's answer is used.
+  const loadSeqRef = useRef(0);
+  const loadInvoices = (status) => {
+    const seq = ++loadSeqRef.current;
+    return fetch(`/api/invoices${status ? `?status=${status}` : ''}`)
       .then((res) => res.json())
       .then((data) => {
+        if (seq !== loadSeqRef.current) return;
         setInvoices(Array.isArray(data) ? data : []);
         setLoading(false);
+        if (Array.isArray(data)) writeViewCache(`europets-invoices-v1:${status}`, data);
       });
+  };
 
   // Proforma quotes have no status/payment concept of their own — kept as
   // a separate list entirely, fetched only while this filter is selected,
   // rather than forced through the paid/unpaid/void invoice shape.
-  const loadQuotes = () =>
-    fetch('/api/proforma-invoices')
+  const loadQuotes = () => {
+    const seq = ++loadSeqRef.current;
+    return fetch('/api/proforma-invoices')
       .then((res) => res.json())
       .then((data) => {
+        if (seq !== loadSeqRef.current) return;
         setQuotes(Array.isArray(data) ? data : []);
         setLoading(false);
+        if (Array.isArray(data)) writeViewCache('europets-invoices-v1:proforma', data);
       });
+  };
+
+  // This filter's list as it last loaded, shown at once while the fresh
+  // one loads (lib/viewCache.js).
+  const cacheKey = `europets-invoices-v1:${statusFilter}`;
+  useRestoredView(cacheKey, (data) => {
+    if (!Array.isArray(data)) return;
+    if (statusFilter === 'proforma') setQuotes(data);
+    else setInvoices(data);
+    setLoading(false);
+  });
 
   useEffect(() => {
-    setLoading(true);
+    if (readViewCache(cacheKey) == null) setLoading(true);
     if (statusFilter === 'proforma') loadQuotes();
     else loadInvoices(statusFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
   async function discardQuote(quoteId) {

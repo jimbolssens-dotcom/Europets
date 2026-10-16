@@ -12,10 +12,11 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import InfoHint from '@/app/_components/InfoHint';
 import { reminderEligibility } from '@/lib/vaccinationReminderPolicy';
+import { readViewCache, useRestoredView, writeViewCache } from '@/lib/viewCache';
 
 function daysUntil(dateStr) {
   const today = new Date();
@@ -79,16 +80,31 @@ export default function VaccinationsDuePage() {
   const [sendingKey, setSendingKey] = useState(null);
   const [sendResult, setSendResult] = useState(null); // { key, ok: boolean, message: string } | null
 
-  const load = () =>
-    fetch(`/api/vaccinations?due=true&within_days=${windowDays}`)
+  const cacheKey = `europets-vaccinations-due-v1:${windowDays}`;
+  const loadSeqRef = useRef(0);
+  const load = () => {
+    const seq = ++loadSeqRef.current;
+    return fetch(`/api/vaccinations?due=true&within_days=${windowDays}`)
       .then((res) => res.json())
       .then((data) => {
-        setRows(Array.isArray(data) ? data.filter((r) => !r.patients?.deceased && !r.patients?.rehomed) : []);
+        if (seq !== loadSeqRef.current) return;
+        const list = Array.isArray(data) ? data.filter((r) => !r.patients?.deceased && !r.patients?.rehomed) : [];
+        setRows(list);
         setLoading(false);
+        if (Array.isArray(data)) writeViewCache(cacheKey, list);
       });
+  };
+
+  // This window's list as it last loaded, shown at once while the fresh
+  // one loads (lib/viewCache.js).
+  useRestoredView(cacheKey, (data) => {
+    if (!Array.isArray(data)) return;
+    setRows(data);
+    setLoading(false);
+  });
 
   useEffect(() => {
-    setLoading(true);
+    if (readViewCache(cacheKey) == null) setLoading(true);
     load();
 
     const channel = supabase

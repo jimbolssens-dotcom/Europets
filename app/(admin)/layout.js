@@ -4,6 +4,7 @@ import AutoScreenSwitcher from '@/app/_components/AutoScreenSwitcher';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
+import InAppLinks from '../_components/InAppLinks';
 import DiscoveryMode from '../_components/DiscoveryMode';
 import { useHospitalizationUpdatePending } from '../_components/useHospitalizationUpdatePending';
 import { useCatteryAlarm } from '../_components/useCatteryAlarm';
@@ -204,6 +205,7 @@ export default function AdminLayout({ children }) {
   return (
     <>
       <AppVersionWatcher />
+      <InAppLinks />
       <nav ref={navRef} className={`topnav${logoAlone ? ' topnav-logo-alone' : ''}`}>
         <a href="/" className="brand">
           <img src="/logo.png" alt="Europets Clinic" />

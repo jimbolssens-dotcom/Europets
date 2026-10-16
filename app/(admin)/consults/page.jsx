@@ -9,6 +9,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 import SearchSelect from '@/app/_components/SearchSelect';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import { formatDateTime } from '@/lib/formatTimestamp';
@@ -48,7 +49,20 @@ function ConsultsPageInner() {
       .then((data) => {
         setConsults(Array.isArray(data) ? data : []);
         setLoading(false);
+        if (Array.isArray(data)) writeViewCache('europets-consults-v1', data);
       });
+
+  // The list as it last loaded, shown at once while the fresh one loads
+  // (lib/viewCache.js).
+  useRestoredView('europets-consults-v1', (data) => {
+    if (!Array.isArray(data)) return;
+    setConsults(data);
+    setLoading(false);
+  });
+  useRestoredView('europets-consults-rooms-staff-v1', (data) => {
+    if (Array.isArray(data?.rooms)) setRooms(data.rooms);
+    if (Array.isArray(data?.staff)) setStaff(data.staff);
+  });
 
   useEffect(() => {
     loadConsults();
@@ -58,6 +72,9 @@ function ConsultsPageInner() {
     ]).then(([roomsData, staffData]) => {
       setRooms(Array.isArray(roomsData) ? roomsData : []);
       setStaff(Array.isArray(staffData) ? staffData : []);
+      if (Array.isArray(roomsData) && Array.isArray(staffData)) {
+        writeViewCache('europets-consults-rooms-staff-v1', { rooms: roomsData, staff: staffData });
+      }
     });
 
     const channel = supabase

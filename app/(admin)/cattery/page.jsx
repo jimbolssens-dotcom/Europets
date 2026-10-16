@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabaseClient';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import CatteryPlanner from '@/app/_components/CatteryPlanner';
 import CatteryRequestReview from '@/app/_components/CatteryRequestReview';
+import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 import {
   CATTERY_SPACES,
   DEFAULT_DEWORMING_PRODUCT,
@@ -81,14 +82,31 @@ function CatteryPageInner() {
 
   // The planner range plus anything still checked in today, so the
   // weight alarm below covers every cat in the cattery.
+  const from = start < today ? start : today;
+  const cacheKey = `europets-cattery-v1:${from}:${end}`;
+  // These dates as they last loaded, shown at once while the fresh copy
+  // loads (lib/viewCache.js).
+  useRestoredView(cacheKey, (data) => {
+    if (Array.isArray(data)) setBookings(data);
+  });
+
   useEffect(() => {
     setLoading(true);
-    const from = start < today ? start : today;
+    let current = true;
     fetch(`/api/cattery?from=${from}&to=${end}`, { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data) => setBookings(Array.isArray(data) ? data : []))
-      .finally(() => setLoading(false));
-  }, [refreshTick, start, end, today]);
+      .then((data) => {
+        if (!current) return;
+        setBookings(Array.isArray(data) ? data : []);
+        if (Array.isArray(data)) writeViewCache(cacheKey, data);
+      })
+      .finally(() => {
+        if (current) setLoading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [refreshTick, from, end, cacheKey]);
 
   useEffect(() => {
     const channel = supabase

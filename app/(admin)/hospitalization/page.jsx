@@ -25,6 +25,7 @@ import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import InfoHint from '@/app/_components/InfoHint';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 import { formatDateTime } from '@/lib/formatTimestamp';
+import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 
 const DRAG_THRESHOLD = 6;
 // Touch only: staff scrolling the cage wall on an iPad/phone kept
@@ -159,11 +160,29 @@ export default function HospitalizationPage() {
         setAdmissions(Array.isArray(data) ? data : []);
         setCagedDayProcedures((Array.isArray(dayProcs) ? dayProcs : []).filter((d) => d.cage_id));
         setLoading(false);
+        if (Array.isArray(data)) {
+          writeViewCache('europets-hospitalization-v1', {
+            admissions: data,
+            dayProcedures: (Array.isArray(dayProcs) ? dayProcs : []).filter((d) => d.cage_id),
+          });
+        }
       })
       .catch(() => {
         setError('Failed to load the hospitalization list');
         setLoading(false);
       });
+
+  // The ward as it last loaded, shown at once while the fresh copy loads
+  // (lib/viewCache.js).
+  useRestoredView('europets-hospitalization-v1', (data) => {
+    if (!Array.isArray(data?.admissions)) return;
+    setAdmissions(data.admissions);
+    setCagedDayProcedures(Array.isArray(data.dayProcedures) ? data.dayProcedures : []);
+    setLoading(false);
+  });
+  useRestoredView('europets-hospitalization-cages-v1', (data) => {
+    if (Array.isArray(data)) setCages(data);
+  });
 
   useEffect(() => {
     loadAdmissions();
@@ -172,6 +191,7 @@ export default function HospitalizationPage() {
       .then((cagesData) => {
         if (Array.isArray(cagesData)) {
           setCages(cagesData);
+          writeViewCache('europets-hospitalization-cages-v1', cagesData);
         } else {
           setCages([]);
           setError(cagesData?.error || 'Failed to load the cage layout');

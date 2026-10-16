@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import ClientPhonesEditor, { initialPhoneRow, toEditableRow } from '@/app/_components/ClientPhonesEditor';
@@ -18,6 +18,7 @@ import { formatShortDate } from '@/lib/formatTimestamp';
 import { appOrigin } from '@/lib/appOrigin';
 import { DEFAULT_LEGACY_PAYMENT_METHODS } from '@/lib/legacyPayments';
 import { nextReminderDate, stageShort } from '@/lib/reminderStages';
+import { readViewCacheEntry, writeViewCacheEntry } from '@/lib/viewCache';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -129,7 +130,21 @@ export default function ClientDetailPage() {
       setPatients(Array.isArray(patientsData) ? patientsData : []);
       setInvoices(Array.isArray(invoicesData) ? invoicesData : []);
       setLoading(false);
+      if (clientData && !clientData.error && Array.isArray(patientsData) && Array.isArray(invoicesData)) {
+        writeViewCacheEntry('europets-client-v1', id, { client: clientData, patients: patientsData, invoices: invoicesData }, 30);
+      }
     });
+
+  // This client as they last loaded here, shown at once while the fresh
+  // copy loads (lib/viewCache.js; the last 30 clients opened are kept).
+  useLayoutEffect(() => {
+    const cached = readViewCacheEntry('europets-client-v1', id);
+    if (!cached?.client) return;
+    setClient(cached.client);
+    setPatients(Array.isArray(cached.patients) ? cached.patients : []);
+    setInvoices(Array.isArray(cached.invoices) ? cached.invoices : []);
+    setLoading(false);
+  }, [id]);
 
   useEffect(() => {
     load();
