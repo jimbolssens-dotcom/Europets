@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { CLIENT_APPOINTMENT_TYPE_LABELS } from '@/lib/appointmentBooking';
+import IntakeMessageButton from '@/app/_components/IntakeMessageButton';
 
 function formatDateTime(dateStr) {
   return new Date(dateStr).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -234,6 +235,7 @@ export default function IntakeReviewCard({
         >
           {reviewing?.id === r.id && reviewing.action === 'reject' ? 'Rejecting...' : 'Reject'}
         </button>
+        {!r.client_id && r.phone && <IntakeMessageButton phone={r.phone} name={r.full_name} />}
       </div>
     </div>
   );
