@@ -209,8 +209,7 @@ export default function AdminLayout({ children }) {
           <img src="/logo.png" alt="Europets Clinic" />
         </a>
         <div className="topnav-links">
-          <a href="/search">Search</a>
-          <a href="/add">Add</a>
+          <a href="/clients">Clients</a>
           <a
             href="/messages"
             className={hasPendingClientMessage || hasPendingInviteRequest ? 'nav-update-requested' : ''}

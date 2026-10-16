@@ -439,7 +439,7 @@ export default function ClientDetailPage() {
   return (
     <div>
       <p>
-        <a href="/search">&larr; Back to Search</a>
+        <a href="/clients">&larr; Clients</a>
       </p>
       <h1>
         {client.full_name} <span>(Client #{client.client_number})</span>

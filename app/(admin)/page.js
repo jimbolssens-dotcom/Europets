@@ -5,8 +5,7 @@ export default function HomePage() {
       <h1>Europets Clinic</h1>
       <p>Manage clients, patients, appointments, consults, hospitalization, and invoicing.</p>
       <div className="home-links">
-        <a href="/search">Search</a>
-        <a href="/add">Add</a>
+        <a href="/clients">Clients</a>
         <a href="/appointments">Appointments</a>
         <a href="/consults">Consults</a>
         <a href="/hospitalization">Hospitalization</a>

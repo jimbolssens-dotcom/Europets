@@ -1,6 +1,6 @@
 // app/add/page.jsx
-// The Add tab — a normal page like every other nav tab (Invite,
-// Appointments, ...), not a dropdown over whatever page you were on.
+// Adding a client or patient, reached from the Clients tab's "➕ Add
+// client / patient" button (it used to be its own Add nav tab).
 // Add Client and Add Patient side by side, same fields and behavior as
 // the full forms on the Clients/Patients pages (multi-phone editor,
 // Emirates ID scan, duplicate detection for the client; owner/species/
@@ -207,7 +207,12 @@ function AddPageContent() {
 
   return (
     <div>
-      <h1>Add</h1>
+      <div className="page-header">
+        <h1>Add</h1>
+        <div className="page-header-actions">
+          <a href="/clients" className="button-link">← Clients</a>
+        </div>
+      </div>
       <div className="two-col">
         <form className="card" onSubmit={handleClientSubmit}>
           <h2>Add Client</h2>
