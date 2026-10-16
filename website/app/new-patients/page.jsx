@@ -37,9 +37,10 @@ export default function NewPatientsPage() {
               <div>
                 <strong>Log in any time after</strong>
                 <span>
-                  The same WhatsApp number you registered with gets you into the{' '}
-                  <a href={CLIENT_PORTAL_URL}>client portal</a> — your pet&apos;s records, invoices, and
-                  appointments, whenever you need them.
+                  The mobile number you registered with gets you into the{' '}
+                  <a href={CLIENT_PORTAL_URL}>client portal</a>: your pet&apos;s records, invoices, and
+                  appointments, whenever you need them. Your login code comes by WhatsApp, or by email if you
+                  don&apos;t use WhatsApp.
                 </span>
               </div>
             </li>

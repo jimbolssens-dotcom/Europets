@@ -66,11 +66,12 @@ export default function ContactPage() {
 
       <div className="container">
         <p className="page-lede" style={{ marginTop: '2rem', marginBottom: 0 }}>
-          That&apos;s the same WhatsApp number that texts you a login code for the{' '}
+          Log in to the{' '}
           <a href={CLIENT_PORTAL_URL} className="text-link" style={{ marginTop: 0, display: 'inline' }}>
             client portal
-          </a>
-          , where you can see your pet&apos;s records, invoices, and appointments any time.
+          </a>{' '}
+          with the mobile number we have on file for you, to see your pet&apos;s records, invoices, and appointments any
+          time. Your login code comes by WhatsApp, or by email if you don&apos;t use WhatsApp.
         </p>
       </div>
     </div>
