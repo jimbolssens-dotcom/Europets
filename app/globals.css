@@ -11727,3 +11727,22 @@ button.patient-chip-age-missing {
 .intake-message-compose-row select {
   flex: 1 1 10rem;
 }
+
+/* The status actions wrap rather than squash; "Remove from schedule"
+   deletes outright, so it's in red. */
+.modal-actions-status {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.modal-actions-status button {
+  white-space: nowrap;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.9rem;
+}
+.modal-actions .modal-remove-btn {
+  margin-right: auto;
+}
+.modal-actions button.secondary.danger {
+  color: #c62828;
+  border-color: #c62828;
+}

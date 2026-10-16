@@ -1,12 +1,13 @@
 // app/api/appointments/[id]/route.js
 // DELETE /api/appointments/:id
-//   -> permanently remove a cancelled/no-show appointment — the "ghost"
-//      slot it otherwise leaves behind can't be booked over or dragged
-//      out of the way (see the Appointments page's click-through
-//      handling for that), so once it's cancelled, deleting it outright
-//      is the other way to clear it. Refuses on anything still
-//      active/completed — that's real schedule history, Cancel it
-//      instead, never delete.
+//   -> permanently remove an appointment from the schedule: a cancelled
+//      or no-show one (clearing its greyed-out "ghost" block), or a still
+//      booked one made by mistake (a double booking), straight from the
+//      Edit Appointment window. Refuses once the patient has been taken
+//      in (checked in / in progress / complete, or a consult or day
+//      procedure already opened from it): that's real history. A
+//      registration request that booked it is detached first, so the
+//      request itself stays on file.
 // PATCH /api/appointments/:id
 //   { status }                                    -> status-only update
 //     (check-in, cancel, etc. — unchanged behavior)
@@ -51,11 +52,30 @@ export async function DELETE(request, { params }) {
   if (currentError || !current) {
     return NextResponse.json({ error: 'appointment not found' }, { status: 404 });
   }
-  if (current.status !== 'cancelled' && current.status !== 'no_show') {
+  if (!['booked', 'cancelled', 'no_show'].includes(current.status)) {
     return NextResponse.json(
-      { error: 'Only a cancelled or no-show appointment can be deleted — cancel it first.' },
+      { error: 'This appointment has already been checked in, so it stays on the record. Cancel it instead.' },
       { status: 409 }
     );
+  }
+
+  const [{ data: visits }, { data: admissions }] = await Promise.all([
+    supabaseAdmin.from('visits').select('id').eq('appointment_id', params.id).limit(1),
+    supabaseAdmin.from('hospitalizations').select('id').eq('appointment_id', params.id).limit(1),
+  ]);
+  if ((visits || []).length || (admissions || []).length) {
+    return NextResponse.json(
+      { error: 'A consult or day procedure was already opened from this appointment, so it stays on the record. Cancel it instead.' },
+      { status: 409 }
+    );
+  }
+
+  const { error: detachError } = await supabaseAdmin
+    .from('intake_requests')
+    .update({ appointment_id: null })
+    .eq('appointment_id', params.id);
+  if (detachError) {
+    return NextResponse.json({ error: detachError.message }, { status: 500 });
   }
 
   const { error } = await supabaseAdmin.from('appointments').delete().eq('id', params.id);

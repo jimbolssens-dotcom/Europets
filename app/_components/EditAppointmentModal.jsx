@@ -20,7 +20,7 @@ function toHHMMLocal(d) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export default function EditAppointmentModal({ appointment, rooms, vets, staffList = [], onClose, onSave }) {
+export default function EditAppointmentModal({ appointment, rooms, vets, staffList = [], onClose, onSave, onDelete }) {
   const startDate = new Date(appointment.start_time);
 
   const [ownerId, setOwnerId] = useState(appointment.client_id);
@@ -88,6 +88,19 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
     setSubmitting(true);
     setError(null);
     const result = await onSave({ status });
+    setSubmitting(false);
+    if (result?.error) setError(result.error);
+  }
+
+  // Gone from the schedule altogether, e.g. a double booking made by
+  // mistake, rather than left greyed out like a cancellation. Only before
+  // the patient is taken in (DELETE /api/appointments/:id checks too).
+  const canRemove = onDelete && ['booked', 'cancelled', 'no_show'].includes(appointment.status);
+  async function handleRemove() {
+    if (!confirm('Remove this appointment completely? It disappears from the schedule and from the client\u2019s record. Use Cancel instead to keep a record of it.')) return;
+    setSubmitting(true);
+    setError(null);
+    const result = await onDelete();
     setSubmitting(false);
     if (result?.error) setError(result.error);
   }
@@ -234,7 +247,7 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
             disabled={submitting}
             data-discover="Marks this appointment as a no-show right away — saves immediately, doesn't wait for the Save button below."
           >
-            🚫 Mark No-Show
+            🚫 No-Show
           </button>
           <button
             type="button"
@@ -243,11 +256,22 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
             disabled={submitting}
             data-discover="Cancels this appointment right away — saves immediately, doesn't wait for the Save button below."
           >
-            ✖️ Cancel Appointment
+            ✖️ Cancel
           </button>
         </div>
 
         <div className="modal-actions">
+          {canRemove && (
+            <button
+              type="button"
+              className="secondary danger modal-remove-btn"
+              onClick={handleRemove}
+              disabled={submitting}
+              data-discover="Deletes this appointment completely, e.g. a double booking made by mistake: it disappears from the schedule instead of staying greyed out. Not possible once the patient has been checked in."
+            >
+              🗑️ Remove
+            </button>
+          )}
           <button type="button" className="secondary" onClick={onClose} disabled={submitting} data-discover="Closes this form without saving any of the changes made above.">
             Close
           </button>
