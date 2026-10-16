@@ -55,6 +55,10 @@ export default function ClientAppHomePage() {
   // app/api/client-app/auth/request-code/route.js) — shows the code
   // directly instead of leaving no way to log in.
   const [devCode, setDevCode] = useState(null);
+  // Where the code went: 'whatsapp', or 'email' (owners without WhatsApp,
+  // see app/api/client-app/auth/request-code) with the masked address(es).
+  const [codeChannel, setCodeChannel] = useState('whatsapp');
+  const [codeSentTo, setCodeSentTo] = useState([]);
 
   const [client, setClient] = useState(null);
   const [openAdmissions, setOpenAdmissions] = useState([]);
@@ -231,8 +235,8 @@ export default function ClientAppHomePage() {
     }
   }
 
-  async function handlePhoneSubmit(e) {
-    e.preventDefault();
+  async function handlePhoneSubmit(e, channel = 'whatsapp') {
+    e?.preventDefault();
     const digits = normalizePhoneDigits(phoneInput);
     if (digits.length < 12) {
       setError('Enter a valid phone number.');
@@ -244,13 +248,15 @@ export default function ClientAppHomePage() {
       const res = await fetch('/api/client-app/auth/request-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: digits }),
+        body: JSON.stringify({ phone: digits, channel }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Something went wrong.');
       setPhoneDigits(digits);
       setCodeInput('');
       setDevCode(data.devCode || null);
+      setCodeChannel(data.channel || 'whatsapp');
+      setCodeSentTo(data.sentTo || []);
       setStep('code');
     } catch (err) {
       setError(err.message);
@@ -312,6 +318,8 @@ export default function ClientAppHomePage() {
     setCodeInput('');
     setVerifiedPhoneToken(null);
     setDevCode(null);
+    setCodeChannel('whatsapp');
+    setCodeSentTo([]);
   }
 
   // Same "start a fresh intake request, open its portal link" flow as
@@ -342,6 +350,10 @@ export default function ClientAppHomePage() {
   if (!ready) return null;
 
   if (!clientId) {
+    const codeIntro =
+      codeChannel === 'email'
+        ? `Enter the code we emailed to ${codeSentTo.join(', ') || 'the email address on file'}.`
+        : 'Enter the code sent to your WhatsApp.';
     const loginForm =
       step === 'phone' ? (
         <form onSubmit={handlePhoneSubmit} className="client-app-login-form">
@@ -355,7 +367,10 @@ export default function ClientAppHomePage() {
             autoFocus
           />
           <button type="submit" disabled={submitting}>
-            {submitting ? 'Sending code...' : 'Send code'}
+            {submitting ? 'Sending code...' : 'Send code by WhatsApp'}
+          </button>
+          <button type="button" className="mobile-link-btn" disabled={submitting} onClick={() => handlePhoneSubmit(null, 'email')}>
+            No WhatsApp? Email me the code
           </button>
         </form>
       ) : step === 'code' ? (
@@ -391,14 +406,12 @@ export default function ClientAppHomePage() {
             </div>
             <p className="mobile-subtitle client-app-login-intro">
               {step === 'code'
-                ? `Enter the code sent to your WhatsApp.`
+                ? codeIntro
                 : 'Enter the phone number on file with the clinic to see your pets, invoices, and appointments.'}
             </p>
             {step === 'phone' && (
               <p className="client-app-login-note">
-                This must be the WhatsApp number the clinic has on file for you — that&apos;s where your
-                code goes. Can&apos;t log in? Contact the clinic to confirm or update the number on your
-                account.
+                This must be the mobile number the clinic has on file for you. The code comes by WhatsApp, or by email if you choose. Can&apos;t log in? Contact the clinic to confirm or update your details.
               </p>
             )}
             {step === 'code' && devCode && (
@@ -408,9 +421,16 @@ export default function ClientAppHomePage() {
             )}
             {loginForm}
             {step === 'code' && (
-              <button type="button" className="mobile-link-btn" onClick={resetToPhoneStep}>
-                Change number
-              </button>
+              <div className="client-app-login-alt-row">
+                <button type="button" className="mobile-link-btn" onClick={resetToPhoneStep}>
+                  Change number
+                </button>
+                {codeChannel === 'whatsapp' && (
+                  <button type="button" className="mobile-link-btn" disabled={submitting} onClick={() => handlePhoneSubmit(null, 'email')}>
+                    Email me the code
+                  </button>
+                )}
+              </div>
             )}
           </>
         ) : (
@@ -424,14 +444,12 @@ export default function ClientAppHomePage() {
                 <p className="client-app-login-eyebrow">Client Portal</p>
                 <p className="mobile-subtitle client-app-login-intro">
                   {step === 'code'
-                    ? `Enter the code sent to your WhatsApp.`
+                    ? codeIntro
                     : 'Enter the phone number on file with the clinic to see your pets, invoices, and appointments.'}
                 </p>
                 {step === 'phone' && (
                   <p className="client-app-login-note">
-                    This must be the WhatsApp number the clinic has on file for you — that&apos;s where
-                    your code goes. Can&apos;t log in? Contact the clinic to confirm or update the number
-                    on your account.
+                    This must be the mobile number the clinic has on file for you. The code comes by WhatsApp, or by email if you choose. Can&apos;t log in? Contact the clinic to confirm or update your details.
                   </p>
                 )}
                 {step === 'code' && devCode && (
@@ -441,9 +459,16 @@ export default function ClientAppHomePage() {
                 )}
                 {loginForm}
                 {step === 'code' && (
-                  <button type="button" className="mobile-link-btn" onClick={resetToPhoneStep}>
-                    Change number
-                  </button>
+                  <div className="client-app-login-alt-row">
+                    <button type="button" className="mobile-link-btn" onClick={resetToPhoneStep}>
+                      Change number
+                    </button>
+                    {codeChannel === 'whatsapp' && (
+                      <button type="button" className="mobile-link-btn" disabled={submitting} onClick={() => handlePhoneSubmit(null, 'email')}>
+                        Email me the code
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

@@ -11657,3 +11657,21 @@ button.patient-chip-age-missing {
 .client-app-report-text .consent-warning {
   color: #ff7eb3;
 }
+
+/* Client app login: "Change number" and "Email me the code instead" side
+   by side under the code box. */
+.client-app-login-alt-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.25rem;
+  align-items: center;
+  margin: 0.75rem auto 0;
+}
+.client-app-login-alt-row .mobile-link-btn,
+.client-app-login-form .mobile-link-btn {
+  width: auto;
+  flex: 0 0 auto;
+  margin: 0;
+  align-self: center;
+}
