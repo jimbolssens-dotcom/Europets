@@ -1,30 +1,33 @@
 'use client';
 
-// The per-device on/off for AutoScreenSwitcher: a small chip, off by
-// default. Stored only in this browser (lib/screenModeSwitch.js), so
-// turning it on affects this phone and nothing else.
+// Shows ONLY on a device where the fold auto-switch is already on (see
+// lib/screenModeSwitch.js), as a small "on · turn off" chip. Nobody else
+// ever sees it: the switch is turned on with a private link
+// (?fold-switch=on, handled by AutoScreenSwitcher), not from a button
+// staff would see on their own phones.
 
 import { useEffect, useState } from 'react';
 import { autoSwitchEnabled, setAutoSwitch } from '@/lib/screenModeSwitch';
 
 export default function AutoScreenSwitchToggle({ className = '' }) {
   const [on, setOn] = useState(false);
-  useEffect(() => setOn(autoSwitchEnabled()), []);
+  useEffect(() => {
+    const sync = () => setOn(autoSwitchEnabled());
+    sync();
+    window.addEventListener('europets-auto-switch-changed', sync);
+    return () => window.removeEventListener('europets-auto-switch-changed', sync);
+  }, []);
 
+  if (!on) return null;
   return (
-    <label
+    <span
       className={`auto-screen-switch-toggle ${className}`.trim()}
-      title="For a foldable phone: the cover screen shows the mobile app, unfolded shows the desktop one. Only on this device."
+      title="This phone switches to the mobile app on the cover screen and the desktop app when unfolded."
     >
-      <input
-        type="checkbox"
-        checked={on}
-        onChange={(e) => {
-          setAutoSwitch(e.target.checked);
-          setOn(e.target.checked);
-        }}
-      />
-      📐 Fold auto-switch (this device)
-    </label>
+      📐 Fold switch on ·{' '}
+      <button type="button" className="mobile-link-btn" onClick={() => setAutoSwitch(false)}>
+        turn off
+      </button>
+    </span>
   );
 }
