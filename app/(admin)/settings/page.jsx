@@ -4,6 +4,7 @@
 
 'use client';
 
+import AutoScreenSwitchToggle from '@/app/_components/AutoScreenSwitchToggle';
 import { useEffect, useState } from 'react';
 import InfoHint from '@/app/_components/InfoHint';
 
@@ -88,7 +89,12 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h1>Clinic Settings</h1>
+      <div className="page-header">
+        <h1>Clinic Settings</h1>
+        <div className="page-header-actions">
+          <AutoScreenSwitchToggle />
+        </div>
+      </div>
 
       <h2>
         Rooms &amp; Staff{' '}

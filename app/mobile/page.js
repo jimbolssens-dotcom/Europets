@@ -26,6 +26,7 @@ import { useEffect, useState } from 'react';
 import MobileCleanerTabs from '@/app/_components/MobileCleanerTabs';
 import { useCatteryAlarm } from '@/app/_components/useCatteryAlarm';
 import StaffPushOptIn, { StaffPushBell, useStaffPush } from '@/app/_components/StaffPushOptIn';
+import AutoScreenSwitchToggle from '@/app/_components/AutoScreenSwitchToggle';
 import CleanerLanguageToggle from '@/app/_components/CleanerLanguageToggle';
 import { useCleanerLanguage } from '@/app/_components/useCleanerLanguage';
 import { useHospitalizationUpdatePending } from '@/app/_components/useHospitalizationUpdatePending';
@@ -117,9 +118,12 @@ export default function MobileHomePage() {
             {!isCleaner && <StaffPushBell push={push} />}
           </div>
           {!isCleaner && push.subscribed && push.error && <p className="client-app-login-error">{push.error}</p>}
-          <button type="button" className="mobile-link-btn" onClick={switchStaff}>
-            {t('Switch', useSinhala)}
-          </button>
+          <div className="mobile-home-switch-row">
+            <button type="button" className="mobile-link-btn" onClick={switchStaff}>
+              {t('Switch', useSinhala)}
+            </button>
+            {!isCleaner && <AutoScreenSwitchToggle />}
+          </div>
 
           {!isCleaner && <StaffPushOptIn push={push} />}
 

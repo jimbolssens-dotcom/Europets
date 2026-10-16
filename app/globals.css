@@ -11746,3 +11746,25 @@ button.patient-chip-age-missing {
   color: #c62828;
   border-color: #c62828;
 }
+
+/* Fold auto-switch (app/_components/AutoScreenSwitchToggle.jsx): a small
+   per-device chip, beside "Switch" on the mobile home screen and in the
+   Settings header. */
+.mobile-home-switch-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+.auto-screen-switch-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.auto-screen-switch-toggle input {
+  width: auto;
+  margin: 0;
+}

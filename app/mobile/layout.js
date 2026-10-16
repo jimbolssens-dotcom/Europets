@@ -20,6 +20,7 @@ import AppVersionWatcher from '@/app/_components/AppVersionWatcher';
 import CultureReminderBanner from '@/app/_components/CultureReminderBanner';
 import MobileBodyFillToggle from '@/app/_components/MobileBodyFillToggle';
 import MobileRosterGate from '@/app/_components/MobileRosterGate';
+import AutoScreenSwitcher from '@/app/_components/AutoScreenSwitcher';
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -48,6 +49,7 @@ export default function MobileLayout({ children }) {
       <CultureReminderBanner />
       <MobileBodyFillToggle />
       <MobileRosterGate />
+      <AutoScreenSwitcher />
       {children}
     </div>
   );

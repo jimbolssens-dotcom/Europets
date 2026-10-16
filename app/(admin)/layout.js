@@ -1,5 +1,6 @@
 'use client';
 
+import AutoScreenSwitcher from '@/app/_components/AutoScreenSwitcher';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
@@ -341,6 +342,7 @@ export default function AdminLayout({ children }) {
           applying on a browser/webview that doesn't support :has() — that
           failure mode is worse than no fill at all, since it also drops
           the message list's max-height cap, leaving a very tall page. */}
+      <AutoScreenSwitcher />
       <main className={pathname?.startsWith('/messages/') ? 'content content-fill' : 'content'}>{children}</main>
     </>
   );
