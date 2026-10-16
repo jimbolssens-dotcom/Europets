@@ -11698,3 +11698,14 @@ button.patient-chip-age-missing {
   width: auto;
   margin: 0;
 }
+
+/* A video a client sent over WhatsApp, played right in the thread. */
+.portal-chat-bubble-video {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  max-height: 360px;
+  border-radius: 8px;
+  margin-bottom: 0.3rem;
+  background: #000;
+}

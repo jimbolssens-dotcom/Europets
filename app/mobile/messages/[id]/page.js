@@ -248,7 +248,7 @@ export default function MobileMessageThreadPage() {
       await postReply({
         body: draft.trim(),
         media_url: url,
-        media_type: contentType.startsWith('image/') ? 'image' : 'file',
+        media_type: contentType.startsWith('image/') ? 'image' : contentType.startsWith('video/') ? 'video' : 'file',
         media_name: name,
       });
     } catch (err) {
@@ -369,6 +369,8 @@ export default function MobileMessageThreadPage() {
                 <audio controls src={m.media_url} className="portal-chat-bubble-audio" />
                 {m.transcript && <p className="voice-note-transcript">🎤 {m.transcript}</p>}
               </>
+            ) : m.media_url && m.media_type === 'video' ? (
+              <video controls playsInline preload="metadata" src={m.media_url} className="portal-chat-bubble-video" />
             ) : (
               m.media_url && (
                 <a href={m.media_url} target="_blank" rel="noopener noreferrer">

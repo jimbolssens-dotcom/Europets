@@ -63,6 +63,7 @@ function extractBody(message) {
   if (message.type === 'text') return message.text?.body || '';
   if (message.type === 'image') return message.image?.caption || '';
   if (message.type === 'document') return message.document?.caption || '';
+  if (message.type === 'video') return message.video?.caption || '';
   if (message.type === 'sticker' || message.type === 'audio') return '';
   if (message.type === 'button') return message.button?.text || '[button reply]';
   if (message.type === 'interactive') {
@@ -108,6 +109,8 @@ const INBOUND_MEDIA_TYPES = {
   sticker: { field: 'sticker', mediaType: 'image' },
   document: { field: 'document', mediaType: 'file' },
   audio: { field: 'audio', mediaType: 'audio' },
+  // Played inline in the thread (<video>), like a voice note's <audio>.
+  video: { field: 'video', mediaType: 'video' },
 };
 
 // Downloads a photo/sticker/document/voice-note a client sent and
@@ -124,7 +127,8 @@ async function downloadInboundMedia(message) {
   if (!media?.id) return {};
   try {
     const { buffer, mimeType } = await downloadWhatsAppMedia(media.id);
-    const ext = mimeType.split('/')[1]?.split(';')[0] || (spec.mediaType === 'file' ? 'bin' : 'jpg');
+    const ext =
+      mimeType.split('/')[1]?.split(';')[0] || (spec.mediaType === 'file' ? 'bin' : spec.mediaType === 'video' ? 'mp4' : 'jpg');
     const path = `whatsapp/${message.id}.${ext}`;
     const { error: uploadError } = await supabaseAdmin.storage
       .from('consult-files')
