@@ -12,12 +12,20 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { uploadClientMessageMedia } from '@/lib/attachments';
 import FileToRecordButton from '@/app/_components/FileToRecordButton';
+import { readViewCache, writeViewCache, readViewCacheEntry, writeViewCacheEntry } from '@/lib/viewCache';
+
+// The thread as it last loaded in this browser (client, newest messages,
+// flag/assignee), painted straight away on the next visit while the fresh
+// copy loads (lib/viewCache.js). The last 20 threads opened are kept.
+const THREAD_CACHE_PREFIX = 'europets-messages-thread-v1';
+const THREAD_CACHE_MESSAGES = 60;
+const STAFF_CACHE_KEY = 'europets-staff-v1';
 
 export default function ClientMessageThreadPage() {
   const { id } = useParams();
@@ -44,20 +52,54 @@ export default function ClientMessageThreadPage() {
   const cameraInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  // Before the first paint: the last copy of this thread, if there is one.
+  useLayoutEffect(() => {
+    const cachedStaff = readViewCache(STAFF_CACHE_KEY);
+    if (Array.isArray(cachedStaff)) setStaff(cachedStaff);
+    const cached = readViewCacheEntry(THREAD_CACHE_PREFIX, id);
+    if (cached && Array.isArray(cached.messages)) {
+      setClient(cached.client || null);
+      setMessages(cached.messages);
+      setFlagged(Boolean(cached.flagged));
+      setEscalationReason(cached.escalationReason || null);
+      setAiTakeoverAt(cached.aiTakeoverAt || null);
+      setAssignedStaffId(cached.assignedStaffId || '');
+      setLoading(false);
+    } else {
+      setClient(null);
+      setMessages([]);
+      setLoading(true);
+    }
+  }, [id]);
+
+  // Realtime fires a reload for every change, so replies can come back
+  // out of order (or for a thread already left): only the newest is used.
+  const loadSeqRef = useRef(0);
+
   useEffect(() => {
     setChannelOverride(null);
-    const loadMessages = () =>
-      fetch(`/api/clients/${id}/messages`)
+    let cancelled = false;
+    const loadMessages = () => {
+      const seq = ++loadSeqRef.current;
+      return fetch(`/api/clients/${id}/messages`)
         .then((res) => res.json())
-        .then((data) => setMessages(Array.isArray(data) ? data : []));
+        .then((data) => {
+          if (!cancelled && seq === loadSeqRef.current && Array.isArray(data)) setMessages(data);
+        })
+        .catch(() => {});
+    };
 
     Promise.all([
-      fetch(`/api/clients/${id}`).then((res) => (res.ok ? res.json() : null)),
-      fetch('/api/staff').then((res) => res.json()),
+      fetch(`/api/clients/${id}`).then((res) => (res.ok ? res.json() : null)).catch(() => null),
+      fetch('/api/staff').then((res) => res.json()).catch(() => null),
       loadMessages(),
     ]).then(([clientData, staffData]) => {
+      if (cancelled) return;
       setClient(clientData);
-      setStaff(Array.isArray(staffData) ? staffData : []);
+      if (Array.isArray(staffData)) {
+        setStaff(staffData);
+        writeViewCache(STAFF_CACHE_KEY, staffData);
+      }
       setLoading(false);
     });
 
@@ -69,8 +111,24 @@ export default function ClientMessageThreadPage() {
         loadMessages
       )
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
   }, [id]);
+
+  // Keep this browser's copy of the thread up to date for the next visit.
+  useEffect(() => {
+    if (loading || !client) return;
+    writeViewCacheEntry(THREAD_CACHE_PREFIX, id, {
+      client,
+      messages: messages.slice(-THREAD_CACHE_MESSAGES),
+      flagged,
+      escalationReason,
+      aiTakeoverAt,
+      assignedStaffId,
+    });
+  }, [id, loading, client, messages, flagged, escalationReason, aiTakeoverAt, assignedStaffId]);
 
   // Opening this thread clears the inbox's 🔔 alarm for it on its own —
   // "closing it again without replying" used to leave the alarm on
@@ -144,11 +202,9 @@ export default function ClientMessageThreadPage() {
   }
 
   useEffect(() => {
-    // Also depends on `loading`, not just `messages`: the thread <div> (and
-    // this ref) doesn't exist until loading flips to false, but messages was
-    // already set moments earlier in the same load — same reference, so this
-    // effect wouldn't otherwise rerun on the one render where the ref first
-    // becomes non-null, and the page would silently open scrolled to the top.
+    // Also depends on `loading`: the fresh load can bring back the very
+    // same messages a cached copy already showed, and the thread should
+    // still land on its newest message once everything has settled.
     const el = threadRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
@@ -209,9 +265,13 @@ export default function ClientMessageThreadPage() {
     // Don't wait on realtime for the reply to show up — same as the
     // hospitalization chat's sendReply, which also reloads immediately
     // rather than relying solely on the postgres_changes subscription.
+    const seq = ++loadSeqRef.current;
     fetch(`/api/clients/${id}/messages`)
       .then((r) => r.json())
-      .then((data) => setMessages(Array.isArray(data) ? data : []));
+      .then((data) => {
+        if (seq === loadSeqRef.current && Array.isArray(data)) setMessages(data);
+      })
+      .catch(() => {});
     return true;
   }
 
@@ -283,8 +343,6 @@ export default function ClientMessageThreadPage() {
     if (file) sendMedia(file);
   }
 
-  if (loading) return <p>Loading...</p>;
-
   // The AI's reason for handing the thread over (migration 186) shows
   // under the client message it didn't answer.
   const lastClientMessageId = [...messages].reverse().find((m) => m.sender === 'client')?.id;
@@ -299,10 +357,15 @@ export default function ClientMessageThreadPage() {
           ← Messages
         </button>
         <h1>
-          <a href={`/clients/${id}`}>
-            {client?.full_name}
-            {client?.client_number ? ` (Client #${client.client_number})` : ''}
-          </a>
+          {/* A blank line of the same height while a first visit loads. */}
+          {client ? (
+            <a href={`/clients/${id}`}>
+              {client.full_name}
+              {client.client_number ? ` (Client #${client.client_number})` : ''}
+            </a>
+          ) : (
+            '\u00a0'
+          )}
         </h1>
         {/* Opening this thread already cleared its alarm automatically —
             this is the explicit override for "no, keep this flagged" (or
@@ -351,8 +414,8 @@ export default function ClientMessageThreadPage() {
 
       {error && <p className="error">{error}</p>}
 
-      <div className="portal-chat-thread staff-chat-thread" ref={threadRef}>
-        {messages.length === 0 && <p className="visit-meta">No messages yet.</p>}
+      <div className="portal-chat-thread staff-chat-thread" ref={threadRef} aria-busy={loading || undefined}>
+        {messages.length === 0 && <p className="visit-meta">{loading ? 'Loading...' : 'No messages yet.'}</p>}
         {messages.map((m) => (
           <div
             key={m.id}

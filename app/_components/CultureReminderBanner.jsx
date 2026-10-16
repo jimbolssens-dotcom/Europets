@@ -4,6 +4,10 @@
 // (kindness, warmth, compassion — see the "Our Culture" policy) is easy to
 // let slip on a busy day, so this puts a gentle nudge in front of staff
 // without blocking anything. Dismissible; picks a new message the next day.
+//
+// Not shown anywhere for now: taken off both layouts at the owner's
+// request (it cluttered the views without changing much). Mount it again
+// in app/(admin)/layout.js and app/mobile/layout.js to bring it back.
 
 'use client';
 

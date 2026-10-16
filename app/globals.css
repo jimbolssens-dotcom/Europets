@@ -696,6 +696,11 @@ button:disabled {
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
+  /* Always the full width, like the case pages above, instead of
+     shrinking to fit the thread loaded so far: otherwise the page first
+     draws narrow while it loads, then jumps wide. */
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .messages-thread-page {

@@ -16,10 +16,16 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import { openWhatsApp } from '@/lib/whatsapp';
+import { readViewCache, writeViewCache } from '@/lib/viewCache';
+
+// The inbox as it last loaded in this browser, painted straight away on
+// the next visit while the fresh list loads (lib/viewCache.js).
+const INBOX_CACHE_KEY = 'europets-messages-inbox-v1';
+const STAFF_CACHE_KEY = 'europets-staff-v1';
 
 function formatWhen(iso) {
   return new Date(iso).toLocaleString('en-GB', {
@@ -346,13 +352,35 @@ export default function MessagesInboxPage() {
   const [checkingQuality, setCheckingQuality] = useState(false);
   const [qualityResult, setQualityResult] = useState(null); // { ok: boolean, data? } | null
 
-  const load = () =>
-    fetch('/api/client-messages')
+  // Realtime fires a reload for every message, so replies can come back
+  // out of order: only the newest request's answer is used.
+  const loadSeqRef = useRef(0);
+  const load = () => {
+    const seq = ++loadSeqRef.current;
+    return fetch('/api/client-messages')
       .then((res) => res.json())
       .then((data) => {
-        setConversations(Array.isArray(data) ? data : []);
+        if (seq !== loadSeqRef.current || !Array.isArray(data)) return;
+        setConversations(data);
         setLoading(false);
+        writeViewCache(INBOX_CACHE_KEY, data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (seq === loadSeqRef.current) setLoading(false);
       });
+  };
+
+  // Before the first paint, so the last list shows instead of "Loading...".
+  useLayoutEffect(() => {
+    const cached = readViewCache(INBOX_CACHE_KEY);
+    if (Array.isArray(cached)) {
+      setConversations(cached);
+      setLoading(false);
+    }
+    const cachedStaff = readViewCache(STAFF_CACHE_KEY);
+    if (Array.isArray(cachedStaff)) setStaff(cachedStaff);
+  }, []);
 
   // Tapping a row's 🔔 switches its alarm off without opening the thread:
   // marks it read and clears a "still needs attention" flag, the same as
@@ -371,7 +399,12 @@ export default function MessagesInboxPage() {
     load();
     fetch('/api/staff')
       .then((res) => res.json())
-      .then((data) => setStaff(Array.isArray(data) ? data : []));
+      .then((data) => {
+        if (!Array.isArray(data)) return;
+        setStaff(data);
+        writeViewCache(STAFF_CACHE_KEY, data);
+      })
+      .catch(() => {});
 
     const channel = supabase
       .channel('messages-inbox')

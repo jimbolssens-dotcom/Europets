@@ -17,7 +17,6 @@
 // triggers it and its one deliberate escape hatch (My Schedule itself).
 
 import AppVersionWatcher from '@/app/_components/AppVersionWatcher';
-import CultureReminderBanner from '@/app/_components/CultureReminderBanner';
 import MobileBodyFillToggle from '@/app/_components/MobileBodyFillToggle';
 import MobileRosterGate from '@/app/_components/MobileRosterGate';
 import AutoScreenSwitcher from '@/app/_components/AutoScreenSwitcher';
@@ -46,7 +45,6 @@ export default function MobileLayout({ children }) {
   return (
     <div className="mobile-app">
       <AppVersionWatcher />
-      <CultureReminderBanner />
       <MobileBodyFillToggle />
       <MobileRosterGate />
       <AutoScreenSwitcher />

@@ -4,7 +4,6 @@ import AutoScreenSwitcher from '@/app/_components/AutoScreenSwitcher';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
-import CultureReminderBanner from '../_components/CultureReminderBanner';
 import DiscoveryMode from '../_components/DiscoveryMode';
 import { useHospitalizationUpdatePending } from '../_components/useHospitalizationUpdatePending';
 import { useCatteryAlarm } from '../_components/useCatteryAlarm';
@@ -332,7 +331,6 @@ export default function AdminLayout({ children }) {
           <DiscoveryMode />
         </div>
       </nav>
-      <CultureReminderBanner />
       {/* The Messenger thread page is a full-page chat, not a document — it
           needs .content to fill the space below the nav instead of sizing
           to its own content, so the message list can take the leftover
