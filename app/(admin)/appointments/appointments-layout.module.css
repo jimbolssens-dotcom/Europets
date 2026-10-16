@@ -1,25 +1,29 @@
+/* Full-width desktop layout for the schedule. Applied from the very first
+   paint: it used to wait for the calendar grid to exist (a :has() on its
+   room tracks), so the page laid itself out narrow first and snapped into
+   this shape once the appointments had loaded. */
 @media (min-width: 1100px) {
-  .appointmentsScope :global(.schedule-layout:has(.schedule-room-track[data-date])) {
+  .appointmentsScope :global(.schedule-layout) {
     flex-wrap: nowrap;
     width: 100%;
   }
 
-  .appointmentsScope :global(.schedule-layout:has(.schedule-room-track[data-date]) .schedule-left-col) {
+  .appointmentsScope :global(.schedule-layout .schedule-left-col) {
     flex: 0 0 220px;
     min-width: 220px;
   }
 
-  .appointmentsScope :global(.schedule-layout:has(.schedule-room-track[data-date]) .schedule-main) {
+  .appointmentsScope :global(.schedule-layout .schedule-main) {
     flex: 1 1 auto;
     min-width: 0;
   }
 
-  .appointmentsScope :global(.schedule-layout:has(.schedule-room-track[data-date]) .booking-panel) {
+  .appointmentsScope :global(.schedule-layout .booking-panel) {
     flex: 0 0 320px;
     min-width: 320px;
   }
 
-  .appointmentsScope :global(.schedule-layout:has(.schedule-room-track[data-date]) .booking-panel .card) {
+  .appointmentsScope :global(.schedule-layout .booking-panel .card) {
     max-width: none;
     margin-top: 0;
   }

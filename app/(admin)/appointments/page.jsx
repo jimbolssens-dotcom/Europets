@@ -2,7 +2,7 @@
 'use client';
 
 import { shortDayLabel } from '@/lib/dayProcedureSchedule';
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import SearchSelect from '@/app/_components/SearchSelect';
@@ -16,6 +16,29 @@ import { BOOKING_SOURCE_BADGES } from '@/lib/appointmentBooking';
 const OPEN_HOUR = 8;
 const CLOSE_HOUR = 19;
 const PIXELS_PER_MINUTE = 2.2;
+
+// The rooms, vets and staff the schedule is laid out with, remembered in
+// this browser from the last visit, so the page draws in its final shape
+// straight away instead of rebuilding itself as each list arrives. Fresh
+// data from the server replaces it a moment later. Per-browser
+// convenience only: an empty or blocked storage just means the first
+// paint waits for the server, as before.
+const LAYOUT_CACHE_KEY = 'europets-appointments-layout-v1';
+function readLayoutCache() {
+  try {
+    const data = JSON.parse(window.localStorage.getItem(LAYOUT_CACHE_KEY) || 'null');
+    return data && Array.isArray(data.rooms) ? data : null;
+  } catch {
+    return null;
+  }
+}
+function writeLayoutCache(data) {
+  try {
+    window.localStorage.setItem(LAYOUT_CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // Storage full or blocked: nothing to remember, nothing breaks.
+  }
+}
 const SCHEDULE_HEADER_HEIGHT = 48;
 const SNAP_MINUTES = 15;
 const SURGERY_INCREMENT_MINUTES = 10;
@@ -101,8 +124,40 @@ function playAlertBeep() { try { const Ctx = window.AudioContext || window.webki
 
 const emptyForm = { client_id: '', patient_id: '', room_id: '', vet_id: '', type: 'consult', time: '', duration_minutes: '15', reason: '' };
 
+// What the server sends before the page has started in the browser: the
+// real layout's own pieces (title row, requests column, an empty week
+// grid at its full size, the booking panel), so the very first paint is
+// already the final shape and nothing jumps when the schedule fills in.
+// An empty schedule box at the week grid's full size: stands in for the
+// calendar until the rooms are known, so the layout never changes shape.
+function ScheduleGridPlaceholder() {
+  return <div className="schedule-wrap" style={{ width: '100%', maxWidth: TIME_COL_WIDTH + 7 * WEEK_DAY_MIN_WIDTH + 2, height: 'calc(100vh - 240px)' }} aria-busy="true" />;
+}
+
+function AppointmentsSkeleton() {
+  return (
+    <div className="appointments-page">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 40, marginBottom: 10 }}>
+        <h1 style={{ margin: 0 }}>Appointments</h1>
+      </div>
+      <div className="schedule-layout">
+        <div className="schedule-left-col" />
+        <div className="schedule-main">
+          <div className="vet-legend" style={{ minHeight: '1.5rem' }} />
+          <ScheduleGridPlaceholder />
+        </div>
+        <div className="booking-panel">
+          <div className="card" style={{ minHeight: 480 }}>
+            <h2>Book Appointment</h2>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AppointmentsPage() {
-  return <Suspense fallback={<p>Loading...</p>}><AppointmentsPageInner /></Suspense>;
+  return <Suspense fallback={<AppointmentsSkeleton />}><AppointmentsPageInner /></Suspense>;
 }
 
 function AppointmentsPageInner() {
@@ -122,7 +177,9 @@ function AppointmentsPageInner() {
   // in, even though appointments.status itself only gets flipped by this
   // page's own Checkin flow — see openVisitByPatient below.
   const [openVisits, setOpenVisits] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // The schedule is drawn as soon as the rooms are known (remembered or
+  // fetched); appointments fill in without the layout moving.
+  const [roomsKnown, setRoomsKnown] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const [sendingReminderId, setSendingReminderId] = useState(null);
   const [reminderError, setReminderError] = useState(null); // { id, message } | null
@@ -167,17 +224,22 @@ function AppointmentsPageInner() {
     return [...keys];
   }, [calendarView, currentWeek, selectedDateObj, viewYear, viewMonthIndex]);
 
+  // A reload after a booking, a live update or a week change keeps the
+  // calendar on screen and swaps the appointments in place, instead of
+  // blanking the whole layout behind "Loading..." each time.
+  // Only the newest request is applied, so a slow reply for a week already
+  // navigated away from can't overwrite the one on screen.
+  const loadSeqRef = useRef(0);
   async function loadAppointments() {
-    setLoading(true);
-    try {
-      const chunks = await Promise.all(visibleMonthKeys.map((month) => fetch(`/api/appointments?month=${month}`).then((res) => res.json())));
-      const byId = new Map();
-      for (const chunk of chunks) {
-        if (!Array.isArray(chunk)) continue;
-        for (const appointment of chunk) byId.set(appointment.id, appointment);
-      }
-      setAppointments([...byId.values()]);
-    } finally { setLoading(false); }
+    const seq = ++loadSeqRef.current;
+    const chunks = await Promise.all(visibleMonthKeys.map((month) => fetch(`/api/appointments?month=${month}`).then((res) => res.json())));
+    if (seq !== loadSeqRef.current) return;
+    const byId = new Map();
+    for (const chunk of chunks) {
+      if (!Array.isArray(chunk)) continue;
+      for (const appointment of chunk) byId.set(appointment.id, appointment);
+    }
+    setAppointments([...byId.values()]);
   }
 
   useEffect(() => { loadAppointments(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [visibleMonthKeys.join('|'), refreshTick]);
@@ -197,15 +259,33 @@ function AppointmentsPageInner() {
     return map;
   }, [openVisits]);
 
+  // Before the first paint: lay the schedule out from the remembered rooms
+  // and vets (see LAYOUT_CACHE_KEY), so it opens in its final shape.
+  useLayoutEffect(() => {
+    const cached = readLayoutCache();
+    if (!cached) return;
+    setRooms(cached.rooms);
+    setVets(cached.vets || []);
+    setStaffList(cached.staff || []);
+    if (cached.rooms.length) setRoomsKnown(true);
+  }, []);
+
   useEffect(() => {
     Promise.all([
       fetch('/api/rooms').then((res) => res.json()),
       fetch('/api/staff?role=vet').then((res) => res.json()),
       fetch('/api/staff').then((res) => res.json()),
     ]).then(([roomsData, vetsData, staffData]) => {
-      setRooms(Array.isArray(roomsData) ? roomsData : []);
-      setVets(Array.isArray(vetsData) ? vetsData : []);
-      setStaffList(Array.isArray(staffData) ? staffData : []);
+      const fresh = {
+        rooms: Array.isArray(roomsData) ? roomsData : [],
+        vets: Array.isArray(vetsData) ? vetsData : [],
+        staff: Array.isArray(staffData) ? staffData : [],
+      };
+      setRooms(fresh.rooms);
+      setVets(fresh.vets);
+      setStaffList(fresh.staff);
+      setRoomsKnown(true);
+      if (fresh.rooms.length) writeLayoutCache(fresh);
     });
     const channel = supabase.channel('appointments-view-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => setRefreshTick((n) => n + 1))
@@ -478,8 +558,8 @@ function AppointmentsPageInner() {
   }
 
   return <div className="appointments-page">
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}><h1 style={{ margin: 0 }}>Appointments</h1><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><button type="button" className="secondary" onClick={() => navigate(-1)} data-discover="Moves the schedule back one week (in Week view) or one day (in Day view).">‹</button><button type="button" className="secondary" onClick={goToday} data-discover="Jumps the schedule straight to today.">Today</button><button type="button" className="secondary" onClick={() => navigate(1)} data-discover="Moves the schedule forward one week (in Week view) or one day (in Day view).">›</button><strong style={{ minWidth: 180, textAlign: 'center' }}>{calendarView === 'week' ? weekLabel : selectedDateLabel}</strong></div><BookingsPopover refreshTick={refreshTick} vets={vets} vetColor={vetColor} rowStatus={appointmentRowStatus} openVisitFor={appointmentOpenVisit} onOpenRecord={openAppointmentRecord} onRemind={sendReminder} onCancel={cancelAppointment} onDelete={deleteAppointment} openingConsultId={openingConsultId} sendingReminderId={sendingReminderId} reminderError={reminderError} /><div style={{ display: 'flex', gap: 4, background: 'white', border: '1px solid #ddd', borderRadius: 999, padding: 3 }}><button type="button" onClick={() => setMonthOpen(true)} data-discover="Opens a month calendar to jump to a specific date — each day shows how many appointments are booked on it." style={{ background: monthOpen ? 'var(--pink)' : 'transparent', color: monthOpen ? 'white' : 'var(--ink)', padding: '0.4rem 0.9rem' }}>Month</button><button type="button" onClick={() => setCalendarView('week')} data-discover="Switches the schedule to a 7-day week view, one column per day." style={{ background: calendarView === 'week' ? 'var(--pink)' : 'transparent', color: calendarView === 'week' ? 'white' : 'var(--ink)', padding: '0.4rem 0.9rem' }}>Week</button><button type="button" onClick={() => setCalendarView('day')} data-discover="Switches the schedule to a single day view, one column per room — this is the only view where appointments can be dragged to resize." style={{ background: calendarView === 'day' ? 'var(--pink)' : 'transparent', color: calendarView === 'day' ? 'white' : 'var(--ink)', padding: '0.4rem 0.9rem' }}>Day</button></div></div>
-    <div className={`schedule-layout ${calendarView === 'day' ? 'day-view' : ''}`}><div className="schedule-left-col"><AppointmentRequestsPanel rooms={rooms} vets={vets} onApproved={() => setRefreshTick((n) => n + 1)} /></div><div className="schedule-main">{scheduleError && <p className="error">{scheduleError}</p>}{vets.length > 0 && <div className="vet-legend">{vets.map((v) => <span key={v.id} className="vet-legend-item"><span className="vet-legend-swatch" style={{ background: colorForVetAppt(v.id, 'consult').bg, borderColor: colorForVetAppt(v.id, 'consult').fg }} title="Consult" /><span className="vet-legend-swatch" style={{ background: colorForVetAppt(v.id, 'surgery').bg, borderColor: colorForVetAppt(v.id, 'surgery').fg }} title="Surgery / Day Procedure" />{v.full_name}</span>)}<span className="vet-legend-item"><span className="vet-legend-swatch" style={{ background: UNASSIGNED_STAFF_COLOR.bg, borderColor: UNASSIGNED_STAFF_COLOR.fg }} />Unassigned</span><span className="vet-legend-hint">light = Consult · dark = Surgery/Day Procedure</span></div>}{loading ? <p>Loading...</p> : rooms.length === 0 ? <p>No rooms set up yet — add one on the <a href="/rooms">Rooms</a> page first.</p> : calendarView === 'week' ? renderWeekView() : renderDayView()}</div><div className="booking-panel"><form className="card" ref={bookingFormRef} onSubmit={handleSubmit}><h2>Book Appointment</h2>{dayProcedureLink && <p className="day-procedure-link-banner">📋 Day procedure{dayProcedureLink.date ? ` on ${shortDayLabel(dayProcedureLink.date)}` : ''}: pick the vet and time. The patient stays in a cage overnight.</p>}{error && <p className="error">{error}</p>}<p>{form.time ? `Booking ${selectedDateLabel} at ${form.time}${form.room_id ? ` in ${rooms.find((r) => r.id === form.room_id)?.name || ''}` : form.type === 'video' ? '' : ' — select a room below'}` : 'Click a time on the schedule to start a booking'}</p>{form.type !== 'meeting' && (selectedOwner ? <p className="booking-owner-picked">Owner: <strong>{selectedOwner.full_name}</strong>{' '}<button type="button" onClick={() => { setSelectedOwner(null); setForm((f) => ({ ...f, client_id: '', patient_id: '' })); }} data-discover="Clears the picked owner/patient so you can search for a different one for this booking.">Change</button></p> : <ClientOrPatientSearch placeholder="Search clients or patients..." onPickClient={(c) => { setSelectedOwner({ id: c.id, full_name: c.full_name }); setForm((f) => ({ ...f, client_id: c.id, patient_id: '' })); }} onPickPatient={(p) => { setSelectedOwner({ id: p.client_id, full_name: p.clients?.full_name || '' }); setForm((f) => ({ ...f, client_id: p.client_id, patient_id: p.id })); }} />)}{form.type !== 'meeting' && <SearchSelect items={clientPatients} value={form.patient_id} onChange={(patient_id) => setForm((f) => ({ ...f, patient_id }))} getLabel={(p) => p.name} getSubLabel={(p) => p.species} placeholder="Select patient..." disabled={!form.client_id} />}<select value={form.type} onChange={(e) => { const nextType = e.target.value; setForm((f) => ({ ...f, type: nextType, duration_minutes: nextType === 'meeting' ? '30' : nextType === 'surgery' ? '10' : '15', room_id: nextType === 'meeting' ? (staffRoom?.id || '') : '' })); }}><option value="consult">Consult</option><option value="video">Video Consult</option><option value="surgery">Surgery (10-min increments)</option><option value="meeting">Staff Meeting / Other</option></select>{(form.type === 'consult' || form.type === 'video') && <select value={form.duration_minutes} onChange={(e) => setForm((f) => ({ ...f, duration_minutes: e.target.value }))} aria-label="Consult length" data-discover="How long to block out for this consult. Pick a longer slot when you expect it to take more time; you can also drag the bottom of the appointment on the schedule.">{[15, 30, 45, 60, 90, 120].map((m) => <option key={m} value={String(m)}>{m === 15 ? '15 min (standard)' : `${m} min`}</option>)}{![15, 30, 45, 60, 90, 120].includes(Number(form.duration_minutes)) && <option value={form.duration_minutes}>{form.duration_minutes} min</option>}</select>}{(form.type === 'surgery' || form.type === 'meeting') && <input type="number" min={form.type === 'meeting' ? 5 : 10} step={form.type === 'meeting' ? 5 : 10} value={form.duration_minutes} onChange={(e) => setForm((f) => ({ ...f, duration_minutes: e.target.value }))} placeholder="Duration (minutes)" />}{form.type === 'meeting' ? <p className="visit-meta">Room: {staffRoom?.name || 'Staff Room'} (automatic)</p> : form.type === 'video' ? <p className="visit-meta">🎥 No room needed — video consult</p> : <select required value={form.room_id} onChange={(e) => setForm((f) => ({ ...f, room_id: e.target.value }))}><option value="">Select room...</option>{clinicalRooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>}<select value={form.vet_id} onChange={(e) => { setForm((f) => ({ ...f, vet_id: e.target.value })); setRosterBlock(null); }}><option value="">{form.type === 'meeting' ? 'Select staff member (optional)...' : 'Select vet (optional)...'}</option>{(form.type === 'meeting' ? bookableStaff : bookableVets).map((v) => <option key={v.id} value={v.id}>{v.full_name}</option>)}</select><input placeholder={form.type === 'meeting' ? 'Meeting note / details' : 'Reason for visit'} value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} /><button type="submit" disabled={submitting || !form.time || (!form.room_id && form.type !== 'video')} data-discover="Books this appointment onto the schedule at the time/room selected above — the owner and patient get a real, confirmed slot.">{submitting ? 'Booking...' : 'Book'}</button></form></div></div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}><h1 style={{ margin: 0 }}>Appointments</h1><div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}><button type="button" className="secondary" onClick={() => navigate(-1)} data-discover="Moves the schedule back one week (in Week view) or one day (in Day view).">‹</button><button type="button" className="secondary" onClick={goToday} data-discover="Jumps the schedule straight to today.">Today</button><button type="button" className="secondary" onClick={() => navigate(1)} data-discover="Moves the schedule forward one week (in Week view) or one day (in Day view).">›</button><strong style={{ minWidth: 180, textAlign: 'center' }}>{calendarView === 'week' ? weekLabel : selectedDateLabel}</strong></div><BookingsPopover refreshTick={refreshTick} vets={vets} vetColor={vetColor} rowStatus={appointmentRowStatus} openVisitFor={appointmentOpenVisit} onOpenRecord={openAppointmentRecord} onRemind={sendReminder} onCancel={cancelAppointment} onDelete={deleteAppointment} openingConsultId={openingConsultId} sendingReminderId={sendingReminderId} reminderError={reminderError} /><div style={{ display: 'flex', gap: 4, background: 'white', border: '1px solid #ddd', borderRadius: 999, padding: 3 }}><button type="button" onClick={() => setMonthOpen(true)} data-discover="Opens a month calendar to jump to a specific date — each day shows how many appointments are booked on it." style={{ background: monthOpen ? 'var(--pink)' : 'transparent', color: monthOpen ? 'white' : 'var(--ink)', padding: '0.4rem 0.9rem' }}>Month</button><button type="button" onClick={() => setCalendarView('week')} data-discover="Switches the schedule to a 7-day week view, one column per day." style={{ background: calendarView === 'week' ? 'var(--pink)' : 'transparent', color: calendarView === 'week' ? 'white' : 'var(--ink)', padding: '0.4rem 0.9rem' }}>Week</button><button type="button" onClick={() => setCalendarView('day')} data-discover="Switches the schedule to a single day view, one column per room — this is the only view where appointments can be dragged to resize." style={{ background: calendarView === 'day' ? 'var(--pink)' : 'transparent', color: calendarView === 'day' ? 'white' : 'var(--ink)', padding: '0.4rem 0.9rem' }}>Day</button></div></div>
+    <div className={`schedule-layout ${calendarView === 'day' ? 'day-view' : ''}`}><div className="schedule-left-col"><AppointmentRequestsPanel rooms={rooms} vets={vets} onApproved={() => setRefreshTick((n) => n + 1)} /></div><div className="schedule-main">{scheduleError && <p className="error">{scheduleError}</p>}{vets.length > 0 && <div className="vet-legend">{vets.map((v) => <span key={v.id} className="vet-legend-item"><span className="vet-legend-swatch" style={{ background: colorForVetAppt(v.id, 'consult').bg, borderColor: colorForVetAppt(v.id, 'consult').fg }} title="Consult" /><span className="vet-legend-swatch" style={{ background: colorForVetAppt(v.id, 'surgery').bg, borderColor: colorForVetAppt(v.id, 'surgery').fg }} title="Surgery / Day Procedure" />{v.full_name}</span>)}<span className="vet-legend-item"><span className="vet-legend-swatch" style={{ background: UNASSIGNED_STAFF_COLOR.bg, borderColor: UNASSIGNED_STAFF_COLOR.fg }} />Unassigned</span><span className="vet-legend-hint">light = Consult · dark = Surgery/Day Procedure</span></div>}{!roomsKnown ? <ScheduleGridPlaceholder /> : rooms.length === 0 ? <p>No rooms set up yet — add one on the <a href="/rooms">Rooms</a> page first.</p> : calendarView === 'week' ? renderWeekView() : renderDayView()}</div><div className="booking-panel"><form className="card" ref={bookingFormRef} onSubmit={handleSubmit}><h2>Book Appointment</h2>{dayProcedureLink && <p className="day-procedure-link-banner">📋 Day procedure{dayProcedureLink.date ? ` on ${shortDayLabel(dayProcedureLink.date)}` : ''}: pick the vet and time. The patient stays in a cage overnight.</p>}{error && <p className="error">{error}</p>}<p>{form.time ? `Booking ${selectedDateLabel} at ${form.time}${form.room_id ? ` in ${rooms.find((r) => r.id === form.room_id)?.name || ''}` : form.type === 'video' ? '' : ' — select a room below'}` : 'Click a time on the schedule to start a booking'}</p>{form.type !== 'meeting' && (selectedOwner ? <p className="booking-owner-picked">Owner: <strong>{selectedOwner.full_name}</strong>{' '}<button type="button" onClick={() => { setSelectedOwner(null); setForm((f) => ({ ...f, client_id: '', patient_id: '' })); }} data-discover="Clears the picked owner/patient so you can search for a different one for this booking.">Change</button></p> : <ClientOrPatientSearch placeholder="Search clients or patients..." onPickClient={(c) => { setSelectedOwner({ id: c.id, full_name: c.full_name }); setForm((f) => ({ ...f, client_id: c.id, patient_id: '' })); }} onPickPatient={(p) => { setSelectedOwner({ id: p.client_id, full_name: p.clients?.full_name || '' }); setForm((f) => ({ ...f, client_id: p.client_id, patient_id: p.id })); }} />)}{form.type !== 'meeting' && <SearchSelect items={clientPatients} value={form.patient_id} onChange={(patient_id) => setForm((f) => ({ ...f, patient_id }))} getLabel={(p) => p.name} getSubLabel={(p) => p.species} placeholder="Select patient..." disabled={!form.client_id} />}<select value={form.type} onChange={(e) => { const nextType = e.target.value; setForm((f) => ({ ...f, type: nextType, duration_minutes: nextType === 'meeting' ? '30' : nextType === 'surgery' ? '10' : '15', room_id: nextType === 'meeting' ? (staffRoom?.id || '') : '' })); }}><option value="consult">Consult</option><option value="video">Video Consult</option><option value="surgery">Surgery (10-min increments)</option><option value="meeting">Staff Meeting / Other</option></select>{(form.type === 'consult' || form.type === 'video') && <select value={form.duration_minutes} onChange={(e) => setForm((f) => ({ ...f, duration_minutes: e.target.value }))} aria-label="Consult length" data-discover="How long to block out for this consult. Pick a longer slot when you expect it to take more time; you can also drag the bottom of the appointment on the schedule.">{[15, 30, 45, 60, 90, 120].map((m) => <option key={m} value={String(m)}>{m === 15 ? '15 min (standard)' : `${m} min`}</option>)}{![15, 30, 45, 60, 90, 120].includes(Number(form.duration_minutes)) && <option value={form.duration_minutes}>{form.duration_minutes} min</option>}</select>}{(form.type === 'surgery' || form.type === 'meeting') && <input type="number" min={form.type === 'meeting' ? 5 : 10} step={form.type === 'meeting' ? 5 : 10} value={form.duration_minutes} onChange={(e) => setForm((f) => ({ ...f, duration_minutes: e.target.value }))} placeholder="Duration (minutes)" />}{form.type === 'meeting' ? <p className="visit-meta">Room: {staffRoom?.name || 'Staff Room'} (automatic)</p> : form.type === 'video' ? <p className="visit-meta">🎥 No room needed — video consult</p> : <select required value={form.room_id} onChange={(e) => setForm((f) => ({ ...f, room_id: e.target.value }))}><option value="">Select room...</option>{clinicalRooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>}<select value={form.vet_id} onChange={(e) => { setForm((f) => ({ ...f, vet_id: e.target.value })); setRosterBlock(null); }}><option value="">{form.type === 'meeting' ? 'Select staff member (optional)...' : 'Select vet (optional)...'}</option>{(form.type === 'meeting' ? bookableStaff : bookableVets).map((v) => <option key={v.id} value={v.id}>{v.full_name}</option>)}</select><input placeholder={form.type === 'meeting' ? 'Meeting note / details' : 'Reason for visit'} value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} /><button type="submit" disabled={submitting || !form.time || (!form.room_id && form.type !== 'video')} data-discover="Books this appointment onto the schedule at the time/room selected above — the owner and patient get a real, confirmed slot.">{submitting ? 'Booking...' : 'Book'}</button></form></div></div>
     <h2>{selectedDateLabel} — list</h2><div className="appointments-day-list-wrap"><table><thead><tr><th>Time</th><th>Type</th><th>Patient</th><th>Client #</th><th>Reason</th><th>Room</th><th>Vet</th><th>Status</th><th></th></tr></thead><tbody>{dayAppointments.length === 0 && <tr><td colSpan={9}>No appointments booked for this day.</td></tr>}{dayAppointments.map((a) => <tr key={a.id} className={a.status === 'cancelled' || a.status === 'no_show' ? 'appointments-row-inactive' : ''}><td>{formatTime(a.start_time)} ({a.duration_minutes}m)</td><td>{a.type}</td><td>{a.type === 'meeting' ? '—' : (a.patients?.name || (a.patient_id ? '' : '(unlinked)'))}</td><td>{a.clients?.client_number ? <a href={`/clients/${a.client_id}`} onClick={(e) => e.stopPropagation()}>{a.clients.full_name} (#{a.clients.client_number})</a> : '—'}</td><td>{a.reason}</td><td>{a.rooms?.name}</td><td>{a.staff?.full_name || '—'}</td><td>{appointmentRowStatus(a)}{appointmentOpenVisit(a) && <span className="visit-meta"> (checked in elsewhere)</span>}</td><td>{a.status === 'booked' && a.patient_id && !appointmentOpenVisit(a) && <button type="button" disabled={openingConsultId === a.id} onClick={() => openAppointmentRecord(a)} data-discover="Checks this patient in and opens a real consult (or day procedure/surgery record) for this appointment — this is the start of actually treating them today.">{openingConsultId === a.id ? 'Checking in…' : 'Checkin'}</button>}{(a.status === 'checked_in' || a.status === 'complete' || appointmentOpenVisit(a)) && <button type="button" disabled={openingConsultId === a.id} onClick={() => openAppointmentRecord(a)} data-discover="Opens the consult/day procedure record already started for this appointment.">{openingConsultId === a.id ? 'Opening…' : a.type === 'surgery' ? 'View Day Procedure' : a.type === 'video' ? '🎥 View Video Consult' : 'View Consult'}</button>}{a.status === 'booked' && !appointmentOpenVisit(a) && a.clients?.phone && <button type="button" disabled={sendingReminderId === a.id} onClick={() => sendReminder(a)} data-discover="Sends this client a real WhatsApp reminder about their upcoming appointment, from the clinic's own WhatsApp Business number.">{sendingReminderId === a.id ? 'Sending…' : '💬 Remind'}</button>}{a.status !== 'cancelled' && a.status !== 'complete' && a.status !== 'no_show' && <button type="button" onClick={() => cancelAppointment(a.id)} data-discover="Marks this appointment cancelled — it stays visible (greyed out) for the record, but frees up its slot on the schedule.">Cancel</button>}{(a.status === 'cancelled' || a.status === 'no_show') && <button type="button" onClick={() => deleteAppointment(a.id)} data-discover="Permanently removes this cancelled/no-show appointment from the record. This cannot be undone.">Delete</button>}{a.reminder_sent_at && <span className="visit-meta"> Reminded {formatTime(a.reminder_sent_at)}</span>}{reminderError?.id === a.id && <span className="error"> {reminderError.message}</span>}</td></tr>)}</tbody></table></div>
     {monthOpen && <div onMouseDown={() => setMonthOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.28)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '10vh' }}><div onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(560px, 92vw)', background: 'white', borderRadius: 14, boxShadow: '0 18px 60px rgba(0,0,0,.22)', padding: 18 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}><button type="button" className="secondary" onClick={() => goToMonth(-1)} data-discover="Shows the previous month's calendar (just for picking a date — doesn't move the schedule itself).">‹</button><strong style={{ fontSize: '1.15rem' }}>{monthLabel}</strong><button type="button" className="secondary" onClick={() => goToMonth(1)} data-discover="Shows the next month's calendar (just for picking a date — doesn't move the schedule itself).">›</button></div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>{WEEKDAY_LETTERS.map((w, i) => <div key={`${w}-${i}`} style={{ textAlign: 'center', fontSize: '.72rem', fontWeight: 700, color: '#777', padding: 4 }}>{w}</div>)}{monthGrid.map((d) => { const iso = toISODate(d); const inMonth = d.getMonth() === viewMonthIndex; const isSelected = iso === selectedDate; const count = countsByDate[iso] || 0; return <button key={iso} type="button" onClick={() => { selectDay(d, true); setMonthOpen(false); }} data-discover="Jumps the schedule to this date in Day view and closes the month picker. The number badge shows how many appointments are already booked that day." style={{ minHeight: 52, borderRadius: 9, background: isSelected ? 'var(--pink)' : inMonth ? 'var(--pink-tint)' : '#f6f6f6', color: isSelected ? 'white' : inMonth ? 'var(--ink)' : '#aaa', border: '1px solid transparent', position: 'relative' }}><span>{d.getDate()}</span>{count > 0 && <span style={{ position: 'absolute', right: 5, bottom: 4, fontSize: '.65rem', background: isSelected ? 'white' : 'var(--pink)', color: isSelected ? 'var(--pink-dark)' : 'white', borderRadius: 999, minWidth: 17, padding: '1px 4px' }}>{count}</span>}</button>; })}</div><div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14 }}><button type="button" className="secondary" onClick={() => { const d = new Date(); syncMonthToDate(d); }} data-discover="Jumps the month picker back to the current month, without changing which date the schedule is showing.">This month</button><button type="button" onClick={() => setMonthOpen(false)} data-discover="Closes the month picker without changing the date.">Close</button></div></div></div>}
     {rosterBlock && <div className="roster-block-backdrop"><div className="roster-block-modal" role="alertdialog" aria-live="assertive"><div className="roster-block-icon">⚠️</div><p className="roster-block-message">{rosterBlock.message}</p>{error && <p className="error">{error}</p>}<div className="roster-block-actions"><button type="button" onClick={addToRosterAndBook} disabled={resolvingRosterBlock} data-discover="Adds this vet to the staff roster for that shift/date, then goes ahead with the booking/reschedule that was blocked.">{resolvingRosterBlock ? 'Adding...' : `✅ Add ${rosterBlock.vetName} & ${rosterBlock.payload?.__reschedule ? 'Move' : 'Book'}`}</button>{rosterBlock.payload?.__reschedule ? <button type="button" className="secondary" onClick={() => setRosterBlock(null)} disabled={resolvingRosterBlock} data-discover="Cancels this reschedule — the appointment stays where it was.">✖️ Cancel</button> : <button type="button" className="secondary" onClick={rebookWithOtherVet} disabled={resolvingRosterBlock} data-discover="Clears the vet you picked so you can choose a different one who is actually on the roster for that shift.">🔄 Rebook with Other Vet</button>}</div></div></div>}

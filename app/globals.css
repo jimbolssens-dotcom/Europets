@@ -3678,10 +3678,32 @@ button.secondary:hover {
 .content:has(.appointments-page) {
   max-width: none;
   padding-inline: 1rem;
+  /* Always the full width, like the case pages (.content:has(.patient-header)),
+     instead of shrinking to fit whatever has loaded so far, so the schedule
+     is laid out once rather than growing into place as the calendar fills. */
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .appointments-page .schedule-left-col:empty {
   display: none;
+}
+
+/* On a full-width desktop the requests column always keeps its width, so
+   the calendar is laid out once and isn't squeezed narrower when requests
+   arrive a moment after the page opens. */
+@media (min-width: 1024px) {
+  .appointments-page .schedule-left-col:empty {
+    display: flex;
+  }
+  .appointments-page .schedule-left-col:empty::before {
+    content: 'No appointment requests';
+    font-size: 0.85rem;
+    color: var(--ink-soft, #777);
+    padding: 0.75rem;
+    border: 1px dashed #e6e6e6;
+    border-radius: 8px;
+  }
 }
 
 .report-overview-pill {
