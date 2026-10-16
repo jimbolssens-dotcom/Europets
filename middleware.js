@@ -73,6 +73,7 @@ const PUBLIC_PATTERNS = [
   // actually being requested — see lib/clientAppAuth.js's getClientSession
   // and every route below that imports it.
   /^\/client-app(\/.*)?$/,
+  /^\/client-app-manifest\.json$/, // the client app's install manifest (public/client-app-manifest.json): clients have no staff cookie, so the staff gate below redirected it to /login and Chrome refused to install the app ("This app cannot be installed")
   /^\/client-app-sw\.js$/, // the client app's push-notification service worker (public/client-app-sw.js): a browser refuses to register one that redirects, and clients have no staff cookie, so the staff gate below sent every client's to /login
   /^\/api\/client-app\/.*$/,
   // A logged-in client requesting their own appointment (any type,
