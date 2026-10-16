@@ -1,43 +1,27 @@
 // app/api/accounting/summary/route.js
-// GET /api/accounting/summary?month=YYYY-MM  -> a basic P&L + VAT summary
-// for one calendar month, defaulting to the current month.
+// GET /api/accounting/summary?month=YYYY-MM  -> the month's books, laid out
+// the way the clinic keeps them: total takings (new invoices AND old-system
+// balances, by method), total outgoing, gross profit, net profit after the
+// fixed monthly costs, and VAT collected / VAT takings / VAT paid / net VAT
+// due. The rules live in lib/accountingSummary.js; this just fetches.
 //
-// Two different revenue/VAT numbers are reported side by side, since they
-// answer different questions and this is meant to actually be useful for
-// UAE VAT filing, not just a vanity dashboard:
-//   - "invoiced" = every non-void invoice dated in the month, regardless
-//     of whether it's been paid yet. This is what UAE VAT is due on (the
-//     supply date), so it's the number that matters for the FTA return.
-//   - "collected" = every individual payment logged within the month
-//     (invoice_payments.paid_at, not the invoice's created_at) — real
-//     cash in the door, broken down by how it came in (cash/card/
-//     bank_transfer/payment_link). Sourced from the payment log rather
-//     than invoices.status='paid' so a partially paid invoice's
-//     installments still count as they're actually collected, instead of
-//     the whole invoice only showing up once the last installment lands.
-// Each payment is VAT-inclusive (a slice of the invoice's total, not its
-// subtotal), so the ex-VAT/VAT split below prorates it at the clinic's
-// flat VAT_RATE rather than reading a per-payment VAT column.
-// Net VAT due = invoiced output VAT minus input VAT on expenses dated in
-// the same month (the standard output-minus-input FTA calculation).
-// Net profit is cash-basis (money collected minus money spent this month)
-// — simple and honest for a small clinic's day-to-day view, not a full
-// accrual P&L.
+// Cash basis throughout: a payment counts in the month it was received
+// (invoice_payments.paid_at, legacy_payments.paid_at), an expense in the
+// month it's dated. Old-system payments carry VAT like any other takings:
+// every FileMaker invoice was charged VAT, and it's paid over as clients
+// pay off those balances.
+// Two invoice-date figures stay alongside for reference: revenue and VAT
+// invoiced this month, and discounts given.
 
 import { selectAll } from '@/lib/selectAll';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
-import { VAT_RATE } from '@/lib/invoicing';
+import { buildMonthlyFigures } from '@/lib/accountingSummary';
 
-// Next.js can otherwise cache a GET route handler's response (it has no
-// dynamic API calls of its own to signal it shouldn't) — the P&L is meant
-// to reflect whatever's actually in the ledger right now, not whatever
-// was true the first time anyone ever hit this URL. See
-// app/api/hospitalizations/[id]/route.js for the same gotcha.
+// Next.js can otherwise cache a GET route handler's response — the books
+// must reflect the ledger as it is now. See app/api/hospitalizations/[id]/route.js.
 export const dynamic = 'force-dynamic';
-
-const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'payment_link'];
 
 function monthBounds(month) {
   const start = new Date(`${month}-01T00:00:00.000Z`);
@@ -57,80 +41,67 @@ export async function GET(request) {
   const dateStart = start.slice(0, 10);
   const dateEnd = end.slice(0, 10);
 
+  // Every list is paged (lib/selectAll.js): one request stops at 1000 rows.
   const [invoicedRes, paymentsRes, expensesRes, outstandingRes, legacyRes] = await Promise.all([
-    supabase
-      .from('invoices')
-      .select('subtotal, discount_amount, vat_amount, total')
-      .neq('status', 'void')
-      .gte('created_at', start)
-      .lt('created_at', end),
-    supabase
-      .from('invoice_payments')
-      .select('amount, payment_method, invoices!inner(status)')
-      .neq('invoices.status', 'void')
-      .gte('paid_at', start)
-      .lt('paid_at', end),
-    supabase.from('expenses').select('amount, vat_amount, total').gte('expense_date', dateStart).lt('expense_date', dateEnd),
-    // Paged: an all-time total must never stop at the 1000-row limit.
+    selectAll(() =>
+      supabase
+        .from('invoices')
+        .select('id, subtotal, discount_amount, vat_amount, total')
+        .neq('status', 'void')
+        .gte('created_at', start)
+        .lt('created_at', end)
+        .order('id')
+    ),
+    selectAll(() =>
+      supabase
+        .from('invoice_payments')
+        .select('id, amount, payment_method, invoices!inner(status, total, vat_amount)')
+        .neq('invoices.status', 'void')
+        .gte('paid_at', start)
+        .lt('paid_at', end)
+        .order('id')
+    ),
+    selectAll(() =>
+      supabase
+        .from('expenses')
+        .select('id, amount, vat_amount, total, category, fixed_cost')
+        .gte('expense_date', dateStart)
+        .lt('expense_date', dateEnd)
+        .order('id')
+    ),
     selectAll(() => supabase.from('invoices').select('id, total, amount_paid').in('status', ['unpaid', 'partially_paid']).order('id')),
-    // Real cash received this month against a client's old-system balance
-    // (migration 149) — not tied to any invoice here and not a fresh
-    // taxable supply, so it's kept out of the VAT figures below, but it's
-    // still money in the door and belongs in cash-basis net profit.
-    // Failing this one query alone never takes down the rest of the P&L —
-    // most obviously so the whole Accounting page doesn't 500 for a clinic
-    // that hasn't run migration 149 yet.
     // Server-only table (RLS on, no public policy, migration 187).
-    supabaseAdmin.from('legacy_payments').select('amount').gte('paid_at', start).lt('paid_at', end),
+    selectAll(() =>
+      supabaseAdmin.from('legacy_payments').select('id, amount, payment_method').gte('paid_at', start).lt('paid_at', end).order('id')
+    ),
   ]);
 
-  for (const res of [invoicedRes, paymentsRes, expensesRes, outstandingRes]) {
+  for (const res of [invoicedRes, paymentsRes, expensesRes, outstandingRes, legacyRes]) {
     if (res.error) {
       return NextResponse.json({ error: res.error.message }, { status: 500 });
     }
   }
 
   const invoiced = invoicedRes.data;
-  const payments = paymentsRes.data;
-  const expenses = expensesRes.data;
   const outstanding = outstandingRes.data;
-  const legacyPayments = legacyRes.error ? [] : legacyRes.data;
+  const figures = buildMonthlyFigures({
+    payments: paymentsRes.data,
+    legacyPayments: legacyRes.data,
+    expenses: expensesRes.data,
+  });
 
-  const paymentsByMethod = Object.fromEntries(PAYMENT_METHODS.map((m) => [m, 0]));
-  for (const p of payments) {
-    if (p.payment_method && paymentsByMethod[p.payment_method] !== undefined) {
-      paymentsByMethod[p.payment_method] += Number(p.amount || 0);
-    }
-  }
-
-  const outputVatInvoiced = sum(invoiced, 'vat_amount');
-  const inputVat = sum(expenses, 'vat_amount');
-  const revenueCollectedInclVat = sum(payments, 'amount');
-  const revenueCollected = Math.round((revenueCollectedInclVat / (1 + VAT_RATE)) * 100) / 100;
-  const vatCollected = Math.round((revenueCollectedInclVat - revenueCollected) * 100) / 100;
-  const expensesTotal = sum(expenses, 'amount');
   const discountsTotal = sum(invoiced, 'discount_amount');
-  const discountedInvoiceCount = invoiced.filter((inv) => Number(inv.discount_amount) > 0).length;
-  const unpaidTotal = outstanding.reduce(
-    (total, inv) => total + (Number(inv.total || 0) - Number(inv.amount_paid || 0)),
-    0
-  );
-  const legacyCollected = sum(legacyPayments, 'amount');
+  const unpaidTotal = outstanding.reduce((total, inv) => total + (Number(inv.total || 0) - Number(inv.amount_paid || 0)), 0);
 
   return NextResponse.json({
     month,
-    revenue: { invoiced: sum(invoiced, 'subtotal') - discountsTotal, collected: revenueCollected },
-    vat: {
-      output_invoiced: outputVatInvoiced,
-      output_collected: vatCollected,
-      input: inputVat,
-      net_due: outputVatInvoiced - inputVat,
+    ...figures,
+    invoiced: {
+      revenue_ex_vat: sum(invoiced, 'subtotal') - discountsTotal,
+      vat: sum(invoiced, 'vat_amount'),
+      count: invoiced.length,
     },
-    expenses: { total: expensesTotal, count: expenses.length },
-    discounts: { total: discountsTotal, count: discountedInvoiceCount },
-    legacy: { collected: legacyCollected, count: legacyPayments.length },
-    net_profit_cash_basis: revenueCollected + legacyCollected - expensesTotal,
-    payments_by_method: paymentsByMethod,
+    discounts: { total: discountsTotal, count: invoiced.filter((inv) => Number(inv.discount_amount) > 0).length },
     unpaid: { total: unpaidTotal, count: outstanding.length },
   });
 }

@@ -57,7 +57,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { expense_date, vendor_name, invoice_number, description, category, amount, vat_amount, payment_method, staff_id } = body;
+  const { expense_date, vendor_name, invoice_number, description, category, amount, vat_amount, payment_method, staff_id, fixed_cost } = body;
 
   if (amount === undefined || amount === null || Number.isNaN(Number(amount))) {
     return NextResponse.json({ error: 'amount is required' }, { status: 400 });
@@ -89,6 +89,8 @@ export async function POST(request) {
         total: amountNum + vatNum,
         payment_method: payment_method || null,
         staff_id: staff_id || null,
+        // A fixed monthly cost (migration 199); left null it follows the category.
+        fixed_cost: fixed_cost === true || fixed_cost === false ? fixed_cost : null,
       },
     ])
     .select()

@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { uploadAttachment } from '@/lib/attachments';
 import ScanReceiptButton from '@/app/_components/ScanReceiptButton';
+import { isFixedCost } from '@/lib/accountingSummary';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -55,6 +56,8 @@ const emptyForm = {
   amount: '',
   vat_amount: '',
   payment_method: '',
+  // Fixed monthly cost (migration 199): null follows the category.
+  fixed_cost: null,
 };
 
 export default function ExpensesPage() {
@@ -314,16 +317,26 @@ export default function ExpensesPage() {
                       />
                     </td>
                     <td>
-                      <select
-                        value={ex.category}
-                        onChange={(e) => commitField(ex, 'category', e.target.value)}
-                      >
-                        {CATEGORIES.map((c) => (
-                          <option key={c} value={c}>
-                            {CATEGORY_LABELS[c]}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="expense-category-cell">
+                        <select
+                          value={ex.category}
+                          onChange={(e) => commitField(ex, 'category', e.target.value)}
+                        >
+                          {CATEGORIES.map((c) => (
+                            <option key={c} value={c}>
+                              {CATEGORY_LABELS[c]}
+                            </option>
+                          ))}
+                        </select>
+                        <label className="expense-fixed-toggle" title="Fixed monthly cost: taken off below gross profit">
+                          <input
+                            type="checkbox"
+                            checked={isFixedCost(ex)}
+                            onChange={(e) => commitField(ex, 'fixed_cost', e.target.checked)}
+                          />
+                          Fixed
+                        </label>
+                      </div>
                     </td>
                     <td>
                       <input
@@ -428,13 +441,23 @@ export default function ExpensesPage() {
               value={form.description}
               onChange={(e) => updateForm({ description: e.target.value })}
             />
-            <select value={form.category} onChange={(e) => updateForm({ category: e.target.value })}>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_LABELS[c]}
-                </option>
-              ))}
-            </select>
+            <div className="expense-category-cell">
+              <select value={form.category} onChange={(e) => updateForm({ category: e.target.value })}>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {CATEGORY_LABELS[c]}
+                  </option>
+                ))}
+              </select>
+              <label className="expense-fixed-toggle" title="Fixed monthly cost: taken off below gross profit">
+                <input
+                  type="checkbox"
+                  checked={isFixedCost(form)}
+                  onChange={(e) => updateForm({ fixed_cost: e.target.checked })}
+                />
+                Fixed monthly cost
+              </label>
+            </div>
             <input
               type="number"
               step="0.01"

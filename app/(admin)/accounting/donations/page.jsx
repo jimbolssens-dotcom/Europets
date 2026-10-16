@@ -42,6 +42,9 @@ const emptyForm = {
   notes: '',
 };
 
+// The client's old-system balance, as a pseudo-invoice in the apply list.
+const OLD_SYSTEM_TARGET = '__old_system__';
+
 export default function DonationsPage() {
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -196,9 +199,22 @@ export default function DonationsPage() {
     setApplyClient(client);
     setApplyInvoiceId('');
     setApplyError(null);
-    const res = await fetch(`/api/invoices?client_id=${client.id}&status=unpaid,partially_paid`);
-    const data = await res.json();
-    setApplyInvoices(Array.isArray(data) ? data : []);
+    const [invoicesRes, clientRes] = await Promise.all([
+      fetch(`/api/invoices?client_id=${client.id}&status=unpaid,partially_paid`),
+      fetch(`/api/clients/${client.id}`),
+    ]);
+    const data = await invoicesRes.json();
+    const clientData = await clientRes.json().catch(() => null);
+    const invoices = Array.isArray(data) ? data : [];
+    // The client's old-system (FileMaker) balance is one more thing this
+    // payment can go towards (migration 199), listed with the invoices:
+    // shaped like one so the same pick / pre-fill / max logic applies.
+    const oldBalance = Math.round(Number(clientData?.legacy_outstanding_balance || 0) * 100) / 100;
+    setApplyInvoices(
+      oldBalance > 0
+        ? [{ id: OLD_SYSTEM_TARGET, old_system: true, total: oldBalance, amount_paid: 0 }, ...invoices]
+        : invoices
+    );
   }
 
   async function pickApplyPatient(patient) {
@@ -215,7 +231,11 @@ export default function DonationsPage() {
     const res = await fetch(`/api/donations/${donation.id}/apply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invoice_id: applyInvoiceId, amount: Number(applyAmount) }),
+      body: JSON.stringify(
+        applyInvoiceId === OLD_SYSTEM_TARGET
+          ? { old_system: true, client_id: applyClient.id, amount: Number(applyAmount) }
+          : { invoice_id: applyInvoiceId, amount: Number(applyAmount) }
+      ),
     });
     const data = await res.json();
     setApplying(false);
@@ -461,8 +481,8 @@ export default function DonationsPage() {
                           )}
 
                           <h3>Applied To</h3>
-                          {detail.allocations.length === 0 ? (
-                            <p className="visit-meta">Not applied to any invoice yet.</p>
+                          {detail.allocations.length === 0 && !(detail.old_system_allocations || []).length ? (
+                            <p className="visit-meta">Not applied to anything yet.</p>
                           ) : (
                             <table>
                               <thead>
@@ -496,13 +516,26 @@ export default function DonationsPage() {
                                     <td>AED {money(a.amount)}</td>
                                   </tr>
                                 ))}
+                                {(detail.old_system_allocations || []).map((a) => (
+                                  <tr key={a.id}>
+                                    <td>{formatShortDate(a.paid_at)}</td>
+                                    <td>
+                                      <a href="/accounting/legacy-payments">Old system{a.payment_number ? `, ${a.payment_number}` : ''}</a>
+                                    </td>
+                                    <td>
+                                      {a.client_id ? <a href={`/clients/${a.client_id}`}>{a.clients?.full_name || 'Client'}</a> : '—'}
+                                    </td>
+                                    <td>—</td>
+                                    <td>AED {money(a.amount)}</td>
+                                  </tr>
+                                ))}
                               </tbody>
                             </table>
                           )}
 
                           {detail.remaining > 0 && (
                             <>
-                              <h3>Apply to an Invoice</h3>
+                              <h3>Apply to an Invoice or Old System Balance</h3>
                               {applyError && <p className="error">{applyError}</p>}
                               <p className="visit-meta">
                                 AED {money(detail.remaining)} of this payment is not yet applied.
@@ -514,7 +547,7 @@ export default function DonationsPage() {
                                     Client: <strong>{applyClient.full_name}</strong>
                                   </p>
                                   {applyInvoices.length === 0 ? (
-                                    <p className="visit-meta">No unpaid or partially paid invoices for this client.</p>
+                                    <p className="visit-meta">No unpaid invoices or old system balance for this client.</p>
                                   ) : (
                                     <>
                                       <select
@@ -537,7 +570,9 @@ export default function DonationsPage() {
                                             Math.round((Number(inv.total) - Number(inv.amount_paid)) * 100) / 100;
                                           return (
                                             <option key={inv.id} value={inv.id}>
-                                              {invoiceLabel(inv.invoice_number)} — balance AED {money(bal)}
+                                              {inv.old_system
+                                                ? `Old system balance: AED ${money(bal)}`
+                                                : `${invoiceLabel(inv.invoice_number)} · balance AED ${money(bal)}`}
                                             </option>
                                           );
                                         })}

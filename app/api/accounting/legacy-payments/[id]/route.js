@@ -13,7 +13,9 @@
 //   legacy_outstanding_balance — the reverse of what logging it did. No
 //   "already applied" guard like donations has: a legacy payment has no
 //   separate allocation to orphan, its only side effect is the balance,
-//   which this always reverses.
+//   which this always reverses. One made from an online payment (migration
+//   199) frees that amount on the online payment again, since its
+//   "allocated" total is counted from these rows.
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
@@ -32,11 +34,21 @@ export async function PATCH(request, { params }) {
 
   const { data: current, error: currentError } = await supabaseAdmin
     .from('legacy_payments')
-    .select('id, amount, client_id')
+    .select('id, amount, client_id, donation_id')
     .eq('id', id)
     .maybeSingle();
   if (currentError) return NextResponse.json({ error: currentError.message }, { status: 500 });
   if (!current) return NextResponse.json({ error: 'payment not found' }, { status: 404 });
+
+  // Made from an online payment (migration 199): its amount and date come
+  // from that payment, so changing them here would put the two out of
+  // step. Delete it and apply the online payment again instead.
+  if (current.donation_id && (hasAmount || hasPaidAt || hasMethod)) {
+    return NextResponse.json(
+      { error: 'This payment came from an online payment. Delete it and apply the online payment again to change it.' },
+      { status: 400 }
+    );
+  }
 
   const update = {};
 

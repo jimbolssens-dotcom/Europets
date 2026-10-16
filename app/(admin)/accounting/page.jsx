@@ -1,9 +1,8 @@
 // app/accounting/page.jsx
-// Accounting overview: a basic, UAE VAT-aware P&L for one month at a time.
-// "Invoiced" numbers (what VAT is due on, per the FTA's supply-date basis)
-// sit next to "collected" numbers (actual cash in the door, by payment
-// method) since they answer different questions — see the comment in
-// app/api/accounting/summary/route.js for the full reasoning. Links out to
+// Accounting overview: one month's books in the clinic's own layout (the
+// old Float spreadsheet): total takings, total outgoing, gross profit,
+// fixed monthly costs, net profit, then VAT takings / collected / paid /
+// net due. See lib/accountingSummary.js for how each is worked out. Links out to
 // the Unpaid Invoices (for chasing reminders) and Expenses (incl. receipt
 // photo scanning) pages, which are the two things this page can't show
 // inline without getting cluttered.
@@ -23,9 +22,10 @@ function currentMonth() {
 
 const PAYMENT_LABELS = {
   cash: 'Cash',
-  card: 'Card',
+  card: 'Card / Visa',
+  online: 'Online (payment links, Nomod, PayPal...)',
   bank_transfer: 'Bank Transfer',
-  payment_link: 'Payment Link',
+  other: 'Other / method not recorded',
 };
 
 export default function AccountingOverviewPage() {
@@ -52,7 +52,7 @@ export default function AccountingOverviewPage() {
     <div>
       <div className="page-header">
         <h1>Accounting</h1>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div className="page-header-actions">
           <a href="/shift-tally" className="button-link">
             💰 Shift Tally
           </a>
@@ -93,69 +93,41 @@ export default function AccountingOverviewPage() {
 
           <div className="accounting-stat-grid">
             <div className="accounting-stat">
-              <span className="accounting-stat-label">Revenue Invoiced</span>
-              <span className="accounting-stat-value">AED {money(summary.revenue.invoiced)}</span>
-              <span className="accounting-stat-hint">Ex-VAT, all non-void invoices dated this month</span>
+              <span className="accounting-stat-label">Total Takings</span>
+              <span className="accounting-stat-value">AED {money(summary.takings.total)}</span>
+              <span className="accounting-stat-hint">
+                Everything received, incl. AED {money(summary.takings.old_system)} on{' '}
+                <a href="/accounting/legacy-payments">old system balances</a> ({summary.takings.old_system_count})
+              </span>
             </div>
             <div className="accounting-stat">
-              <span className="accounting-stat-label">Revenue Collected</span>
-              <span className="accounting-stat-value">AED {money(summary.revenue.collected)}</span>
-              <span className="accounting-stat-hint">Ex-VAT, payments actually received this month (incl. partial payments)</span>
+              <span className="accounting-stat-label">Total Outgoing</span>
+              <span className="accounting-stat-value">AED {money(summary.outgoing.total)}</span>
+              <span className="accounting-stat-hint">
+                With VAT · AED {money(summary.outgoing.ex_vat)} without · {summary.outgoing.count} expense
+                {summary.outgoing.count === 1 ? '' : 's'}
+              </span>
             </div>
             <div className="accounting-stat">
-              <span className="accounting-stat-label">Expenses</span>
-              <span className="accounting-stat-value">AED {money(summary.expenses.total)}</span>
-              <span className="accounting-stat-hint">Ex-VAT · {summary.expenses.count} expense{summary.expenses.count === 1 ? '' : 's'}</span>
+              <span className="accounting-stat-label">Gross Profit</span>
+              <span className="accounting-stat-value">AED {money(summary.gross_profit.total)}</span>
+              <span className="accounting-stat-hint">Takings less outgoing · ex-VAT AED {money(summary.gross_profit.ex_vat)}</span>
+            </div>
+            <div className="accounting-stat">
+              <span className="accounting-stat-label">Fixed Monthly Costs</span>
+              <span className="accounting-stat-value">AED {money(summary.fixed_costs.total)}</span>
+              <span className="accounting-stat-hint">
+                Salaries, sponsor, rent, utilities... ({summary.fixed_costs.count}) · <a href="/accounting/expenses">tick on any expense</a>
+              </span>
             </div>
             <div className="accounting-stat">
               <span className="accounting-stat-label">Net Profit</span>
-              <span className="accounting-stat-value">AED {money(summary.net_profit_cash_basis)}</span>
-              <span className="accounting-stat-hint">Cash basis: collected + old-system payments minus spent this month</span>
-            </div>
-            <div className="accounting-stat">
-              <span className="accounting-stat-label">Discounts Given</span>
-              <span className="accounting-stat-value">AED {money(summary.discounts.total)}</span>
-              <span className="accounting-stat-hint">
-                {summary.discounts.count} invoice{summary.discounts.count === 1 ? '' : 's'} discounted this month
-              </span>
-            </div>
-            <div className="accounting-stat">
-              <span className="accounting-stat-label">Old System Payments</span>
-              <span className="accounting-stat-value">AED {money(summary.legacy.collected)}</span>
-              <span className="accounting-stat-hint">
-                <a href="/accounting/legacy-payments">
-                  {summary.legacy.count} payment{summary.legacy.count === 1 ? '' : 's'} logged this month
-                </a>{' '}
-                — counted in Net Profit above, kept out of VAT
-              </span>
+              <span className="accounting-stat-value">AED {money(summary.net_profit.total)}</span>
+              <span className="accounting-stat-hint">Gross profit less fixed costs · ex-VAT AED {money(summary.net_profit.ex_vat)}</span>
             </div>
           </div>
 
-          <h3>VAT (5%)</h3>
-          <div className="accounting-stat-grid">
-            <div className="accounting-stat">
-              <span className="accounting-stat-label">Output VAT Invoiced</span>
-              <span className="accounting-stat-value">AED {money(summary.vat.output_invoiced)}</span>
-              <span className="accounting-stat-hint">Due to the FTA for this period</span>
-            </div>
-            <div className="accounting-stat">
-              <span className="accounting-stat-label">Output VAT Collected</span>
-              <span className="accounting-stat-value">AED {money(summary.vat.output_collected)}</span>
-              <span className="accounting-stat-hint">Actually received from clients this month</span>
-            </div>
-            <div className="accounting-stat">
-              <span className="accounting-stat-label">Input VAT</span>
-              <span className="accounting-stat-value">AED {money(summary.vat.input)}</span>
-              <span className="accounting-stat-hint">Reclaimable, from expenses this month</span>
-            </div>
-            <div className="accounting-stat">
-              <span className="accounting-stat-label">Net VAT Due</span>
-              <span className="accounting-stat-value">AED {money(summary.vat.net_due)}</span>
-              <span className="accounting-stat-hint">Output invoiced minus input</span>
-            </div>
-          </div>
-
-          <h3>Payments Received This Month, By Method</h3>
+          <h3>Takings by Method</h3>
           <table>
             <thead>
               <tr>
@@ -164,14 +136,49 @@ export default function AccountingOverviewPage() {
               </tr>
             </thead>
             <tbody>
-              {Object.entries(summary.payments_by_method).map(([method, amount]) => (
-                <tr key={method}>
-                  <td>{PAYMENT_LABELS[method] || method}</td>
-                  <td>AED {money(amount)}</td>
-                </tr>
-              ))}
+              {Object.entries(summary.takings.by_method)
+                .filter(([method, amount]) => method !== 'other' || Number(amount) > 0)
+                .map(([method, amount]) => (
+                  <tr key={method}>
+                    <td>{PAYMENT_LABELS[method] || method}</td>
+                    <td>AED {money(amount)}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
+
+          <h3>VAT (5%)</h3>
+          <div className="accounting-stat-grid">
+            <div className="accounting-stat">
+              <span className="accounting-stat-label">VAT Takings</span>
+              <span className="accounting-stat-value">AED {money(summary.vat.takings)}</span>
+              <span className="accounting-stat-hint">Amount VAT applies to: VAT collected ÷ 5%</span>
+            </div>
+            <div className="accounting-stat">
+              <span className="accounting-stat-label">VAT Collected</span>
+              <span className="accounting-stat-value">AED {money(summary.vat.collected)}</span>
+              <span className="accounting-stat-hint">
+                Paid by clients: new invoices AED {money(summary.vat.collected_new_invoices)} · old system AED{' '}
+                {money(summary.vat.collected_old_system)}
+              </span>
+            </div>
+            <div className="accounting-stat">
+              <span className="accounting-stat-label">VAT Paid</span>
+              <span className="accounting-stat-value">AED {money(summary.vat.paid)}</span>
+              <span className="accounting-stat-hint">On expenses this month</span>
+            </div>
+            <div className="accounting-stat">
+              <span className="accounting-stat-label">Net VAT Due</span>
+              <span className="accounting-stat-value">AED {money(summary.vat.net_due)}</span>
+              <span className="accounting-stat-hint">VAT collected less VAT paid</span>
+            </div>
+          </div>
+
+          <p className="visit-meta">
+            Invoiced this month: AED {money(summary.invoiced.revenue_ex_vat)} ex-VAT, VAT AED {money(summary.invoiced.vat)} (
+            {summary.invoiced.count} invoice{summary.invoiced.count === 1 ? '' : 's'}) · Discounts given AED{' '}
+            {money(summary.discounts.total)} ({summary.discounts.count})
+          </p>
 
           <p className="visit-meta">
             <a href="/accounting/unpaid">

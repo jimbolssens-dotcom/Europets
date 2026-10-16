@@ -3,7 +3,9 @@
 //        trail — every invoice (and therefore patient/case) its money has
 //        gone to. This is the "which cases did this donation help" view;
 //        it costs no extra schema since that's just which invoice_payments
-//        rows are tagged with this donation's id (see migration 111).
+//        rows are tagged with this donation's id (see migration 111), plus
+//        any old-system payments made from it (legacy_payments.donation_id,
+//        migration 199).
 // DELETE /api/donations/:id  -> remove one (blocked once any of its money
 //        has been applied to an invoice — same guard pattern as staff/
 //        catalog deletes elsewhere in the app).
@@ -17,6 +19,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { allocatedByDonation } from '@/lib/donationAllocations';
 
 const SOURCES = ['nomod', 'paymob', 'paypal', 'bank_transfer'];
 
@@ -38,13 +41,26 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: allocError.message }, { status: 500 });
   }
 
-  const allocated = Math.round((allocations || []).reduce((sum, a) => sum + Number(a.amount), 0) * 100) / 100;
+  // Applied to clients' old-system balances (migration 199). Server-only
+  // table (RLS on, no public policy, migration 187).
+  const { data: oldSystem, error: oldSystemError } = await supabaseAdmin
+    .from('legacy_payments')
+    .select('id, amount, paid_at, payment_number, client_id, clients(full_name)')
+    .eq('donation_id', params.id)
+    .order('paid_at', { ascending: false });
+  if (oldSystemError) {
+    return NextResponse.json({ error: oldSystemError.message }, { status: 500 });
+  }
+
+  const allRows = [...(allocations || []), ...(oldSystem || [])];
+  const allocated = Math.round(allRows.reduce((sum, a) => sum + Number(a.amount), 0) * 100) / 100;
 
   return NextResponse.json({
     ...donation,
     allocated,
     remaining: Math.round((Number(donation.amount) - allocated) * 100) / 100,
     allocations: allocations || [],
+    old_system_allocations: oldSystem || [],
   });
 }
 
@@ -71,15 +87,12 @@ export async function PATCH(request, { params }) {
     if (!numericAmount || Number.isNaN(numericAmount) || numericAmount <= 0) {
       return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 });
     }
-    const { data: allocations, error: allocError } = await supabase
-      .from('invoice_payments')
-      .select('amount')
-      .eq('donation_id', params.id);
+    const { data: allocatedMap, error: allocError } = await allocatedByDonation([params.id]);
     if (allocError) return NextResponse.json({ error: allocError.message }, { status: 500 });
-    const allocated = (allocations || []).reduce((sum, a) => sum + Number(a.amount), 0);
+    const allocated = allocatedMap[params.id] || 0;
     if (numericAmount < allocated - 0.01) {
       return NextResponse.json(
-        { error: `amount can't be less than the AED ${allocated.toFixed(2)} already applied to invoices` },
+        { error: `amount can't be less than the AED ${allocated.toFixed(2)} already applied to invoices and old system balances` },
         { status: 400 }
       );
     }
@@ -103,7 +116,7 @@ export async function DELETE(request, { params }) {
   if (error) {
     if (error.code === '23503') {
       return NextResponse.json(
-        { error: "cannot delete this donation — it's already been applied to an invoice" },
+        { error: "This payment can't be deleted: it's already been applied to an invoice or an old system balance." },
         { status: 409 }
       );
     }

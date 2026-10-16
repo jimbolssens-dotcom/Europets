@@ -13,6 +13,7 @@
 // Accounting-only (see middleware.js) — donations never come through the
 // front desk, so this never needs to be reachable by PIN-only staff.
 
+import { allocatedByDonation as fetchAllocated } from '@/lib/donationAllocations';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
@@ -33,21 +34,9 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const ids = (donations || []).map((d) => d.id);
-  let allocations = [];
-  if (ids.length > 0) {
-    const { data, error: allocError } = await supabase
-      .from('invoice_payments')
-      .select('donation_id, amount')
-      .in('donation_id', ids);
-    if (allocError) return NextResponse.json({ error: allocError.message }, { status: 500 });
-    allocations = data || [];
-  }
-
-  const allocatedByDonation = {};
-  for (const a of allocations) {
-    allocatedByDonation[a.donation_id] = (allocatedByDonation[a.donation_id] || 0) + Number(a.amount);
-  }
+  // Applied to invoices and to old-system balances (lib/donationAllocations.js).
+  const { data: allocatedByDonation, error: allocError } = await fetchAllocated((donations || []).map((d) => d.id));
+  if (allocError) return NextResponse.json({ error: allocError.message }, { status: 500 });
 
   const result = (donations || []).map((d) => {
     const allocated = Math.round((allocatedByDonation[d.id] || 0) * 100) / 100;

@@ -11675,3 +11675,26 @@ button.patient-chip-age-missing {
   margin: 0;
   align-self: center;
 }
+
+/* Expenses: the category and its "Fixed monthly cost" tick side by side
+   (lib/accountingSummary.js takes fixed costs off below gross profit). */
+.expense-category-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.expense-category-cell select {
+  flex: 1 1 8rem;
+}
+.expense-fixed-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+.expense-fixed-toggle input {
+  width: auto;
+  margin: 0;
+}
