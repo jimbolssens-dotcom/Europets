@@ -1,4 +1,5 @@
 import { BOOKING_URL, CLIENT_PORTAL_URL, SERVICES, VETS, HOURS, CONTACT, STORY } from '@/lib/content';
+import HoursNote from '@/app/_components/HoursNote';
 import HexField from './_components/HexField';
 import HexLattice from './_components/HexLattice';
 import HeroDoc from './_components/HeroDoc';
@@ -96,7 +97,7 @@ export default function HomePage() {
               <dt>Consultations</dt>
               <dd>{HOURS.consultations}</dd>
             </dl>
-            <p className="hours-note">{HOURS.note}</p>
+            <HoursNote />
           </div>
           <div className="card hours-card">
             <span className="eyebrow">Find us</span>

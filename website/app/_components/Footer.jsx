@@ -24,18 +24,21 @@ export default function Footer() {
             <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>
           </p>
           <p>
-            <a href={`https://wa.me/${CONTACT.whatsappHref}`}>WhatsApp: {CONTACT.whatsapp}</a>
+            <a href={`https://wa.me/${CONTACT.whatsappHref}`}>WhatsApp: {CONTACT.whatsapp}</a> <small>(messages only, no calls)</small>
           </p>
           <p>
             <a href={`tel:+${CONTACT.mobileHref}`}>Call: {CONTACT.mobile}</a>
           </p>
-          <p>{CONTACT.landline}</p>
+          <p>
+            <a href={`tel:+${CONTACT.landlineHref}`}>Landline: {CONTACT.landline}</a>
+          </p>
         </div>
 
         <div>
           <h3 className="footer-heading">Hours</h3>
           <p>{HOURS.days}</p>
-          <p>{HOURS.reception}</p>
+          <p>Reception: {HOURS.reception}</p>
+          <p>Consultations: {HOURS.consultations}</p>
         </div>
 
         <div>

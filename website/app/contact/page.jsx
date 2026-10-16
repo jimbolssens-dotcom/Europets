@@ -1,4 +1,5 @@
 import { CONTACT, HOURS, CLIENT_PORTAL_URL } from '@/lib/content';
+import HoursNote from '@/app/_components/HoursNote';
 
 export const metadata = { title: 'Contact - Europets Clinic' };
 
@@ -25,12 +26,14 @@ export default function ContactPage() {
           <div className="contact-block">
             <h3>Phone &amp; Email</h3>
             <p>
-              <a href={`https://wa.me/${CONTACT.whatsappHref}`}>WhatsApp: {CONTACT.whatsapp}</a>
+              <a href={`https://wa.me/${CONTACT.whatsappHref}`}>WhatsApp: {CONTACT.whatsapp}</a> <small>(messages only, no calls)</small>
             </p>
             <p>
               <a href={`tel:+${CONTACT.mobileHref}`}>Mobile: {CONTACT.mobile}</a>
             </p>
-            <p>Landline: {CONTACT.landline}</p>
+            <p>
+              <a href={`tel:+${CONTACT.landlineHref}`}>Landline: {CONTACT.landline}</a>
+            </p>
             <p>
               <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>
             </p>
@@ -41,7 +44,7 @@ export default function ContactPage() {
             <p>{HOURS.days}</p>
             <p>Reception: {HOURS.reception}</p>
             <p>Consultations: {HOURS.consultations}</p>
-            <p className="hours-note">{HOURS.note}</p>
+            <HoursNote />
           </div>
         </div>
 

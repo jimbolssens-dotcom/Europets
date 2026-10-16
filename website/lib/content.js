@@ -32,6 +32,7 @@ export const CONTACT = {
   mobile: '050 860 6857',
   mobileHref: '971508606857',
   landline: '06 522 8193',
+  landlineHref: '97165228193',
   address: ['Villa 341, Al Mirgab St.', 'Al Qadisiya', 'Sharjah, UAE'],
 };
 
@@ -39,6 +40,8 @@ export const HOURS = {
   days: 'Monday – Sunday',
   reception: '8am – 2pm  |  4pm – 7pm',
   consultations: '9:30am – 10:45am  |  4:30pm – 6:45pm',
+  // Rendered by app/_components/HoursNote.jsx, which links "pet
+  // registration" to the New Patients page.
   note: 'By appointment only. Please complete pet registration before your visit.',
 };
 

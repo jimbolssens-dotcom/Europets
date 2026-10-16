@@ -1430,3 +1430,17 @@ p {
     transition: none;
   }
 }
+
+/* "pet registration" in the hours note links to /new-patients. */
+.hours-note a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* "(messages only, no calls)" next to the WhatsApp number. */
+.footer small,
+.contact-block small {
+  font-size: 0.78em;
+  opacity: 0.75;
+}
