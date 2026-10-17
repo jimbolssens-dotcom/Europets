@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isAcknowledgementOnly, burstIsAcknowledgementOnly, noticeRecentlySent } from '../lib/clientAcknowledgement.js';
+import { isAcknowledgementOnly, burstIsAcknowledgementOnly, noticeCoversWait } from '../lib/clientAcknowledgement.js';
 
 test('acknowledgements', () => {
   for (const t of ['Thank you', 'Thanks', 'Ok', 'Great!', 'Thanks a ton !!', '👍', '🙏🙏', 'ok thank you so much', 'Perfect, see you Saturday', 'Noted thanks dr']) {
@@ -30,11 +30,11 @@ const at = (body) => new Date(upTo(body).at(-1).created_at).getTime() + 3000;
 test('no notice on a bare thank-you while waiting (already told)', () => {
   const rows = upTo('Thank you');
   assert.equal(burstIsAcknowledgementOnly(rows), false); // the question is still unanswered
-  assert.equal(noticeRecentlySent(rows, at('Thank you')), true);
+  assert.equal(noticeCoversWait(rows, at('Thank you')), true);
 });
 
 test('a follow-up detail 3 minutes after the notice gets no second notice', () => {
-  assert.equal(noticeRecentlySent(upTo('Its dry food/kibble'), at('Its dry food/kibble')), true);
+  assert.equal(noticeCoversWait(upTo('Its dry food/kibble'), at('Its dry food/kibble')), true);
 });
 
 test('thanks after staff answered: nothing at all', () => {
@@ -42,10 +42,10 @@ test('thanks after staff answered: nothing at all', () => {
   assert.equal(burstIsAcknowledgementOnly(upTo('Thanks a ton !!')), true);
 });
 
-test('notice cooldown ends after 15 minutes, and a real reply resets it', () => {
+test('one notice covers the whole wait, and a real reply resets it', () => {
   const rows = upTo('Its dry food/kibble');
-  assert.equal(noticeRecentlySent(rows, at('Thank you') + 16 * 60000), false);
-  assert.equal(noticeRecentlySent(upTo('Great!'), at('Great!')), false);
+  assert.equal(noticeCoversWait(rows, at('Thank you') + 60 * 60000), true);
+  assert.equal(noticeCoversWait(upTo('Great!'), at('Great!')), false);
 });
 
 test('Debra Al Hajeri: "Ok" to the automated reminder after a staff message', () => {
@@ -86,5 +86,5 @@ test('Aarti: a real reply to the reminder goes to the AI, not "still with our te
   ];
   assert.equal(replyingToAutomatedMessage(rows), true);
   assert.equal(burstIsAcknowledgementOnly(rows), false);
-  assert.equal(noticeRecentlySent(rows, Date.parse(rows.at(-1).created_at)), false);
+  assert.equal(noticeCoversWait(rows, Date.parse(rows.at(-1).created_at)), false);
 });
