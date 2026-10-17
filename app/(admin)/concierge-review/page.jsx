@@ -41,11 +41,19 @@ function Outcome({ after }) {
   if (after.sent) main = <div className="cr-bubble cr-out cr-new"><span className="cr-who">AI</span>{after.reply}</div>;
   else if (after.escalated) main = <p className="cr-verdict">Hands it to staff: {after.reason}</p>;
   else if (after.withStaff || after.handoff) main = <p className="cr-verdict">Leaves it to staff: {after.reason}</p>;
+  else if (after.unregistered) main = <p className="cr-verdict">Goes to staff ({after.reason})</p>;
   else main = <p className="cr-verdict">Sends nothing ({after.reason})</p>;
+  const notice = after.notice && (
+    <div className="cr-bubble cr-out cr-notice cr-new">
+      <span className="cr-who">Night message to the client</span>
+      {after.notice}
+    </div>
+  );
   const tools = (after.trace || []).flatMap((t) => (t.tool_calls || []).map((c) => c.name)).filter((n) => n !== 'escalate_to_staff');
   return (
     <>
       {main}
+      {notice}
       <p className="cr-muted">
         {tools.length ? `Looked up: ${[...new Set(tools)].join(', ')}. ` : ''}
         {redo ? `Second look sent its first draft back: “${redo}”` : look ? 'Second look: OK.' : ''}
