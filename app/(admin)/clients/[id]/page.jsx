@@ -20,6 +20,8 @@ import { DEFAULT_LEGACY_PAYMENT_METHODS } from '@/lib/legacyPayments';
 import { nextReminderDate, stageShort } from '@/lib/reminderStages';
 import { readViewCacheEntry, writeViewCacheEntry } from '@/lib/viewCache';
 import { fetchJsonPrefetched } from '@/lib/prefetchData';
+import ActionMenu from '@/app/_components/ActionMenu';
+import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -461,16 +463,23 @@ export default function ClientDetailPage() {
       <h1>
         {client.full_name} <span>(Client #{client.client_number})</span>
       </h1>
-      <p>
+      {/* Same layout as the patient page: Book, the More menu right next
+          to it, then the case links (Consult / Invoice) in the pink oval.
+          Chat stays out on the row since it's used all day. */}
+      <div className="action-row">
         <a href={`/appointments?client_id=${client.id}`} className="button-link">
-          Book Appointment
-        </a>{' '}
-        <a href={`/consults?client_id=${client.id}`} className="button-link">
-          New Consult
-        </a>{' '}
-        <a href={`/invoices?client_id=${client.id}`} className="button-link">
-          Invoice
-        </a>{' '}
+          📅 Book
+        </a>
+        <ActionMenu>
+          <ActionMenu.Group label="Send the client a link" />
+          <button type="button" onClick={sendBookingLink} disabled={sendingLink}
+            title="WhatsApp the client a link to book an appointment themselves">
+            {sendingLink ? 'Sending...' : '📅 Invite (booking link)'}
+          </button>
+          <button type="button" onClick={sendClientAppLink} title="WhatsApp the client a link to the Europets client app">
+            📱 Client App link
+          </button>
+        </ActionMenu>
         {/* The real conversation thread (client_messages, same inbox as
             /messages, over the clinic's own WhatsApp number and the
             client app) — distinct from the openWhatsApp "draft a canned
@@ -478,15 +487,17 @@ export default function ClientDetailPage() {
             page, hence the spelled-out label rather than reusing their
             "💬 WhatsApp" wording for something that behaves differently. */}
         <a href={`/messages/${client.id}`} className="button-link" title="Open this client's message thread — the clinic's own WhatsApp number and app chat, unified">
-          💬 App/WhatsApp Chat
-        </a>{' '}
-        <button type="button" className="button-link" onClick={sendBookingLink} disabled={sendingLink}>
-          {sendingLink ? 'Sending...' : '📅 Invite'}
-        </button>{' '}
-        <button type="button" className="button-link" onClick={sendClientAppLink}>
-          📱 Client App
-        </button>
-      </p>
+          💬 Chat
+        </a>
+        <CrossRecordLinks>
+          <a href={`/consults?client_id=${client.id}`} className="button-link">
+            Consult
+          </a>
+          <a href={`/invoices?client_id=${client.id}`} className="button-link">
+            Invoice
+          </a>
+        </CrossRecordLinks>
+      </div>
       {bookingLinkError && <p className="error">{bookingLinkError}</p>}
       {clientAppLinkError && <p className="error">{clientAppLinkError}</p>}
 
