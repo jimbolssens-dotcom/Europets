@@ -15,6 +15,7 @@ import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import { pollWhileVisible, keepIfSame } from '@/lib/pollWhileVisible';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { isWithinOfficeHours, OFFICE_HOURS_LABEL } from '@/lib/officeHours';
+import { useClientAppRestore, saveClientAppCopy } from '@/app/_components/useClientAppCache';
 
 export default function ClientAppMessagesPage() {
   const { clientId, ready } = useClientAppSession();
@@ -39,12 +40,21 @@ export default function ClientAppMessagesPage() {
         .then((data) => {
           setMessages((prev) => keepIfSame(prev, Array.isArray(data) ? data : []));
           setLoading(false);
+          if (Array.isArray(data)) saveClientAppCopy(clientId, 'messages', data.slice(-60));
         });
 
     loadMessages();
 
     return pollWhileVisible(loadMessages, 10000);
   }, [ready, clientId]);
+
+  // This client's last copy, shown at once while the fresh one loads
+  // (useClientAppCache.js).
+  useClientAppRestore('messages', (data) => {
+    if (!Array.isArray(data)) return;
+    setMessages(data);
+    setLoading(false);
+  });
 
   // Also depends on `loading`: the page renders nothing (see the `if
   // (!ready || loading) return null` below) until it flips to false, so

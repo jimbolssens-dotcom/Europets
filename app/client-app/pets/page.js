@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import HexIcon from '@/app/_components/HexIcon';
 import { catteryToday } from '@/lib/cattery';
+import { useClientAppRestore, saveClientAppCopy } from '@/app/_components/useClientAppCache';
 
 // Next.js App Router doesn't reliably restore scroll position on
 // router.back() the way plain browser back-navigation does (a known App
@@ -59,11 +60,26 @@ export default function ClientAppPetsPage() {
       }
       setOpenAdmissionByPatientId(byPatient);
       setLoading(false);
+      saveClientAppCopy(clientId, 'pets', {
+        pets: Array.isArray(petsData) ? petsData : [],
+        cattery: Array.isArray(cattery) ? cattery : [],
+        admissions: byPatient,
+      });
     });
     return () => {
       cancelled = true;
     };
   }, [ready, clientId]);
+
+  // This client's last copy, shown at once while the fresh one loads
+  // (useClientAppCache.js).
+  useClientAppRestore('pets', (data) => {
+    if (!Array.isArray(data?.pets)) return;
+    setPets(data.pets);
+    setCatteryBookings(Array.isArray(data.cattery) ? data.cattery : []);
+    setOpenAdmissionByPatientId(data.admissions || {});
+    setLoading(false);
+  });
 
   // Restores the scroll position saved just before tapping a pet (see
   // renderPetCard's onClick below) — once the list has actually loaded,

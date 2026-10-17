@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import { reportPdfHref } from '@/lib/clientAppReports';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { useClientAppRestore, saveClientAppCopy } from '@/app/_components/useClientAppCache';
 
 export default function ClientAppReportsPage() {
   const { clientId, ready } = useClientAppSession();
@@ -44,11 +45,20 @@ export default function ClientAppReportsPage() {
         const merged = byPet.flat().sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
         setReports(merged);
         setLoading(false);
+        saveClientAppCopy(clientId, 'reports', merged);
       });
     return () => {
       cancelled = true;
     };
   }, [ready, clientId]);
+
+  // This client's last copy, shown at once while the fresh one loads
+  // (useClientAppCache.js).
+  useClientAppRestore('reports', (data) => {
+    if (!Array.isArray(data)) return;
+    setReports(data);
+    setLoading(false);
+  });
 
   if (!ready) return null;
 

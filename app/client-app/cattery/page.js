@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import { catNames, catteryToday } from '@/lib/cattery';
+import { useClientAppRestore, saveClientAppCopy } from '@/app/_components/useClientAppCache';
 
 const STATUS_PILL = {
   requested: '⏳ Waiting for confirmation',
@@ -38,9 +39,20 @@ export default function ClientAppCatteryPage() {
     if (!ready || !clientId) return;
     fetch(`/api/cattery?client_id=${clientId}`, { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : []))
-      .then((data) => setBookings(Array.isArray(data) ? data : []))
+      .then((data) => {
+        setBookings(Array.isArray(data) ? data : []);
+        if (Array.isArray(data)) saveClientAppCopy(clientId, 'cattery', data);
+      })
       .finally(() => setLoading(false));
   }, [ready, clientId]);
+
+  // This client's last copy, shown at once while the fresh one loads
+  // (useClientAppCache.js).
+  useClientAppRestore('cattery', (data) => {
+    if (!Array.isArray(data)) return;
+    setBookings(data);
+    setLoading(false);
+  });
 
   if (!ready || !clientId) return null;
 

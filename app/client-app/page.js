@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import { useClientAppTheme } from '@/app/_components/ClientAppThemeContext';
 import ClientAppPushOptIn from '@/app/_components/ClientAppPushOptIn';
@@ -22,6 +22,7 @@ import { normalizePhoneDigits } from '@/lib/clientPhoneDigits';
 import { money, balanceDue, invoiceLabel } from '@/lib/paymentReminders';
 import { reportPdfHref } from '@/lib/clientAppReports';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { useClientAppRestore, saveClientAppCopy } from '@/app/_components/useClientAppCache';
 
 const APPOINTMENT_TYPE_LABEL = {
   consult: 'Consult',
@@ -81,10 +82,28 @@ export default function ClientAppHomePage() {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState(null);
 
+  // This client's last dashboard, shown at once while the fresh one loads
+  // (useClientAppCache.js); the loading state is then skipped too.
+  // Which client's copy is on screen, so a different login still loads.
+  const restoredDashboardRef = useRef(null);
+  useClientAppRestore('dashboard', (d) => {
+    if (!d?.client) return;
+    restoredDashboardRef.current = clientId;
+    setClient(d.client);
+    setOpenAdmissions(Array.isArray(d.openAdmissions) ? d.openAdmissions : []);
+    setConsentRequests(Array.isArray(d.consentRequests) ? d.consentRequests : []);
+    setPets(Array.isArray(d.pets) ? d.pets : []);
+    setLatestInvoice(d.latestInvoice || null);
+    setNextDueVaccine(d.nextDueVaccine || null);
+    setNextAppointment(d.nextAppointment || null);
+    setReminders(Array.isArray(d.reminders) ? d.reminders : []);
+    setLoadingDashboard(false);
+  });
+
   useEffect(() => {
     if (!ready || !clientId) return;
     let cancelled = false;
-    setLoadingDashboard(true);
+    if (restoredDashboardRef.current !== clientId) setLoadingDashboard(true);
     Promise.all([
       fetch(`/api/clients/${clientId}`).then((res) => (res.ok ? res.json() : null)),
       fetch(`/api/hospitalizations?client_id=${clientId}&status=admitted`).then((res) =>
@@ -166,6 +185,16 @@ export default function ClientAppHomePage() {
           });
         }
         setReminders(items);
+        saveClientAppCopy(clientId, 'dashboard', {
+          client: clientData,
+          openAdmissions: Array.isArray(admissions) ? admissions : [],
+          consentRequests: Array.isArray(pendingConsentForms) ? pendingConsentForms : [],
+          pets: petList,
+          latestInvoice: latestInv || null,
+          nextDueVaccine: dueVaccines[0] || null,
+          nextAppointment: trueNextAppt || null,
+          reminders: items,
+        });
       })
       .finally(() => !cancelled && setLoadingDashboard(false));
     return () => {

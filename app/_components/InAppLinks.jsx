@@ -20,7 +20,8 @@
 // with data-full-reload.
 //
 // Mounted once in app/(admin)/layout.js (scope "desktop") and once in
-// app/mobile/layout.js (scope "mobile": only /mobile/... pages).
+// app/mobile/layout.js (scope "mobile": only /mobile/... pages) and
+// app/client-app/layout.js (scope "client-app").
 
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -51,8 +52,8 @@ export function inAppTarget(href, current, scope = 'desktop') {
   if (url.origin !== current.origin) return null;
   const path = url.pathname.replace(/\/+$/, '') || '/';
   const section = path.split('/')[1] || '';
-  if (scope === 'mobile') {
-    if (section !== 'mobile') return null;
+  if (scope === 'mobile' || scope === 'client-app') {
+    if (section !== scope) return null;
   } else if (path !== '/' && !DESKTOP_SECTIONS.has(section)) {
     return null;
   }

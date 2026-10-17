@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import { money, balanceDue, invoiceLabel } from '@/lib/paymentReminders';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { useClientAppRestore, saveClientAppCopy } from '@/app/_components/useClientAppCache';
 
 const STATUS_LABEL = {
   unpaid: 'Unpaid',
@@ -36,14 +37,24 @@ export default function ClientAppInvoicesPage() {
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (!cancelled) {
-          setInvoices(Array.isArray(data) ? data.filter((inv) => inv.status !== 'void') : []);
+          const list = Array.isArray(data) ? data.filter((inv) => inv.status !== 'void') : [];
+          setInvoices(list);
           setLoading(false);
+          if (Array.isArray(data)) saveClientAppCopy(clientId, 'invoices', list);
         }
       });
     return () => {
       cancelled = true;
     };
   }, [ready, clientId]);
+
+  // This client's last copy, shown at once while the fresh one loads
+  // (useClientAppCache.js).
+  useClientAppRestore('invoices', (data) => {
+    if (!Array.isArray(data)) return;
+    setInvoices(data);
+    setLoading(false);
+  });
 
   if (!ready) return null;
 

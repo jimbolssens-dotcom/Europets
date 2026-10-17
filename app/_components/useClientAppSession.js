@@ -16,10 +16,45 @@
 // since layout.js doesn't remount on client-side navigation within
 // /client-app. A shared context means `login()` from anywhere updates
 // every consumer at once.
+//
+// Who was last logged in on this phone is remembered too, so a page can
+// start loading (and show its last copy, see useClientAppCache.js) at
+// once instead of first waiting for the server to say who's logged in.
+// The server's answer still decides: if it names nobody, or someone
+// else, the remembered client and every saved copy are dropped, and the
+// pages go back to the login screen as before. Logging out drops them
+// too, so the next person on a shared phone never sees them.
 
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useState, useCallback } from 'react';
+import { clearViewCachePrefix } from '@/lib/viewCache';
+
+const REMEMBERED_KEY = 'europets-client-app-last-client';
+export const CLIENT_APP_CACHE_PREFIX = 'europets-ca-v1:';
+
+function readRemembered() {
+  try {
+    return window.localStorage.getItem(REMEMBERED_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+function remember(id) {
+  try {
+    if (id) window.localStorage.setItem(REMEMBERED_KEY, id);
+    else window.localStorage.removeItem(REMEMBERED_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// Switching who's on this phone: forget the last client's saved copies.
+function switchRemembered(id) {
+  if (readRemembered() !== id) clearViewCachePrefix(CLIENT_APP_CACHE_PREFIX);
+  remember(id);
+}
 
 const ClientAppSessionContext = createContext(null);
 
@@ -27,16 +62,28 @@ export function ClientAppSessionProvider({ children }) {
   const [clientId, setClientId] = useState(null);
   const [ready, setReady] = useState(false);
 
+  // Before the first paint: whoever was logged in here last.
+  useLayoutEffect(() => {
+    const remembered = readRemembered();
+    if (remembered) {
+      setClientId(remembered);
+      setReady(true);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     fetch('/api/client-app/auth/session')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (cancelled) return;
-        setClientId(data?.clientId || null);
+        const id = data?.clientId || null;
+        switchRemembered(id);
+        setClientId(id);
         setReady(true);
       })
       .catch(() => {
+        // Offline or unreachable: keep the remembered client, if any.
         if (!cancelled) setReady(true);
       });
     return () => {
@@ -52,11 +99,14 @@ export function ClientAppSessionProvider({ children }) {
   }, [ready, clientId]);
 
   const login = useCallback((id) => {
+    switchRemembered(id || null);
     setClientId(id);
   }, []);
 
   const logout = useCallback(() => {
     fetch('/api/client-app/auth/logout', { method: 'POST' }).catch(() => {});
+    clearViewCachePrefix(CLIENT_APP_CACHE_PREFIX);
+    remember(null);
     setClientId(null);
   }, []);
 

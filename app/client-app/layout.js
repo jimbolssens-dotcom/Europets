@@ -34,6 +34,7 @@ import { cache } from 'react';
 import { Fraunces, Karla, Azeret_Mono } from 'next/font/google';
 import { supabase } from '@/lib/supabaseClient';
 import AppVersionWatcher from '@/app/_components/AppVersionWatcher';
+import InAppLinks from '@/app/_components/InAppLinks';
 import ClientAppNav from '@/app/_components/ClientAppNav';
 import ClientAppSidebar from '@/app/_components/ClientAppSidebar';
 import { ClientAppThemeProvider } from '@/app/_components/ClientAppThemeContext';
@@ -96,6 +97,7 @@ export default async function ClientAppLayout({ children }) {
         <ClientAppSessionProvider>
           <ClientAppShell>
             <AppVersionWatcher />
+            <InAppLinks scope="client-app" />
             <ClientAppSidebar />
             <div className="client-app-content">{children}</div>
             <ClientAppNav />

@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
+import { useClientAppRestore, saveClientAppCopy } from '@/app/_components/useClientAppCache';
 
 const TYPE_LABEL = {
   consult: 'Consult',
@@ -47,12 +48,21 @@ export default function ClientAppAppointmentsPage() {
         if (!cancelled) {
           setAppointments(Array.isArray(data) ? data : []);
           setLoading(false);
+          if (Array.isArray(data)) saveClientAppCopy(clientId, 'appointments', data);
         }
       });
     return () => {
       cancelled = true;
     };
   }, [ready, clientId]);
+
+  // This client's last copy, shown at once while the fresh one loads
+  // (useClientAppCache.js).
+  useClientAppRestore('appointments', (data) => {
+    if (!Array.isArray(data)) return;
+    setAppointments(data);
+    setLoading(false);
+  });
 
   // Same "start a fresh intake request, open its portal link" flow as a
   // pet's own "Book an Appointment" button (app/client-app/pets/[id]) —
