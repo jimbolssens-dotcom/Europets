@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabaseClient';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { readViewCache, writeViewCache } from '@/lib/viewCache';
+import PhoneTop from '@/app/_components/PhoneTop';
 
 // The inbox as it last loaded in this browser, painted straight away on
 // the next visit while the fresh list loads (lib/viewCache.js).
@@ -730,17 +731,24 @@ export default function MessagesInboxPage() {
           )}
           <a
             href="/intake"
-            className={`button-link${hasPendingInviteRequest ? ' button-link-alarm' : ''}`}
+            className={`button-link phone-hide${hasPendingInviteRequest ? ' button-link-alarm' : ''}`}
             title={hasPendingInviteRequest ? 'An invite/intake request is waiting for approval' : undefined}
           >
             ✉️ Invite{hasPendingInviteRequest && ' 🔔'}
           </a>
-          <a href="/follow-ups" className="button-link">
+          <a href="/follow-ups" className="button-link phone-hide">
             📋 Follow-ups
           </a>
-          <a href="/vaccinations" className="button-link">
+          <a href="/vaccinations" className="button-link phone-hide">
             💉 Vaccinations
           </a>
+          <PhoneTop>
+            <a href="/intake" className={`phone-top-btn${hasPendingInviteRequest ? ' phone-top-btn-alarm' : ''}`} title="Invite" aria-label="Invite">
+              ✉️
+            </a>
+            <a href="/follow-ups" className="phone-top-btn" title="Follow-ups" aria-label="Follow-ups">📋</a>
+            <a href="/vaccinations" className="phone-top-btn" title="Vaccinations" aria-label="Vaccinations">💉</a>
+          </PhoneTop>
         </div>
       </div>
 

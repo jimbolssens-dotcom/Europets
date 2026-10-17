@@ -22,6 +22,7 @@ import { formatShortDate, formatDateTime } from '@/lib/formatTimestamp';
 import { sendPaymentMessage } from '@/lib/sendPaymentMessageClient';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { loadReferenceList, readViewCache, useRestoredView, writeViewCache } from '@/lib/viewCache';
+import PhoneTop from '@/app/_components/PhoneTop';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -615,7 +616,18 @@ function InvoicesPageInner() {
 
       <div className="split">
       <div className="split-main">
-      <label>
+      <PhoneTop>
+        <select className="phone-top-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter">
+          <option value="unpaid,partially_paid">Unpaid + part</option>
+          <option value="unpaid">Unpaid</option>
+          <option value="partially_paid">Part paid</option>
+          <option value="paid">Paid</option>
+          <option value="void">Void</option>
+          <option value="">All</option>
+          <option value="proforma">Quotes</option>
+        </select>
+      </PhoneTop>
+      <label className="phone-hide">
         Filter:{' '}
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="unpaid,partially_paid">Unpaid + Partially Paid</option>

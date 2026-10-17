@@ -13,6 +13,7 @@ import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 import SearchSelect from '@/app/_components/SearchSelect';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import { formatDateTime } from '@/lib/formatTimestamp';
+import PhoneTop from '@/app/_components/PhoneTop';
 
 const emptyWalkIn = { client_id: '', patient_id: '', room_id: '', attending_vet_id: '' };
 
@@ -227,12 +228,23 @@ function ConsultsPageInner() {
         <div className="page-header-actions">
           <button
             type="button"
-            className={`case-tab${walkInOpen ? ' case-tab-on' : ''}`}
+            className={`case-tab phone-hide${walkInOpen ? ' case-tab-on' : ''}`}
             onClick={() => setWalkInOpen((v) => !v)}
             aria-expanded={walkInOpen}
           >
             {walkInOpen ? '✕ Close walk-in' : '➕ Walk-in consult'}
           </button>
+          <PhoneTop>
+            <button
+              type="button"
+              className={`phone-top-btn${walkInOpen ? ' phone-top-btn-on' : ''}`}
+              onClick={() => setWalkInOpen((v) => !v)}
+              title={walkInOpen ? 'Close walk-in' : 'Walk-in consult'}
+              aria-label={walkInOpen ? 'Close walk-in' : 'Walk-in consult'}
+            >
+              {walkInOpen ? '✕' : '➕'}
+            </button>
+          </PhoneTop>
         </div>
       </div>
       {rowError && <p className="error">{rowError}</p>}

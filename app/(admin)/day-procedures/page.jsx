@@ -130,7 +130,7 @@ export default function DayProceduresPage() {
       <div className="page-header">
         <h1>📋 Day Procedures</h1>
       </div>
-      <p className="visit-meta">
+      <p className="visit-meta phone-hide">
         Same-day cases — dropped off in the morning, picked up the same day. Start one from a patient&apos;s
         file, from a consult (&quot;Start Day Procedure&quot;), or automatically when a surgery-type
         appointment is checked in.

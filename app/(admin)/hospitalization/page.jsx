@@ -26,6 +26,7 @@ import InfoHint from '@/app/_components/InfoHint';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { useRestoredView, writeViewCache } from '@/lib/viewCache';
+import PhoneTop from '@/app/_components/PhoneTop';
 
 const DRAG_THRESHOLD = 6;
 // Touch only: staff scrolling the cage wall on an iPad/phone kept
@@ -426,9 +427,14 @@ export default function HospitalizationPage() {
     <div>
       <div className="page-header">
         <h1>Hospitalization</h1>
-        <button type="button" className="button-link" onClick={openAdmit}>
+        <button type="button" className="button-link phone-hide" onClick={openAdmit}>
           ✚ Admit Patient
         </button>
+        <PhoneTop>
+          <button type="button" className="phone-top-btn" onClick={openAdmit} title="Admit Patient" aria-label="Admit Patient">
+            ➕
+          </button>
+        </PhoneTop>
       </div>
 
       <div className="hosp-stat-strip">

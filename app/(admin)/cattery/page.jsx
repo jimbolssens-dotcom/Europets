@@ -19,6 +19,7 @@ import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import CatteryPlanner from '@/app/_components/CatteryPlanner';
 import CatteryRequestReview from '@/app/_components/CatteryRequestReview';
 import { useRestoredView, writeViewCache } from '@/lib/viewCache';
+import PhoneTop from '@/app/_components/PhoneTop';
 import {
   CATTERY_SPACES,
   DEFAULT_DEWORMING_PRODUCT,
@@ -212,12 +213,18 @@ function CatteryPageInner() {
     <div className="cattery-page">
       <div className="cattery-planner-head">
         <h1>🐱 Cattery</h1>
-        <button type="button" className="secondary" onClick={() => setStart(addDaysISO(start, -7))} aria-label="Previous week">‹</button>
-        <button type="button" className="secondary" onClick={() => setStart(today)}>Today</button>
-        <button type="button" className="secondary" onClick={() => setStart(addDaysISO(start, 7))} aria-label="Next week">›</button>
+        <button type="button" className="secondary phone-hide" onClick={() => setStart(addDaysISO(start, -7))} aria-label="Previous week">‹</button>
+        <button type="button" className="secondary phone-hide" onClick={() => setStart(today)}>Today</button>
+        <button type="button" className="secondary phone-hide" onClick={() => setStart(addDaysISO(start, 7))} aria-label="Next week">›</button>
         <strong>{shortDate(start)} to {shortDate(end)}</strong>
         <span className="spacer" />
-        <button type="button" onClick={focusForm}>+ New booking</button>
+        <button type="button" className="phone-hide" onClick={focusForm}>+ New booking</button>
+        <PhoneTop>
+          <button type="button" className="phone-top-btn" onClick={() => setStart(addDaysISO(start, -7))} aria-label="Previous week">‹</button>
+          <button type="button" className="phone-top-btn phone-top-btn-text" onClick={() => setStart(today)}>Today</button>
+          <button type="button" className="phone-top-btn" onClick={() => setStart(addDaysISO(start, 7))} aria-label="Next week">›</button>
+          <button type="button" className="phone-top-btn" onClick={focusForm} title="New booking" aria-label="New booking">➕</button>
+        </PhoneTop>
       </div>
 
       {overdue.map((b) => (

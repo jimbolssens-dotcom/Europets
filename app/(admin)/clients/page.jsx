@@ -17,6 +17,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import PhoneTop from '@/app/_components/PhoneTop';
 
 const emptyClientSearch = { client_number: '', name: '', phone: '' };
 const emptyPatientSearch = { patient_number: '', name: '', breed: '', microchip: '' };
@@ -56,7 +57,10 @@ function QuickSearchResults({ q }) {
         <h1>Search Results</h1>
         <div className="page-header-actions">
           <a href="/clients" className="button-link">🔍 New search</a>
-          <a href="/add" className="button-link">➕ Add client / patient</a>
+          <a href="/add" className="button-link phone-hide">➕ Add client / patient</a>
+          <PhoneTop>
+            <a href="/add" className="phone-top-btn" title="Add client / patient" aria-label="Add client / patient">➕</a>
+          </PhoneTop>
         </div>
       </div>
       <p className="visit-meta">Showing results for &quot;{q}&quot;</p>
@@ -201,7 +205,10 @@ function FieldSearch() {
       <div className="page-header">
         <h1>Clients</h1>
         <div className="page-header-actions">
-          <a href="/add" className="button-link">➕ Add client / patient</a>
+          <a href="/add" className="button-link phone-hide">➕ Add client / patient</a>
+          <PhoneTop>
+            <a href="/add" className="phone-top-btn" title="Add client / patient" aria-label="Add client / patient">➕</a>
+          </PhoneTop>
         </div>
       </div>
       <div className="two-col">

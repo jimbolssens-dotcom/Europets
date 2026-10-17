@@ -12032,7 +12032,9 @@ form.card.walkin-inline > .booking-owner-picked {
 .phone-tabbar,
 .phone-more-sheet,
 .phone-more-backdrop,
-.phone-top-settings {
+.phone-top-settings,
+.phone-top-title,
+.phone-top-slot {
   display: none;
 }
 
@@ -12043,12 +12045,91 @@ form.card.walkin-inline > .booking-owner-picked {
   }
 
   .topnav {
-    padding: 0.35rem 1rem;
+    padding: 0.35rem 0.75rem;
     justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
   }
 
   .topnav .brand img {
     height: 32px;
+  }
+
+  /* The page's name, between the logo and Settings; the page's own
+     title line is then left out. */
+  .phone-top-title {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  main[data-phone-title] h1 {
+    display: none;
+  }
+
+  /* A page's main buttons, moved up into the top strip (PhoneTop.jsx);
+     the page's own copy of them is marked phone-hide. */
+  .phone-hide {
+    display: none !important;
+  }
+
+  .phone-top-slot {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .phone-top-slot:empty {
+    display: none;
+  }
+
+  .phone-top-btn,
+  .phone-top-btn:hover,
+  .phone-top-btn:focus {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 6px;
+    border: 1px solid #eee;
+    border-radius: 9px;
+    background: white;
+    color: var(--ink);
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .phone-top-btn-text {
+    font-size: 0.78rem;
+  }
+
+  .phone-top-btn-on {
+    border-color: var(--pink);
+    background: var(--pink-tint);
+  }
+
+  .phone-top-btn-alarm {
+    border-color: #f5a623;
+    background: #fff4dc;
+  }
+
+  .phone-top-select {
+    max-width: 120px;
+    height: 32px;
+    padding: 0 4px;
+    font-size: 0.8rem;
   }
 
   .phone-top-settings {

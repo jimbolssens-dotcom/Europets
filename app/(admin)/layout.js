@@ -41,6 +41,27 @@ function playMessageAlertChime() {
 // Wraps every internal staff page (everything except the public client
 // portal under app/portal/) with the nav. Nested inside the bare root
 // layout in app/layout.js.
+// On a phone the main list pages show their name in the top strip,
+// between the logo and Settings, instead of a big title line of their own
+// (globals.css hides the page's h1 there). Detail pages (one patient, one
+// consult...) keep their own title, which carries names and links.
+const PHONE_PAGE_TITLES = {
+  '/clients': 'Clients',
+  '/add': 'Add',
+  '/messages': 'Messages',
+  '/appointments': 'Appointments',
+  '/consults': 'Consults',
+  '/day-procedures': 'Day Procedures',
+  '/hospitalization': 'Hospitalization',
+  '/cattery': 'Cattery',
+  '/invoices': 'Invoices',
+  '/settings': 'Settings',
+  '/vaccinations': 'Vaccinations',
+  '/follow-ups': 'Follow-ups',
+  '/intake': 'Invite',
+  '/accounting': 'Accounting',
+};
+
 // The phone menu's dot for a hospitalization / day procedure alarm level.
 function phoneAlert(level) {
   if (level === 'red' || level === 'both') return 'red';
@@ -218,6 +239,9 @@ export default function AdminLayout({ children }) {
         <a href="/" className="brand">
           <img src="/logo.png" alt="Europets Clinic" />
         </a>
+        {PHONE_PAGE_TITLES[pathname] && <span className="phone-top-title">{PHONE_PAGE_TITLES[pathname]}</span>}
+        {/* A page's main buttons on a phone (app/_components/PhoneTop.jsx). */}
+        <div id="phone-top-slot" className="phone-top-slot" />
         {/* Phone only (globals.css): the menu moves to the bottom bar, and
             Settings sits up here next to the logo. */}
         <a
@@ -382,7 +406,12 @@ export default function AdminLayout({ children }) {
           failure mode is worse than no fill at all, since it also drops
           the message list's max-height cap, leaving a very tall page. */}
       <AutoScreenSwitcher />
-      <main className={pathname?.startsWith('/messages/') ? 'content content-fill' : 'content'}>{children}</main>
+      <main
+        className={pathname?.startsWith('/messages/') ? 'content content-fill' : 'content'}
+        data-phone-title={PHONE_PAGE_TITLES[pathname] ? '' : undefined}
+      >
+        {children}
+      </main>
     </>
   );
 }
