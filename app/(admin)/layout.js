@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import AppVersionWatcher from '../_components/AppVersionWatcher';
 import InAppLinks from '../_components/InAppLinks';
+import PhoneTabBar from '../_components/PhoneTabBar';
 import DiscoveryMode from '../_components/DiscoveryMode';
 import { useHospitalizationUpdatePending } from '../_components/useHospitalizationUpdatePending';
 import { useCatteryAlarm } from '../_components/useCatteryAlarm';
@@ -40,6 +41,13 @@ function playMessageAlertChime() {
 // Wraps every internal staff page (everything except the public client
 // portal under app/portal/) with the nav. Nested inside the bare root
 // layout in app/layout.js.
+// The phone menu's dot for a hospitalization / day procedure alarm level.
+function phoneAlert(level) {
+  if (level === 'red' || level === 'both') return 'red';
+  if (level === 'yellow') return 'amber';
+  return '';
+}
+
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
   // Split by kind (default 'admission' for the first) because the
@@ -210,6 +218,16 @@ export default function AdminLayout({ children }) {
         <a href="/" className="brand">
           <img src="/logo.png" alt="Europets Clinic" />
         </a>
+        {/* Phone only (globals.css): the menu moves to the bottom bar, and
+            Settings sits up here next to the logo. */}
+        <a
+          href="/settings"
+          className={`phone-top-settings${hasPendingReviewRequest ? ' nav-update-requested' : ''}`}
+          title={hasPendingReviewRequest ? 'Settings — a review is waiting for moderation' : 'Settings'}
+          aria-label="Settings"
+        >
+          ⚙️{hasPendingReviewRequest && ' 🔔'}
+        </a>
         <div className="topnav-links">
           <a href="/clients">Clients</a>
           <a
@@ -332,6 +350,28 @@ export default function AdminLayout({ children }) {
           <DiscoveryMode />
         </div>
       </nav>
+      {/* The same menu on a phone, as a bar at the bottom (hidden on wider
+          screens). Alerts: 'amber' waiting, 'red' urgent. */}
+      <PhoneTabBar
+        main={[
+          { href: '/clients', icon: '👥', label: 'Clients' },
+          {
+            href: '/messages',
+            icon: '💬',
+            label: 'Messages',
+            alert: hasPendingClientMessage || hasPendingInviteRequest ? 'amber' : '',
+          },
+          { href: '/appointments', icon: '📅', label: 'Appts', alert: hasPendingAppointmentRequest ? 'amber' : '' },
+          { href: '/consults', icon: '🩺', label: 'Consults' },
+          { href: '/hospitalization', icon: '🏥', label: 'Hospital', alert: phoneAlert(hospitalizationAlarmLevel) },
+        ]}
+        more={[
+          { href: '/day-procedures', icon: '📋', label: 'Day Proc.', title: 'Day Procedures', alert: phoneAlert(dayProcedureAlarmLevel) },
+          { href: '/cattery', icon: '🐱', label: 'Cattery', alert: catteryWeightOverdue ? 'red' : catteryRequests ? 'amber' : '' },
+          { href: '/invoices', icon: '🧾', label: 'Invoices' },
+          { href: '/mobile', icon: '📱', label: 'Phone app', title: 'Mobile recording app' },
+        ]}
+      />
       {/* The Messenger thread page is a full-page chat, not a document — it
           needs .content to fill the space below the nav instead of sizing
           to its own content, so the message list can take the leftover

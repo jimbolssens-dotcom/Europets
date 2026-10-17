@@ -12025,3 +12025,167 @@ form.card.walkin-inline > .booking-owner-picked {
     margin-top: 0.35rem;
   }
 }
+
+/* ---- Phone menu for the desktop app (app/_components/PhoneTabBar.jsx) ----
+   Below 600px the top menu shrinks to the logo and the sections move to
+   a bar fixed at the bottom of the screen. Wider screens are unchanged. */
+.phone-tabbar,
+.phone-more-sheet,
+.phone-more-backdrop,
+.phone-top-settings {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .topnav .topnav-links,
+  .topnav .topnav-icons {
+    display: none;
+  }
+
+  .topnav {
+    padding: 0.35rem 1rem;
+    justify-content: space-between;
+  }
+
+  .topnav .brand img {
+    height: 32px;
+  }
+
+  .phone-top-settings {
+    display: block;
+    font-size: 1.35rem;
+    text-decoration: none;
+    padding: 0.2rem 0.4rem;
+    border-radius: 8px;
+  }
+
+  /* Room for the bar at the bottom, so it never covers the page's end. */
+  .content {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .phone-tabbar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70;
+    background: white;
+    border-top: 1px solid #eee;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+  }
+
+  .phone-tab {
+    flex: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding: 5px 0 3px;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    box-shadow: none;
+    color: #666;
+    font: inherit;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  /* The More button is a <button>: keep the app's pink button look
+     (and its hover/focus colours) off it. */
+  .phone-tabbar button.phone-tab,
+  .phone-tabbar button.phone-tab:hover,
+  .phone-tabbar button.phone-tab:focus,
+  .phone-tabbar button.phone-tab:active {
+    background: none;
+    color: #666;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .phone-tab-on,
+  .phone-tabbar button.phone-tab.phone-tab-on {
+    color: var(--pink-dark);
+    background: var(--pink-tint);
+  }
+
+  .phone-tab-icon {
+    font-size: 1.3rem;
+    line-height: 1.1;
+  }
+
+  .phone-tab-dot {
+    position: absolute;
+    top: 3px;
+    right: calc(50% - 16px);
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #f5a623;
+    border: 2px solid white;
+  }
+
+  .phone-tab-dot-red {
+    background: #d32f2f;
+  }
+
+  .phone-more-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    background: rgba(0, 0, 0, 0.12);
+  }
+
+  .phone-more-sheet {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: calc(70px + env(safe-area-inset-bottom));
+    z-index: 66;
+    background: white;
+    border-top: 3px solid var(--pink);
+    border-radius: 16px;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
+    padding: 10px;
+  }
+
+  .phone-more-sheet a {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 2px;
+    border-radius: 12px;
+    background: #faf7f8;
+    color: #444;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .phone-more-sheet a.phone-more-on {
+    background: var(--pink-tint);
+    color: var(--pink-dark);
+  }
+
+  .phone-more-sheet .phone-tab-icon {
+    font-size: 1.4rem;
+  }
+
+  .phone-more-sheet .phone-tab-dot {
+    top: 6px;
+    right: 14px;
+  }
+}
