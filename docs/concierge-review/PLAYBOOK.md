@@ -39,6 +39,8 @@ What Jim cares about, in order:
 4. **Caring, short, warm, in the client's language.** No long dashes.
 5. **Books what it can.** Routine bookings shouldn't be escalated; medical
    questions, money and anything uncertain always should be.
+   Someone not yet a client who wants to book or register a pet gets their
+   new-client form link and a warm push to fill it in.
 6. **Never wrong on facts**: availability, dates, appointment details.
 
 For each problem found, note the thread (date, time, first 8 characters of
