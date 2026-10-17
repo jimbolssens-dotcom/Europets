@@ -21,7 +21,7 @@ import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping
 import { formatShortDate, formatDateTime } from '@/lib/formatTimestamp';
 import { sendPaymentMessage } from '@/lib/sendPaymentMessageClient';
 import { openWhatsApp } from '@/lib/whatsapp';
-import { readViewCache, useRestoredView, writeViewCache } from '@/lib/viewCache';
+import { loadReferenceList, readViewCache, useRestoredView, writeViewCache } from '@/lib/viewCache';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -403,6 +403,9 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
 
 const emptyForm = { client_id: '', visit_id: '' };
 
+// How many invoices the Paid / Void / All views load before "Show older".
+const RECENT_INVOICES = 150;
+
 export default function InvoicesPage() {
   return (
     <Suspense fallback={<p>Loading...</p>}>
@@ -433,20 +436,37 @@ function InvoicesPageInner() {
   const [quotes, setQuotes] = useState([]);
   const [discardingQuoteId, setDiscardingQuoteId] = useState(null);
 
+  // Paid, Void and All grow with every invoice ever made: they show the
+  // newest RECENT_INVOICES, and "Show older invoices" loads the rest.
+  // Unpaid / partially paid is the working list and always shows in full.
+  const [showOlder, setShowOlder] = useState(false);
+  const showOlderRef = useRef(false);
+  const isLongView = (status) => status === 'paid' || status === 'void' || status === '';
+
   // Switching the filter quickly (or realtime reloads) can bring replies
   // back out of order: only the newest request's answer is used.
   const loadSeqRef = useRef(0);
   const loadInvoices = (status) => {
     const seq = ++loadSeqRef.current;
-    return fetch(`/api/invoices${status ? `?status=${status}` : ''}`)
+    const limited = isLongView(status) && !showOlderRef.current;
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (limited) params.set('limit', String(RECENT_INVOICES));
+    return fetch(`/api/invoices${params.toString() ? `?${params}` : ''}`)
       .then((res) => res.json())
       .then((data) => {
         if (seq !== loadSeqRef.current) return;
         setInvoices(Array.isArray(data) ? data : []);
         setLoading(false);
-        if (Array.isArray(data)) writeViewCache(`europets-invoices-v1:${status}`, data);
+        if (Array.isArray(data) && !showOlderRef.current) writeViewCache(`europets-invoices-v1:${status}`, data);
       });
   };
+
+  function loadOlderInvoices() {
+    showOlderRef.current = true;
+    setShowOlder(true);
+    loadInvoices(statusFilter);
+  }
 
   // Proforma quotes have no status/payment concept of their own — kept as
   // a separate list entirely, fetched only while this filter is selected,
@@ -474,6 +494,8 @@ function InvoicesPageInner() {
   });
 
   useEffect(() => {
+    showOlderRef.current = false;
+    setShowOlder(false);
     if (readViewCache(cacheKey) == null) setLoading(true);
     if (statusFilter === 'proforma') loadQuotes();
     else loadInvoices(statusFilter);
@@ -515,18 +537,31 @@ function InvoicesPageInner() {
   }, []);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/visits').then((res) => res.json()),
-      fetch('/api/goods-services?active=true').then((res) => res.json()),
-      fetch('/api/catalog-subcategories').then((res) => res.json()),
-      fetch('/api/staff').then((res) => res.json()),
-    ]).then(([visitsData, catalogData, subcategoriesData, staffData]) => {
-      setVisits(Array.isArray(visitsData) ? visitsData : []);
-      setCatalog(Array.isArray(catalogData) ? catalogData : []);
-      setSubcategories(Array.isArray(subcategoriesData) ? subcategoriesData : []);
-      setStaff(Array.isArray(staffData) ? staffData : []);
-    });
+    // Pickers: the last copy at once, then the fresh one (lib/viewCache.js).
+    loadReferenceList('/api/goods-services?active=true', setCatalog);
+    loadReferenceList('/api/catalog-subcategories', setSubcategories);
+    loadReferenceList('/api/staff', setStaff);
   }, []);
+
+  // The "Link to a visit" picker only lists the chosen client's visits, so
+  // only those are fetched, once a client is picked (it used to fetch every
+  // consult there has ever been on opening the page).
+  useEffect(() => {
+    if (!form.client_id) {
+      setVisits([]);
+      return;
+    }
+    let current = true;
+    fetch(`/api/visits?client_id=${form.client_id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (current) setVisits(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [form.client_id]);
 
   useEffect(() => {
     const clientId = searchParams.get('client_id');
@@ -654,6 +689,11 @@ function InvoicesPageInner() {
               onChanged={() => loadInvoices(statusFilter)}
             />
           ))}
+          {isLongView(statusFilter) && !showOlder && invoices.length >= RECENT_INVOICES && (
+            <button type="button" className="secondary" onClick={loadOlderInvoices}>
+              Show older invoices
+            </button>
+          )}
         </div>
       )}
       </div>

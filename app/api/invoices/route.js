@@ -21,6 +21,9 @@ export async function GET(request) {
   const status = searchParams.get('status');
   const visitId = searchParams.get('visit_id');
   const hospitalizationId = searchParams.get('hospitalization_id');
+  // ?limit=N: only the N newest (the Invoices page's Paid / Void / All
+  // views, which would otherwise send every invoice ever made).
+  const limit = Math.max(0, Math.min(1000, Number(searchParams.get('limit')) || 0));
 
   // Reachable without the staff PIN now (the client app's own Invoices
   // tab — see middleware.js) — a non-staff caller must be asking for
@@ -33,8 +36,7 @@ export async function GET(request) {
     }
   }
 
-  // Paged (lib/selectAll.js): a single request stops at 1000 rows.
-  const { data, error } = await selectAll(() => {
+  const buildQuery = () => {
     let query = supabase
       .from('invoices')
       .select(
@@ -50,7 +52,10 @@ export async function GET(request) {
     if (visitId) query = query.eq('visit_id', visitId);
     if (hospitalizationId) query = query.eq('hospitalization_id', hospitalizationId);
     return query.order('id');
-  });
+  };
+
+  // Paged (lib/selectAll.js): a single request stops at 1000 rows.
+  const { data, error } = limit ? await buildQuery().limit(limit) : await selectAll(buildQuery);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

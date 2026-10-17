@@ -30,6 +30,15 @@ import { NextResponse } from 'next/server';
 // stops a CDN/edge layer from serving a stale response on top of that.
 export const dynamic = 'force-dynamic';
 
+// hospitalizations(id, status) is a reverse embed via hospitalizations.originating_visit_id
+// — lets the Consults board split out visits currently admitted to
+// hospitalization (see app/(admin)/consults/page.jsx) without a second fetch.
+const VISIT_FIELDS =
+  '*, patients(name, species, patient_number, current_weight_kg), clients(full_name, phone, client_number), rooms(name), staff(full_name), hospitalizations(id, status, admitted_at)';
+
+// Finished consults the Consults page lists (its "Recently completed").
+const BOARD_RECENT_COMPLETE = 20;
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
@@ -38,16 +47,32 @@ export async function GET(request) {
   const patientId = searchParams.get('patient_id');
   const clientId = searchParams.get('client_id');
 
+  // ?board=1: just what the Consults page shows (app/(admin)/consults/
+  // page.jsx): every consult still in progress, plus the 20 finished most
+  // recently, instead of every consult there has ever been.
+  if (searchParams.get('board')) {
+    const [openRes, recentRes] = await Promise.all([
+      selectAll(() => supabase.from('visits').select(VISIT_FIELDS).eq('status', 'in_progress').order('started_at', { ascending: true }).order('id')),
+      supabase
+        .from('visits')
+        .select(VISIT_FIELDS)
+        .eq('status', 'complete')
+        .order('ended_at', { ascending: false, nullsFirst: false })
+        .order('started_at', { ascending: false })
+        .limit(BOARD_RECENT_COMPLETE),
+    ]);
+    const error = openRes.error || recentRes.error;
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json([...(openRes.data || []), ...(recentRes.data || [])]);
+  }
+
   // Paged (lib/selectAll.js): a single request stops at 1000 rows.
   const { data, error } = await selectAll(() => {
     let query = supabase
       .from('visits')
-      .select(
-        // hospitalizations(id, status) is a reverse embed via hospitalizations.originating_visit_id
-        // — lets the Consults board split out visits currently admitted to
-        // hospitalization (see app/(admin)/consults/page.jsx) without a second fetch.
-        '*, patients(name, species, patient_number, current_weight_kg), clients(full_name, phone, client_number), rooms(name), staff(full_name), hospitalizations(id, status, admitted_at)'
-      )
+      .select(VISIT_FIELDS)
       .order('started_at', { ascending: true });
 
     if (status) {

@@ -44,17 +44,26 @@ function ConsultsPageInner() {
   const walkInFormRef = useRef(null);
 
   const loadConsults = () =>
-    fetch('/api/visits')
+    // Only what this page shows: open consults and the 20 latest finished.
+    fetch('/api/visits?board=1')
       .then((res) => res.json())
       .then((data) => {
         setConsults(Array.isArray(data) ? data : []);
         setLoading(false);
-        if (Array.isArray(data)) writeViewCache('europets-consults-v1', data);
+        if (Array.isArray(data)) writeViewCache('europets-consults-v2', data);
       });
 
   // The list as it last loaded, shown at once while the fresh one loads
   // (lib/viewCache.js).
-  useRestoredView('europets-consults-v1', (data) => {
+  // The old copy held every consult ever made; drop it from storage.
+  useEffect(() => {
+    try {
+      window.localStorage.removeItem('europets-consults-v1');
+    } catch {
+      // ignore
+    }
+  }, []);
+  useRestoredView('europets-consults-v2', (data) => {
     if (!Array.isArray(data)) return;
     setConsults(data);
     setLoading(false);
