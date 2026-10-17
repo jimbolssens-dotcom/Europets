@@ -29,7 +29,7 @@ import { prefetchPageData } from '@/lib/prefetchData';
 
 // The top-level paths of the desktop app (app/(admin)/*).
 const DESKTOP_SECTIONS = new Set([
-  'accounting', 'add', 'appointments', 'catalog', 'cattery', 'clients', 'consults',
+  'accounting', 'add', 'appointments', 'catalog', 'cattery', 'clients', 'concierge-review', 'consults',
   'day-procedures', 'empty-reports', 'follow-ups', 'hospitalization', 'imaging-reports',
   'intake', 'invoices', 'messages', 'patients', 'policies', 'proforma', 'reviews', 'rooms',
   'search', 'settings', 'shift-tally', 'staff', 'storage', 'vaccinations', 'vaccine-protocols',

@@ -12270,3 +12270,22 @@ form.card.walkin-inline > .booking-owner-picked {
     right: 14px;
   }
 }
+
+/* Concierge before/after (app/(admin)/concierge-review) */
+.cr-case h2 { font-size: 1.05rem; margin: 0 0 0.6rem; }
+.cr-case h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; margin: 0 0 0.4rem; }
+.cr-thread { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.8rem; }
+.cr-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; border-top: 1px solid rgba(127, 127, 127, 0.25); padding-top: 0.7rem; }
+.cr-compare > div { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+.cr-bubble { max-width: 92%; padding: 0.45rem 0.65rem; border-radius: 12px; font-size: 0.9rem; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cr-in { align-self: flex-start; background: rgba(127, 127, 127, 0.12); }
+.cr-out { align-self: flex-end; background: rgba(230, 24, 109, 0.1); }
+.cr-notice { background: rgba(224, 147, 47, 0.14); }
+.cr-new { outline: 2px solid rgba(230, 24, 109, 0.45); }
+.cr-who { display: block; font-size: 0.72rem; opacity: 0.65; margin-bottom: 0.15rem; }
+.cr-verdict { margin: 0; font-weight: 600; font-size: 0.9rem; }
+.cr-muted { margin: 0.2rem 0 0; font-size: 0.8rem; opacity: 0.7; }
+@media (max-width: 600px) {
+  .cr-compare { grid-template-columns: 1fr; }
+  .cr-bubble { max-width: 100%; }
+}

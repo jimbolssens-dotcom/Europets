@@ -49,6 +49,7 @@ const PHONE_PAGE_TITLES = {
   '/clients': 'Clients',
   '/add': 'Add',
   '/messages': 'Messages',
+  '/concierge-review': 'AI review',
   '/appointments': 'Appointments',
   '/consults': 'Consults',
   '/day-procedures': 'Day Procedures',
