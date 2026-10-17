@@ -394,9 +394,13 @@ export default function PatientDetailPage() {
           {patient.deceased && <span className="error"> · Deceased</span>}
           {patient.rehomed && <span className="error"> · Rehomed</span>}
         </h1>
-        <details className="patient-alerts-panel" open={patientAlerts.alerts.length > 0}>
-          <summary>
-            ⚠️ Long-Term Patient Notes {patientAlerts.alerts.length > 0 && `(${patientAlerts.alerts.length})`}
+        {/* Just the ⚠️ (and a count) while closed; the full title shows
+            once it's open, which it is by default when there are notes. */}
+        <details className="patient-alerts-panel patient-alerts-panel-icon" open={patientAlerts.alerts.length > 0}>
+          <summary title="Long-Term Patient Notes" aria-label="Long-Term Patient Notes">
+            ⚠️
+            {patientAlerts.alerts.length > 0 && <b className="patient-alerts-count">{patientAlerts.alerts.length}</b>}
+            <span className="patient-alerts-label"> Long-Term Patient Notes</span>
           </summary>
           <PatientAlerts {...patientAlerts} staff={staff} />
         </details>

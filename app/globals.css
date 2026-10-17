@@ -11893,3 +11893,49 @@ button.patient-chip-age-missing {
     margin-left: 0;
   }
 }
+
+/* Patient page: Long-Term Patient Notes as just a ⚠️ (plus a count) while
+   closed, so it sits on the title line without taking it over. */
+.patient-alerts-panel-icon:not([open]) {
+  padding: 0.3rem 0.55rem;
+}
+
+.patient-alerts-panel-icon > summary {
+  list-style: none;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.patient-alerts-panel-icon > summary::-webkit-details-marker {
+  display: none;
+}
+
+.patient-alerts-panel-icon:not([open]) .patient-alerts-label {
+  display: none;
+}
+
+.patient-alerts-panel-icon .patient-alerts-label {
+  font-size: 0.9rem;
+}
+
+.patient-alerts-count {
+  display: inline-block;
+  margin-left: 0.25rem;
+  min-width: 1.2em;
+  padding: 0 0.3em;
+  border-radius: 999px;
+  background: #d99a1b;
+  color: white;
+  font-size: 0.75rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Closed, it's small enough to stay on the title line even on a phone. */
+.consult-header-row:has(> .patient-alerts-panel-icon:not([open])) {
+  flex-wrap: nowrap;
+}
+
+.consult-header-row > .patient-alerts-panel-icon:not([open]) {
+  flex-shrink: 0;
+}
