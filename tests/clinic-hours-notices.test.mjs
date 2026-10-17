@@ -30,7 +30,9 @@ test('the night notice says we are closed, the day one is unchanged', () => {
   assert.match(late, /tomorrow at 8:00/);
   assert.doesNotMatch(late, /shortly|[—–]/);
   assert.match(closedNoticeText(uae(17, '02:55')), /at 8:00 this morning/);
-  assert.match(closedNoticeText(uae(17, '02:55'), { media: true }), /^Thanks for sending that\./);
+  assert.match(closedNoticeText(uae(17, '02:55'), { media: true }), /^Thanks for sending that,/);
+  assert.match(late, /24-hour vet clinic will be able to see your pet tonight/);
+  assert.match(late, /we'll be here for you as soon as we open\.$/);
 });
 
 test('reactions and stickers need no answer, a photo does', () => {
