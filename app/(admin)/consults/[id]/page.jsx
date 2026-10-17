@@ -38,6 +38,7 @@ import { formatDateTime } from '@/lib/formatTimestamp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
 import { fetchJsonPrefetched } from '@/lib/prefetchData';
 import { loadReferenceList } from '@/lib/viewCache';
+import ActionMenu from '@/app/_components/ActionMenu';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
 // catalog link — kept only to label those old rows.
@@ -62,6 +63,10 @@ const CONSULT_TABS = [
   { id: 'vaccinations', label: '💉 Vaccinations' },
   { id: 'reports', label: '📑 Reports' },
 ];
+
+// What the More button reads while that view is open: short, so the row
+// keeps fitting on one line.
+const ACTIVE_VIEW_LABEL = { vaccinations: '💉 Vaccines', reports: '📑 Reports' };
 
 // "Sun 11 Oct, 5:13 pm" for the header's second row.
 function headerDateTime(iso) {
@@ -1024,25 +1029,32 @@ export default function ConsultDetailPage() {
               />
             </div>
           </details>
-          {CONSULT_TABS.filter((tab) => tab.id !== 'exam').map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={`case-tab${activeTab === tab.id ? ' case-tab-on' : ''}`}
-              onClick={() => setActiveTab((prev) => (prev === tab.id ? 'exam' : tab.id))}
-              title={activeTab === tab.id ? 'Back to the exam' : undefined}
-            >
-              {tab.label}
+          {/* Same as the patient page: the less-used views and Delete live
+              in More. While one of those views is open, the button itself
+              shows which (highlighted), with the way back to the exam. */}
+          <ActionMenu
+            label={activeTab === 'exam' ? '⋯ More' : ACTIVE_VIEW_LABEL[activeTab]}
+            active={activeTab !== 'exam'}
+          >
+            {activeTab !== 'exam' && (
+              <button type="button" onClick={() => setActiveTab('exam')}>
+                🩺 Back to the exam
+              </button>
+            )}
+            {CONSULT_TABS.filter((tab) => tab.id !== 'exam' && tab.id !== activeTab).map((tab) => (
+              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}>
+                {tab.label}
+              </button>
+            ))}
+            <button type="button" className="action-menu-danger" onClick={deleteConsult}>
+              🗑️ Delete consult
             </button>
-          ))}
-          <button type="button" className="case-tab case-tab-danger" onClick={deleteConsult}>
-            🗑️ Delete
-          </button>
+          </ActionMenu>
         </div>
         <div className="case-bar-actions" role="group" aria-label="Consult actions">
         {consult.status === 'in_progress' && (
-          <button type="button" className="button-link" onClick={completeConsult}>
-            Complete Consult
+          <button type="button" className="button-link" onClick={completeConsult} title="Complete Consult">
+            ✅ Complete
           </button>
         )}
         <CrossRecordLinks>
@@ -1071,7 +1083,7 @@ export default function ConsultDetailPage() {
               </button>
             ) : (
               <details className="consult-action-toggle">
-                <summary className="button-link">🏥 Hospitalization</summary>
+                <summary className="button-link" title="Admit to Hospital">🏥 Admit</summary>
                 <form className="consult-action-dropdown" onSubmit={(e) => admitToHospital(e, 'admission')}>
                   <input
                     placeholder="Reason for admission"
