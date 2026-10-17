@@ -21,7 +21,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendFallbackEmailForFailedWhatsApp } from '@/lib/emailFallback';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
-import { maybeRunConcierge, sendConciergeReply, sendEscalationNotice, sendEscalationFollowUpNotice, sendStaffHandoffNotice, flagEscalatedThread, isWhatsAppAiEnabled } from '@/lib/whatsappConcierge';
+import { maybeRunConcierge, applyConciergeDecision, isWhatsAppAiEnabled } from '@/lib/whatsappConcierge';
 import { isAssistantOwnerPhone, relayToAssistant } from '@/lib/personalAssistantRelay';
 import { transcribeVoiceNote } from '@/lib/assemblyai';
 import { NextResponse } from 'next/server';
@@ -154,86 +154,40 @@ async function downloadInboundMedia(message) {
 // message in a burst of any length ever actually runs the concierge
 // (every earlier one in the burst finds itself superseded and bails out
 // silently), and that one sees the whole burst together in its history.
-// Skipped entirely when the concierge is off or the number's unmatched,
-// so neither case pays this delay for nothing.
+// Skipped entirely when the concierge is off.
 const CONCIERGE_DEBOUNCE_MS = 2000;
 
-// Whether the client has written again since this message.
-async function newerClientMessageSince(clientId, waMessageId) {
-  const { data } = await supabase
-    .from('client_messages')
-    .select('wa_message_id')
-    .eq('client_id', clientId)
-    .eq('sender', 'client')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+// Whether the client has written again since this message (a client on
+// file by client_id, an unknown number by its phone).
+async function newerClientMessageSince(clientId, phone, waMessageId) {
+  let q = supabase.from('client_messages').select('wa_message_id').eq('sender', 'client');
+  q = clientId ? q.eq('client_id', clientId) : q.eq('phone', phone).is('client_id', null);
+  const { data } = await q.order('created_at', { ascending: false }).limit(1).maybeSingle();
   return Boolean(data && data.wa_message_id !== waMessageId);
 }
 
-// After a fresh inbound message is stored, gives the AI concierge (see
-// lib/whatsappConcierge.js) a chance to answer it directly — gated by
-// WHATSAPP_AI_ENABLED and only for a message matched to a client, both
-// checked inside maybeRunConcierge. Best-effort and isolated from the
-// message-storage path above: any failure here (a bad model response, a
-// send failure, a bug) is caught and logged, never allowed to turn an
-// otherwise-successful webhook delivery into a failed one Meta would
-// retry forever.
+// After a fresh inbound message is stored, the concierge (lib/whatsappConcierge.js)
+// decides what to do with it: reply, hand to staff with its own message, or
+// stay silent. Best-effort and isolated from the message-storage path above:
+// any failure here is caught and logged, never allowed to turn an
+// otherwise-successful webhook delivery into a failed one Meta would retry
+// forever (and the 5-minute sweep picks up anything left undecided).
 async function runConciergeForInbound(message, clientId, digits) {
   try {
-    if (clientId && isWhatsAppAiEnabled()) {
-      await new Promise((resolve) => setTimeout(resolve, CONCIERGE_DEBOUNCE_MS));
-      if (await newerClientMessageSince(clientId, message.id)) return;
-    }
+    if (!isWhatsAppAiEnabled()) return;
+    await new Promise((resolve) => setTimeout(resolve, CONCIERGE_DEBOUNCE_MS));
+    if (await newerClientMessageSince(clientId, digits, message.id)) return;
 
-    const result = await maybeRunConcierge({ clientId, phone: digits });
+    const decision = await maybeRunConcierge({ clientId, phone: digits });
     // The model can take several seconds, long past the debounce above: a
     // client who writes again meanwhile ("Can we move appointment to
     // Tuesday please", then "Something urgent came up on Monday") starts a
     // second run that sees both messages, and used to get two near-identical
     // replies, one from each run. The newer run answers for both, so this
     // one stays silent.
-    if (clientId && isWhatsAppAiEnabled() && (await newerClientMessageSince(clientId, message.id))) return;
-    if (result.sent) {
-      await sendConciergeReply({ clientId, phone: digits, reply: result.reply });
-    } else if (result.withStaff) {
-      // Already handed to staff and nobody has replied yet: the AI stays
-      // out, and the client just gets the short "still with our team" line
-      // so a new message never meets silence. The thread keeps the reason
-      // it was first handed over for. Skipped when a notice already went
-      // out a few minutes ago (see lib/clientAcknowledgement.js).
-      if (!result.noticeAlreadySent) await sendEscalationFollowUpNotice(digits, clientId);
-    } else if (result.escalated || result.handoff) {
-      // Two different reasons land here — the model itself chose to
-      // escalate (result.escalated), or the concierge stayed out entirely
-      // because staff are already in this thread (result.handoff, see
-      // maybeRunConcierge's priorRow check) — but both get the same
-      // treatment from here on: flag the thread, and send something,
-      // never nothing. Always flag regardless of whether the notice below
-      // succeeds — staff need to see this either way. A thread already
-      // flagged from an earlier still-open episode gets the shorter
-      // follow-up line instead of repeating a first-time notice — but it
-      // still gets SOMETHING: a client whose later message(s) also land
-      // here (e.g. "please book that", then "hello") must never be met
-      // with total silence just because a human hasn't cleared the flag
-      // yet (see the incident behind sendEscalationFollowUpNotice's own
-      // comment, and the one behind sendStaffHandoffNotice's).
-      console.log(
-        result.handoff ? 'WhatsApp AI concierge deferred — staff already in thread' : 'WhatsApp AI concierge escalated to staff',
-        message.id,
-        result.reason
-      );
-      const { alreadyFlagged } = await flagEscalatedThread(clientId, result.reason);
-      if (result.noticeAlreadySent) {
-        // The client was told a few minutes ago; the flag above is enough.
-      } else if (alreadyFlagged) {
-        await sendEscalationFollowUpNotice(digits, clientId);
-      } else if (result.handoff) {
-        await sendStaffHandoffNotice(digits, clientId);
-      } else {
-        await sendEscalationNotice(digits, clientId);
-      }
-    }
+    if (await newerClientMessageSince(clientId, digits, message.id)) return;
+    console.log('WhatsApp concierge', message.id, decision.action, decision.reason || '');
+    await applyConciergeDecision(decision, { clientId, phone: digits });
   } catch (err) {
     console.error('WhatsApp AI concierge failed', message.id, err);
   }
@@ -276,25 +230,16 @@ async function handleInboundMessage(message, contactPhone) {
     return;
   }
 
-  // A plain-text message or a tapped template button/quick-reply (its text
-  // arrives exactly like typing it — see extractBody above) both go to the
-  // concierge; anything else (a photo of an injury, a receipt, ...) always
-  // needs a human's eyes.
-  if (message.type === 'text' || message.type === 'button' || message.type === 'interactive') {
-    await runConciergeForInbound(message, clientId, digits);
-    return;
-  }
-
-  // A voice note is transcribed (migration 196): staff see the text under
-  // the player, and the concierge reads it like a typed message. If it
-  // can't be transcribed it goes to staff as before (the unanswered sweep).
+  // A voice note is transcribed first (migration 196): staff see the text
+  // under the player, and the concierge reads it like a typed message.
   if (message.type === 'audio' && media.media_url) {
     const transcript = await transcribeVoiceNote(media.media_url);
-    if (transcript) {
-      await supabaseAdmin.from('client_messages').update({ transcript }).eq('wa_message_id', message.id);
-      await runConciergeForInbound(message, clientId, digits);
-    }
+    if (transcript) await supabaseAdmin.from('client_messages').update({ transcript }).eq('wa_message_id', message.id);
   }
+  // Everything goes to the concierge, which decides what it needs: a photo
+  // or file it can't see goes to staff with a message it writes, a reaction
+  // usually needs nothing.
+  await runConciergeForInbound(message, clientId, digits);
 }
 
 async function handleStatusUpdate(status) {

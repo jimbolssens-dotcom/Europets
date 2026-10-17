@@ -19,7 +19,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { maybeRunConcierge, sendConciergeReply, isWhatsAppAiEnabled, flagEscalatedThread, sendEscalationNotice } from '@/lib/whatsappConcierge';
+import { maybeRunConcierge, sendConciergeReply, isWhatsAppAiEnabled, applyConciergeDecision } from '@/lib/whatsappConcierge';
 import { whatsappDigits } from '@/lib/clientPhoneDigits';
 import { NextResponse } from 'next/server';
 
@@ -74,7 +74,7 @@ export async function POST(request) {
 
   const result = await maybeRunConcierge({ clientId, phone, force: true, replayLastClientMessage: true });
 
-  if (result.sent) {
+  if (result.action === 'reply') {
     try {
       await sendConciergeReply({ clientId, phone, reply: result.reply });
     } catch (err) {
@@ -82,10 +82,13 @@ export async function POST(request) {
     }
     return NextResponse.json({ takeover: true, sent: true, reply: result.reply });
   }
+  if (result.action === 'silent') {
+    return NextResponse.json({ takeover: true, sent: false, reason: result.reason });
+  }
 
-  // It needs a person after all: hand it straight back.
+  // It needs a person after all: hand it straight back (flagged, with the
+  // AI's own holding message if it wrote one).
+  await applyConciergeDecision(result.action === 'skipped' ? { ...result, action: 'handover' } : result, { clientId, phone });
   const reason = result.reason || 'The AI did not produce a reply';
-  await flagEscalatedThread(clientId, reason);
-  if (result.escalated) await sendEscalationNotice(phone, clientId);
-  return NextResponse.json({ takeover: false, sent: false, escalated: Boolean(result.escalated), reason });
+  return NextResponse.json({ takeover: false, sent: false, escalated: result.action === 'handover', reason });
 }

@@ -4,14 +4,13 @@
 // GET /api/whatsapp/concierge-replay?case=N                -> one case:
 //   { context: the last few messages up to that moment,
 //     before: what the clinic side actually sent next (up to the client's next message),
-//     after: what the concierge would do now (maybeRunConcierge with asOf: a dry
-//            run, nothing sent, booked, moved or logged) }
+//     after: what the concierge would decide now (maybeRunConcierge with asOf:
+//            a dry run, nothing sent, booked, moved or logged) }
 // For app/(admin)/concierge-review. Staff-gated like any other non-public route.
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { maybeRunConcierge, composeClosedNotice } from '@/lib/whatsappConcierge';
-import { clinicClosedAt } from '@/lib/clinicHours';
+import { maybeRunConcierge } from '@/lib/whatsappConcierge';
 import { CONCIERGE_REPLAY_CASES } from '@/lib/conciergeReplayCases';
 
 export const dynamic = 'force-dynamic';
@@ -43,24 +42,15 @@ export async function GET(request) {
   const [{ data: earlier }, { data: later }, concierge] = await Promise.all([
     thread(supabaseAdmin.from('client_messages').select(FIELDS)).lte('created_at', asOf).order('created_at', { ascending: false }).limit(6),
     thread(supabaseAdmin.from('client_messages').select(FIELDS)).gt('created_at', asOf).order('created_at').limit(10),
-    // The concierge only answers registered clients; an unknown number only
-    // ever gets the notice.
-    clientId ? maybeRunConcierge({ clientId, phone: '', asOf }) : Promise.resolve({ skipped: true, unregistered: true, reason: 'not a registered client, so the AI never answers; staff see it', trace: [] }),
+    maybeRunConcierge({ clientId, phone: clientId ? '' : phone, asOf }),
   ]);
   const before = [];
   for (const row of later || []) {
     if (row.sender === 'client') break;
     before.push(row);
   }
-  // What the client would be told when it goes to staff, written for them at night.
-  const toStaff = concierge.escalated || concierge.handoff || concierge.withStaff || concierge.unregistered;
-  const now = Date.parse(asOf);
-  const notice =
-    toStaff && !concierge.noticeAlreadySent && clinicClosedAt(now)
-      ? await composeClosedNotice({ clientId, phone, now })
-      : null;
   return NextResponse.json(
-    { label: c.label, as_of: asOf, context: (earlier || []).reverse(), before, after: { ...concierge, notice } },
+    { label: c.label, as_of: asOf, context: (earlier || []).reverse(), before, after: concierge },
     { headers: { 'Cache-Control': 'no-store' } }
   );
 }

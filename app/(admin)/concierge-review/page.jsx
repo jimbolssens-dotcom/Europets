@@ -36,27 +36,33 @@ function Bubble({ row }) {
 function Outcome({ after }) {
   if (!after) return <p className="cr-muted">Working it out…</p>;
   const look = (after.trace || []).find((t) => t.second_look)?.second_look;
-  const redo = look?.fix;
-  let main;
-  if (after.sent) main = <div className="cr-bubble cr-out cr-new"><span className="cr-who">AI</span>{after.reply}</div>;
-  else if (after.escalated) main = <p className="cr-verdict">Hands it to staff: {after.reason}</p>;
-  else if (after.withStaff || after.handoff) main = <p className="cr-verdict">Leaves it to staff: {after.reason}</p>;
-  else if (after.unregistered) main = <p className="cr-verdict">Goes to staff ({after.reason})</p>;
-  else main = <p className="cr-verdict">Sends nothing ({after.reason})</p>;
-  const notice = after.notice && (
-    <div className="cr-bubble cr-out cr-notice cr-new">
-      <span className="cr-who">Night message to the client</span>
-      {after.notice}
+  const tools = (after.trace || [])
+    .flatMap((t) => (t.tool_calls || []).map((c) => c.name))
+    .filter((n) => n !== 'hand_to_staff' && n !== 'stay_silent');
+  const bubble = (who, body, notice) => (
+    <div className={`cr-bubble cr-out cr-new${notice ? ' cr-notice' : ''}`}>
+      <span className="cr-who">{who}</span>
+      {body}
     </div>
   );
-  const tools = (after.trace || []).flatMap((t) => (t.tool_calls || []).map((c) => c.name)).filter((n) => n !== 'escalate_to_staff');
+  let main;
+  if (after.action === 'reply') main = bubble('AI', after.reply);
+  else if (after.action === 'handover')
+    main = (
+      <>
+        <p className="cr-verdict">Hands it to staff: {after.reason}</p>
+        {after.message ? bubble('AI, to the client while staff take it', after.message, true) : <p className="cr-muted">Sends the client nothing{after.messageHeldBack ? ` (${after.messageHeldBack})` : ''}.</p>}
+      </>
+    );
+  else if (after.action === 'silent') main = <p className="cr-verdict">Stays silent: {after.reason}</p>;
+  else if (after.action === 'error') main = <p className="cr-verdict">The AI failed ({after.reason}); fallback: {after.message || 'nothing'}</p>;
+  else main = <p className="cr-verdict">Skipped: {after.reason}</p>;
   return (
     <>
       {main}
-      {notice}
       <p className="cr-muted">
         {tools.length ? `Looked up: ${[...new Set(tools)].join(', ')}. ` : ''}
-        {redo ? `Second look sent its first draft back: “${redo}”` : look ? 'Second look: OK.' : ''}
+        {look?.fix ? `Second look sent its first draft back: “${look.fix}”` : look ? 'Second look: OK.' : ''}
       </p>
     </>
   );
@@ -109,7 +115,7 @@ export default function ConciergeReviewPage() {
         <h1>AI concierge: before and after</h1>
       </div>
       <p className="cr-muted">
-        Real conversations replayed as they stood at the time, through the new concierge (facts on file plus a second look). A dry run: nothing is sent, booked or moved. Appointments are as they are on file today, so a booking that has since moved shows its new time.
+        Real conversations replayed as they stood at the time, through the new concierge: it reads the conversation and the situation and decides for itself whether to reply, hand to staff with its own message, or say nothing, with a second look before it acts. A dry run: nothing is sent, booked or moved. Appointments are as they are on file today, so a booking that has since moved shows its new time.
       </p>
       {cases.map((c) => (
         <Case key={c.index} index={c.index} label={c.label} />

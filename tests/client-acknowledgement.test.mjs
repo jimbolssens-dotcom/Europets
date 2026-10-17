@@ -59,7 +59,6 @@ test('Debra Al Hajeri: "Ok" to the automated reminder after a staff message', ()
 });
 
 import { replyingToAutomatedMessage } from '../lib/clientAcknowledgement.js';
-import { decideSweepAction } from '../lib/whatsappSweepDecision.js';
 
 test('Reem: "Okay" to the reminder after staff answered', () => {
   const rows = [
@@ -71,7 +70,6 @@ test('Reem: "Okay" to the reminder after staff answered', () => {
   ];
   assert.equal(replyingToAutomatedMessage(rows), true);
   assert.equal(burstIsAcknowledgementOnly(rows), true);
-  assert.equal(decideSweepAction(rows, false).action, 'nothing');
 });
 
 test('Aarti: a real reply to the reminder goes to the AI, not "still with our team"', () => {
