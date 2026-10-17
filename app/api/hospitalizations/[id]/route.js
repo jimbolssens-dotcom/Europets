@@ -35,11 +35,18 @@ const SELECT_WITH_RELATIONS =
   '*, patients(id, name, species, breed, sex, patient_number, current_weight_kg, dental_chart, date_of_birth, date_of_birth_estimated, profile_photo_url), clients(id, full_name, phone, client_number, client_app_last_seen_at), rooms(name)';
 
 export async function GET(request, { params }) {
-  const { data, error } = await supabase
-    .from('hospitalizations')
-    .select(SELECT_WITH_RELATIONS)
-    .eq('id', params.id)
-    .single();
+  // The recent weights (for the weight-loss alarm below) are asked for
+  // alongside the stay itself rather than after it: one round to the
+  // database instead of two. They're only used while admitted.
+  const [{ data, error }, { data: recentWeights }] = await Promise.all([
+    supabase.from('hospitalizations').select(SELECT_WITH_RELATIONS).eq('id', params.id).single(),
+    supabase
+      .from('hospitalization_notes')
+      .select('created_at, weight_kg')
+      .eq('hospitalization_id', params.id)
+      .not('weight_kg', 'is', null)
+      .gte('created_at', new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()),
+  ]);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 404 });
@@ -50,12 +57,6 @@ export async function GET(request, { params }) {
   // this is a single-record fetch, so it's duplicated rather than shared
   // through an extra round trip.
   if (data.status === 'admitted') {
-    const { data: recentWeights } = await supabase
-      .from('hospitalization_notes')
-      .select('created_at, weight_kg')
-      .eq('hospitalization_id', params.id)
-      .not('weight_kg', 'is', null)
-      .gte('created_at', new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString());
     data.weight_loss_alarm = detectWeightLossAlarm(recentWeights || [], data.weight_loss_ack_reading_at);
   } else {
     data.weight_loss_alarm = null;

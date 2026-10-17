@@ -19,6 +19,7 @@ import { appOrigin } from '@/lib/appOrigin';
 import { DEFAULT_LEGACY_PAYMENT_METHODS } from '@/lib/legacyPayments';
 import { nextReminderDate, stageShort } from '@/lib/reminderStages';
 import { readViewCacheEntry, writeViewCacheEntry } from '@/lib/viewCache';
+import { fetchJsonPrefetched } from '@/lib/prefetchData';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -122,9 +123,10 @@ export default function ClientDetailPage() {
 
   const load = () =>
     Promise.all([
-      fetch(`/api/clients/${id}`).then((res) => res.json()),
-      fetch(`/api/patients?client_id=${id}`).then((res) => res.json()),
-      fetch(`/api/invoices?client_id=${id}`).then((res) => res.json()),
+      // Already on their way if the pointer was just over a link here (lib/prefetchData.js).
+      fetchJsonPrefetched(`/api/clients/${id}`),
+      fetchJsonPrefetched(`/api/patients?client_id=${id}`),
+      fetchJsonPrefetched(`/api/invoices?client_id=${id}`),
     ]).then(([clientData, patientsData, invoicesData]) => {
       setClient(clientData);
       setPatients(Array.isArray(patientsData) ? patientsData : []);

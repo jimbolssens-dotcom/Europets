@@ -25,6 +25,8 @@ import { sendPaymentMessage } from '@/lib/sendPaymentMessageClient';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
+import { fetchJsonPrefetched } from '@/lib/prefetchData';
+import { loadReferenceList } from '@/lib/viewCache';
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -70,8 +72,8 @@ export default function InvoiceDetailPage() {
   const [lineItemEditError, setLineItemEditError] = useState(null);
 
   const loadInvoice = () =>
-    fetch(`/api/invoices/${id}`)
-      .then((res) => res.json())
+    // Already on its way if the pointer was just over a link here (lib/prefetchData.js).
+    fetchJsonPrefetched(`/api/invoices/${id}`)
       .then((data) => {
         setInvoice(data);
         setLoading(false);
@@ -79,15 +81,10 @@ export default function InvoiceDetailPage() {
 
   useEffect(() => {
     loadInvoice();
-    fetch('/api/goods-services?active=true')
-      .then((res) => res.json())
-      .then((data) => setCatalog(Array.isArray(data) ? data : []));
-    fetch('/api/catalog-subcategories')
-      .then((res) => res.json())
-      .then((data) => setSubcategories(Array.isArray(data) ? data : []));
-    fetch('/api/staff')
-      .then((res) => res.json())
-      .then((data) => setStaff(Array.isArray(data) ? data : []));
+    // Pickers: the last copy at once, then the fresh one (lib/viewCache.js).
+    loadReferenceList('/api/goods-services?active=true', setCatalog);
+    loadReferenceList('/api/catalog-subcategories', setSubcategories);
+    loadReferenceList('/api/staff', setStaff);
 
     const channel = supabase
       .channel(`invoice-detail-${id}`)

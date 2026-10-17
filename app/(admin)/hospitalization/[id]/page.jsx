@@ -46,6 +46,8 @@ import VaccinationForm from '@/app/_components/VaccinationForm';
 import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
+import { fetchJsonPrefetched } from '@/lib/prefetchData';
+import { loadReferenceList } from '@/lib/viewCache';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -177,8 +179,8 @@ export default function HospitalizationDetailPage() {
   }, [pendingChecklistAction, reportsOpen]);
 
   const loadAdmission = () =>
-    fetch(`/api/hospitalizations/${id}`)
-      .then((res) => res.json())
+    // Already on its way if the pointer was just over a link here (lib/prefetchData.js).
+    fetchJsonPrefetched(`/api/hospitalizations/${id}`)
       .then((data) => {
         setAdmission(data);
         setLoading(false);
@@ -258,15 +260,10 @@ export default function HospitalizationDetailPage() {
     loadInvoiceInfo();
     loadConsentForms();
     loadLinkedDayProcedures();
-    fetch('/api/staff')
-      .then((res) => res.json())
-      .then((data) => setStaff(Array.isArray(data) ? data : []));
-    fetch('/api/goods-services?active=true')
-      .then((res) => res.json())
-      .then((data) => setCatalog(Array.isArray(data) ? data : []));
-    fetch('/api/catalog-subcategories')
-      .then((res) => res.json())
-      .then((data) => setSubcategories(Array.isArray(data) ? data : []));
+    // Pickers: the last copy at once, then the fresh one (lib/viewCache.js).
+    loadReferenceList('/api/staff', setStaff);
+    loadReferenceList('/api/goods-services?active=true', setCatalog);
+    loadReferenceList('/api/catalog-subcategories', setSubcategories);
 
     const channel = supabase
       .channel(`hospitalization-${id}`)

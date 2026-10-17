@@ -36,6 +36,8 @@ import PatientHeader, { PatientMeta, PatientTrend } from '@/app/_components/Pati
 import { openWhatsApp } from '@/lib/whatsapp';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
+import { fetchJsonPrefetched } from '@/lib/prefetchData';
+import { loadReferenceList } from '@/lib/viewCache';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
 // catalog link — kept only to label those old rows.
@@ -183,8 +185,8 @@ export default function ConsultDetailPage() {
   // field always takes the update (so e.g. the auto-added note appears),
   // while a field they've since edited keeps their unsaved draft.
   const loadConsult = () =>
-    fetch(`/api/visits/${id}`)
-      .then((res) => res.json())
+    // Already on its way if the pointer was just over a link here (lib/prefetchData.js).
+    fetchJsonPrefetched(`/api/visits/${id}`)
       .then((data) => {
         setConsult(data);
         patientIdRef.current = data.patient_id;
@@ -338,17 +340,11 @@ export default function ConsultDetailPage() {
     loadGastroscopyReports();
     loadInvoiceInfo();
 
-    Promise.all([
-      fetch('/api/staff').then((res) => res.json()),
-      fetch('/api/rooms').then((res) => res.json()),
-      fetch('/api/goods-services?active=true').then((res) => res.json()),
-      fetch('/api/catalog-subcategories').then((res) => res.json()),
-    ]).then(([staffData, roomsData, catalogData, subcategoriesData]) => {
-      setStaff(Array.isArray(staffData) ? staffData : []);
-      setRooms(Array.isArray(roomsData) ? roomsData : []);
-      setCatalog(Array.isArray(catalogData) ? catalogData : []);
-      setSubcategories(Array.isArray(subcategoriesData) ? subcategoriesData : []);
-    });
+    // Pickers: the last copy at once, then the fresh one (lib/viewCache.js).
+    loadReferenceList('/api/staff', setStaff);
+    loadReferenceList('/api/rooms', setRooms);
+    loadReferenceList('/api/goods-services?active=true', setCatalog);
+    loadReferenceList('/api/catalog-subcategories', setSubcategories);
 
     const channel = supabase
       .channel(`consult-${id}`)

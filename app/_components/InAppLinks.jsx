@@ -24,6 +24,7 @@
 
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { prefetchPageData } from '@/lib/prefetchData';
 
 // The top-level paths of the desktop app (app/(admin)/*).
 const DESKTOP_SECTIONS = new Set([
@@ -92,6 +93,15 @@ export default function InAppLinks({ scope = 'desktop' }) {
 
   useEffect(() => {
     const prefetched = new Set();
+    // The page's data is only asked for once the pointer rests on a link
+    // a moment, so sweeping across a long list doesn't ask for every row.
+    let dataTimer = null;
+    let dataTarget = null;
+    const cancelData = () => {
+      window.clearTimeout(dataTimer);
+      dataTimer = null;
+      dataTarget = null;
+    };
 
     function onClick(event) {
       if (event.defaultPrevented || event.button !== 0) return;
@@ -101,13 +111,23 @@ export default function InAppLinks({ scope = 'desktop' }) {
       const target = inAppTarget(a.getAttribute('href'), window.location, scope);
       if (!target) return;
       event.preventDefault();
+      cancelData();
       router.push(target);
     }
 
     function onPointerOver(event) {
       const a = linkFrom(event);
-      if (!a) return;
-      const target = inAppTarget(a.getAttribute('href'), window.location, scope);
+      const target = a ? inAppTarget(a.getAttribute('href'), window.location, scope) : null;
+      // The page's own data too (consult, stay, invoice, client, patient):
+      // each rest on a link asks again, since that answer is only used
+      // while fresh.
+      if (target !== dataTarget) {
+        cancelData();
+        if (target && scope === 'desktop') {
+          dataTarget = target;
+          dataTimer = window.setTimeout(() => prefetchPageData(target), 80);
+        }
+      }
       if (!target || prefetched.has(target)) return;
       prefetched.add(target);
       router.prefetch(target);
@@ -118,6 +138,7 @@ export default function InAppLinks({ scope = 'desktop' }) {
     return () => {
       document.removeEventListener('click', onClick);
       document.removeEventListener('pointerover', onPointerOver);
+      cancelData();
     };
   }, [router, scope]);
 

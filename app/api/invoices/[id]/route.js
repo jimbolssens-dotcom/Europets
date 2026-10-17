@@ -21,14 +21,54 @@ const VALID_STATUSES = ['void'];
 export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
-  const { data: invoice, error } = await supabase
-    .from('invoices')
-    .select('*, clients(id, full_name, phone, email, client_number)')
-    .eq('id', params.id)
-    .single();
+  // Everything keyed by the invoice id is asked for at once, alongside the
+  // invoice itself; only the patient lookup has to wait for the invoice
+  // (it needs its visit_id / hospitalization_id). Two rounds to the
+  // database instead of six one after another.
+  const [
+    { data: invoice, error },
+    { data: catteryBookings },
+    { data: lineItems, error: itemsError },
+    { data: payments, error: paymentsError },
+    { data: discounts, error: discountsError },
+  ] = await Promise.all([
+    supabase
+      .from('invoices')
+      .select('*, clients(id, full_name, phone, email, client_number)')
+      .eq('id', params.id)
+      .single(),
+    // The cattery stay(s) this invoice bills (migration 182).
+    supabase
+      .from('cattery_bookings')
+      .select('id, date_in, date_out, patients(id, name, patient_number)')
+      .eq('invoice_id', params.id),
+    supabase
+      .from('invoice_line_items')
+      .select('*, goods_services(name, pricing_type, unit, main_category)')
+      .eq('invoice_id', params.id),
+    supabase
+      .from('invoice_payments')
+      .select('*, staff(full_name), donations(donation_number, source)')
+      .eq('invoice_id', params.id)
+      .order('paid_at', { ascending: false }),
+    supabase
+      .from('invoice_discounts')
+      .select('*, staff(full_name)')
+      .eq('invoice_id', params.id)
+      .order('applied_at', { ascending: false }),
+  ]);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 404 });
+  }
+  if (itemsError) {
+    return NextResponse.json({ error: itemsError.message }, { status: 500 });
+  }
+  if (paymentsError) {
+    return NextResponse.json({ error: paymentsError.message }, { status: 500 });
+  }
+  if (discountsError) {
+    return NextResponse.json({ error: discountsError.message }, { status: 500 });
   }
 
   // Two separate queries rather than one nested visits(...)/hospitalizations(...)
@@ -52,42 +92,7 @@ export async function GET(request, { params }) {
       .single();
     invoice.hospitalizations = hospitalization || null;
   }
-
-  // The cattery stay(s) this invoice bills (migration 182).
-  const { data: catteryBookings } = await supabase
-    .from('cattery_bookings')
-    .select('id, date_in, date_out, patients(id, name, patient_number)')
-    .eq('invoice_id', params.id);
   invoice.cattery_bookings = catteryBookings || [];
-
-  const { data: lineItems, error: itemsError } = await supabase
-    .from('invoice_line_items')
-    .select('*, goods_services(name, pricing_type, unit, main_category)')
-    .eq('invoice_id', params.id);
-
-  if (itemsError) {
-    return NextResponse.json({ error: itemsError.message }, { status: 500 });
-  }
-
-  const { data: payments, error: paymentsError } = await supabase
-    .from('invoice_payments')
-    .select('*, staff(full_name), donations(donation_number, source)')
-    .eq('invoice_id', params.id)
-    .order('paid_at', { ascending: false });
-
-  if (paymentsError) {
-    return NextResponse.json({ error: paymentsError.message }, { status: 500 });
-  }
-
-  const { data: discounts, error: discountsError } = await supabase
-    .from('invoice_discounts')
-    .select('*, staff(full_name)')
-    .eq('invoice_id', params.id)
-    .order('applied_at', { ascending: false });
-
-  if (discountsError) {
-    return NextResponse.json({ error: discountsError.message }, { status: 500 });
-  }
 
   return NextResponse.json({ ...invoice, line_items: lineItems, payments, discounts });
 }

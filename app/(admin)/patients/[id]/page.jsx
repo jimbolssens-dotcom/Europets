@@ -28,6 +28,7 @@ import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttribu
 import { formatShortDate } from '@/lib/formatTimestamp';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { readViewCacheEntry, writeViewCacheEntry } from '@/lib/viewCache';
+import { fetchJsonPrefetched } from '@/lib/prefetchData';
 
 const SEX_LABELS = {
   male: 'Male',
@@ -62,9 +63,9 @@ export default function PatientDetailPage() {
   const [reviewLinkError, setReviewLinkError] = useState(null);
   const [addingHistoryFiles, setAddingHistoryFiles] = useState(false);
 
+  // Already on its way if the pointer was just over a link here (lib/prefetchData.js).
   const load = () =>
-    fetch(`/api/patients/${id}`)
-      .then((res) => res.json())
+    fetchJsonPrefetched(`/api/patients/${id}`)
       .then((data) => {
         setPatient(data);
         setLoading(false);
