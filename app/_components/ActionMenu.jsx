@@ -8,8 +8,7 @@
 
 import { useEffect, useRef } from 'react';
 
-// `active` highlights the button (e.g. while one of the menu's views is open).
-export default function ActionMenu({ label = '⋯ More', align = 'left', active = false, children }) {
+export default function ActionMenu({ label = '⋯ More', align = 'left', children }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -33,7 +32,7 @@ export default function ActionMenu({ label = '⋯ More', align = 'left', active 
 
   return (
     <details className="action-menu" ref={ref}>
-      <summary className={`case-tab${active ? ' case-tab-on' : ''}`}>{label} ▾</summary>
+      <summary className="case-tab">{label} ▾</summary>
       <div className={`action-menu-pop action-menu-pop-${align}`} onClick={onPick}>
         {children}
       </div>
