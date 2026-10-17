@@ -44,8 +44,14 @@ export function PreviousOwners({ patientId, refreshKey }) {
   );
 }
 
-export default function PatientTransfer({ patient, staff = [], onTransferred }) {
-  const [open, setOpen] = useState(false);
+// `open` / `onOpenChange` (optional) let the page open the transfer box
+// from elsewhere (the patient page's More menu); without them it shows its
+// own "Transfer owner" button as before.
+export default function PatientTransfer({ patient, staff = [], onTransferred, open: openProp, onOpenChange }) {
+  const [openState, setOpenState] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : openState;
+  const setOpen = (value) => (controlled ? onOpenChange?.(value) : setOpenState(value));
   const [newOwner, setNewOwner] = useState(null);
   const [preview, setPreview] = useState(null);
   const [billsGoTo, setBillsGoTo] = useState('old'); // 'old' | 'new'
@@ -82,6 +88,7 @@ export default function PatientTransfer({ patient, staff = [], onTransferred }) 
   }
 
   if (!open) {
+    if (controlled) return null;
     return (
       <button type="button" className="button-link" onClick={() => setOpen(true)} title="Move this patient, with its history, to another owner">
         🔁 Transfer owner

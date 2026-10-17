@@ -29,6 +29,7 @@ import { formatShortDate } from '@/lib/formatTimestamp';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { readViewCacheEntry, writeViewCacheEntry } from '@/lib/viewCache';
 import { fetchJsonPrefetched } from '@/lib/prefetchData';
+import ActionMenu from '@/app/_components/ActionMenu';
 
 const SEX_LABELS = {
   male: 'Male',
@@ -62,6 +63,7 @@ export default function PatientDetailPage() {
   const [sendingReviewLink, setSendingReviewLink] = useState(false);
   const [reviewLinkError, setReviewLinkError] = useState(null);
   const [addingHistoryFiles, setAddingHistoryFiles] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
 
   // Already on its way if the pointer was just over a link here (lib/prefetchData.js).
   const load = () =>
@@ -404,44 +406,47 @@ export default function PatientDetailPage() {
       {videoConsultError && <p className="error">{videoConsultError}</p>}
       {reviewLinkError && <p className="error">{reviewLinkError}</p>}
 
+      {/* Only what's used every day stays on the row: Book, the More menu
+          right next to it, and the case links. Everything else is in More,
+          grouped. */}
       <div className="action-row">
         <a href={`/appointments?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
-          Book Appointment
+          📅 Book
         </a>
-        <button type="button" className="button-link" onClick={createInvoice} disabled={creatingInvoice}
-          title="Start a standalone invoice not tied to any consult or admission — e.g. a separate retail purchase">
-          {creatingInvoice ? 'Creating…' : 'Create Invoice'}
-        </button>
-        <button type="button" className="button-link" onClick={createProformaInvoice} disabled={creatingQuote}
-          title="Draft a price quote to send the client — never logged to accounting, no VAT invoice, no accounting effect">
-          {creatingQuote ? 'Creating…' : '📝 Create Proforma Invoice'}
-        </button>
-        <a href={`/patients/${patient.id}/history`} className="button-link">
-          📖 Full Patient History
-        </a>
-        <button type="button" className="button-link" onClick={() => setAddingHistoryFiles(true)}
-          title="Add history from another clinic, old results, x-rays, photos, PDFs or Word files">
-          📁 Add History / Results
-        </button>
-        <a href={`/cattery?patient_id=${patient.id}`} className="button-link" title="Book this cat into one of the 7 cattery spaces">
-          🐱 Cattery booking
-        </a>
-        <button type="button" className="button-link" onClick={sendReviewLink} disabled={sendingReviewLink}>
-          {sendingReviewLink ? 'Sending...' : '⭐ Review'}
-        </button>
-        <button type="button" className="button-link" onClick={toggleDeceased}>
-          {patient.deceased ? (
-            'Undo RIP'
-          ) : (
-            <>
-              Mark as RIP <span style={{ fontSize: '0.8em' }}>🐾</span>
-            </>
-          )}
-        </button>
-        <button type="button" className="button-link" onClick={toggleRehomed}>
-          {patient.rehomed ? 'Undo Rehomed' : 'Mark as Rehomed'}
-        </button>
-        <PatientTransfer patient={patient} staff={staff} onTransferred={() => window.location.reload()} />
+        <ActionMenu>
+          <ActionMenu.Group label="Billing" />
+          <button type="button" onClick={createInvoice} disabled={creatingInvoice}
+            title="Start a standalone invoice not tied to any consult or admission, e.g. a separate retail purchase">
+            {creatingInvoice ? 'Creating…' : '🧾 Invoice without a consult'}
+          </button>
+          <button type="button" onClick={createProformaInvoice} disabled={creatingQuote}
+            title="Draft a price quote to send the client: never logged to accounting, no VAT invoice">
+            {creatingQuote ? 'Creating…' : '📝 Proforma quote'}
+          </button>
+          <ActionMenu.Group label="Records" />
+          <a href={`/patients/${patient.id}/history`}>📖 Full Patient History</a>
+          <button type="button" onClick={() => setAddingHistoryFiles(true)}
+            title="Add history from another clinic, old results, x-rays, photos, PDFs or Word files">
+            📁 Add History / Results
+          </button>
+          <ActionMenu.Group label="Other" />
+          <a href={`/cattery?patient_id=${patient.id}`} title="Book this cat into one of the 7 cattery spaces">
+            🐱 Cattery booking
+          </a>
+          <button type="button" onClick={sendReviewLink} disabled={sendingReviewLink}>
+            {sendingReviewLink ? 'Sending...' : '⭐ Send review link'}
+          </button>
+          <ActionMenu.Group label="Patient status" />
+          <button type="button" onClick={() => setTransferOpen(true)} title="Move this patient, with its history, to another owner">
+            🔁 Transfer owner
+          </button>
+          <button type="button" onClick={toggleRehomed}>
+            {patient.rehomed ? '🏠 Undo Rehomed' : '🏠 Mark as Rehomed'}
+          </button>
+          <button type="button" className="action-menu-danger" onClick={toggleDeceased}>
+            {patient.deceased ? '🐾 Undo RIP' : '🐾 Mark as RIP'}
+          </button>
+        </ActionMenu>
         {/* Same color-coded pattern as the Consult/Hospitalization/Invoice
             pages' own cross-record links: colored + linked straight to the
             open record when one exists, plain pink "start one" when not —
@@ -455,11 +460,11 @@ export default function PatientDetailPage() {
           ) : (
             <>
               <a href={`/consults?client_id=${patient.client_id}&patient_id=${patient.id}`} className="button-link">
-                New Consult
+                Consult
               </a>
               <button type="button" className="button-link" onClick={startVideoConsult} disabled={startingVideoConsult}
                 title="Start a consult with no physical room, and send the client a video call link instead">
-                {startingVideoConsult ? 'Starting…' : '🎥 Video Consult'}
+                {startingVideoConsult ? 'Starting…' : '🎥 Video'}
               </button>
             </>
           )}
@@ -471,8 +476,8 @@ export default function PatientDetailPage() {
               Hospitalization
             </a>
           ) : (
-            <a href="/hospitalization" className="button-link">
-              Admit to Hospital
+            <a href="/hospitalization" className="button-link" title="Admit to Hospital">
+              Admit
             </a>
           )}
           {statusOverview?.dayProcedure ? (
@@ -499,6 +504,13 @@ export default function PatientDetailPage() {
         </CrossRecordLinks>
       </div>
       {quoteError && <p className="error">{quoteError}</p>}
+      <PatientTransfer
+        patient={patient}
+        staff={staff}
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        onTransferred={() => window.location.reload()}
+      />
 
       <div className="split">
         <div className="split-main">
