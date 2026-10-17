@@ -11973,3 +11973,55 @@ form.card.walkin-inline > .booking-owner-picked {
   flex: 0 0 auto;
   margin: 0;
 }
+
+/* Consults page on a phone: each table row becomes a compact card
+   instead of a table wider than the screen. The patient goes on top in
+   bold, the other columns (owner, room, vet, time) run along one small
+   line, and the buttons sit in a row underneath. */
+@media (max-width: 600px) {
+  .consults-board table,
+  .consults-board tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .consults-board thead {
+    display: none;
+  }
+
+  .consults-board tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.15rem 0.5rem;
+    padding: 0.6rem 0.25rem;
+    border-bottom: 1px solid #eee;
+  }
+
+  .consults-board td {
+    display: inline;
+    padding: 0;
+    border: 0;
+    font-size: 0.85rem;
+    color: #555;
+  }
+
+  .consults-board td:first-child {
+    flex-basis: 100%;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .consults-board td:not(:first-child):not(:last-child):not(:nth-last-child(2))::after {
+    content: ' ·';
+  }
+
+  .consults-board td:last-child {
+    flex-basis: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+  }
+}

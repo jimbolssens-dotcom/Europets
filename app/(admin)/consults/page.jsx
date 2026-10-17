@@ -221,7 +221,7 @@ function ConsultsPageInner() {
   const vets = staff.filter((s) => s.role === 'vet');
 
   return (
-    <div>
+    <div className="consults-board">
       <div className="page-header">
         <h1>Consults</h1>
         <div className="page-header-actions">
