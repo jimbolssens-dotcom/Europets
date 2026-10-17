@@ -158,6 +158,19 @@ async function downloadInboundMedia(message) {
 // so neither case pays this delay for nothing.
 const CONCIERGE_DEBOUNCE_MS = 2000;
 
+// Whether the client has written again since this message.
+async function newerClientMessageSince(clientId, waMessageId) {
+  const { data } = await supabase
+    .from('client_messages')
+    .select('wa_message_id')
+    .eq('client_id', clientId)
+    .eq('sender', 'client')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return Boolean(data && data.wa_message_id !== waMessageId);
+}
+
 // After a fresh inbound message is stored, gives the AI concierge (see
 // lib/whatsappConcierge.js) a chance to answer it directly — gated by
 // WHATSAPP_AI_ENABLED and only for a message matched to a client, both
@@ -170,18 +183,17 @@ async function runConciergeForInbound(message, clientId, digits) {
   try {
     if (clientId && isWhatsAppAiEnabled()) {
       await new Promise((resolve) => setTimeout(resolve, CONCIERGE_DEBOUNCE_MS));
-      const { data: latestClientMessage } = await supabase
-        .from('client_messages')
-        .select('wa_message_id')
-        .eq('client_id', clientId)
-        .eq('sender', 'client')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (latestClientMessage && latestClientMessage.wa_message_id !== message.id) return;
+      if (await newerClientMessageSince(clientId, message.id)) return;
     }
 
     const result = await maybeRunConcierge({ clientId, phone: digits });
+    // The model can take several seconds, long past the debounce above: a
+    // client who writes again meanwhile ("Can we move appointment to
+    // Tuesday please", then "Something urgent came up on Monday") starts a
+    // second run that sees both messages, and used to get two near-identical
+    // replies, one from each run. The newer run answers for both, so this
+    // one stays silent.
+    if (clientId && isWhatsAppAiEnabled() && (await newerClientMessageSince(clientId, message.id))) return;
     if (result.sent) {
       await sendConciergeReply({ clientId, phone: digits, reply: result.reply });
     } else if (result.withStaff) {
