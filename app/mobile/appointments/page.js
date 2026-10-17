@@ -14,6 +14,7 @@ import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import { formatTime, formatDayHeader } from '@/lib/formatTimestamp';
 import { buildStaffColorMap, UNASSIGNED_STAFF_COLOR, INACTIVE_APPOINTMENT_COLOR } from '@/lib/staffColors';
 import { BOOKING_SOURCE_BADGES } from '@/lib/appointmentBooking';
+import { readViewCache, useRestoredView, writeViewCache } from '@/lib/viewCache';
 
 const TYPE_ICONS = { consult: '🩺', video: '🎥', surgery: '📋', meeting: '👥' };
 const SWIPE_MIN_DISTANCE = 60;
@@ -44,8 +45,22 @@ export default function MobileAppointmentsPage() {
   useEffect(() => {
     fetch('/api/staff?role=vet')
       .then((res) => res.json())
-      .then((data) => setVets(Array.isArray(data) ? data : []));
+      .then((data) => {
+        setVets(Array.isArray(data) ? data : []);
+        if (Array.isArray(data)) writeViewCache('europets-mobile-vets-v1', data);
+      });
   }, []);
+
+  // This day as it last loaded, painted at once while the fresh copy
+  // loads (lib/viewCache.js).
+  useRestoredView('europets-mobile-vets-v1', (data) => {
+    if (Array.isArray(data)) setVets(data);
+  });
+  useRestoredView(`europets-mobile-appointments-v1:${selectedDate}`, (data) => {
+    if (!Array.isArray(data)) return;
+    setAppointments(data);
+    setLoading(false);
+  });
   const vetColor = useMemo(() => buildStaffColorMap(vets), [vets]);
 
   useEffect(() => {
@@ -57,9 +72,10 @@ export default function MobileAppointmentsPage() {
           if (cancelled) return;
           setAppointments(Array.isArray(data) ? data : []);
           setLoading(false);
+          if (Array.isArray(data)) writeViewCache(`europets-mobile-appointments-v1:${selectedDate}`, data);
         });
     };
-    setLoading(true);
+    if (readViewCache(`europets-mobile-appointments-v1:${selectedDate}`) == null) setLoading(true);
     load();
 
     const channel = supabase

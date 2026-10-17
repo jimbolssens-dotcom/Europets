@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
+import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 
 function formatWhen(iso) {
   return new Date(iso).toLocaleString('en-GB', {
@@ -32,6 +33,14 @@ export default function MobileMessagesListPage() {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // What this list last showed, painted at once while the fresh copy loads
+  // (lib/viewCache.js).
+  useRestoredView('europets-messages-inbox-v1', (data) => {
+    if (!Array.isArray(data)) return;
+    setConversations(data);
+    setLoading(false);
+  });
+
   useEffect(() => {
     const load = () =>
       fetch('/api/client-messages')
@@ -39,6 +48,8 @@ export default function MobileMessagesListPage() {
         .then((data) => {
           setConversations(Array.isArray(data) ? data : []);
           setLoading(false);
+          // Same list as the desktop inbox, so they share one copy.
+          if (Array.isArray(data)) writeViewCache('europets-messages-inbox-v1', data);
         });
 
     load();

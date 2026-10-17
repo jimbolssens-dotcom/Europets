@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
+import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 
 export default function MobileDayProceduresPage() {
   const [dayProcedures, setDayProcedures] = useState([]);
@@ -24,7 +25,16 @@ export default function MobileDayProceduresPage() {
       .then((data) => {
         setDayProcedures(Array.isArray(data) ? data : []);
         setLoading(false);
+        if (Array.isArray(data)) writeViewCache('europets-mobile-day-procedures-v1', data);
       });
+
+  // What this list last showed, painted at once while the fresh copy loads
+  // (lib/viewCache.js).
+  useRestoredView('europets-mobile-day-procedures-v1', (data) => {
+    if (!Array.isArray(data)) return;
+    setDayProcedures(data);
+    setLoading(false);
+  });
 
   useEffect(() => {
     load();

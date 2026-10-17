@@ -20,6 +20,7 @@ import AppVersionWatcher from '@/app/_components/AppVersionWatcher';
 import MobileBodyFillToggle from '@/app/_components/MobileBodyFillToggle';
 import MobileRosterGate from '@/app/_components/MobileRosterGate';
 import AutoScreenSwitcher from '@/app/_components/AutoScreenSwitcher';
+import InAppLinks from '@/app/_components/InAppLinks';
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -45,6 +46,7 @@ export default function MobileLayout({ children }) {
   return (
     <div className="mobile-app">
       <AppVersionWatcher />
+      <InAppLinks scope="mobile" />
       <MobileBodyFillToggle />
       <MobileRosterGate />
       <AutoScreenSwitcher />

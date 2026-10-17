@@ -22,13 +22,19 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useMobileStaff } from '@/app/_components/useMobileStaff';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { uploadClientMessageMedia } from '@/lib/attachments';
 import FileToRecordButton from '@/app/_components/FileToRecordButton';
+import { readViewCacheEntry, writeViewCacheEntry } from '@/lib/viewCache';
+
+// The thread as it last loaded on this phone, painted at once on the next
+// visit while the fresh copy loads (lib/viewCache.js; last 20 threads).
+const THREAD_CACHE_PREFIX = 'europets-mobile-thread-v1';
+const THREAD_CACHE_MESSAGES = 60;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -93,18 +99,35 @@ export default function MobileMessageThreadPage() {
     });
   }
 
+  useLayoutEffect(() => {
+    const cached = readViewCacheEntry(THREAD_CACHE_PREFIX, id);
+    if (!cached || !Array.isArray(cached.messages)) return;
+    setClient(cached.client || null);
+    setMessages(cached.messages);
+    setAssignedStaffId(cached.assignedStaffId || '');
+    setFlagged(Boolean(cached.flagged));
+    setEscalationReason(cached.escalationReason || null);
+    setAiTakeoverAt(cached.aiTakeoverAt || null);
+    setLoading(false);
+  }, [id]);
+
   useEffect(() => {
     setChannelOverride(null);
+    let cancelled = false;
     const loadMessages = () =>
       fetch(apiBase, { cache: 'no-store' })
         .then((res) => res.json())
-        .then((data) => setMessages(Array.isArray(data) ? data : []));
+        .then((data) => {
+          if (!cancelled && Array.isArray(data)) setMessages(data);
+        })
+        .catch(() => {});
 
     const promises = [loadMessages()];
     if (isMatched) {
-      promises.push(fetch(`/api/clients/${id}`).then((res) => (res.ok ? res.json() : null)));
+      promises.push(fetch(`/api/clients/${id}`).then((res) => (res.ok ? res.json() : null)).catch(() => null));
     }
     Promise.all(promises).then(([, clientData]) => {
+      if (cancelled) return;
       if (isMatched) setClient(clientData);
       setLoading(false);
     });
@@ -138,9 +161,25 @@ export default function MobileMessageThreadPage() {
         loadMessages
       )
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Keep this phone's copy of the thread up to date for the next visit.
+  useEffect(() => {
+    if (loading || (isMatched && !client)) return;
+    writeViewCacheEntry(THREAD_CACHE_PREFIX, id, {
+      client,
+      messages: messages.slice(-THREAD_CACHE_MESSAGES),
+      assignedStaffId,
+      flagged,
+      escalationReason,
+      aiTakeoverAt,
+    });
+  }, [id, isMatched, loading, client, messages, assignedStaffId, flagged, escalationReason, aiTakeoverAt]);
 
   // The composer is pinned over the bottom of the thread (position: fixed,
   // see .mobile-messages-composer), so the thread needs bottom padding at

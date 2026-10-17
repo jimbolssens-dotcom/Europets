@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
+import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -40,8 +41,23 @@ export default function MobileConsultsPage() {
       );
       setWalkIns(visits.filter((v) => !v.appointment_id));
       setLoading(false);
+      writeViewCache(`europets-mobile-consults-v1:${todayISODate()}`, {
+        appointments: appts
+          .filter((a) => a.type !== 'surgery')
+          .map((a) => ({ ...a, visit: visitByAppointment[a.id] || null })),
+        walkIns: visits.filter((v) => !v.appointment_id),
+      });
     });
   }, []);
+
+  // What this list last showed, painted at once while the fresh copy loads
+  // (lib/viewCache.js).
+  useRestoredView(`europets-mobile-consults-v1:${todayISODate()}`, (data) => {
+    if (!Array.isArray(data?.appointments)) return;
+    setAppointments(data.appointments);
+    setWalkIns(Array.isArray(data.walkIns) ? data.walkIns : []);
+    setLoading(false);
+  });
 
   async function openConsult(appointment) {
     if (appointment.visit) {

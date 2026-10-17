@@ -26,6 +26,7 @@ import { useCleanerLanguage } from '@/app/_components/useCleanerLanguage';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 import { t } from '@/lib/cleanerTranslations';
+import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 
 function MobileCageTile({ cage, hosp, checkinOnly, useSinhala }) {
   if (hosp) {
@@ -161,12 +162,27 @@ export default function MobileHospitalizationListPage() {
   const loadAdmitted = () =>
     fetch('/api/hospitalizations?status=admitted&kind=admission')
       .then((res) => res.json())
-      .then((data) => setAdmitted(Array.isArray(data) ? data : []));
+      .then((data) => {
+        setAdmitted(Array.isArray(data) ? data : []);
+        if (Array.isArray(data)) writeViewCache('europets-mobile-hospitalization-v1', data);
+      });
+
+  // What this list last showed, painted at once while the fresh copy loads
+  // (lib/viewCache.js).
+  useRestoredView('europets-mobile-hospitalization-v1', (data) => {
+    if (Array.isArray(data)) setAdmitted(data);
+  });
+  useRestoredView('europets-hospitalization-cages-v1', (data) => {
+    if (!Array.isArray(data)) return;
+    setCages(data);
+    setLoading(false);
+  });
 
   useEffect(() => {
     Promise.all([fetch('/api/cages').then((res) => res.json()), loadAdmitted()]).then(([cagesData]) => {
       setCages(Array.isArray(cagesData) ? cagesData : []);
       setLoading(false);
+      if (Array.isArray(cagesData)) writeViewCache('europets-hospitalization-cages-v1', cagesData);
     });
 
     // Poll as well as listening to realtime changes because crossing noon
