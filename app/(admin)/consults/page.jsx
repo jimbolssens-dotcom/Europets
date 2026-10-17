@@ -42,6 +42,10 @@ function ConsultsPageInner() {
   const [error, setError] = useState(null);
   const [rowError, setRowError] = useState(null);
   const walkInFormRef = useRef(null);
+  // The walk-in form is rarely used from here: collapsed to a button on the
+  // title line, except when arriving from a patient or client file to start
+  // a consult (?client_id=), where it opens already filled in.
+  const [walkInOpen, setWalkInOpen] = useState(() => Boolean(searchParams.get('client_id')));
 
   const loadConsults = () =>
     // Only what this page shows: open consults and the 20 latest finished.
@@ -218,11 +222,100 @@ function ConsultsPageInner() {
 
   return (
     <div>
-      <h1>Consults</h1>
+      <div className="page-header">
+        <h1>Consults</h1>
+        <div className="page-header-actions">
+          <button
+            type="button"
+            className={`case-tab${walkInOpen ? ' case-tab-on' : ''}`}
+            onClick={() => setWalkInOpen((v) => !v)}
+            aria-expanded={walkInOpen}
+          >
+            {walkInOpen ? '✕ Close walk-in' : '➕ Walk-in consult'}
+          </button>
+        </div>
+      </div>
       {rowError && <p className="error">{rowError}</p>}
 
-      <div className="split">
-      <div className="split-main">
+      {/* Above the lists, full width, fields side by side: it's what you
+          came for when it opens on its own (from a patient or client). */}
+      {walkInOpen && (
+      <form className="card walkin-inline" onSubmit={handleWalkIn} ref={walkInFormRef}>
+        <h2>Start Walk-in Consult</h2>
+        {error && <p className="error">{error}</p>}
+        {selectedOwner ? (
+          <p className="booking-owner-picked">
+            Owner:{' '}
+            <strong>
+              {selectedOwner.full_name}
+              {selectedOwner.client_number ? ` (Client #${selectedOwner.client_number})` : ''}
+            </strong>{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedOwner(null);
+                setWalkIn({ ...walkIn, client_id: '', patient_id: '' });
+              }}
+            >
+              Change
+            </button>
+          </p>
+        ) : (
+          <ClientOrPatientSearch
+            placeholder="Search clients or patients..."
+            onPickClient={(c) => {
+              setSelectedOwner({ id: c.id, full_name: c.full_name, client_number: c.client_number });
+              setWalkIn({ ...walkIn, client_id: c.id, patient_id: '' });
+            }}
+            onPickPatient={(p) => {
+              setSelectedOwner({
+                id: p.client_id,
+                full_name: p.clients?.full_name || '',
+                client_number: p.clients?.client_number,
+              });
+              setWalkIn({ ...walkIn, client_id: p.client_id, patient_id: p.id });
+            }}
+          />
+        )}
+        <SearchSelect
+          items={clientPatients}
+          value={walkIn.patient_id}
+          onChange={(patient_id) => setWalkIn({ ...walkIn, patient_id })}
+          getLabel={(p) => (p.patient_number ? `${p.name} (Patient #${p.patient_number})` : p.name)}
+          getSubLabel={(p) => p.species}
+          placeholder="Select patient..."
+          disabled={!walkIn.client_id}
+        />
+        <select
+          required
+          value={walkIn.room_id}
+          onChange={(e) => setWalkIn({ ...walkIn, room_id: e.target.value })}
+        >
+          <option value="">Select room...</option>
+          {rooms.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={walkIn.attending_vet_id}
+          onChange={(e) => setWalkIn({ ...walkIn, attending_vet_id: e.target.value })}
+        >
+          <option value="">Select vet (optional)...</option>
+          {vets.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.full_name}
+            </option>
+          ))}
+        </select>
+        <button type="submit" disabled={submitting}>
+          {submitting ? 'Starting...' : 'Start'}
+        </button>
+      </form>
+      )}
+
+      <div>
       <h2>Active</h2>
       {active.length === 0 ? (
         <p>No active consults right now.</p>
@@ -351,82 +444,7 @@ function ConsultsPageInner() {
       )}
       </div>
 
-      <div className="split-aside">
-      <form className="card" onSubmit={handleWalkIn} ref={walkInFormRef}>
-        <h2>Start Walk-in Consult</h2>
-        {error && <p className="error">{error}</p>}
-        {selectedOwner ? (
-          <p className="booking-owner-picked">
-            Owner:{' '}
-            <strong>
-              {selectedOwner.full_name}
-              {selectedOwner.client_number ? ` (Client #${selectedOwner.client_number})` : ''}
-            </strong>{' '}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedOwner(null);
-                setWalkIn({ ...walkIn, client_id: '', patient_id: '' });
-              }}
-            >
-              Change
-            </button>
-          </p>
-        ) : (
-          <ClientOrPatientSearch
-            placeholder="Search clients or patients..."
-            onPickClient={(c) => {
-              setSelectedOwner({ id: c.id, full_name: c.full_name, client_number: c.client_number });
-              setWalkIn({ ...walkIn, client_id: c.id, patient_id: '' });
-            }}
-            onPickPatient={(p) => {
-              setSelectedOwner({
-                id: p.client_id,
-                full_name: p.clients?.full_name || '',
-                client_number: p.clients?.client_number,
-              });
-              setWalkIn({ ...walkIn, client_id: p.client_id, patient_id: p.id });
-            }}
-          />
-        )}
-        <SearchSelect
-          items={clientPatients}
-          value={walkIn.patient_id}
-          onChange={(patient_id) => setWalkIn({ ...walkIn, patient_id })}
-          getLabel={(p) => (p.patient_number ? `${p.name} (Patient #${p.patient_number})` : p.name)}
-          getSubLabel={(p) => p.species}
-          placeholder="Select patient..."
-          disabled={!walkIn.client_id}
-        />
-        <select
-          required
-          value={walkIn.room_id}
-          onChange={(e) => setWalkIn({ ...walkIn, room_id: e.target.value })}
-        >
-          <option value="">Select room...</option>
-          {rooms.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={walkIn.attending_vet_id}
-          onChange={(e) => setWalkIn({ ...walkIn, attending_vet_id: e.target.value })}
-        >
-          <option value="">Select vet (optional)...</option>
-          {vets.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.full_name}
-            </option>
-          ))}
-        </select>
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Starting...' : 'Start'}
-        </button>
-      </form>
-      </div>
-      </div>
+
     </div>
   );
 }

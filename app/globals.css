@@ -11939,3 +11939,37 @@ button.patient-chip-age-missing {
 .consult-header-row > .patient-alerts-panel-icon:not([open]) {
   flex-shrink: 0;
 }
+
+/* Consults page: the walk-in form opened above the lists, its fields side
+   by side on one line where they fit. */
+.walkin-inline,
+form.card.walkin-inline {
+  max-width: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+form.card.walkin-inline > h2 {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+form.card.walkin-inline > .error {
+  flex-basis: 100%;
+}
+
+form.card.walkin-inline > *:not(h2):not(.error):not(button):not(.booking-owner-picked) {
+  flex: 1 1 140px;
+  margin: 0;
+  min-width: 0;
+}
+
+/* The picked owner keeps its natural width so Start still fits at the
+   end of the same line. */
+form.card.walkin-inline > .booking-owner-picked {
+  flex: 0 0 auto;
+  margin: 0;
+}
