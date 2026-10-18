@@ -38,6 +38,15 @@ function formatWhen(iso) {
   });
 }
 
+// The inbox's When column: just the time for today, the date and time
+// before that, so a phone row keeps the client's name on one line.
+function formatWhenShort(iso) {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true });
+  if (d.toDateString() === new Date().toDateString()) return time;
+  return `${d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })}, ${time}`;
+}
+
 function preview(text) {
   if (!text) return '';
   return text.length > 90 ? `${text.slice(0, 90)}…` : text;
@@ -885,7 +894,9 @@ export default function MessagesInboxPage() {
       ) : (
         <>
           {matched.length > 0 && (
-            <table>
+            // On a phone each row is a card: bell, client, time and Open on
+            // one line, the last message under it (globals.css).
+            <table className="messages-inbox">
               <thead>
                 <tr>
                   <th></th>
@@ -908,16 +919,16 @@ export default function MessagesInboxPage() {
                     <td>
                       <a href={`/clients/${c.client_id}`}>
                         {c.client?.full_name}
-                        {c.client?.client_number ? ` (Client #${c.client.client_number})` : ''}
+                        {c.client?.client_number ? <span className="inbox-client-number"> (Client #{c.client.client_number})</span> : ''}
                       </a>
-                      <span className="visit-meta"> · {c.channel === 'whatsapp' ? 'WhatsApp' : 'App'}</span>
+                      <span className="visit-meta inbox-channel"> · {c.channel === 'whatsapp' ? 'WhatsApp' : 'App'}</span>
                       {c.assigned_staff_name && <span className="visit-meta"> · 👤 {c.assigned_staff_name}</span>}
                     </td>
                     <td>
                       {c.last_sender === 'staff' ? 'You: ' : c.last_sender === 'ai' ? '🤖 ' : c.last_sender === 'system' ? '🔔 ' : ''}
                       {preview(c.last_message)}
                     </td>
-                    <td>{formatWhen(c.last_message_at)}</td>
+                    <td title={formatWhen(c.last_message_at)}>{formatWhenShort(c.last_message_at)}</td>
                     <td>
                       <a href={`/messages/${c.client_id}`} className="button-link button-link-open">
                         Open
