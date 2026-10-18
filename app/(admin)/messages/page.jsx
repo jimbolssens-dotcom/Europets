@@ -685,7 +685,8 @@ export default function MessagesInboxPage() {
         <div className="hospitalization-header-actions">
           {/* WhatsApp numbers not linked to a client: a pill that flashes
               yellow while one is waiting for a reply, opening a dropdown
-              over the page so the inbox below never moves. Desktop only. */}
+              over the page so the inbox below never moves. On a phone, the
+              📵 button in the top strip instead (below). */}
           {unmatched.length > 0 && (
             <span className="unregistered-pill-wrap">
               <button
@@ -697,36 +698,6 @@ export default function MessagesInboxPage() {
               >
                 📵 Unregistered ({unmatched.length}){unmatched.some((c) => c.pending) && ' 🔔'}
               </button>
-              {unregisteredOpen && (
-                <>
-                  <div className="unregistered-popover-backdrop" onClick={() => setUnregisteredOpen(false)} />
-                  <div className="unregistered-popover card">
-                    <div className="unregistered-popover-head">
-                      <strong>📵 Unregistered numbers</strong>
-                      <span className="visit-meta">Open to reply or link to a client, or 📝 Register to send the new-patient form.</span>
-                      <button type="button" className="unregistered-popover-close" onClick={() => setUnregisteredOpen(false)} aria-label="Close">
-                        ✕
-                      </button>
-                    </div>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th></th>
-                          <th>Number</th>
-                          <th>Last message</th>
-                          <th>When</th>
-                          <th></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {unmatched.map((c) => (
-                          <UnmatchedThreadRow key={c.thread_key} conv={c} staff={staff} onLinked={load} />
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
             </span>
           )}
           <a
@@ -743,6 +714,20 @@ export default function MessagesInboxPage() {
             💉 Vaccinations
           </a>
           <PhoneTop>
+            {/* Numbers not linked to a client: the phone has no pill, so
+                this is the only way in; flashes while one is waiting. */}
+            {unmatched.length > 0 && (
+              <button
+                type="button"
+                className={`phone-top-btn${unmatched.some((c) => c.pending) ? ' phone-top-btn-alarm unregistered-phone-waiting' : ''}`}
+                onClick={() => setUnregisteredOpen((v) => !v)}
+                aria-expanded={unregisteredOpen}
+                aria-label={`Unregistered numbers (${unmatched.length})`}
+                title="WhatsApp messages from numbers not linked to a client"
+              >
+                📵<span className="phone-top-btn-text">{unmatched.length}</span>
+              </button>
+            )}
             <a href="/intake" className={`phone-top-btn${hasPendingInviteRequest ? ' phone-top-btn-alarm' : ''}`} title="Invite" aria-label="Invite">
               ✉️
             </a>
@@ -751,6 +736,46 @@ export default function MessagesInboxPage() {
           </PhoneTop>
         </div>
       </div>
+
+      {/* The Unregistered list, opened from the pill (desktop) or the 📵
+          button in the phone's top strip. Outside both, so it shows on
+          either. */}
+      {unregisteredOpen && (
+        <>
+          <div className="unregistered-popover-backdrop" onClick={() => setUnregisteredOpen(false)} />
+          <div
+            className="unregistered-popover card"
+            // The visible screen's width: on a phone the page behind can be
+            // a little wider than the screen, and a fixed panel would size to
+            // that and run off the edge (globals.css uses it under 600px).
+            style={{ '--visible-width': typeof window !== 'undefined' && window.visualViewport ? `${window.visualViewport.width}px` : '100vw' }}
+          >
+            <div className="unregistered-popover-head">
+              <strong>📵 Unregistered numbers</strong>
+              <span className="visit-meta">Open to reply or link to a client, or 📝 Register to send the new-patient form.</span>
+              <button type="button" className="unregistered-popover-close" onClick={() => setUnregisteredOpen(false)} aria-label="Close">
+                ✕
+              </button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Number</th>
+                  <th>Last message</th>
+                  <th>When</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {unmatched.map((c) => (
+                  <UnmatchedThreadRow key={c.thread_key} conv={c} staff={staff} onLinked={load} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       {/* One-time/rarely-touched setup actions, collapsed by default so
           they don't compete with the inbox everyone reads daily. Within

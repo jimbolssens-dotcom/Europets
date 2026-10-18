@@ -12289,3 +12289,77 @@ form.card.walkin-inline > .booking-owner-picked {
   .cr-compare { grid-template-columns: 1fr; }
   .cr-bubble { max-width: 100%; }
 }
+
+/* The Unregistered list on a phone (opened from the 📵 button in the top
+   strip): each number a compact card, bell, number and time on one line,
+   the last message under it, the buttons beside or under that. */
+@media (prefers-reduced-motion: no-preference) {
+  .unregistered-phone-waiting {
+    animation: unregistered-pill-flash 1.2s ease-in-out infinite;
+  }
+}
+@media (max-width: 600px) {
+  .unregistered-popover {
+    top: 52px;
+    left: 8px;
+    width: calc(var(--visible-width, 100vw) - 16px);
+    transform: none;
+    max-height: calc(100vh - 120px);
+    padding: 0.5rem;
+  }
+  .unregistered-popover textarea,
+  .unregistered-popover input,
+  .unregistered-popover select {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .unregistered-popover .portal-chat-form {
+    flex-wrap: wrap;
+  }
+  .unregistered-popover-head {
+    flex-wrap: wrap;
+    row-gap: 0.15rem;
+  }
+  .unregistered-popover-head .visit-meta {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .unregistered-popover thead {
+    display: none;
+  }
+  .unregistered-popover table,
+  .unregistered-popover tbody {
+    display: block;
+  }
+  .unregistered-popover tr {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: baseline;
+    column-gap: 0.4rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid #eee;
+  }
+  .unregistered-popover td {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+  .unregistered-popover tr > td:nth-child(3) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    opacity: 0.85;
+  }
+  .unregistered-popover tr > td:nth-child(5) {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    text-align: left;
+    white-space: normal;
+    margin-top: 0.25rem;
+  }
+  .unregistered-popover tr > td[colspan] {
+    grid-column: 1 / -1;
+    text-align: left;
+    white-space: normal;
+    min-width: 0;
+  }
+}
