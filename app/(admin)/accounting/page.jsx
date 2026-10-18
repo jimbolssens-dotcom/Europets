@@ -52,7 +52,7 @@ export default function AccountingOverviewPage() {
     <div>
       <div className="page-header">
         <h1>Accounting</h1>
-        <div className="page-header-actions">
+        <div className="page-header-actions accounting-links">
           <a href="/shift-tally" className="button-link">
             💰 Shift Tally
           </a>
@@ -127,6 +127,39 @@ export default function AccountingOverviewPage() {
             </div>
           </div>
 
+          {/* Invoice-date figures: what was billed this month and what's
+              still owed. A tile until the 16 Oct relayout moved it to a
+              grey line at the bottom; back as tiles. */}
+          <h3>Invoiced &amp; Outstanding</h3>
+          <div className="accounting-stat-grid">
+            <div className="accounting-stat">
+              <span className="accounting-stat-label">Invoiced This Month</span>
+              <span className="accounting-stat-value">AED {money(summary.invoiced.total)}</span>
+              <span className="accounting-stat-hint">
+                With VAT · AED {money(summary.invoiced.revenue_ex_vat)} ex-VAT · {summary.invoiced.count} invoice
+                {summary.invoiced.count === 1 ? '' : 's'} · discounts AED {money(summary.discounts.total)}
+              </span>
+            </div>
+            <div className="accounting-stat">
+              <span className="accounting-stat-label">Outstanding This Month</span>
+              <span className="accounting-stat-value">AED {money(summary.invoiced.outstanding)}</span>
+              <span className="accounting-stat-hint">
+                Still unpaid on {summary.invoiced.outstanding_count} of this month&apos;s {summary.invoiced.count} invoice
+                {summary.invoiced.count === 1 ? '' : 's'}
+              </span>
+            </div>
+            <div className="accounting-stat">
+              <span className="accounting-stat-label">Outstanding In Total</span>
+              <span className="accounting-stat-value">AED {money(summary.unpaid.total)}</span>
+              <span className="accounting-stat-hint">
+                <a href="/accounting/unpaid">
+                  {summary.unpaid.count} unpaid invoice{summary.unpaid.count === 1 ? '' : 's'}
+                </a>
+                , any month
+              </span>
+            </div>
+          </div>
+
           <h3>Takings by Method</h3>
           <table>
             <thead>
@@ -173,20 +206,6 @@ export default function AccountingOverviewPage() {
               <span className="accounting-stat-hint">VAT collected less VAT paid</span>
             </div>
           </div>
-
-          <p className="visit-meta">
-            Invoiced this month: AED {money(summary.invoiced.revenue_ex_vat)} ex-VAT, VAT AED {money(summary.invoiced.vat)} (
-            {summary.invoiced.count} invoice{summary.invoiced.count === 1 ? '' : 's'}) · Discounts given AED{' '}
-            {money(summary.discounts.total)} ({summary.discounts.count})
-          </p>
-
-          <p className="visit-meta">
-            <a href="/accounting/unpaid">
-              {summary.unpaid.count} unpaid invoice{summary.unpaid.count === 1 ? '' : 's'} outstanding,
-              AED {money(summary.unpaid.total)} total
-            </a>{' '}
-            (not limited to this month)
-          </p>
 
           <StaffPincodeSettings />
         </>

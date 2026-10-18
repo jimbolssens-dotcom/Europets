@@ -10,8 +10,9 @@
 // month it's dated. Old-system payments carry VAT like any other takings:
 // every FileMaker invoice was charged VAT, and it's paid over as clients
 // pay off those balances.
-// Two invoice-date figures stay alongside for reference: revenue and VAT
-// invoiced this month, and discounts given.
+// Invoice-date figures alongside: what was invoiced this month (with VAT,
+// and how much of it is still unpaid), and discounts given; plus everything
+// outstanding, whatever month it was invoiced in.
 
 import { selectAll } from '@/lib/selectAll';
 import { supabase } from '@/lib/supabaseClient';
@@ -46,7 +47,7 @@ export async function GET(request) {
     selectAll(() =>
       supabase
         .from('invoices')
-        .select('id, subtotal, discount_amount, vat_amount, total')
+        .select('id, status, subtotal, discount_amount, vat_amount, total, amount_paid')
         .neq('status', 'void')
         .gte('created_at', start)
         .lt('created_at', end)
@@ -91,7 +92,10 @@ export async function GET(request) {
   });
 
   const discountsTotal = sum(invoiced, 'discount_amount');
-  const unpaidTotal = outstanding.reduce((total, inv) => total + (Number(inv.total || 0) - Number(inv.amount_paid || 0)), 0);
+  const balance = (inv) => Number(inv.total || 0) - Number(inv.amount_paid || 0);
+  const unpaidTotal = outstanding.reduce((total, inv) => total + balance(inv), 0);
+  // Of this month's invoices, what's still to be paid.
+  const monthUnpaid = invoiced.filter((inv) => (inv.status === 'unpaid' || inv.status === 'partially_paid') && balance(inv) > 0.005);
 
   return NextResponse.json({
     month,
@@ -99,7 +103,10 @@ export async function GET(request) {
     invoiced: {
       revenue_ex_vat: sum(invoiced, 'subtotal') - discountsTotal,
       vat: sum(invoiced, 'vat_amount'),
+      total: sum(invoiced, 'total'),
       count: invoiced.length,
+      outstanding: monthUnpaid.reduce((total, inv) => total + balance(inv), 0),
+      outstanding_count: monthUnpaid.length,
     },
     discounts: { total: discountsTotal, count: invoiced.filter((inv) => Number(inv.discount_amount) > 0).length },
     unpaid: { total: unpaidTotal, count: outstanding.length },

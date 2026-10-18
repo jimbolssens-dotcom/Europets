@@ -12446,3 +12446,39 @@ form.card.walkin-inline > .booking-owner-picked {
     font-size: 0.8rem;
   }
 }
+
+/* Accounting tiles on a phone: two per row, not one tile per screen line. */
+@media (max-width: 600px) {
+  .accounting-stat-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin: 0.6rem 0 1rem;
+  }
+  .accounting-stat {
+    padding: 0.55rem 0.6rem;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+  .accounting-stat-label {
+    font-size: 0.68rem;
+  }
+  .accounting-stat-value {
+    font-size: 1.05rem;
+    overflow-wrap: anywhere;
+  }
+  .accounting-stat-hint {
+    font-size: 0.7rem;
+  }
+}
+
+/* Accounting's eight section links on a phone: small chips, a few per row,
+   so the month's figures start near the top. */
+@media (max-width: 600px) {
+  .accounting-links {
+    gap: 0.3rem;
+  }
+  .accounting-links .button-link {
+    font-size: 0.74rem;
+    padding: 0.25rem 0.55rem;
+  }
+}
