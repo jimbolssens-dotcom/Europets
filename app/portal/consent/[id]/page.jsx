@@ -18,7 +18,7 @@ export default function ConsentSigningPage() {
   const [request, setRequest] = useState(null);
   const [signedByName, setSignedByName] = useState('');
   const [signedByRelationship, setSignedByRelationship] = useState('');
-  const [socialConsent, setSocialConsent] = useState(false);
+  const [socialConsent, setSocialConsent] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -30,7 +30,7 @@ export default function ConsentSigningPage() {
       })
       .then((data) => {
         setRequest(data);
-        if (data.social_media_consent) setSocialConsent(true);
+        setSocialConsent(data.social_media_consent !== false);
         setState(data.status === 'pending' ? 'pending' : 'already');
       })
       .catch(() => setState('not_found'));

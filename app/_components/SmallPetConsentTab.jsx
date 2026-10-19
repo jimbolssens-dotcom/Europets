@@ -20,7 +20,8 @@ const FORM_TYPE = 'small_pet';
 
 export default function SmallPetConsentTab({ visitId, patient, client, staff = [], treatmentItems = [], treatmentNotes }) {
   const [signed, setSigned] = useState([]);
-  const [form, setForm] = useState({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '', social_media_consent: false });
+  const blankForm = () => ({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '', social_media_consent: client?.social_media_consent !== false });
+  const [form, setForm] = useState(blankForm);
   const [submitting, setSubmitting] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
@@ -53,7 +54,7 @@ export default function SmallPetConsentTab({ visitId, patient, client, staff = [
       setError(data?.error || 'Failed to save consent form');
       return;
     }
-    setForm({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '', social_media_consent: false });
+    setForm(blankForm());
     load();
     printPdfUrl(`/api/consent-forms/${data.id}/pdf`, { onFallback: () => setPreviewPdfUrl(`/api/consent-forms/${data.id}/pdf`) });
   }

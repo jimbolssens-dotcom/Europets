@@ -110,7 +110,7 @@ export default function IntakePortalPage() {
   const [emiratesId, setEmiratesId] = useState('');
   const [emirate, setEmirate] = useState('');
   const [notes, setNotes] = useState('');
-  const [socialConsent, setSocialConsent] = useState(false);
+  const [socialConsent, setSocialConsent] = useState(true);
   const [pets, setPets] = useState([emptyPet()]);
 
   // A blank QR-scan link starts with no client_id — this lets someone
@@ -155,7 +155,7 @@ export default function IntakePortalPage() {
       .then((res) => res.json())
       .then((data) => {
         setRequest(data);
-        if (data?.clients?.social_media_consent) setSocialConsent(true);
+        setSocialConsent(data?.clients?.social_media_consent !== false);
         setLoading(false);
       });
     // Doctors only — a client picking a "preferred doctor" should never

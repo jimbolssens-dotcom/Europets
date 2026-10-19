@@ -144,7 +144,7 @@ export default function HospitalizationDetailPage() {
     signed_by_name: '',
     signed_by_relationship: '',
     staff_witness_id: '',
-    social_media_consent: false,
+    social_media_consent: true,
   });
   const [consentSubmitting, setConsentSubmitting] = useState(false);
   const [consentError, setConsentError] = useState(null);
@@ -185,6 +185,8 @@ export default function HospitalizationDetailPage() {
     fetchJsonPrefetched(`/api/hospitalizations/${id}`)
       .then((data) => {
         setAdmission(data);
+        // The social media tick starts ticked unless the owner already said no.
+        setConsentForm((f) => ({ ...f, social_media_consent: data?.clients?.social_media_consent !== false }));
         setLoading(false);
       });
 
@@ -570,7 +572,7 @@ export default function HospitalizationDetailPage() {
     if (!res.ok) {
       setConsentError(data.error || 'Failed to save consent form');
     } else {
-      setConsentForm({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '', social_media_consent: false });
+      setConsentForm({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '', social_media_consent: admission.clients?.social_media_consent !== false });
       loadConsentForms();
       printPdfUrl(`/api/consent-forms/${data.id}/pdf`, {
         onFallback: () => setPreviewPdfUrl(`/api/consent-forms/${data.id}/pdf`),

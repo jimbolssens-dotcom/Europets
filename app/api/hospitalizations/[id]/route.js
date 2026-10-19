@@ -32,7 +32,7 @@ export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 const SELECT_WITH_RELATIONS =
-  '*, patients(id, name, species, breed, sex, patient_number, current_weight_kg, dental_chart, date_of_birth, date_of_birth_estimated, profile_photo_url), clients(id, full_name, phone, client_number, client_app_last_seen_at), rooms(name)';
+  '*, patients(id, name, species, breed, sex, patient_number, current_weight_kg, dental_chart, date_of_birth, date_of_birth_estimated, profile_photo_url), clients(id, full_name, phone, client_number, client_app_last_seen_at, social_media_consent), rooms(name)';
 
 export async function GET(request, { params }) {
   // The recent weights (for the weight-loss alarm below) are asked for

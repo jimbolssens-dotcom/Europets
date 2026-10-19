@@ -38,14 +38,15 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: context.error }, { status: context.status });
   }
 
-  // Only whether to show the tick already ticked: nothing else about the client.
+  // Only whether the owner already said no (the tick then starts unticked):
+  // nothing else about the client.
   const { data: client } = context.clientId
     ? await supabase.from('clients').select('social_media_consent').eq('id', context.clientId).maybeSingle()
     : { data: null };
 
   return NextResponse.json({
     status: data.status,
-    social_media_consent: client?.social_media_consent === true,
+    social_media_consent: client?.social_media_consent ?? null,
     form_type: data.form_type,
     form_label: CONSENT_FORM_LABELS[data.form_type] || data.form_type,
     patient_name: context.patient?.name || null,
