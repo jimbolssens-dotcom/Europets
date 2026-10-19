@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server';
 import { selectAll } from '@/lib/selectAll';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { bucketsUpTo, rangeStartIso, buildChartData } from '@/lib/accountingCharts';
+import { bucketsUpTo, rangeStartIso, buildChartData, lineItemCategory } from '@/lib/accountingCharts';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +47,7 @@ export async function GET(request) {
     selectAll(() =>
       supabase
         .from('invoice_line_items')
-        .select('id, line_total, goods_services(main_category), invoices!inner(status, created_at)')
+        .select('id, line_total, goods_services(main_category, catalog_subcategories(name)), invoices!inner(status, created_at)')
         .neq('invoices.status', 'void')
         .gte('invoices.created_at', rangeStart)
         .order('id')
@@ -84,7 +84,7 @@ export async function GET(request) {
     payments: payRes.data,
     legacyPayments: legacyRes.data,
     invoices: invRes.data.map((i) => ({ ...i, vet_name: staffName.get(vetByVisit.get(i.visit_id)) || null })),
-    lineItems: lineRes.data.map((li) => ({ line_total: li.line_total, category: li.goods_services?.main_category || 'other' })),
+    lineItems: lineRes.data.map((li) => ({ line_total: li.line_total, category: lineItemCategory(li.goods_services) })),
     expenses: expRes.data,
     clients: clientRes.data,
     unpaid: unpaidRes.data,

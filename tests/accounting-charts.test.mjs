@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bucketKey, bucketsUpTo, buildChartData, LAST_IMPORTED_CLIENT_NUMBER } from '../lib/accountingCharts.js';
+import { bucketKey, bucketsUpTo, buildChartData, LAST_IMPORTED_CLIENT_NUMBER, lineItemCategory } from '../lib/accountingCharts.js';
 
 test('weeks start Monday in UAE time, months on the 1st', () => {
   // Sunday 18 Oct 2026, 22:30 UAE = 18:30 UTC: still the week of Mon 12 Oct.
@@ -56,4 +56,11 @@ test('takings, invoicing, discounts, new clients and what is owed', () => {
   assert.equal(d.owed[0].value, 60);
   assert.equal(d.owed.at(-1).label, 'Over 90 days');
   assert.equal(d.owed.at(-1).value, 50);
+});
+
+test('food gets its own bar, apart from other products', () => {
+  assert.equal(lineItemCategory({ main_category: 'product', catalog_subcategories: { name: 'Food ' } }), 'food');
+  assert.equal(lineItemCategory({ main_category: 'product', catalog_subcategories: { name: 'Medication' } }), 'product');
+  assert.equal(lineItemCategory({ main_category: 'service', catalog_subcategories: null }), 'service');
+  assert.equal(lineItemCategory(null), 'other');
 });

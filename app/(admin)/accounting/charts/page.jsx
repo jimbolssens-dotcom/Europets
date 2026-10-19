@@ -18,7 +18,7 @@ const SERIES = {
   other: { label: 'Other', color: 'var(--chart-5)' },
   old_system: { label: 'Old system balances', color: 'var(--chart-neutral)' },
 };
-const TYPE_LABELS = { service: 'Services', product: 'Products', test: 'Tests', other: 'Other' };
+const TYPE_LABELS = { service: 'Services', product: 'Products', food: 'Food', test: 'Tests', other: 'Other' };
 const SPEND_LABELS = {
   salaries: 'Salaries', rent: 'Rent', supplies: 'Supplies', utilities: 'Utilities', equipment: 'Equipment',
   marketing: 'Marketing', professional_fees: 'Professional fees', other: 'Other',
@@ -270,7 +270,7 @@ export default function AccountingChartsPage() {
             </p>
           </Card>
 
-          <Card title="Invoicing by type" why="Services (consults, surgery, hospital stays), products (medication, food) and tests, before VAT and discounts.">
+          <Card title="Invoicing by type" why="Services (consults, surgery, hospital stays), food, other products (medication, toys) and tests, before VAT and discounts.">
             <HBars rows={data.byType.map((r) => ({ ...r, label: TYPE_LABELS[r.label] || r.label }))} />
           </Card>
 
