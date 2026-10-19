@@ -12,20 +12,26 @@ const source = (await readFile(new URL('../lib/invoicing.js', import.meta.url), 
 
 const ADMINISTRATION_METHOD_CODES = { dispense: 'DIS', sc: 'SC', im: 'IM' };
 
+// lib/invoicing.js writes through the server-side supabaseAdmin client:
+// hand it the same fake db the test made last.
+let currentFake = null;
+const supabaseAdmin = new Proxy({}, { get: (_, key) => currentFake[key] });
+
 function loadInvoicing() {
   return new Function(
     'ADMINISTRATION_METHOD_CODES',
     'runConsultCompletionEffects',
     'runHospitalizationDischargeEffects',
+    'supabaseAdmin',
     source + '\nreturn { syncInvoiceTreatmentItems, recomputeInvoiceTotals };'
-  )(ADMINISTRATION_METHOD_CODES, async () => {}, async () => {});
+  )(ADMINISTRATION_METHOD_CODES, async () => {}, async () => {}, supabaseAdmin);
 }
 
 // A small in-memory fake matching the query-builder shapes lib/invoicing.js
 // uses: select/insert/update with eq() filters, awaited directly or
 // narrowed with single()/maybeSingle().
 function makeSupabase(db) {
-  return {
+  return (currentFake = {
     from(table) {
       const filters = [];
       let op = null;
@@ -70,13 +76,16 @@ function makeSupabase(db) {
       }
       return builder;
     },
-  };
+  });
 }
 
 function makeDb({ scInjectionFee = 5 } = {}) {
   return {
     clinic_settings: [{ id: true, sc_injection_fee: scInjectionFee, im_injection_fee: 0, dispensing_fee: 0 }],
     invoice_line_items: [],
+    // A sync now also recomputes the invoice's totals and payments.
+    invoices: [{ id: 'inv1', total: 0, status: 'unpaid', visit_id: null, hospitalization_id: null }],
+    invoice_payments: [],
   };
 }
 
@@ -111,7 +120,8 @@ test('the same medication logged on three separate days consolidates onto one li
 
   assert.equal(db.invoice_line_items.length, 1, 'still just one line, not one per day');
   const line = db.invoice_line_items[0];
-  assert.equal(line.quantity, 3);
+  assert.equal(line.times_given, 3, 'three doses on the one line');
+  assert.equal(line.quantity, 1, 'quantity is the amount per dose');
   assert.equal(line.line_total, 10 * 3 + 5 * 3, 'medication ×3 plus the SC fee scaled by count (×3)');
   assert.equal(line.description, 'Antibiotic IV (SC ×3)');
   assert.deepEqual(line.source_treatment_item_ids.sort(), ['t1', 't2', 't3']);
@@ -129,7 +139,8 @@ test('a dispensed medication bills its dispensing fee once no matter how many da
 
   assert.equal(db.invoice_line_items.length, 1);
   const line = db.invoice_line_items[0];
-  assert.equal(line.quantity, 3);
+  assert.equal(line.times_given, 3, 'three doses on the one line');
+  assert.equal(line.quantity, 1, 'quantity is the amount per dose');
   assert.equal(line.line_total, 10 * 3 + 2, 'dispensing fee charged once, not ×3');
   assert.equal(line.description, 'Antibiotic IV (DIS)');
 });
@@ -144,7 +155,7 @@ test('a re-sync never double-counts an item it already invoiced', async () => {
 
   assert.equal(addedCount, 0, 'nothing new to add on an unchanged re-sync');
   assert.equal(db.invoice_line_items.length, 1);
-  assert.equal(db.invoice_line_items[0].quantity, 2);
+  assert.equal(db.invoice_line_items[0].times_given, 2);
 });
 
 test('different medications and different administration methods never merge into the same line', async () => {
@@ -188,7 +199,7 @@ test('a staff rename of the consolidated line survives a later bump, only the fe
 
   const line = db.invoice_line_items[0];
   assert.equal(line.description, 'Antibiotic IV — twice daily (SC ×2)');
-  assert.equal(line.quantity, 2);
+  assert.equal(line.times_given, 2);
 });
 
 test('an unbillable item is never invoiced', async () => {

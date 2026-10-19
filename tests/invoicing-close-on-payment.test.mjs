@@ -12,13 +12,20 @@ const source = (await readFile(new URL('../lib/invoicing.js', import.meta.url), 
   .replace(/^import .*;\n/gm, '')
   .replace(/export /g, '');
 
+// lib/invoicing.js writes through the server-side supabaseAdmin client (it
+// used to take everything from the supabase argument): hand it the same
+// fake, the one the test made last, so every call still lands in `calls`.
+let currentFake = null;
+const supabaseAdmin = new Proxy({}, { get: (_, key) => currentFake[key] });
+
 function loadInvoicing({ runConsultCompletionEffects, runHospitalizationDischargeEffects }) {
   return new Function(
     'ADMINISTRATION_METHOD_CODES',
     'runConsultCompletionEffects',
     'runHospitalizationDischargeEffects',
+    'supabaseAdmin',
     source + '\nreturn { recomputeInvoicePayments };'
-  )({}, runConsultCompletionEffects, runHospitalizationDischargeEffects);
+  )({}, runConsultCompletionEffects, runHospitalizationDischargeEffects, supabaseAdmin);
 }
 
 // A minimal fake matching the exact call shapes lib/invoicing.js uses:
@@ -26,7 +33,7 @@ function loadInvoicing({ runConsultCompletionEffects, runHospitalizationDischarg
 // .from(table).update(...).eq(...) awaited directly or chained into
 // .select().single(). Records every operation in `calls` for assertions.
 function makeSupabase(db, calls) {
-  return {
+  return (currentFake = {
     from(table) {
       const state = { table, op: null, payload: null, filters: {} };
       const builder = {
@@ -64,7 +71,7 @@ function makeSupabase(db, calls) {
 
       return builder;
     },
-  };
+  });
 }
 
 test('an invoice paid in full completes its linked consult and discharges its linked hospitalization', async () => {

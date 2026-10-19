@@ -20,8 +20,11 @@ async function run({ missing = false, fileFailure = false } = {}) {
     };
     return query;
   } };
-  const remove = new Function('supabase', 'NextResponse', source + '\nreturn DELETE;')(
-    supabase, { json: (body, options = {}) => ({ body, status: options.status || 200 }) },
+  // The route writes through supabaseAdmin (the same fake here) and first
+  // takes the entry's items off any invoice they were already billed on.
+  const remove = new Function('supabase', 'supabaseAdmin', 'NextResponse', 'removeTreatmentItemFromInvoiceLines', source + '\nreturn DELETE;')(
+    supabase, supabase, { json: (body, options = {}) => ({ body, status: options.status || 200 }) },
+    async () => ({}),
   );
   const response = await remove({}, { params: { id: 'stay-1', noteId: 'note-1' } });
   return { response, calls };
@@ -30,12 +33,13 @@ async function run({ missing = false, fileFailure = false } = {}) {
 test('entry deletion is scoped to the hospitalization and preserves files first', async () => {
   const { response, calls } = await run();
   assert.equal(response.status, 200);
-  assert.deepEqual(calls.map((call) => call.table), ['hospitalization_notes', 'attachments', 'hospitalization_notes']);
+  assert.deepEqual(calls.map((call) => call.table), ['hospitalization_notes', 'attachments', 'treatment_items', 'hospitalization_notes']);
   assert.deepEqual(calls[0].filters, [['id', 'note-1'], ['hospitalization_id', 'stay-1']]);
   assert.deepEqual(calls[1].update, { entity_type: 'hospitalization', entity_id: 'stay-1' });
   assert.deepEqual(calls[1].filters, [['entity_type', 'hospitalization_note'], ['entity_id', 'note-1']]);
-  assert.deepEqual(calls[2].filters, calls[0].filters);
-  assert.equal(calls[2].deleted, true);
+  assert.deepEqual(calls[2].filters, [['hospitalization_note_id', 'note-1']]);
+  assert.deepEqual(calls[3].filters, calls[0].filters);
+  assert.equal(calls[3].deleted, true);
 });
 
 test('missing or mismatched entry does not touch files or delete anything', async () => {
