@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import SocialWeekPlan from '@/app/_components/SocialWeekPlan';
+import SocialDutyLine from '@/app/_components/SocialDutyLine';
 
 const TABS = [
   { key: 'draft', label: 'To approve' },
@@ -76,6 +77,7 @@ export default function SocialPage() {
         </div>
       </div>
 
+      <SocialDutyLine />
       <SocialWeekPlan />
 
       <div className="social-tabs" role="tablist">

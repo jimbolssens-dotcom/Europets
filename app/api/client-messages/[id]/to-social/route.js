@@ -13,6 +13,7 @@ import sharp from 'sharp';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { draftSocialPost } from '@/lib/socialDraft';
+import { markDutyDone } from '@/lib/socialDuty';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -83,6 +84,8 @@ export async function POST(request, { params }) {
     .from('social_posts')
     .update({ media: [{ path, preview_path: previewPath, kind: 'image', name: 'WhatsApp photo' }], updated_at: new Date().toISOString() })
     .eq('id', post.id);
+
+  await markDutyDone(body.staff_id, post.id);
 
   // The draft can fail (AI busy): the post is still there and Redo retries.
   const drafted = await draftSocialPost(post.id);

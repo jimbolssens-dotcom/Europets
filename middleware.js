@@ -44,6 +44,7 @@ const PUBLIC_PATTERNS = [
   /^\/api\/invoices\/send-due-reminders$/, // Vercel Cron's morning outstanding-invoice reminder runs; same CRON_SECRET check as the other cron routes.
   /^\/api\/payments\/thank-you-sweep$/, // Vercel Cron's ten-minute thank-you sweep for online payments; same CRON_SECRET check as the other cron routes.
   /^\/api\/attachments\/compress-sweep$/, // Vercel Cron's own ten-minute photo compression sweep — same CRON_SECRET check as the other cron routes.
+  /^\/api\/social-duty\/sweep$/, // Vercel Cron's daily Social post duty (assign, nudge, tell the admin); same CRON_SECRET check as the other cron routes.
   /^\/api\/social-plan\/weekly$/, // Vercel Cron's Monday-morning Social plan; same CRON_SECRET check as the other cron routes.
   /^\/api\/social-posts\/publish-sweep$/, // Vercel Cron's five-minute Social post publishing; same CRON_SECRET check as the other cron routes.
   /^\/api\/whatsapp\/nudge-sweep$/, // Vercel Cron's own five-minute trigger — same reasoning as the other two cron routes above.

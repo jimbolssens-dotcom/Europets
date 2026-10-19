@@ -42,6 +42,10 @@
     {
       "path": "/api/social-plan/weekly",
       "schedule": "52 3 * * 1"
+    },
+    {
+      "path": "/api/social-duty/sweep",
+      "schedule": "4 4,8,12,14 * * *"
     }
   ]
 }

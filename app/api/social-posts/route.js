@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { publicUrl } from '@/lib/socialDraft';
 import { postConsent } from '@/lib/socialPosts';
+import { markDutyDone } from '@/lib/socialDuty';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,5 +84,7 @@ export async function POST(request) {
     .select('id')
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Today's duty person making a post: their duty is done.
+  await markDutyDone(body.created_by, data.id);
   return NextResponse.json(data, { status: 201 });
 }

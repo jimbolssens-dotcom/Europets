@@ -33,6 +33,7 @@ import { useHospitalizationUpdatePending } from '@/app/_components/useHospitaliz
 import { useClientMessagesPending } from '@/app/_components/useClientMessagesPending';
 import { cageAlarmClass } from '@/lib/hospitalizationAttention';
 import { t } from '@/lib/cleanerTranslations';
+import SocialDutyBanner from '@/app/_components/SocialDutyBanner';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 
@@ -125,6 +126,7 @@ export default function MobileHomePage() {
             {!isCleaner && <AutoScreenSwitchToggle />}
           </div>
 
+          {!isCleaner && <SocialDutyBanner staffId={staffId} />}
           {!isCleaner && <StaffPushOptIn push={push} />}
 
           {isCleaner ? (

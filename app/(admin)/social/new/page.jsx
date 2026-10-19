@@ -20,7 +20,9 @@ const CONSENT_LABEL = {
 function NewSocialPostForm() {
   const router = useRouter();
   // From the week's plan ("＋ Upload for this"): which idea, shown above the form.
-  const planIdea = useSearchParams().get('idea');
+  const params = useSearchParams();
+  const [planIdea, setPlanIdea] = useState(params.get('idea'));
+  const fromDuty = params.get('duty') === 'today';
   const [idea, setIdea] = useState(null);
   const [staff, setStaff] = useState([]);
   const [staffId, setStaffId] = useState('');
@@ -38,9 +40,21 @@ function NewSocialPostForm() {
       .then((data) => setStaff(Array.isArray(data) ? data.filter((s) => s.active !== false) : []))
       .catch(() => {});
     try {
-      setStaffId(localStorage.getItem('social_staff_id') || '');
+      // The phone app's own "who are you" counts too (app/mobile).
+      setStaffId(localStorage.getItem('social_staff_id') || localStorage.getItem('europets_mobile_staff_id') || '');
     } catch {}
-    if (planIdea) {
+    // From today's duty push: the duty's idea, and the duty person as uploader.
+    if (fromDuty) {
+      fetch('/api/social-duty')
+        .then((res) => res.json())
+        .then((d) => {
+          if (!d.duty) return;
+          if (d.duty.idea) setIdea(d.duty.idea);
+          if (d.duty.idea?.plan_idea) setPlanIdea(d.duty.idea.plan_idea);
+          setStaffId((current) => current || d.duty.staff_id);
+        })
+        .catch(() => {});
+    } else if (planIdea) {
       fetch('/api/social-plan')
         .then((res) => res.json())
         .then((d) => {
@@ -97,7 +111,7 @@ function NewSocialPostForm() {
     const created = await fetch('/api/social-posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ story: story || idea?.title || '', patient_id: patient?.id || null, created_by: staffId || null, plan_idea: idea ? planIdea : null }),
+      body: JSON.stringify({ story: story || idea?.title || '', patient_id: patient?.id || null, created_by: staffId || null, plan_idea: idea && planIdea ? planIdea : null }),
     });
     const post = await created.json().catch(() => ({}));
     if (!created.ok) {

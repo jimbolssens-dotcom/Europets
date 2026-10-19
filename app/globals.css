@@ -12805,3 +12805,18 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .social-plan-detail p { margin: 0; }
 .social-plan-shots { margin: 0; padding-left: 1.1rem; font-size: 0.88rem; display: grid; gap: 0.15rem; }
 .intake-instagram span { font-weight: 400; }
+
+/* The daily Social post duty (lib/socialDuty.js): the banner on the phone
+   app for whoever's turn it is, and the line on the Social page. */
+.social-duty-banner {
+  display: flex; align-items: center; gap: 0.75rem; margin: 1rem 0 0.25rem; padding: 0.85rem 1rem;
+  border-radius: 16px; background: var(--pink); color: white; text-decoration: none;
+  box-shadow: 0 4px 14px rgba(230, 24, 109, 0.35);
+}
+.social-duty-icon { font-size: 2rem; line-height: 1; }
+.social-duty-text { flex: 1; min-width: 0; display: grid; gap: 0.1rem; text-align: left; }
+.social-duty-text strong { font-size: 1.1rem; }
+.social-duty-hint { font-size: 0.8rem; opacity: 0.85; }
+.social-duty-go { background: white; color: var(--pink-dark); font-weight: 800; border-radius: 999px; padding: 0.35rem 0.85rem; }
+.social-duty-done { margin: 0.75rem 0 0; text-align: center; color: #11795a; font-weight: 600; }
+.social-duty-line { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin: 0.6rem 0 0; font-size: 0.92rem; }
