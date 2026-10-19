@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import RecordPhotoStrip from '@/app/_components/RecordPhotoStrip';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 const KIND_ICONS = {
   'Consult report': '🩺',
@@ -46,6 +47,8 @@ export default function PatientFullHistoryPage() {
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState(null);
   const [photos, setPhotos] = useState([]);
+  const [sharing, setSharing] = useState(null); // 'whatsapp' | 'email' | null
+  const [emailSent, setEmailSent] = useState(false);
 
   function loadRows() {
     fetch(`/api/patients/${id}/report-overview`)
@@ -67,6 +70,49 @@ export default function PatientFullHistoryPage() {
       .then((data) => setPhotos(Array.isArray(data) ? data : []))
       .catch(() => setPhotos([]));
   }, [id]);
+
+  // A fresh signed link each time (lib/historyLink.js): it works for 30 days.
+  async function historyLink() {
+    const res = await fetch(`/api/patients/${id}/history-link`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.url) throw new Error(data.error || 'Could not make the link.');
+    return data.url;
+  }
+
+  function shareMessage(url) {
+    const owner = patient.clients?.full_name ? patient.clients.full_name.split(' ')[0] : 'there';
+    return `Hi ${owner}, here is ${patient.name}'s full medical history from Europets: ${url}\n\nThe link works for 30 days. Let us know if you need anything else.`;
+  }
+
+  async function shareWhatsApp() {
+    setSharing('whatsapp');
+    setError(null);
+    try {
+      openWhatsApp(patient.clients?.phone, shareMessage(await historyLink()));
+    } catch (e) {
+      setError(e.message);
+    }
+    setSharing(null);
+  }
+
+  async function shareEmail() {
+    setSharing('email');
+    setError(null);
+    try {
+      const url = await historyLink();
+      const res = await fetch(`/api/clients/${patient.clients.id}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: `${patient.name}: medical history`, text: shareMessage(url) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not send the email.');
+      setEmailSent(true);
+    } catch (e) {
+      setError(e.message);
+    }
+    setSharing(null);
+  }
 
   function startEdit(row, text) {
     setError(null);
@@ -138,16 +184,32 @@ export default function PatientFullHistoryPage() {
 
   return (
     <div>
-      <p>
-        <a href={`/patients/${id}`}>&larr; Back to {patient.name}</a>
-      </p>
-      <h1>
-        Full History — {patient.name}
-        {patient.patient_number ? ` (Patient #${patient.patient_number})` : ''}
-      </h1>
+      <div className="page-header history-header">
+        <h1>
+          History · {patient.name}
+          {patient.patient_number ? <span className="visit-meta"> #{patient.patient_number}</span> : null}
+        </h1>
+        <div className="page-header-actions">
+          <a href={`/patients/${id}`} className="button-link history-back">&larr; {patient.name}</a>
+        </div>
+      </div>
+      {/* Send the owner the whole history as one PDF (lib/patientHistoryPdf.js):
+          the pet's details, vaccinations and everything below. */}
+      <div className="share-actions history-share">
+        <span className="visit-meta">Send:</span>
+        <a className="share-btn" href={`/api/patients/${id}/history-pdf`} target="_blank" rel="noreferrer">
+          📄 PDF
+        </a>
+        <button type="button" className="share-btn" onClick={shareWhatsApp} disabled={!patient.clients?.phone || !!sharing}>
+          {sharing === 'whatsapp' ? '...' : '💬 WhatsApp'}
+        </button>
+        <button type="button" className="share-btn" onClick={shareEmail} disabled={!patient.clients?.email || !!sharing}>
+          {sharing === 'email' ? 'Sending...' : emailSent ? '✅ Sent' : '✉️ Email'}
+        </button>
+      </div>
       <p className="visit-meta">
         Every consult and hospitalization summary, procedure report, and test on file for this patient, newest
-        first ({rows.length}).
+        first ({rows.length}). The PDF adds the pet&apos;s details, microchip and vaccinations; no invoices or prices.
       </p>
 
       {error && <p className="error" role="alert">{error}</p>}

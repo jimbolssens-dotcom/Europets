@@ -428,7 +428,7 @@ export default function PatientDetailPage() {
             {creatingQuote ? 'Creating…' : '📝 Proforma quote'}
           </button>
           <ActionMenu.Group label="Records" />
-          <a href={`/patients/${patient.id}/history`}>📖 Full Patient History</a>
+          <a href={`/patients/${patient.id}/history`} title="Every report and test, and a PDF to send the owner">📖 Full History &amp; PDF</a>
           <button type="button" onClick={() => setAddingHistoryFiles(true)}
             title="Add history from another clinic, old results, x-rays, photos, PDFs or Word files">
             📁 Add History / Results

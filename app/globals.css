@@ -12737,3 +12737,12 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .social-later .social-when { flex: 1 1 0; min-width: 0; }
 .social-draft > * { min-width: 0; }
 .social-draft, .social-publish { grid-template-columns: minmax(0, 1fr); }
+
+/* Full Patient History: send the owner the PDF (lib/patientHistoryPdf.js). */
+.history-share { align-items: center; margin: 0.5rem 0; }
+.button-link.history-back { background: white; color: var(--pink-dark); border: 1px solid var(--pink); }
+.button-link.history-back:hover { background: var(--pink-tint); }
+.history-header { flex-wrap: nowrap; align-items: flex-start; }
+.history-header h1 { min-width: 0; }
+.history-header .page-header-actions { flex: none; }
+.history-share .share-btn { text-decoration: none; }

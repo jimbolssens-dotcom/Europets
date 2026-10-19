@@ -60,6 +60,7 @@ const PUBLIC_PATTERNS = [
   /^\/api\/gastroscopy-reports\/[^/]+\/report-pdf$/,
   /^\/api\/dental-reports\/[^/]+\/report-pdf$/,
   /^\/api\/visits\/[^/]+\/report-pdf$/,
+  /^\/api\/patients\/[^/]+\/history-pdf$/, // the full history PDF sent to an owner: checked by its own signed, expiring link (lib/historyLink.js), staff need no link
   /^\/api\/visits\/[^/]+\/test-report-pdf$/,
   /^\/api\/hospitalizations\/[^/]+\/test-report-pdf$/,
   /^\/api\/hospitalizations\/[^/]+\/summary-pdf$/,
