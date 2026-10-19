@@ -36,6 +36,7 @@ import PetAttributeField from '@/app/_components/PetAttributeField';
 import HexfieldCanvas from '@/app/_components/HexfieldCanvas';
 import EcgLine from '@/app/_components/EcgLine';
 import SocialConsentTick from '@/app/_components/SocialConsentTick';
+import InstagramFollow from '@/app/_components/InstagramFollow';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
 import { EMIRATES } from '@/lib/emirates';
 import { classifySpecies } from '@/lib/species';
@@ -542,6 +543,7 @@ export default function IntakePortalPage() {
             We&apos;ve received your details{hasAppointmentRequest ? ' and your appointment request' : ''}.
             Our team will review {hasAppointmentRequest ? 'and confirm it' : 'them and reach out to book your visit'}.
           </p>
+          <InstagramFollow />
         </div>
       ) : (
         <div className="portal-card">

@@ -129,6 +129,9 @@ export default function SocialPage() {
           );
         })}
       </div>
+      <p className="visit-meta social-footer-links">
+        <a href="/social/qr-card">🖨 Reception QR card</a> · <a href="/social/connect">Instagram &amp; Facebook connection</a>
+      </p>
     </div>
   );
 }

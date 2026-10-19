@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import ConsentText from '@/app/_components/ConsentText';
 import SocialConsentTick from '@/app/_components/SocialConsentTick';
+import InstagramFollow from '@/app/_components/InstagramFollow';
 
 export default function ConsentSigningPage() {
   const { id } = useParams();
@@ -108,6 +109,7 @@ export default function ConsentSigningPage() {
         <div className="portal-card">
           <h1>Thank you!</h1>
           <p>Your signature has been received. Our team has it on file.</p>
+          <InstagramFollow />
         </div>
       </div>
       </div>

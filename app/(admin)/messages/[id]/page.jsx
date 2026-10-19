@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { uploadClientMessageMedia } from '@/lib/attachments';
 import FileToRecordButton from '@/app/_components/FileToRecordButton';
+import SendToSocialButton from '@/app/_components/SendToSocialButton';
 import { readViewCache, writeViewCache, readViewCacheEntry, writeViewCacheEntry } from '@/lib/viewCache';
 
 // The thread as it last loaded in this browser (client, newest messages,
@@ -440,7 +441,10 @@ export default function ClientMessageThreadPage() {
               )
             )}
             {m.sender === 'client' && m.media_url && m.media_type !== 'audio' && (
-              <FileToRecordButton messageId={m.id} staffId={replyStaffId} />
+              <div className="bubble-file-actions">
+                <FileToRecordButton messageId={m.id} staffId={replyStaffId} />
+                {m.media_type === 'image' && <SendToSocialButton messageId={m.id} staffId={replyStaffId} />}
+              </div>
             )}
             {m.channel === 'email' && m.subject && (
               <p>

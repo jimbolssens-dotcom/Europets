@@ -12746,3 +12746,42 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .history-header h1 { min-width: 0; }
 .history-header .page-header-actions { flex: none; }
 .history-share .share-btn { text-decoration: none; }
+
+/* "Follow us on Instagram" on the owner's thank-you screens (InstagramFollow). */
+.instagram-follow {
+  display: flex; align-items: center; gap: 0.7rem; margin-top: 1rem; padding: 0.7rem 0.9rem;
+  border-radius: 14px; text-decoration: none; color: inherit;
+  background: linear-gradient(120deg, rgba(230, 24, 109, 0.12), rgba(237, 161, 0, 0.12));
+  border: 1px solid rgba(230, 24, 109, 0.35);
+}
+.instagram-follow-icon { font-size: 1.6rem; line-height: 1; }
+.instagram-follow strong { display: block; }
+.instagram-follow-sub { display: block; font-size: 0.85rem; opacity: 0.75; }
+
+/* Reception QR card (app/(admin)/social/qr-card): two to an A4 page. */
+.qr-card-sheet { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; margin-top: 1rem; }
+.qr-card {
+  width: 90mm; min-height: 128mm; box-sizing: border-box; padding: 8mm 7mm; background: white;
+  border: 1px dashed #d6d0c7; border-radius: 6mm; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 2.5mm;
+  border-top: 3mm solid var(--pink);
+}
+.qr-card-logo { width: 26mm; height: auto; }
+.qr-card-title { font-size: 19pt; font-weight: 800; line-height: 1.1; color: var(--pink-dark); }
+.qr-card-sub { font-size: 10.5pt; color: #4a4642; line-height: 1.3; }
+.qr-card-code { width: 52mm; height: 52mm; margin-top: 1mm; }
+.qr-card-handle { font-size: 15pt; font-weight: 700; }
+.qr-card-hint { font-size: 9pt; color: #6b6660; }
+@media print {
+  @page { size: A4; margin: 10mm; }
+  body * { visibility: hidden; }
+  .qr-card-sheet, .qr-card-sheet * { visibility: visible; }
+  .qr-card-sheet { position: absolute; left: 0; top: 0; width: 100%; margin: 0; }
+  .qr-card { break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* "File to a pet's record" and "Send to Social" side by side under a
+   client's photo; an open menu takes the full width below them. */
+.bubble-file-actions { display: flex; flex-wrap: wrap; gap: 0 0.4rem; align-items: flex-start; }
+.bubble-file-actions .file-to-record { display: inline-block; }
+.bubble-file-actions .file-to-record:has(.file-to-record-menu) { flex-basis: 100%; order: 1; }

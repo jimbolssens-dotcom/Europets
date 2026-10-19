@@ -14,6 +14,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import ConsentText from '@/app/_components/ConsentText';
 import SocialConsentTick from '@/app/_components/SocialConsentTick';
+import InstagramFollow from '@/app/_components/InstagramFollow';
 import HexIcon from '@/app/_components/HexIcon';
 
 export default function ClientAppConsentPage() {
@@ -98,6 +99,7 @@ export default function ClientAppConsentPage() {
         <HexIcon className="client-app-confirm-icon">✅</HexIcon>
         <h1>Thank you!</h1>
         <p className="mobile-subtitle">Your signature has been received. Our team has it on file.</p>
+        <InstagramFollow />
         <Link href="/client-app" className="mobile-link-btn">
           ← Home
         </Link>

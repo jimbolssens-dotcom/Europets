@@ -66,7 +66,7 @@ export default function FileToRecordButton({ messageId, staffId }) {
           <button type="button" className="file-to-record-again" onClick={toggle}>File again</button>
         </span>
       ) : (
-        <button type="button" className="file-to-record-btn" onClick={toggle}>📎 File to a pet&apos;s record</button>
+        <button type="button" className="file-to-record-btn" onClick={toggle}>📎 File to record</button>
       )}
       {open && (
         <div className="file-to-record-menu" role="menu">
