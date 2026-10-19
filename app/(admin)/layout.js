@@ -396,8 +396,8 @@ export default function AdminLayout({ children }) {
           },
           { href: '/appointments', icon: '📅', label: 'Appts', alert: hasPendingAppointmentRequest ? 'amber' : '' },
           { href: '/consults', icon: '🩺', label: 'Consults' },
-          { href: '/hospitalization', icon: '🏥', label: 'Hospital', alert: phoneAlert(hospitalizationAlarmLevel) },
           { href: '/day-procedures', icon: '📋', label: 'Day Proc.', title: 'Day Procedures', alert: phoneAlert(dayProcedureAlarmLevel) },
+          { href: '/hospitalization', icon: '🏥', label: 'Hospital', alert: phoneAlert(hospitalizationAlarmLevel) },
         ]}
         more={[
           { href: '/clients', icon: '👥', label: 'Clients' },
