@@ -18,6 +18,13 @@ const SERIES = {
   other: { label: 'Other', color: 'var(--chart-5)' },
   old_system: { label: 'Old system balances', color: 'var(--chart-neutral)' },
 };
+// Food as a share of all line items in the range, e.g. "7%".
+function foodShare(data) {
+  const all = data.byType.reduce((t, r) => t + r.value, 0);
+  const food = data.byType.find((r) => r.label === 'food')?.value || 0;
+  return all ? `${Math.round((food / all) * 100)}%` : '0%';
+}
+
 const TYPE_LABELS = { service: 'Services', product: 'Products', food: 'Food', test: 'Tests', other: 'Other' };
 const SPEND_LABELS = {
   salaries: 'Salaries', rent: 'Rent', supplies: 'Supplies', utilities: 'Utilities', equipment: 'Equipment',
@@ -272,6 +279,18 @@ export default function AccountingChartsPage() {
 
           <Card title="Invoicing by type" why="Services (consults, surgery, hospital stays), food, other products (medication, toys) and tests, before VAT and discounts.">
             <HBars rows={data.byType.map((r) => ({ ...r, label: TYPE_LABELS[r.label] || r.label }))} />
+          </Card>
+
+          <Card title="Food sales" why="Invoicing from the catalog's Food items in each period, before VAT and discounts.">
+            <BarChart
+              buckets={data.buckets}
+              unit={unit}
+              series={[{ key: 'food', label: 'Food', color: 'var(--chart-4)', values: data.food }]}
+              height={190}
+            />
+            <p className="visit-meta">
+              {aed(Object.values(data.food).reduce((t, v) => t + v, 0))} in this range, {foodShare(data)} of all invoicing
+            </p>
           </Card>
 
           <Card title="Invoicing by vet" why="Invoices from each vet's consults. No vet: hospital stays and sales not tied to a consult.">

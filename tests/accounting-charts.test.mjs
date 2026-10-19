@@ -64,3 +64,16 @@ test('food gets its own bar, apart from other products', () => {
   assert.equal(lineItemCategory({ main_category: 'service', catalog_subcategories: null }), 'service');
   assert.equal(lineItemCategory(null), 'other');
 });
+
+test('food invoicing per period', () => {
+  const d = buildChartData({
+    unit: 'week',
+    buckets: ['2026-10-05', '2026-10-12'],
+    lineItems: [
+      { line_total: 80, category: 'food', created_at: '2026-10-06T08:00:00Z' },
+      { line_total: 20, category: 'food', created_at: '2026-10-13T08:00:00Z' },
+      { line_total: 500, category: 'product', created_at: '2026-10-13T08:00:00Z' },
+    ],
+  });
+  assert.deepEqual(d.food, { '2026-10-05': 80, '2026-10-12': 20 });
+});

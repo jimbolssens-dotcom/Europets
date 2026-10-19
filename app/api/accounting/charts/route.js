@@ -84,7 +84,7 @@ export async function GET(request) {
     payments: payRes.data,
     legacyPayments: legacyRes.data,
     invoices: invRes.data.map((i) => ({ ...i, vet_name: staffName.get(vetByVisit.get(i.visit_id)) || null })),
-    lineItems: lineRes.data.map((li) => ({ line_total: li.line_total, category: lineItemCategory(li.goods_services) })),
+    lineItems: lineRes.data.map((li) => ({ line_total: li.line_total, category: lineItemCategory(li.goods_services), created_at: li.invoices?.created_at })),
     expenses: expRes.data,
     clients: clientRes.data,
     unpaid: unpaidRes.data,
