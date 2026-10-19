@@ -1,0 +1,301 @@
+// app/(admin)/accounting/charts/page.jsx
+// Accounting charts: takings by method, invoiced vs collected, what's owed
+// by age, average invoice, new clients, discounts, invoicing by type and by
+// vet, spending by category, and month by month takings vs outgoing. Figures
+// from app/api/accounting/charts (lib/accountingCharts.js). Charts are plain
+// SVG drawn at the width they're given, so text stays readable on a phone;
+// every bar has its exact figure on hover (or tap).
+
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+
+const SERIES = {
+  card: { label: 'Card', color: 'var(--chart-1)' },
+  cash: { label: 'Cash', color: 'var(--chart-2)' },
+  online: { label: 'Payment link / online', color: 'var(--chart-3)' },
+  bank_transfer: { label: 'Bank transfer', color: 'var(--chart-4)' },
+  other: { label: 'Other', color: 'var(--chart-5)' },
+  old_system: { label: 'Old system balances', color: 'var(--chart-neutral)' },
+};
+const TYPE_LABELS = { service: 'Services', product: 'Products', test: 'Tests', other: 'Other' };
+const SPEND_LABELS = {
+  salaries: 'Salaries', rent: 'Rent', supplies: 'Supplies', utilities: 'Utilities', equipment: 'Equipment',
+  marketing: 'Marketing', professional_fees: 'Professional fees', other: 'Other',
+};
+
+function short(v) {
+  const x = Number(v || 0);
+  if (x >= 100000) return `${Math.round(x / 1000)}k`;
+  if (x >= 1000) return `${(x / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+  return String(Math.round(x));
+}
+const aed = (v) => `AED ${Number(v || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
+
+function bucketLabel(key, unit) {
+  const d = new Date(`${key}T00:00:00Z`);
+  if (unit === 'month') return d.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' });
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+}
+
+function useWidth() {
+  const ref = useRef(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    if (!ref.current) return undefined;
+    const ro = new ResizeObserver(([entry]) => setWidth(Math.floor(entry.contentRect.width)));
+    ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width];
+}
+
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = 10 ** Math.floor(Math.log10(v));
+  return [1, 2, 4, 5, 10].map((m) => m * p).find((m) => m >= v);
+}
+
+// Vertical bars per bucket: stacked series, or grouped side by side.
+function BarChart({ buckets, unit, series, stacked = false, height = 220, format = short, total = true, tooltipFormat = aed }) {
+  const [ref, width] = useWidth();
+  const L = 38, B = height - 22, T = 18;
+  const totals = buckets.map((b) => (stacked ? series.reduce((t, s) => t + (s.values[b] || 0), 0) : Math.max(...series.map((s) => s.values[b] || 0))));
+  const max = niceMax(Math.max(...totals, 0));
+  const y = (v) => B - (v / max) * (B - T);
+  const step = width > L ? (width - L) / buckets.length : 0;
+  const groupW = Math.min(64, step * 0.7);
+  // Show every label that fits (about 46px each), every other one if not.
+  const every = step > 0 ? Math.max(1, Math.ceil(46 / step)) : 1;
+  return (
+    <div ref={ref} className="acct-chart">
+      {width > 0 && (
+        <svg width={width} height={height} role="img">
+          {[0, 0.5, 1].map((f) => (
+            <g key={f}>
+              <line x1={L} x2={width} y1={y(max * f)} y2={y(max * f)} className="acct-chart-gridline" />
+              <text x={L - 5} y={y(max * f) + 4} textAnchor="end">{short(max * f)}</text>
+            </g>
+          ))}
+          {buckets.map((b, i) => {
+            const x0 = L + i * step + (step - groupW) / 2;
+            let acc = 0;
+            const barW = stacked ? groupW : (groupW - 2 * (series.length - 1)) / series.length;
+            const parts = series.filter((s) => (s.values[b] || 0) > 0);
+            return (
+              <g key={b}>
+                {series.map((s, j) => {
+                  const v = s.values[b] || 0;
+                  if (v <= 0) return null;
+                  const h = (v / max) * (B - T);
+                  const top = stacked ? y(acc + v) : y(v);
+                  const x = stacked ? x0 : x0 + j * (barW + 2);
+                  const isTop = !stacked || parts[parts.length - 1] === s;
+                  acc += stacked ? v : 0;
+                  const r = isTop ? Math.min(4, barW / 2, h) : 0;
+                  const gap = stacked && !isTop ? 2 : 0;
+                  return (
+                    <path
+                      key={s.key}
+                      d={`M${x},${top + h - (stacked ? 0 : 0)}V${top + r + gap}q0,${-r} ${r},${-r}h${barW - 2 * r}q${r},0 ${r},${r}V${top + h}z`}
+                      fill={s.color}
+                    >
+                      <title>{`${bucketLabel(b, unit)} · ${s.label}: ${tooltipFormat(v, b)}`}</title>
+                    </path>
+                  );
+                })}
+                {total && totals[i] > 0 && (
+                  <text x={x0 + groupW / 2} y={y(totals[i]) - 5} textAnchor="middle" className="acct-chart-value">{format(totals[i])}</text>
+                )}
+                {(buckets.length - 1 - i) % every === 0 && (
+                  <text x={x0 + groupW / 2} y={B + 15} textAnchor="middle">{bucketLabel(b, unit)}</text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      )}
+    </div>
+  );
+}
+
+// Horizontal bars, one per row, value at the end.
+function HBars({ rows, color = 'var(--chart-1)', format = aed }) {
+  const [ref, width] = useWidth();
+  const labelW = Math.min(130, Math.max(90, width * 0.32));
+  const valueW = 92;
+  const rowH = 30;
+  const max = Math.max(...rows.map((r) => r.value), 1);
+  if (!rows.length) return <p className="visit-meta">Nothing in this period yet.</p>;
+  return (
+    <div ref={ref} className="acct-chart">
+      {width > 0 && (
+        <svg width={width} height={rows.length * rowH + 4} role="img">
+          {rows.map((r, i) => {
+            const w = Math.max(3, (r.value / max) * (width - labelW - valueW - 8));
+            const yy = 4 + i * rowH;
+            const rr = Math.min(4, w / 2);
+            return (
+              <g key={r.label}>
+                <text x={labelW - 6} y={yy + 15} textAnchor="end" className="acct-chart-label">{r.label}</text>
+                <path d={`M${labelW},${yy + 4}V${yy + 20}h${w - rr}q${rr},0 ${rr},${-rr}V${yy + 4 + rr}q0,${-rr} ${-rr},${-rr}z`} fill={r.color || color}>
+                  <title>{`${r.label}: ${format(r.value)}${r.note ? ` ${r.note}` : ''}`}</title>
+                </path>
+                <text x={labelW + w + 6} y={yy + 15} className="acct-chart-value">
+                  {short(r.value)}{r.note ? ` ${r.note}` : ''}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      )}
+    </div>
+  );
+}
+
+function Legend({ items }) {
+  return (
+    <div className="acct-chart-legend">
+      {items.map((s) => (
+        <span key={s.label}><i style={{ background: s.color }} />{s.label}</span>
+      ))}
+    </div>
+  );
+}
+
+function Card({ title, why, wide, children }) {
+  return (
+    <section className={`card acct-chart-card${wide ? ' acct-chart-wide' : ''}`}>
+      <h2>{title}</h2>
+      {why && <p className="acct-chart-why">{why}</p>}
+      {children}
+    </section>
+  );
+}
+
+export default function AccountingChartsPage() {
+  const [range, setRange] = useState('weeks');
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setData(null);
+    fetch(`/api/accounting/charts?range=${range}`)
+      .then((r) => r.json())
+      .then((d) => (d.error ? setError(d.error) : setData(d)))
+      .catch((e) => setError(e.message));
+  }, [range]);
+
+  const unit = data?.unit;
+  const takingsSeries = data
+    ? Object.keys(SERIES)
+        .filter((k) => Object.values(data.takings[k]).some((v) => v > 0))
+        .map((k) => ({ key: k, ...SERIES[k], values: data.takings[k] }))
+    : [];
+
+  return (
+    <div className="acct-charts">
+      <div className="page-header">
+        <h1>📈 Charts</h1>
+        <div className="page-header-actions">
+          <a href="/accounting" className="button-link">← Accounting</a>
+        </div>
+      </div>
+      <div className="acct-chart-range" role="tablist">
+        {[['weeks', 'Last 8 weeks'], ['months', 'Last 12 months']].map(([key, label]) => (
+          <button key={key} type="button" role="tab" aria-selected={range === key} className={range === key ? 'on' : ''} onClick={() => setRange(key)}>
+            {label}
+          </button>
+        ))}
+        <span className="visit-meta">{range === 'weeks' ? 'By week, Monday to Sunday' : 'By month'}; this {unit === 'month' ? 'month' : 'week'} so far</span>
+      </div>
+
+      {error && <p className="error">{error}</p>}
+      {!data && !error && <p>Loading...</p>}
+      {data && (
+        <div className="acct-chart-grid">
+          <Card wide title="Takings, by payment method" why="Everything received, including payments on old-system balances.">
+            <Legend items={takingsSeries} />
+            <BarChart buckets={data.buckets} unit={unit} series={takingsSeries} stacked />
+          </Card>
+
+          <Card title="Invoiced vs collected" why="When invoiced runs ahead of collected, unpaid balances are building up (collected: new invoices only).">
+            <Legend items={[{ label: 'Invoiced', color: 'var(--chart-neutral)' }, { label: 'Collected', color: 'var(--chart-1)' }]} />
+            <BarChart
+              buckets={data.buckets}
+              unit={unit}
+              total={false}
+              series={[
+                { key: 'inv', label: 'Invoiced', color: 'var(--chart-neutral)', values: data.invoiced },
+                { key: 'col', label: 'Collected', color: 'var(--chart-1)', values: data.collected },
+              ]}
+            />
+          </Card>
+
+          <Card title="What's owed, by how long" why="Every unpaid invoice today, by its age. The darker, the longer it has waited.">
+            <HBars rows={data.owed.map((o, i) => ({ label: o.label, value: o.value, note: `(${o.count})`, color: `var(--chart-age-${Math.min(i, 3)})` }))} />
+            <p className="visit-meta"><a href="/accounting/unpaid">Unpaid invoices →</a></p>
+          </Card>
+
+          <Card title="Average invoice" why="Invoiced total divided by the number of invoices.">
+            <BarChart
+              buckets={data.buckets}
+              unit={unit}
+              series={[{ key: 'avg', label: 'Average invoice', color: 'var(--chart-1)', values: data.averageInvoice }]}
+              height={190}
+            />
+          </Card>
+
+          <Card title="New clients" why="Clients added in the app (registered at the desk or through the new-client form); old-system imports aren't counted.">
+            <BarChart
+              buckets={data.buckets}
+              unit={unit}
+              format={(v) => String(Math.round(v))}
+              tooltipFormat={(v) => `${v} new client${v === 1 ? '' : 's'}`}
+              series={[{ key: 'new', label: 'New clients', color: 'var(--chart-3)', values: data.newClients }]}
+              height={190}
+            />
+          </Card>
+
+          <Card title="Discounts given" why="Discount amount on invoices made in each period (hover for how many invoices).">
+            <BarChart
+              buckets={data.buckets}
+              unit={unit}
+              series={[{ key: 'disc', label: 'Discounts', color: 'var(--chart-2)', values: data.discounts }]}
+              tooltipFormat={(v, b) => `${aed(v)} on ${data.discountCount[b]} invoice${data.discountCount[b] === 1 ? '' : 's'}`}
+              height={190}
+            />
+            <p className="visit-meta">
+              {Object.values(data.discountCount).reduce((t, v) => t + v, 0)} discounted invoice(s) in this range, {aed(Object.values(data.discounts).reduce((t, v) => t + v, 0))} in total
+            </p>
+          </Card>
+
+          <Card title="Invoicing by type" why="Services (consults, surgery, hospital stays), products (medication, food) and tests, before VAT and discounts.">
+            <HBars rows={data.byType.map((r) => ({ ...r, label: TYPE_LABELS[r.label] || r.label }))} />
+          </Card>
+
+          <Card title="Invoicing by vet" why="Invoices from each vet's consults. No vet: hospital stays and sales not tied to a consult.">
+            <HBars rows={data.byVet.map((r) => ({ ...r, color: r.label === 'No vet' ? 'var(--chart-neutral)' : 'var(--chart-1)' }))} />
+          </Card>
+
+          <Card title="Spending by category" why="Expenses dated in this range.">
+            <HBars rows={data.spending.map((r) => ({ ...r, label: SPEND_LABELS[r.label] || r.label }))} color="var(--chart-2)" />
+          </Card>
+
+          <Card wide title="Month by month: takings vs outgoing" why="The last 12 months, whichever range is picked above. Fills in as the months go by.">
+            <Legend items={[{ label: 'Takings', color: 'var(--chart-1)' }, { label: 'Outgoing', color: 'var(--chart-2)' }]} />
+            <BarChart
+              buckets={data.trend.buckets}
+              unit="month"
+              total={false}
+              series={[
+                { key: 't', label: 'Takings', color: 'var(--chart-1)', values: data.trend.takings },
+                { key: 'o', label: 'Outgoing', color: 'var(--chart-2)', values: data.trend.outgoing },
+              ]}
+            />
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}

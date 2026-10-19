@@ -12482,3 +12482,109 @@ form.card.walkin-inline > .booking-owner-picked {
     padding: 0.25rem 0.55rem;
   }
 }
+
+/* Accounting charts (app/(admin)/accounting/charts). Series colours from the
+   validated categorical palette (Card, Cash, online, bank transfer in that
+   fixed order); old-system balances and "invoiced" in neutral grey; what's
+   owed by age as one blue ramp, darker = older. */
+.acct-charts {
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-neutral: #b9b6ae;
+  --chart-age-0: #86b6ef;
+  --chart-age-1: #3987e5;
+  --chart-age-2: #1c5cab;
+  --chart-age-3: #104281;
+}
+.acct-chart-range {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.2rem 0 0.9rem;
+}
+.acct-chart-range button {
+  background: white;
+  color: var(--ink);
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  padding: 0.25rem 0.8rem;
+  font-size: 0.85rem;
+  box-shadow: none;
+}
+.acct-chart-range button.on {
+  border-color: var(--pink);
+  background: var(--pink-tint);
+  color: var(--pink-dark);
+  font-weight: 700;
+}
+.acct-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+.acct-chart-card {
+  margin: 0;
+  min-width: 0;
+  max-width: none;
+  width: auto;
+  border-top: 3px solid var(--pink);
+  padding: 0.8rem 0.9rem;
+}
+.acct-chart-wide {
+  grid-column: 1 / -1;
+}
+.acct-chart-card h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+.acct-chart-why {
+  margin: 0.15rem 0 0.4rem;
+  font-size: 0.78rem;
+  color: #6b6a66;
+}
+.acct-chart {
+  width: 100%;
+}
+.acct-chart svg {
+  display: block;
+  overflow: visible;
+}
+.acct-chart text {
+  font-size: 11px;
+  fill: #6b6a66;
+}
+.acct-chart .acct-chart-value {
+  fill: var(--ink);
+  font-weight: 600;
+}
+.acct-chart .acct-chart-label {
+  fill: var(--ink);
+}
+.acct-chart .acct-chart-gridline {
+  stroke: #e7e5e0;
+}
+.acct-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.8rem;
+  font-size: 0.75rem;
+  color: #6b6a66;
+  margin-bottom: 0.2rem;
+}
+.acct-chart-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+@media (max-width: 700px) {
+  .acct-chart-grid {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+}

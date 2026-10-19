@@ -53,6 +53,9 @@ export default function AccountingOverviewPage() {
       <div className="page-header">
         <h1>Accounting</h1>
         <div className="page-header-actions accounting-links">
+          <a href="/accounting/charts" className="button-link">
+            📈 Charts
+          </a>
           <a href="/shift-tally" className="button-link">
             💰 Shift Tally
           </a>
