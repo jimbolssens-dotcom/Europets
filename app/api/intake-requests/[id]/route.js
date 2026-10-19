@@ -27,11 +27,12 @@ import { phoneSearchDigits, clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { ensureWhatsAppNumberOnFile } from '@/lib/whatsappNumberOnFile';
 import { applySocialConsent } from '@/lib/socialConsent';
+import { normalizeInstagramHandle } from '@/lib/clinicSocial';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('intake_requests')
-    .select('*, clients(id, full_name, social_media_consent, patients(id, name, species, breed, current_weight_kg, sex, deceased, rehomed))')
+    .select('*, clients(id, full_name, social_media_consent, instagram_handle, patients(id, name, species, breed, current_weight_kg, sex, deceased, rehomed))')
     .eq('id', params.id)
     .single();
 
@@ -122,6 +123,7 @@ async function submit(id, body) {
     custom_surgery_reason,
     preferred_date,
     social_media_consent,
+    instagram_handle,
   } = body;
 
   const { data: existing, error: existingError } = await supabase
@@ -236,6 +238,7 @@ async function submit(id, body) {
       custom_surgery_reason: isCustomSurgery ? custom_surgery_reason.trim() : null,
       preferred_date: isCustomSurgery ? preferred_date || null : null,
       social_media_consent: typeof social_media_consent === 'boolean' ? social_media_consent : null,
+      instagram_handle: normalizeInstagramHandle(instagram_handle),
       status: 'submitted',
       submitted_at: new Date().toISOString(),
     })
@@ -411,6 +414,11 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
 
   await linkUnmatchedMessagesToClient(client.id);
   await applySocialConsent(client.id, intake.social_media_consent, 'intake');
+  // Their Instagram, so posts about their pet can mention them: only ever
+  // fills it in or updates it, never clears one already on file.
+  if (intake.instagram_handle) {
+    await supabaseAdmin.from('clients').update({ instagram_handle: intake.instagram_handle }).eq('id', client.id);
+  }
 
   const patientRows = (intake.patients || []).map((p) => ({
     client_id: client.id,

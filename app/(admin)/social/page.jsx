@@ -7,6 +7,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import SocialWeekPlan from '@/app/_components/SocialWeekPlan';
 
 const TABS = [
   { key: 'draft', label: 'To approve' },
@@ -74,6 +75,8 @@ export default function SocialPage() {
           <a href="/social/new" className="button-link">＋ Upload</a>
         </div>
       </div>
+
+      <SocialWeekPlan />
 
       <div className="social-tabs" role="tablist">
         {TABS.map((t) => (

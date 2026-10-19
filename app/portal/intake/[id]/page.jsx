@@ -112,6 +112,7 @@ export default function IntakePortalPage() {
   const [emirate, setEmirate] = useState('');
   const [notes, setNotes] = useState('');
   const [socialConsent, setSocialConsent] = useState(true);
+  const [instagramHandle, setInstagramHandle] = useState('');
   const [pets, setPets] = useState([emptyPet()]);
 
   // A blank QR-scan link starts with no client_id — this lets someone
@@ -157,6 +158,7 @@ export default function IntakePortalPage() {
       .then((data) => {
         setRequest(data);
         setSocialConsent(data?.clients?.social_media_consent !== false);
+        if (data?.clients?.instagram_handle) setInstagramHandle(`@${data.clients.instagram_handle}`);
         setLoading(false);
       });
     // Doctors only — a client picking a "preferred doctor" should never
@@ -446,6 +448,7 @@ export default function IntakePortalPage() {
         emirate,
         notes,
         social_media_consent: socialConsent,
+        instagram_handle: socialConsent ? instagramHandle : '',
         patients: newPetsToSubmit,
         selected_patient_id: selectedPatientId,
         ...(wantsAppointment && isCustomSurgery
@@ -1026,6 +1029,20 @@ export default function IntakePortalPage() {
             )}
 
             <SocialConsentTick checked={socialConsent} onChange={setSocialConsent} />
+            {socialConsent && (
+              <label className="intake-instagram">
+                Your Instagram (optional)
+                <input
+                  value={instagramHandle}
+                  onChange={(e) => setInstagramHandle(e.target.value)}
+                  placeholder="@yourname"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <span className="visit-meta">So we can tag you when your pet is on our page.</span>
+              </label>
+            )}
 
             <label className="intake-form-notes">
               Anything else we should know? (optional)

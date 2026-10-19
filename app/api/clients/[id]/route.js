@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { normalizeClientPhones, syncClientWhatsappPhone, attachClientPhones } from '@/lib/clientPhones';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
+import { normalizeInstagramHandle } from '@/lib/clinicSocial';
 
 export async function GET(request, { params }) {
   // Reachable without the staff PIN now (the client app reads its own
@@ -35,7 +36,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { full_name, phones, emirates_id, trn, email, address, emirate, legacy_outstanding_balance, payment_reminders_off, social_media_consent } = body;
+  const { full_name, phones, emirates_id, trn, email, address, emirate, legacy_outstanding_balance, payment_reminders_off, social_media_consent, instagram_handle } = body;
 
   const update = {};
   if (full_name !== undefined) update.full_name = full_name;
@@ -53,6 +54,13 @@ export async function PATCH(request, { params }) {
     update.social_media_consent = typeof social_media_consent === 'boolean' ? social_media_consent : null;
     update.social_media_consent_at = update.social_media_consent === null ? null : new Date().toISOString();
     update.social_media_consent_source = update.social_media_consent === null ? null : 'staff';
+  }
+  if (instagram_handle !== undefined) {
+    const handle = normalizeInstagramHandle(instagram_handle);
+    if (String(instagram_handle || '').trim() && !handle) {
+      return NextResponse.json({ error: "That doesn't look like an Instagram username (letters, numbers, . and _ only)." }, { status: 400 });
+    }
+    update.instagram_handle = handle;
   }
   if (legacy_outstanding_balance !== undefined) {
     update.legacy_outstanding_balance = legacy_outstanding_balance === '' ? null : legacy_outstanding_balance;

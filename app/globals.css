@@ -12785,3 +12785,23 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .bubble-file-actions { display: flex; flex-wrap: wrap; gap: 0 0.4rem; align-items: flex-start; }
 .bubble-file-actions .file-to-record { display: inline-block; }
 .bubble-file-actions .file-to-record:has(.file-to-record-menu) { flex-basis: 100%; order: 1; }
+
+/* "This week" plan on the Social page (SocialWeekPlan). */
+.social-plan { margin: 0.75rem 0 0; padding: 0.75rem; }
+.social-plan-head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.social-plan-head .social-link-button { margin-left: auto !important; }
+.social-plan-note { flex-basis: 100%; }
+.social-plan-list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.3rem; }
+.social-plan-row {
+  box-sizing: border-box; margin: 0 !important;
+  display: flex; align-items: center; gap: 0.45rem; width: 100%; text-align: left;
+  background: #faf9f7; color: inherit; border: 1px solid #ece8e2; border-radius: 10px; padding: 0.45rem 0.6rem; font-weight: 400;
+}
+.social-plan-row:hover { background: var(--pink-tint); }
+.social-plan-day { font-size: 0.75rem; font-weight: 700; color: var(--pink-dark); width: 2rem; flex: none; }
+.social-plan-title { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.social-plan-done .social-plan-title { color: #6b6660; }
+.social-plan-detail { padding: 0.4rem 0.6rem 0.6rem 2.9rem; display: grid; gap: 0.35rem; justify-items: start; }
+.social-plan-detail p { margin: 0; }
+.social-plan-shots { margin: 0; padding-left: 1.1rem; font-size: 0.88rem; display: grid; gap: 0.15rem; }
+.intake-instagram span { font-weight: 400; }

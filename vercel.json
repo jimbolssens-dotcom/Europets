@@ -38,6 +38,10 @@
     {
       "path": "/api/social-posts/publish-sweep",
       "schedule": "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+    },
+    {
+      "path": "/api/social-plan/weekly",
+      "schedule": "52 3 * * 1"
     }
   ]
 }

@@ -301,6 +301,7 @@ export default function ClientDetailPage() {
       email: client.email || '',
       address: client.address || '',
       emirate: client.emirate || '',
+      instagram_handle: client.instagram_handle ? `@${client.instagram_handle}` : '',
       legacy_outstanding_balance: client.legacy_outstanding_balance ?? '',
     });
     setEditError(null);
@@ -566,6 +567,15 @@ export default function ClientDetailPage() {
             </select>
           </label>
           <label>
+            Instagram (optional)
+            <input
+              value={editForm.instagram_handle}
+              onChange={(e) => setEditForm({ ...editForm, instagram_handle: e.target.value })}
+              placeholder="@username, so posts about their pet can tag them"
+              autoCapitalize="none"
+            />
+          </label>
+          <label>
             Old system balance (AED){' '}
             <InfoHint>
               Carried over from the previous clinic software at import — not linked to any
@@ -598,7 +608,15 @@ export default function ClientDetailPage() {
           {client.address ? ` · ${client.address}` : ''}
           {client.emirate ? ` · ${client.emirate}` : ''}
           {client.emirates_id ? ` · Emirates ID: ${client.emirates_id}` : ''}
-          {client.trn ? ` · TRN: ${client.trn}` : ''}{' '}
+          {client.trn ? ` · TRN: ${client.trn}` : ''}
+          {client.instagram_handle ? (
+            <>
+              {' · '}
+              <a href={`https://www.instagram.com/${client.instagram_handle}`} target="_blank" rel="noopener noreferrer">
+                @{client.instagram_handle}
+              </a>
+            </>
+          ) : null}{' '}
           <select
             className={`social-consent-chip social-consent-${client.social_media_consent === true ? 'yes' : client.social_media_consent === false ? 'no' : 'unasked'}`}
             value={client.social_media_consent === true ? 'yes' : client.social_media_consent === false ? 'no' : ''}

@@ -71,7 +71,15 @@ export async function POST(request) {
   }
   const { data, error } = await supabaseAdmin
     .from('social_posts')
-    .insert([{ story: String(body.story || '').trim() || null, patient_id: patientId, created_by: body.created_by || null }])
+    .insert([
+      {
+        story: String(body.story || '').trim() || null,
+        patient_id: patientId,
+        created_by: body.created_by || null,
+        // The week's plan idea it was made for ("2026-10-19:1"), so the plan shows it done.
+        plan_idea: /^\d{4}-\d{2}-\d{2}:\d$/.test(body.plan_idea || '') ? body.plan_idea : null,
+      },
+    ])
     .select('id')
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

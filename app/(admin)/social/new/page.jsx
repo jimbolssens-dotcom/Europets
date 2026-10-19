@@ -6,8 +6,8 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import { uploadSocialFile, MAX_UPLOAD_BYTES } from '@/lib/socialUpload';
 
@@ -17,8 +17,11 @@ const CONSENT_LABEL = {
   not_asked: 'Owner not asked yet',
 };
 
-export default function NewSocialPostPage() {
+function NewSocialPostForm() {
   const router = useRouter();
+  // From the week's plan ("＋ Upload for this"): which idea, shown above the form.
+  const planIdea = useSearchParams().get('idea');
+  const [idea, setIdea] = useState(null);
   const [staff, setStaff] = useState([]);
   const [staffId, setStaffId] = useState('');
   const [files, setFiles] = useState([]); // { file, url }
@@ -37,7 +40,16 @@ export default function NewSocialPostPage() {
     try {
       setStaffId(localStorage.getItem('social_staff_id') || '');
     } catch {}
-  }, []);
+    if (planIdea) {
+      fetch('/api/social-plan')
+        .then((res) => res.json())
+        .then((d) => {
+          const n = Number(planIdea.split(':')[1]);
+          if (d.plan && d.plan.week_start === planIdea.split(':')[0] && d.plan.ideas?.[n]) setIdea(d.plan.ideas[n]);
+        })
+        .catch(() => {});
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => files.forEach((f) => URL.revokeObjectURL(f.url)), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -85,7 +97,7 @@ export default function NewSocialPostPage() {
     const created = await fetch('/api/social-posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ story, patient_id: patient?.id || null, created_by: staffId || null }),
+      body: JSON.stringify({ story: story || idea?.title || '', patient_id: patient?.id || null, created_by: staffId || null, plan_idea: idea ? planIdea : null }),
     });
     const post = await created.json().catch(() => ({}));
     if (!created.ok) {
@@ -132,6 +144,16 @@ export default function NewSocialPostPage() {
 
       <form className="card social-card social-new" onSubmit={submit}>
         {error && <p className="error">{error}</p>}
+        {idea && (
+          <div className="social-ai">
+            <strong>📅 {idea.title}</strong>
+            <ul className="social-plan-shots">
+              {idea.shots.map((shot) => (
+                <li key={shot}>{shot}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {files.length > 0 && (
           <div className="social-thumbs">
@@ -218,5 +240,14 @@ export default function NewSocialPostPage() {
         </button>
       </form>
     </div>
+  );
+}
+
+// useSearchParams (the plan idea) needs a Suspense boundary in the App Router.
+export default function NewSocialPostPage() {
+  return (
+    <Suspense fallback={<p className="visit-meta">Loading...</p>}>
+      <NewSocialPostForm />
+    </Suspense>
   );
 }
