@@ -354,6 +354,15 @@ export default function AdminLayout({ children }) {
             🐾
           </a>
           <a
+            href="/social"
+            title="Social: photos into Instagram and Facebook posts"
+            aria-label="Social"
+            className="settings-link"
+            data-discover="Upload clinic photos and videos; the AI writes the Instagram and Facebook post for staff to approve."
+          >
+            📸
+          </a>
+          <a
             href="/settings"
             title={hasPendingReviewRequest ? 'Settings — a review is waiting for moderation' : 'Settings'}
             aria-label="Settings"
@@ -394,6 +403,7 @@ export default function AdminLayout({ children }) {
           { href: '/day-procedures', icon: '📋', label: 'Day Proc.', title: 'Day Procedures', alert: phoneAlert(dayProcedureAlarmLevel) },
           { href: '/cattery', icon: '🐱', label: 'Cattery', alert: catteryWeightOverdue ? 'red' : catteryRequests ? 'amber' : '' },
           { href: '/invoices', icon: '🧾', label: 'Invoices' },
+          { href: '/social', icon: '📸', label: 'Social', title: 'Social media posts' },
           { href: '/mobile', icon: '📱', label: 'Phone app', title: 'Mobile recording app' },
         ]}
       />

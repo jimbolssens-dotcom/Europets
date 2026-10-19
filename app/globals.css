@@ -12633,3 +12633,87 @@ select.social-consent-chip {
 }
 select.social-consent-chip.social-consent-yes { background: #e3f6ee; border-color: #bfe8d6; color: #11795a; }
 select.social-consent-chip.social-consent-no { background: #fdecec; border-color: #f4caca; color: #a12a2a; }
+
+/* ---- Social page (app/(admin)/social, migration 202) ---- */
+.social-page .social-card { max-width: 640px; width: auto; }
+.social-page .page-header { flex-wrap: nowrap; max-width: 640px; }
+.social-page .page-header { align-items: flex-start; }
+.social-page .page-header h1 { font-size: 1.5rem; min-width: 0; line-height: 1.2; }
+.social-page .page-header-actions { flex: none; }
+.social-tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.75rem 0; }
+.social-tab {
+  background: white; color: #6b6660; border: 1px solid #e2ded8;
+  border-radius: 999px; padding: 0.3rem 0.8rem; font-size: 0.85rem; font-weight: 600;
+}
+.social-tab:hover { background: var(--pink-tint); }
+.social-tab-on { background: var(--pink-tint); border-color: var(--pink); color: var(--pink-dark); }
+.social-list { display: grid; gap: 0.6rem; max-width: 640px; }
+.social-item { display: flex; gap: 0.75rem; align-items: center; color: inherit; text-decoration: none; margin: 0; padding: 0.7rem; }
+.social-item-thumb {
+  width: 64px; height: 64px; flex: none; border-radius: 10px; overflow: hidden; background: #f2efea;
+  display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #6b6660; text-align: center;
+}
+.social-item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.social-item-body { min-width: 0; flex: 1; }
+.social-item-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.social-inline { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; margin-top: 0.3rem; }
+.social-chip {
+  display: inline-flex; align-items: center; font-size: 0.75rem; font-weight: 600; padding: 0.15rem 0.55rem;
+  border-radius: 999px; background: #f2efea; color: #6b6660; text-decoration: none; white-space: nowrap;
+}
+.social-chip-pink { background: var(--pink); color: white; }
+.social-consent-yes { background: #e3f6ee; color: #11795a; }
+.social-consent-no { background: #fdecec; color: #a12a2a; }
+.social-consent-not_asked { background: #fdf2d6; color: #8a6000; }
+.social-chip-button { background: white; color: var(--text, #1d1b19); border: 1px solid #e2ded8; border-radius: 999px; padding: 0.25rem 0.7rem; font-size: 0.85rem; }
+.social-link-button { width: auto !important; margin: 0 !important; padding: 0.1rem 0.25rem !important; background: none; color: var(--pink-dark); padding: 0.1rem 0.3rem; font-size: 0.8rem; font-weight: 600; text-decoration: underline; }
+.social-link-button:hover { background: none; }
+.button-link.social-ghost { background: white; color: var(--pink-dark); border: 1px solid var(--pink); }
+.button-link.social-ghost:hover { background: var(--pink-tint); }
+.social-empty p { margin: 0.25rem 0; }
+.social-hint { background: #fdf2d6; color: #6d4c00; border-radius: 10px; padding: 0.5rem 0.7rem; font-size: 0.85rem; margin: 0.4rem 0; }
+.social-ai { background: #eef4fc; color: #1c4f8f; border-radius: 10px; padding: 0.55rem 0.75rem; font-size: 0.9rem; }
+
+/* Upload */
+.social-new { display: grid; gap: 0.8rem; }
+.social-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 0.4rem; }
+.social-thumb { position: relative; aspect-ratio: 4 / 5; border-radius: 10px; overflow: hidden; background: #f2efea; }
+.social-thumb img, .social-thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.social-thumb-badge { position: absolute; left: 4px; bottom: 4px; background: rgba(0,0,0,0.6); color: white; font-size: 0.7rem; padding: 0.05rem 0.35rem; border-radius: 6px; }
+.social-thumb-remove {
+  position: absolute; top: 4px; right: 4px; width: 26px !important; min-width: 0; height: 26px; padding: 0 !important; margin: 0;
+  border-radius: 50%; background: rgba(0,0,0,0.6); color: white; font-size: 0.75rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.social-drop {
+  display: block !important; border: 2px dashed #d6d0c7; border-radius: 12px; padding: 0.9rem; text-align: center;
+  color: #6b6660; font-weight: 600; cursor: pointer;
+}
+.social-drop input { display: none; }
+.social-field { display: grid; gap: 0.35rem; }
+.social-field-label { font-weight: 600; }
+.social-field p { margin: 0; }
+.social-inline-label { flex-direction: row !important; align-items: center; gap: 0.5rem; }
+.social-inline-label select { width: auto !important; flex: 1; }
+button.social-primary { border-radius: 999px; font-weight: 700; }
+
+/* Draft */
+.social-draft { display: grid; gap: 0.7rem; }
+.social-media-strip { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.2rem; scroll-snap-type: x mandatory; }
+.social-media { margin: 0; flex: 0 0 auto; width: 132px; scroll-snap-align: start; }
+.social-media-pick { display: block; width: 100%; padding: 0; border-radius: 12px; overflow: hidden; background: #f2efea; aspect-ratio: 4 / 5; border: 3px solid transparent; }
+.social-media-pick:hover { background: #f2efea; }
+.social-media-pick:disabled { opacity: 1; cursor: default; }
+.social-media-pick img, .social-media-pick video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.social-media-cover .social-media-pick { border-color: var(--pink); }
+.social-media-out .social-media-pick { opacity: 0.35; }
+.social-media figcaption { display: flex; gap: 0.25rem; align-items: center; flex-wrap: wrap; margin-top: 0.25rem; }
+.social-media-note { font-size: 0.75rem; color: #a12a2a; margin-top: 0.15rem; }
+.social-seg { display: flex; background: #f2efea; border-radius: 999px; padding: 3px; gap: 3px; }
+.social-seg button { flex: 1; background: none; color: #6b6660; border-radius: 999px; padding: 0.35rem; font-size: 0.85rem; font-weight: 600; }
+.social-seg button:hover { background: rgba(255,255,255,0.6); }
+.social-seg .social-seg-on { background: white; color: var(--text, #1d1b19); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+.social-caption { width: 100%; font: inherit; line-height: 1.45; border-radius: 10px; }
+.social-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.social-actions .social-approver { width: auto; flex: 1 1 9rem; min-width: 0; padding: 0.45rem 0.6rem; border: 1px solid #e2ded8; border-radius: 10px; background: white; font: inherit; }
+.social-steps ol { margin: 0.4rem 0 0; padding-left: 1.3rem; display: grid; gap: 0.4rem; }
