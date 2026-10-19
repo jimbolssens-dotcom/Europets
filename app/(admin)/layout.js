@@ -388,7 +388,6 @@ export default function AdminLayout({ children }) {
           screens). Alerts: 'amber' waiting, 'red' urgent. */}
       <PhoneTabBar
         main={[
-          { href: '/clients', icon: '👥', label: 'Clients' },
           {
             href: '/messages',
             icon: '💬',
@@ -398,9 +397,10 @@ export default function AdminLayout({ children }) {
           { href: '/appointments', icon: '📅', label: 'Appts', alert: hasPendingAppointmentRequest ? 'amber' : '' },
           { href: '/consults', icon: '🩺', label: 'Consults' },
           { href: '/hospitalization', icon: '🏥', label: 'Hospital', alert: phoneAlert(hospitalizationAlarmLevel) },
+          { href: '/day-procedures', icon: '📋', label: 'Day Proc.', title: 'Day Procedures', alert: phoneAlert(dayProcedureAlarmLevel) },
         ]}
         more={[
-          { href: '/day-procedures', icon: '📋', label: 'Day Proc.', title: 'Day Procedures', alert: phoneAlert(dayProcedureAlarmLevel) },
+          { href: '/clients', icon: '👥', label: 'Clients' },
           { href: '/cattery', icon: '🐱', label: 'Cattery', alert: catteryWeightOverdue ? 'red' : catteryRequests ? 'amber' : '' },
           { href: '/invoices', icon: '🧾', label: 'Invoices' },
           { href: '/social', icon: '📸', label: 'Social', title: 'Social media posts' },

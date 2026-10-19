@@ -160,9 +160,9 @@ export default function MobileHomePage() {
                   {dayProcedureAlarmLevel === 'red' || dayProcedureAlarmLevel === 'both' ? ' 🩺' : dayProcedureAlarmLevel === 'yellow' ? ' 🔔' : ''}
                 </span>
               </a>
-              <a href="/cattery" className={`mobile-square-tile${catteryWeightOverdue ? ' cage-doctor-checkup-requested' : catteryRequests ? ' cage-update-requested' : ''}`}>
-                <span className="mobile-square-tile-icon">🐱</span>
-                <span>Cattery{catteryWeightOverdue ? ' ⚖️' : ''}{catteryRequests ? ' 🔔' : ''}</span>
+              <a href="/social" className="mobile-square-tile">
+                <span className="mobile-square-tile-icon">📸</span>
+                <span>Social</span>
               </a>
               <a href="/mobile/appointments" className="mobile-square-tile">
                 <span className="mobile-square-tile-icon">📅</span>
@@ -178,6 +178,10 @@ export default function MobileHomePage() {
               <a href="/mobile/scan-receipt" className="mobile-square-tile">
                 <span className="mobile-square-tile-icon">🧾</span>
                 <span>Scan Receipt</span>
+              </a>
+              <a href="/cattery" className={`mobile-square-tile${catteryWeightOverdue ? ' cage-doctor-checkup-requested' : catteryRequests ? ' cage-update-requested' : ''}`}>
+                <span className="mobile-square-tile-icon">🐱</span>
+                <span>Cattery{catteryWeightOverdue ? ' ⚖️' : ''}{catteryRequests ? ' 🔔' : ''}</span>
               </a>
             </div>
           )}
