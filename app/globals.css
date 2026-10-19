@@ -12717,3 +12717,23 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .social-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
 .social-actions .social-approver { width: auto; flex: 1 1 9rem; min-width: 0; padding: 0.45rem 0.6rem; border: 1px solid #e2ded8; border-radius: 10px; background: white; font: inherit; }
 .social-steps ol { margin: 0.4rem 0 0; padding-left: 1.3rem; display: grid; gap: 0.4rem; }
+
+/* Social publishing (lib/metaSocial.js) */
+.social-publish { display: grid; gap: 0.6rem; }
+.social-check { display: inline-flex !important; width: auto !important; flex-direction: row !important; align-items: center; gap: 0.4rem; font-weight: 600; margin: 0 0.8rem 0 0 !important; }
+.social-later { display: flex; gap: 0.5rem; flex: 1 1 15rem; min-width: 0; }
+.social-later button { flex: none; }
+.social-check input { width: auto !important; margin: 0; }
+.social-when { width: auto !important; flex: 1 1 11rem; min-width: 0; padding: 0.4rem 0.5rem; border: 1px solid #e2ded8; border-radius: 10px; font: inherit; }
+.social-by-hand summary { cursor: pointer; color: var(--pink-dark); font-size: 0.85rem; font-weight: 600; }
+.social-by-hand[open] { flex-basis: 100%; }
+.social-connect { display: grid; gap: 0.5rem; margin-bottom: 0.75rem; }
+.social-connect h2 { margin: 0; font-size: 1.1rem; }
+.social-connect p { margin: 0; }
+.social-connect code, .social-steps code { background: #f2efea; border-radius: 4px; padding: 0 0.25rem; font-size: 0.85em; }
+.social-connect-steps { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.6rem; line-height: 1.45; }
+
+.social-page .page-header h1.social-title-short { white-space: nowrap; }
+.social-later .social-when { flex: 1 1 0; min-width: 0; }
+.social-draft > * { min-width: 0; }
+.social-draft, .social-publish { grid-template-columns: minmax(0, 1fr); }

@@ -1,7 +1,8 @@
 // app/(admin)/social/page.jsx
 // The Social page (migration 202): posts the AI drafted from staff photos,
 // waiting for a staff member to approve them; approved ones waiting to be
-// posted (by hand until Meta is connected); and what's been posted.
+// posted (by Meta's API once connected, app/(admin)/social/connect, or by
+// hand); and what's been posted.
 
 'use client';
 
@@ -41,6 +42,14 @@ export default function SocialPage() {
   const [tab, setTab] = useState('draft');
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [conn, setConn] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/social-posts/connection')
+      .then((res) => res.json())
+      .then(setConn)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setData(null);
@@ -55,8 +64,13 @@ export default function SocialPage() {
   return (
     <div className="social-page">
       <div className="page-header">
-        <h1>📸 Social</h1>
+        <h1 className="social-title-short">📸 Social</h1>
         <div className="page-header-actions">
+          {conn && (
+            <a href="/social/connect" className={`social-chip ${conn.ok ? 'social-consent-yes' : 'social-consent-not_asked'}`} title={conn.ok ? `Posting to @${conn.instagram?.username} and ${conn.page?.name}` : 'Connect Instagram and Facebook'}>
+              {conn.ok ? '✓ IG & FB' : 'Connect IG & FB'}
+            </a>
+          )}
           <a href="/social/new" className="button-link">＋ Upload</a>
         </div>
       </div>

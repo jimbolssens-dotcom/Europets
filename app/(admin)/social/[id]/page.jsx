@@ -2,8 +2,9 @@
 // One social post (migration 202): the AI's draft from the staff photos
 // (lib/socialDraft.js), which staff can edit, re-order the cover of, leave
 // photos out of, redo or approve. Once approved, and until Meta is
-// connected, it's posted by hand: copy the caption, share or download the
-// files, then mark it as posted.
+// connected (lib/metaSocial.js, app/(admin)/social/connect) an approved
+// post goes out now or at a set time; otherwise it's posted by hand: copy
+// the caption, share or download the files, then mark it as posted.
 
 'use client';
 
@@ -15,6 +16,10 @@ const CONSENT_CHIP = {
   no: { label: '✕ Owner said no', className: 'social-consent-no' },
   not_asked: { label: 'Owner not asked yet', className: 'social-consent-not_asked' },
 };
+
+function formatWhen(iso) {
+  return new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' });
+}
 
 async function fileFromUrl(url, name, fallbackType) {
   const res = await fetch(url);
@@ -33,6 +38,9 @@ export default function SocialPostPage() {
   const [staffId, setStaffId] = useState('');
   const [busy, setBusy] = useState(null);
   const [copied, setCopied] = useState(null);
+  const [conn, setConn] = useState(null);
+  const [targets, setTargets] = useState({ instagram: true, facebook: true });
+  const [laterAt, setLaterAt] = useState('');
 
   function apply(data) {
     setPost(data);
@@ -51,6 +59,10 @@ export default function SocialPostPage() {
     try {
       setStaffId(localStorage.getItem('social_staff_id') || '');
     } catch {}
+    fetch('/api/social-posts/connection')
+      .then((res) => res.json())
+      .then(setConn)
+      .catch(() => setConn({ ok: false }));
   }, [id]);
 
   async function patch(body, label) {
@@ -152,10 +164,56 @@ export default function SocialPostPage() {
     setBusy(null);
   }
 
+  // "Later" is typed in clinic time (UAE, UTC+4) whatever the phone's own
+  // time zone.
+  async function publish(when) {
+    const body = {
+      targets: Object.keys(targets).filter((t) => targets[t]),
+      when: when === 'now' ? 'now' : `${laterAt}:00+04:00`,
+    };
+    setBusy('publish');
+    setError(null);
+    const res = await fetch(`/api/social-posts/${id}/publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) setError(data.error || 'Could not post.');
+    const fresh = await fetch(`/api/social-posts/${id}`).then((r) => r.json());
+    setBusy(null);
+    if (!fresh.error) apply(fresh);
+  }
+
   if (error && !post) return <p className="error">{error}</p>;
   if (!post) return <p className="visit-meta">Loading...</p>;
 
   const chip = CONSENT_CHIP[post.consent];
+  const processing = post.publish_state?.instagram?.status === 'processing' && !post.publish_error;
+  const scheduled = !!post.scheduled_for && !post.publish_error && new Date(post.scheduled_for).getTime() > Date.now() - 60 * 1000;
+
+  const byHand = (
+    <div className="social-steps">
+      <ol>
+        <li>
+          <button type="button" className="secondary" onClick={() => copy(network)}>
+            {copied === network ? '✓ Copied' : `📋 Copy ${network === 'instagram' ? 'Instagram' : 'Facebook'} caption`}
+          </button>
+        </li>
+        <li>
+          <button type="button" className="secondary" onClick={shareFiles} disabled={!!busy}>
+            {busy === 'share' ? 'Getting files...' : `📤 Share ${ordered.length} file${ordered.length === 1 ? '' : 's'}`}
+          </button>{' '}
+          <span className="visit-meta">Pick Instagram or Facebook, paste the caption, then mark it as posted.</span>
+        </li>
+      </ol>
+      {conn?.ok && (
+        <button type="button" className="social-link-button" onClick={() => patch({ action: 'posted' }, 'posted')} disabled={!!busy}>
+          ✓ Mark as posted
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div className="social-page">
@@ -246,37 +304,89 @@ export default function SocialPostPage() {
 
         {post.status === 'approved' && (
           <>
-            <div className="social-steps">
-              <strong>Post it</strong> <span className="visit-meta">(by hand until Instagram and Facebook are connected)</span>
-              <ol>
-                <li>
-                  <button type="button" className="secondary" onClick={() => copy(network)}>
-                    {copied === network ? '✓ Copied' : `📋 Copy ${network === 'instagram' ? 'Instagram' : 'Facebook'} caption`}
+            {conn?.ok ? (
+              <div className="social-publish">
+                {post.publish_error && (
+                  <p className="error">Couldn&apos;t post: {post.publish_error}</p>
+                )}
+                {processing ? (
+                  <p className="social-hint">⏳ Instagram is still processing the video. It goes out by itself within a few minutes.{post.publish_state?.facebook?.status === 'done' ? ' Facebook is already done.' : ''}</p>
+                ) : scheduled ? (
+                  <div className="social-inline">
+                    <span className="social-chip social-chip-pink">📅 {formatWhen(post.scheduled_for)}</span>
+                    <span className="visit-meta">{(post.publish_targets || []).map((t) => (t === 'instagram' ? 'Instagram' : 'Facebook')).join(' + ')}</span>
+                    <button type="button" className="social-link-button" onClick={() => patch({ action: 'unschedule' }, 'unschedule')} disabled={!!busy}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="social-inline">
+                      <label className="social-check">
+                        <input type="checkbox" checked={targets.instagram} onChange={(e) => setTargets({ ...targets, instagram: e.target.checked })} />
+                        Instagram
+                      </label>
+                      <label className="social-check">
+                        <input type="checkbox" checked={targets.facebook} onChange={(e) => setTargets({ ...targets, facebook: e.target.checked })} />
+                        Facebook
+                      </label>
+                    </div>
+                    <div className="social-actions">
+                      <button type="button" className="social-primary" onClick={() => publish('now')} disabled={!!busy || (!targets.instagram && !targets.facebook)}>
+                        {busy === 'publish' ? 'Posting...' : post.publish_error ? '↻ Try again now' : '📤 Post now'}
+                      </button>
+                      <span className="social-later">
+                        <input
+                          type="datetime-local"
+                          className="social-when"
+                          value={laterAt}
+                          onChange={(e) => setLaterAt(e.target.value)}
+                          aria-label="Post later at"
+                        />
+                        <button type="button" className="secondary" onClick={() => publish('later')} disabled={!!busy || !laterAt || (!targets.instagram && !targets.facebook)}>
+                          📅 Schedule
+                        </button>
+                      </span>
+                    </div>
+                  </>
+                )}
+                <div className="social-inline">
+                  <button type="button" className="social-link-button" onClick={() => patch({ action: 'reopen' }, 'reopen')} disabled={!!busy || processing}>
+                    ✎ Edit again
                   </button>
-                </li>
-                <li>
-                  <button type="button" className="secondary" onClick={shareFiles} disabled={!!busy}>
-                    {busy === 'share' ? 'Getting files...' : `📤 Share ${ordered.length} file${ordered.length === 1 ? '' : 's'}`}
-                  </button>{' '}
-                  <span className="visit-meta">Pick Instagram or Facebook, paste the caption.</span>
-                </li>
-              </ol>
-            </div>
-            <div className="social-actions">
-              <button type="button" className="social-primary" onClick={() => patch({ action: 'posted' }, 'posted')} disabled={!!busy}>
-                ✓ Mark as posted
-              </button>
-              <button type="button" className="secondary" onClick={() => patch({ action: 'reopen' }, 'reopen')} disabled={!!busy}>
-                ✎ Edit again
-              </button>
-            </div>
+                  <details className="social-by-hand">
+                    <summary>Post by hand instead</summary>
+                    {byHand}
+                  </details>
+                </div>
+              </div>
+            ) : (
+              <>
+                {byHand}
+                <p className="visit-meta">
+                  {conn ? <><a href="/social/connect">Connect Instagram and Facebook</a> and approved posts go out by themselves.</> : 'Checking the Instagram and Facebook connection...'}
+                </p>
+                <div className="social-actions">
+                  <button type="button" className="social-primary" onClick={() => patch({ action: 'posted' }, 'posted')} disabled={!!busy}>
+                    ✓ Mark as posted
+                  </button>
+                  <button type="button" className="secondary" onClick={() => patch({ action: 'reopen' }, 'reopen')} disabled={!!busy}>
+                    ✎ Edit again
+                  </button>
+                </div>
+              </>
+            )}
           </>
         )}
 
         {post.status === 'posted' && (
-          <p className="visit-meta">
-            ✓ Posted {new Date(post.posted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Dubai' })}
-          </p>
+          <div className="social-inline">
+            <span className="social-chip social-consent-yes">
+              ✓ Posted {new Date(post.posted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Dubai' })}
+            </span>
+            {post.publish_state?.instagram?.permalink && <a href={post.publish_state.instagram.permalink} target="_blank" rel="noopener noreferrer">See it on Instagram</a>}
+            {post.publish_state?.facebook?.permalink && <a href={post.publish_state.facebook.permalink} target="_blank" rel="noopener noreferrer">See it on Facebook</a>}
+          </div>
         )}
       </div>
     </div>

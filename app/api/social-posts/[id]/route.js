@@ -2,7 +2,7 @@
 // GET   -> one post for the Social page: its files (with URLs), captions, the
 //          AI's notes, and whether the owner has agreed to social media.
 // PATCH -> { media, story, patient_id } while uploading, or
-//          { action: 'save' | 'approve' | 'posted' | 'reopen' | 'discard',
+//          { action: 'save' | 'approve' | 'posted' | 'reopen' | 'unschedule' | 'discard',
 //            caption_instagram, caption_facebook, cover_index, media, staff_id }
 //
 // Approving checks the owner's consent (lib/socialPosts.js) on the server
@@ -54,6 +54,7 @@ function cleanMedia(media, id) {
     .map((m) => ({
       path: m.path,
       preview_path: typeof m.preview_path === 'string' && m.preview_path.startsWith(`social/${id}/`) ? m.preview_path : null,
+      post_path: typeof m.post_path === 'string' && m.post_path.startsWith(`social/${id}/`) ? m.post_path : null,
       kind: m.kind === 'video' ? 'video' : 'image',
       name: typeof m.name === 'string' ? m.name.slice(0, 200) : null,
       excluded: !!m.excluded,
@@ -92,6 +93,8 @@ export async function PATCH(request, { params }) {
     update.approved_at = null;
     update.approved_by = null;
     update.posted_at = null;
+  } else if (action === 'unschedule') {
+    update.scheduled_for = null;
   } else if (action === 'discard') {
     update.status = 'discarded';
   } else if (post.status === 'posted' || post.status === 'discarded') {
