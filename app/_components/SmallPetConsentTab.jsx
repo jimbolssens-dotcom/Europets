@@ -14,12 +14,13 @@ import { printPdfUrl } from '@/lib/printPdf';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import ConsentText from '@/app/_components/ConsentText';
+import SocialConsentTick from '@/app/_components/SocialConsentTick';
 
 const FORM_TYPE = 'small_pet';
 
 export default function SmallPetConsentTab({ visitId, patient, client, staff = [], treatmentItems = [], treatmentNotes }) {
   const [signed, setSigned] = useState([]);
-  const [form, setForm] = useState({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '' });
+  const [form, setForm] = useState({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '', social_media_consent: false });
   const [submitting, setSubmitting] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
@@ -52,7 +53,7 @@ export default function SmallPetConsentTab({ visitId, patient, client, staff = [
       setError(data?.error || 'Failed to save consent form');
       return;
     }
-    setForm({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '' });
+    setForm({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '', social_media_consent: false });
     load();
     printPdfUrl(`/api/consent-forms/${data.id}/pdf`, { onFallback: () => setPreviewPdfUrl(`/api/consent-forms/${data.id}/pdf`) });
   }
@@ -126,6 +127,7 @@ export default function SmallPetConsentTab({ visitId, patient, client, staff = [
               </option>
             ))}
           </select>
+          <SocialConsentTick staff checked={form.social_media_consent} onChange={(v) => setForm({ ...form, social_media_consent: v })} />
           <div className="consent-form-actions">
             <button type="submit" disabled={submitting}>
               {submitting ? 'Saving...' : 'Sign'}

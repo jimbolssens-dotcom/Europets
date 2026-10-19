@@ -35,6 +35,7 @@ import SpeciesField from '@/app/_components/SpeciesField';
 import PetAttributeField from '@/app/_components/PetAttributeField';
 import HexfieldCanvas from '@/app/_components/HexfieldCanvas';
 import EcgLine from '@/app/_components/EcgLine';
+import SocialConsentTick from '@/app/_components/SocialConsentTick';
 import { CAT_BREEDS, DOG_BREEDS, CAT_COLORS, DOG_COLORS } from '@/lib/petAttributes';
 import { EMIRATES } from '@/lib/emirates';
 import { classifySpecies } from '@/lib/species';
@@ -109,6 +110,7 @@ export default function IntakePortalPage() {
   const [emiratesId, setEmiratesId] = useState('');
   const [emirate, setEmirate] = useState('');
   const [notes, setNotes] = useState('');
+  const [socialConsent, setSocialConsent] = useState(false);
   const [pets, setPets] = useState([emptyPet()]);
 
   // A blank QR-scan link starts with no client_id — this lets someone
@@ -153,6 +155,7 @@ export default function IntakePortalPage() {
       .then((res) => res.json())
       .then((data) => {
         setRequest(data);
+        if (data?.clients?.social_media_consent) setSocialConsent(true);
         setLoading(false);
       });
     // Doctors only — a client picking a "preferred doctor" should never
@@ -441,6 +444,7 @@ export default function IntakePortalPage() {
         emirates_id: emiratesId,
         emirate,
         notes,
+        social_media_consent: socialConsent,
         patients: newPetsToSubmit,
         selected_patient_id: selectedPatientId,
         ...(wantsAppointment && isCustomSurgery
@@ -1018,6 +1022,8 @@ export default function IntakePortalPage() {
                 )}
               </div>
             )}
+
+            <SocialConsentTick checked={socialConsent} onChange={setSocialConsent} />
 
             <label className="intake-form-notes">
               Anything else we should know? (optional)

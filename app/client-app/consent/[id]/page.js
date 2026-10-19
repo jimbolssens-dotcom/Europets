@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import ConsentText from '@/app/_components/ConsentText';
+import SocialConsentTick from '@/app/_components/SocialConsentTick';
 import HexIcon from '@/app/_components/HexIcon';
 
 export default function ClientAppConsentPage() {
@@ -21,6 +22,7 @@ export default function ClientAppConsentPage() {
   const [request, setRequest] = useState(null);
   const [signedByName, setSignedByName] = useState('');
   const [signedByRelationship, setSignedByRelationship] = useState('');
+  const [socialConsent, setSocialConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -32,6 +34,7 @@ export default function ClientAppConsentPage() {
       })
       .then((data) => {
         setRequest(data);
+        if (data.social_media_consent) setSocialConsent(true);
         setState(data.status === 'pending' ? 'pending' : 'already');
       })
       .catch(() => setState('not_found'));
@@ -48,7 +51,11 @@ export default function ClientAppConsentPage() {
     const res = await fetch(`/api/consent-form-requests/${id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ signed_by_name: signedByName, signed_by_relationship: signedByRelationship }),
+      body: JSON.stringify({
+        signed_by_name: signedByName,
+        signed_by_relationship: signedByRelationship,
+        social_media_consent: socialConsent,
+      }),
     });
     setSubmitting(false);
     if (!res.ok) {
@@ -130,6 +137,7 @@ export default function ClientAppConsentPage() {
             className="client-app-login-input"
           />
         </label>
+        <SocialConsentTick checked={socialConsent} onChange={setSocialConsent} />
         <button type="submit" disabled={submitting}>
           {submitting ? 'Signing...' : 'Sign'}
         </button>

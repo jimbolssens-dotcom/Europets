@@ -26,11 +26,12 @@ import { findAppointmentConflict } from '@/lib/appointmentScheduling';
 import { phoneSearchDigits, clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { ensureWhatsAppNumberOnFile } from '@/lib/whatsappNumberOnFile';
+import { applySocialConsent } from '@/lib/socialConsent';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
     .from('intake_requests')
-    .select('*, clients(id, full_name, patients(id, name, species, breed, current_weight_kg, sex, deceased, rehomed))')
+    .select('*, clients(id, full_name, social_media_consent, patients(id, name, species, breed, current_weight_kg, sex, deceased, rehomed))')
     .eq('id', params.id)
     .single();
 
@@ -120,6 +121,7 @@ async function submit(id, body) {
     requested_duration_minutes,
     custom_surgery_reason,
     preferred_date,
+    social_media_consent,
   } = body;
 
   const { data: existing, error: existingError } = await supabase
@@ -233,6 +235,7 @@ async function submit(id, body) {
       requested_duration_minutes: appointment_type && !isCustomSurgery ? requested_duration_minutes : null,
       custom_surgery_reason: isCustomSurgery ? custom_surgery_reason.trim() : null,
       preferred_date: isCustomSurgery ? preferred_date || null : null,
+      social_media_consent: typeof social_media_consent === 'boolean' ? social_media_consent : null,
       status: 'submitted',
       submitted_at: new Date().toISOString(),
     })
@@ -407,6 +410,7 @@ async function review(id, action, existingClientId, roomId, overrides = {}) {
   if (intake.sent_to_phone) await ensureWhatsAppNumberOnFile(client.id, intake.sent_to_phone, { makeMain: true });
 
   await linkUnmatchedMessagesToClient(client.id);
+  await applySocialConsent(client.id, intake.social_media_consent, 'intake');
 
   const patientRows = (intake.patients || []).map((p) => ({
     client_id: client.id,

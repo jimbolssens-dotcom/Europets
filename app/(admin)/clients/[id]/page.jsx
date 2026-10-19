@@ -277,6 +277,20 @@ export default function ClientDetailPage() {
     }
   }
 
+  async function setSocialConsent(value) {
+    const before = client.social_media_consent ?? null;
+    setClient((c) => ({ ...c, social_media_consent: value }));
+    const res = await fetch(`/api/clients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ social_media_consent: value }),
+    });
+    if (!res.ok) {
+      setClient((c) => ({ ...c, social_media_consent: before }));
+      alert('Could not save the social media consent.');
+    }
+  }
+
   function startEdit() {
     const phones = (client.client_phones || []).map(toEditableRow);
     setEditForm({
@@ -585,6 +599,16 @@ export default function ClientDetailPage() {
           {client.emirate ? ` · ${client.emirate}` : ''}
           {client.emirates_id ? ` · Emirates ID: ${client.emirates_id}` : ''}
           {client.trn ? ` · TRN: ${client.trn}` : ''}{' '}
+          <select
+            className={`social-consent-chip social-consent-${client.social_media_consent === true ? 'yes' : client.social_media_consent === false ? 'no' : 'unasked'}`}
+            value={client.social_media_consent === true ? 'yes' : client.social_media_consent === false ? 'no' : ''}
+            onChange={(e) => setSocialConsent(e.target.value === 'yes' ? true : e.target.value === 'no' ? false : null)}
+            title="May we share photos and videos of their pets on Instagram and Facebook? Asked on the intake and consent forms."
+          >
+            <option value="">📸 Social: not asked</option>
+            <option value="yes">📸 Social: yes</option>
+            <option value="no">📸 Social: no</option>
+          </select>{' '}
           <button type="button" onClick={startEdit}>
             Edit
           </button>

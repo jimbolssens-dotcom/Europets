@@ -43,7 +43,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const body = await request.json();
-  const { visit_id, hospitalization_id, form_type, signed_by_name, signed_by_relationship, staff_witness_id } = body;
+  const { visit_id, hospitalization_id, form_type, signed_by_name, signed_by_relationship, staff_witness_id, social_media_consent } = body;
 
   if (!form_type || !CONSENT_FORM_TYPES.includes(form_type)) {
     return NextResponse.json(
@@ -62,6 +62,7 @@ export async function POST(request) {
     signedByName: signed_by_name,
     signedByRelationship: signed_by_relationship,
     staffWitnessId: staff_witness_id,
+    socialMediaConsent: social_media_consent,
   });
 
   if (result.error) {

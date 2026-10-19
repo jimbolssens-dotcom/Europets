@@ -12588,3 +12588,48 @@ form.card.walkin-inline > .booking-owner-picked {
     gap: 0.6rem;
   }
 }
+
+/* The optional social media consent tick (SocialConsentTick): the box sits
+   at the top of a wrapped two-line label. */
+.social-consent-tick {
+  align-items: flex-start !important;
+}
+.social-consent-tick input {
+  flex: none;
+  width: 1.1rem !important;
+  height: 1.1rem;
+  margin-top: 0.2rem;
+}
+
+/* The WhatsApp consent signing page (app/portal/consent): one field per
+   row, the label above its input. */
+.portal-consent-form {
+  display: grid;
+  gap: 0.75rem;
+}
+.portal-consent-form > label:not(.social-consent-tick) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.portal-consent-form > button {
+  justify-self: start;
+}
+
+/* The client page's 📸 Social consent chip: a small select on the contact
+   line, coloured by the answer. */
+select.social-consent-chip {
+  width: auto !important;
+  max-width: max-content;
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid #e2ded8;
+  background: #f2efea;
+  color: #6b6660;
+  vertical-align: middle;
+}
+select.social-consent-chip.social-consent-yes { background: #e3f6ee; border-color: #bfe8d6; color: #11795a; }
+select.social-consent-chip.social-consent-no { background: #fdecec; border-color: #f4caca; color: #a12a2a; }

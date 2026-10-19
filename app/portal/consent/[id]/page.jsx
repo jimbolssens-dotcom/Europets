@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import ConsentText from '@/app/_components/ConsentText';
+import SocialConsentTick from '@/app/_components/SocialConsentTick';
 
 export default function ConsentSigningPage() {
   const { id } = useParams();
@@ -17,6 +18,7 @@ export default function ConsentSigningPage() {
   const [request, setRequest] = useState(null);
   const [signedByName, setSignedByName] = useState('');
   const [signedByRelationship, setSignedByRelationship] = useState('');
+  const [socialConsent, setSocialConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -28,6 +30,7 @@ export default function ConsentSigningPage() {
       })
       .then((data) => {
         setRequest(data);
+        if (data.social_media_consent) setSocialConsent(true);
         setState(data.status === 'pending' ? 'pending' : 'already');
       })
       .catch(() => setState('not_found'));
@@ -44,7 +47,11 @@ export default function ConsentSigningPage() {
     const res = await fetch(`/api/consent-form-requests/${id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ signed_by_name: signedByName, signed_by_relationship: signedByRelationship }),
+      body: JSON.stringify({
+        signed_by_name: signedByName,
+        signed_by_relationship: signedByRelationship,
+        social_media_consent: socialConsent,
+      }),
     });
     setSubmitting(false);
     if (!res.ok) {
@@ -122,7 +129,7 @@ export default function ConsentSigningPage() {
 
         <ConsentText text={request.form_text} />
 
-        <form onSubmit={handleSubmit}>
+        <form className="portal-consent-form" onSubmit={handleSubmit}>
           {error && <p className="error">{error}</p>}
           <label>
             Full name (this is your signature)
@@ -141,6 +148,7 @@ export default function ConsentSigningPage() {
               placeholder="e.g. Owner"
             />
           </label>
+          <SocialConsentTick checked={socialConsent} onChange={setSocialConsent} />
           <button type="submit" disabled={submitting}>
             {submitting ? 'Signing...' : 'Sign'}
           </button>

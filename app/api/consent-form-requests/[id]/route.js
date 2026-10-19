@@ -38,8 +38,14 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: context.error }, { status: context.status });
   }
 
+  // Only whether to show the tick already ticked: nothing else about the client.
+  const { data: client } = context.clientId
+    ? await supabase.from('clients').select('social_media_consent').eq('id', context.clientId).maybeSingle()
+    : { data: null };
+
   return NextResponse.json({
     status: data.status,
+    social_media_consent: client?.social_media_consent === true,
     form_type: data.form_type,
     form_label: CONSENT_FORM_LABELS[data.form_type] || data.form_type,
     patient_name: context.patient?.name || null,
@@ -81,6 +87,7 @@ export async function POST(request, { params }) {
     signedByName,
     signedByRelationship,
     staffWitnessId: null,
+    socialMediaConsent: body.social_media_consent,
   });
 
   if (result.error) {

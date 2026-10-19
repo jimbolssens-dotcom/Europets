@@ -24,6 +24,7 @@ import { ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
 import { ADMINISTRATION_METHOD_LABELS, resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { CONSENT_FORM_LABELS, buildConsentFormText } from '@/lib/consentTemplates';
 import ConsentText from '@/app/_components/ConsentText';
+import SocialConsentTick from '@/app/_components/SocialConsentTick';
 import { printPdfUrl } from '@/lib/printPdf';
 import { appOrigin } from '@/lib/appOrigin';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
@@ -143,6 +144,7 @@ export default function HospitalizationDetailPage() {
     signed_by_name: '',
     signed_by_relationship: '',
     staff_witness_id: '',
+    social_media_consent: false,
   });
   const [consentSubmitting, setConsentSubmitting] = useState(false);
   const [consentError, setConsentError] = useState(null);
@@ -568,7 +570,7 @@ export default function HospitalizationDetailPage() {
     if (!res.ok) {
       setConsentError(data.error || 'Failed to save consent form');
     } else {
-      setConsentForm({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '' });
+      setConsentForm({ signed_by_name: '', signed_by_relationship: '', staff_witness_id: '', social_media_consent: false });
       loadConsentForms();
       printPdfUrl(`/api/consent-forms/${data.id}/pdf`, {
         onFallback: () => setPreviewPdfUrl(`/api/consent-forms/${data.id}/pdf`),
@@ -969,6 +971,11 @@ export default function HospitalizationDetailPage() {
             </option>
           ))}
         </select>
+        <SocialConsentTick
+          staff
+          checked={consentForm.social_media_consent}
+          onChange={(v) => setConsentForm({ ...consentForm, social_media_consent: v })}
+        />
         <div className="consent-form-actions">
           <button type="submit" disabled={consentSubmitting}>
             {consentSubmitting ? 'Saving...' : 'Sign'}
