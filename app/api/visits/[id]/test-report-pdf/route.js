@@ -12,7 +12,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { buildProcedureReportPdf } from '@/lib/procedureReportPdf';
-import { isImageAttachment, isPdfAttachment, fetchAttachmentBytes, attachedLabReportText, appendPdfAttachments } from '@/lib/pdfAttachments';
+import { isImageAttachment, isPdfAttachment, fetchAttachmentBytes, attachedLabReportText, loadLabPdfs, appendLabPdfs } from '@/lib/pdfAttachments';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -50,13 +50,17 @@ export async function GET(request, { params }) {
   const photos = (await Promise.all(imageAttachments.map(fetchAttachmentBytes))).filter(Boolean);
 
   // A lab result attached as a PDF (not typed in) is added to the end of
-  // this report, and its section points to it instead of "No result".
+  // this report, and its section points to it instead of "No result". One
+  // that can't be added (an encrypted lab PDF, say) is pointed to as a
+  // separate file instead.
   const labPdfs = (attachments || []).filter(isPdfAttachment);
+  const loadedLabs = await loadLabPdfs(labPdfs);
+  const separate = loadedLabs.filter((l) => !l.usable).map((l) => l.attachment);
   const sections = (diagnostics || []).map((d) => {
     const files = labPdfs.filter((a) => a.entity_id === d.id);
     return {
       label: d.goods_services?.name || d.description || 'Test',
-      text: [d.result, files.length ? attachedLabReportText(files) : null].filter(Boolean).join('\n\n') || 'No result recorded yet.',
+      text: [d.result, files.length ? attachedLabReportText(files, separate) : null].filter(Boolean).join('\n\n') || 'No result recorded yet.',
     };
   });
   if (visit.test_results?.trim()) sections.unshift({ label: 'Consult test notes', text: visit.test_results });
@@ -70,7 +74,7 @@ export async function GET(request, { params }) {
     sections,
     photos,
   });
-  const fullPdf = await appendPdfAttachments(pdfBytes, labPdfs);
+  const fullPdf = await appendLabPdfs(pdfBytes, loadedLabs);
 
   return new NextResponse(Buffer.from(fullPdf), {
     headers: {
