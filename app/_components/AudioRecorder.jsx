@@ -32,6 +32,11 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
   const [expanded, setExpanded] = useState({});
   const [checkErrors, setCheckErrors] = useState({});
   const [retryingId, setRetryingId] = useState(null);
+  // Recordings that wouldn't upload, even after the automatic retries: the
+  // audio stays here (in memory) to send again or save to the computer, so
+  // a dropped connection never loses a consult's dictation.
+  // { key, blob, sent, recordedAt, error, sending }
+  const [unsent, setUnsent] = useState([]);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   // Recordings already finished as of the initial load (or already
@@ -180,11 +185,17 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
         // decode the file at all.
         const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
         setUploading(true);
+        const sent = {};
         try {
-          await uploadRecording({ entityType, entityId, blob });
+          await uploadRecording({ entityType, entityId, blob, sent });
           load();
         } catch (err) {
-          setError(err.message);
+          if (err.saved) {
+            load();
+          } else {
+            const key = `${Date.now()}`;
+            setUnsent((prev) => [...prev, { key, blob, sent, recordedAt: new Date().toISOString(), error: err.message, sending: false }]);
+          }
         }
         setUploading(false);
       };
@@ -195,6 +206,47 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
       setError(describeMicrophoneError(err));
     }
   }
+
+  async function sendAgain(key) {
+    const item = unsent.find((u) => u.key === key);
+    if (!item || item.sending) return;
+    setUnsent((prev) => prev.map((u) => (u.key === key ? { ...u, sending: true, error: null } : u)));
+    try {
+      await uploadRecording({ entityType, entityId, blob: item.blob, sent: item.sent });
+      setUnsent((prev) => prev.filter((u) => u.key !== key));
+      load();
+    } catch (err) {
+      if (err.saved) {
+        setUnsent((prev) => prev.filter((u) => u.key !== key));
+        load();
+      } else {
+        setUnsent((prev) => prev.map((u) => (u.key === key ? { ...u, sending: false, error: err.message } : u)));
+      }
+    }
+  }
+
+  function saveToComputer(item) {
+    const ext = (item.blob.type || '').includes('mp4') ? 'm4a' : (item.blob.type || '').includes('ogg') ? 'ogg' : 'webm';
+    const url = URL.createObjectURL(item.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dictation-${item.recordedAt.slice(0, 16).replace(/[:T]/g, '-')}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+
+  // Leaving the page would throw away audio that never uploaded: ask first.
+  useEffect(() => {
+    if (!unsent.length) return undefined;
+    const warn = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [unsent.length]);
 
   function stopRecording() {
     mediaRecorderRef.current?.stop();
@@ -286,6 +338,30 @@ export default function AudioRecorder({ entityType, entityId, onExtractedFields,
           {refreshing ? 'Refreshing...' : '↻ Refresh'}
         </button>
       </div>
+
+      {unsent.length > 0 && (
+        <ul className="recorder-list">
+          {unsent.map((u) => (
+            <li key={u.key} className="recorder-unsent">
+              <div className="recorder-item-header">
+                <span>{new Date(u.recordedAt).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' })}</span>
+                <span className="recorder-status recorder-status-error">Not uploaded</span>
+                <span className="recorder-unsent-actions">
+                  <button type="button" onClick={() => sendAgain(u.key)} disabled={u.sending}>
+                    {u.sending ? 'Uploading...' : '⟳ Retry'}
+                  </button>
+                  <button type="button" className="secondary" onClick={() => saveToComputer(u)}>
+                    ⬇ Save
+                  </button>
+                </span>
+              </div>
+              <p className="recorder-unsent-note">
+                {u.error ? `${u.error} ` : ''}The audio is kept here: retry or save it. Don&apos;t close the page until it&apos;s up.
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {items.length > 0 && (
         <ul className="recorder-list">

@@ -4500,6 +4500,13 @@ button.secondary:hover {
   font-size: 0.75rem;
 }
 
+.recorder-unsent { border: 1px solid #f0b8c2; }
+.recorder-unsent .recorder-item-header { gap: 0.5rem; }
+.recorder-unsent .recorder-item-header > span { white-space: nowrap; }
+.recorder-unsent-actions { margin-left: auto; display: inline-flex; gap: 0.35rem; }
+.recorder-item-header .recorder-unsent-actions button { margin-left: 0; white-space: nowrap; }
+.recorder-unsent-note { margin: 0; font-size: 0.85rem; color: #6b2a35; }
+
 .recorder-audio-deleted {
   margin-top: 0.5rem;
   color: #777;
