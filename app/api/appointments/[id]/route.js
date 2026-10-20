@@ -23,9 +23,11 @@
 //        lib/appointmentScheduling.js and app/api/appointments/route.js),
 //        excluding the appointment from its own conflict check.
 //        duration_minutes: consult/video in 15-minute steps (default 15,
-//        see consultDurationError), surgery in 10, meeting in 5 — same
-//        rules as booking one. Switching type without a duration falls
-//        back to that type's default (15 / one increment / 30 minutes).
+//        see consultDurationError), surgery in 10, meeting in 5, grooming
+//        in 15 — same rules as booking one. Switching type without a
+//        duration falls back to that type's default (15 / one increment /
+//        30 / 60 minutes). Grooming (migration 208) always stays in the
+//        Grooming room with no vet, and nothing else can go there.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -36,6 +38,8 @@ import {
   SURGERY_INCREMENT_MINUTES,
   MEETING_DEFAULT_DURATION_MINUTES,
   MEETING_MIN_DURATION_MINUTES,
+  GROOMING_DEFAULT_DURATION_MINUTES,
+  groomingDurationError,
   findAppointmentConflict,
   checkStaffRoster,
 } from '@/lib/appointmentScheduling';
@@ -145,9 +149,18 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: `cannot edit a ${current.status} appointment` }, { status: 409 });
   }
 
-  const nextRoomId = room_id || current.room_id;
-  const nextVetId = vet_id !== undefined ? vet_id || null : current.vet_id;
-  const nextType = ['surgery', 'consult', 'meeting', 'video'].includes(type) ? type : current.type;
+  const nextType = ['surgery', 'consult', 'meeting', 'video', 'grooming'].includes(type) ? type : current.type;
+  const isGrooming = nextType === 'grooming';
+  // Grooming lives in its own room with no vet; nothing else goes there.
+  const { data: groomingRoom } = await supabase.from('rooms').select('id').eq('type', 'grooming').limit(1).maybeSingle();
+  let nextRoomId = room_id || current.room_id;
+  if (isGrooming) {
+    if (!groomingRoom) return NextResponse.json({ error: 'There is no Grooming room set up' }, { status: 500 });
+    nextRoomId = groomingRoom.id;
+  } else if (groomingRoom && nextRoomId === groomingRoom.id) {
+    return NextResponse.json({ error: 'Only grooming can go in the Grooming room. Pick another room.' }, { status: 400 });
+  }
+  const nextVetId = isGrooming ? null : vet_id !== undefined ? vet_id || null : current.vet_id;
   const nextReason = reason !== undefined ? reason || null : current.reason;
 
   let nextPatientId = current.patient_id;
@@ -179,6 +192,14 @@ export async function PATCH(request, { params }) {
       nextDuration = CONSULT_DURATION_MINUTES;
     }
     const durationError = consultDurationError(nextDuration);
+    if (durationError) return NextResponse.json({ error: durationError }, { status: 400 });
+  } else if (isGrooming) {
+    if (duration_minutes !== undefined) {
+      nextDuration = Number(duration_minutes);
+    } else if (current.type !== 'grooming') {
+      nextDuration = GROOMING_DEFAULT_DURATION_MINUTES;
+    }
+    const durationError = groomingDurationError(nextDuration);
     if (durationError) return NextResponse.json({ error: durationError }, { status: 400 });
   } else if (nextType === 'surgery') {
     if (duration_minutes !== undefined) {
@@ -216,13 +237,17 @@ export async function PATCH(request, { params }) {
   }
   const nextEndTime = new Date(nextStartTime.getTime() + nextDuration * 60000);
 
-  const { conflict, error: conflictError } = await findAppointmentConflict(supabase, {
-    roomId: nextRoomId,
-    vetId: nextVetId,
-    startTime: nextStartTime,
-    endTime: nextEndTime,
-    excludeId: params.id,
-  });
+  // Grooming bookings may overlap (whoever is free does them), so they
+  // skip the clash check.
+  const { conflict, error: conflictError } = isGrooming
+    ? { conflict: null }
+    : await findAppointmentConflict(supabase, {
+        roomId: nextRoomId,
+        vetId: nextVetId,
+        startTime: nextStartTime,
+        endTime: nextEndTime,
+        excludeId: params.id,
+      });
   if (conflictError) {
     return NextResponse.json({ error: conflictError.message }, { status: 500 });
   }

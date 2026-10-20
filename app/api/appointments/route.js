@@ -12,6 +12,9 @@
 //     call, created at check-in (see POST /api/visits deriving is_video
 //     from this appointment's type)
 //   - surgery appointments run in 10-minute increments (10, 20, 30, ...)
+//   - grooming (migration 208) has no vet or staff member at all, always
+//     lands in the Grooming room, and several can overlap (whoever is free
+//     does it), so it skips the room/vet clash check and the roster block
 //   - a room (and a vet) can't be double-booked for an overlapping slot
 //   - booking a vet for a date+shift the staff roster (staff_roster_entries
 //     — actual dated presence, see app/(admin)/staff/roster) shows other
@@ -32,6 +35,8 @@ import {
   SURGERY_INCREMENT_MINUTES,
   MEETING_DEFAULT_DURATION_MINUTES,
   MEETING_MIN_DURATION_MINUTES,
+  GROOMING_DEFAULT_DURATION_MINUTES,
+  groomingDurationError,
   findAppointmentConflict,
   checkStaffRoster,
 } from '@/lib/appointmentScheduling';
@@ -109,11 +114,19 @@ export async function POST(request) {
     return NextResponse.json({ error: 'start_time is required' }, { status: 400 });
   }
 
-  const appointmentType =
-    type === 'surgery' ? 'surgery' : type === 'meeting' ? 'meeting' : type === 'video' ? 'video' : 'consult';
+  const appointmentType = ['surgery', 'meeting', 'video', 'grooming'].includes(type) ? type : 'consult';
+  const isGrooming = appointmentType === 'grooming';
+
+  // Grooming always goes in the Grooming room (migration 208).
+  let roomId = room_id;
+  if (isGrooming) {
+    const { data: groomingRoom } = await supabase.from('rooms').select('id').eq('type', 'grooming').limit(1).maybeSingle();
+    if (!groomingRoom) return NextResponse.json({ error: 'There is no Grooming room set up' }, { status: 500 });
+    roomId = groomingRoom.id;
+  }
 
   // A video consult has no physical room — everything else still needs one.
-  if (appointmentType !== 'video' && !room_id) {
+  if (appointmentType !== 'video' && !roomId) {
     return NextResponse.json({ error: 'room_id is required' }, { status: 400 });
   }
 
@@ -126,6 +139,10 @@ export async function POST(request) {
   if (appointmentType === 'consult' || appointmentType === 'video') {
     duration = duration_minutes !== undefined && duration_minutes !== null && duration_minutes !== '' ? Number(duration_minutes) : CONSULT_DURATION_MINUTES;
     const durationError = consultDurationError(duration);
+    if (durationError) return NextResponse.json({ error: durationError }, { status: 400 });
+  } else if (isGrooming) {
+    duration = Number(duration_minutes) || GROOMING_DEFAULT_DURATION_MINUTES;
+    const durationError = groomingDurationError(duration);
     if (durationError) return NextResponse.json({ error: durationError }, { status: 400 });
   } else if (appointmentType === 'surgery') {
     duration = Number(duration_minutes) || SURGERY_INCREMENT_MINUTES;
@@ -168,12 +185,11 @@ export async function POST(request) {
   }
 
   // conflict check: room and vet can't overlap with an existing booked slot
-  const { conflict, error: conflictError } = await findAppointmentConflict(supabase, {
-    roomId: room_id,
-    vetId: vet_id,
-    startTime,
-    endTime,
-  });
+  // (grooming has neither to clash over)
+  const vetId = isGrooming ? null : vet_id || null;
+  const { conflict, error: conflictError } = isGrooming
+    ? { conflict: null }
+    : await findAppointmentConflict(supabase, { roomId, vetId, startTime, endTime });
 
   if (conflictError) {
     return NextResponse.json({ error: conflictError.message }, { status: 500 });
@@ -192,7 +208,7 @@ export async function POST(request) {
   // unlike the softer schedule warning below. A day with zero roster rows
   // for anyone is left alone (nothing to check yet), so this doesn't brick
   // every booking before staff start using the roster.
-  const rosterResult = await checkStaffRoster(supabase, { vetId: vet_id, date, shift });
+  const rosterResult = await checkStaffRoster(supabase, { vetId, date, shift });
   if (rosterResult.error) {
     return NextResponse.json({ error: rosterResult.error.message }, { status: 500 });
   }
@@ -201,7 +217,7 @@ export async function POST(request) {
       {
         error: `${rosterResult.vetName} isn't on the staff roster for that ${shift} (${date}).`,
         code: 'not_on_roster',
-        vet_id,
+        vet_id: vetId,
         vet_name: rosterResult.vetName,
         date,
         shift,
@@ -216,8 +232,8 @@ export async function POST(request) {
       {
         patient_id: patient_id || null,
         client_id: clientId,
-        room_id: room_id || null,
-        vet_id: vet_id || null,
+        room_id: roomId || null,
+        vet_id: vetId,
         type: appointmentType,
         start_time: startTime.toISOString(),
         duration_minutes: duration,

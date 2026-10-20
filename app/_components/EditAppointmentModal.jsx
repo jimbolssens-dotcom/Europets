@@ -42,6 +42,10 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
   const [reason, setReason] = useState(appointment.reason || '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  // Grooming (migration 208) goes in the Grooming room with no vet; the
+  // server keeps it there, and nothing else can be put in that room.
+  const groomingRoom = rooms.find((r) => r.type === 'grooming');
+  const isGrooming = type === 'grooming';
 
   useEffect(() => {
     if (!ownerId) {
@@ -55,7 +59,7 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if ((type !== 'meeting' && !patientId) || (!roomId && type !== 'video')) {
+    if ((type !== 'meeting' && !patientId) || (!roomId && type !== 'video' && !isGrooming)) {
       setError(type === 'meeting' ? 'Select a room' : type === 'video' ? 'Select a patient' : 'Select a patient and room');
       return;
     }
@@ -67,8 +71,8 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
 
     const result = await onSave({
       patient_id: type === 'meeting' ? null : patientId,
-      room_id: roomId || null,
-      vet_id: vetId || null,
+      room_id: isGrooming ? groomingRoom?.id || null : roomId || null,
+      vet_id: isGrooming ? null : vetId || null,
       type,
       duration_minutes: Number(duration) || undefined,
       reason,
@@ -150,12 +154,14 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
 
         {type === 'video' ? (
           <p className="visit-meta">🎥 No room needed — video consult</p>
+        ) : isGrooming ? (
+          <p className="visit-meta">✂️ Grooming column, no staff assigned</p>
         ) : (
           <label>
             Room
             <select value={roomId} onChange={(e) => setRoomId(e.target.value)} required>
               <option value="">Select room...</option>
-              {rooms.map((r) => (
+              {rooms.filter((r) => r.type !== 'grooming').map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
                 </option>
@@ -164,7 +170,7 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
           </label>
         )}
 
-        <label>
+        {!isGrooming && <label>
           {type === 'meeting' ? 'Staff' : 'Vet'}
           <select value={vetId} onChange={(e) => setVetId(e.target.value)}>
             <option value="">Unassigned</option>
@@ -174,7 +180,7 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
               </option>
             ))}
           </select>
-        </label>
+        </label>}
 
         <label>
           Type
@@ -185,12 +191,16 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
               const next = e.target.value;
               const step = next === 'surgery' ? 10 : next === 'meeting' ? 5 : 15;
               setType(next);
-              setDuration((d) => String(Math.max(step, Math.ceil((Number(d) || step) / step) * step)));
+              if (next === 'grooming' && type !== 'grooming') setDuration('60');
+              else setDuration((d) => String(Math.max(step, Math.ceil((Number(d) || step) / step) * step)));
+              // Leaving grooming: pick a real room again.
+              if (type === 'grooming' && next !== 'grooming') setRoomId('');
             }}
           >
             <option value="consult">Consult</option>
             <option value="video">Video Consult</option>
             <option value="surgery">Surgery (10-min increments)</option>
+            {groomingRoom && <option value="grooming">✂️ Grooming (no staff needed)</option>}
             <option value="meeting">Staff Meeting / Other</option>
           </select>
         </label>
@@ -203,6 +213,18 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
                 <option key={m} value={String(m)}>{m} min</option>
               ))}
               {![15, 30, 45, 60, 90, 120].includes(Number(duration)) && <option value={duration}>{duration} min</option>}
+            </select>
+          </label>
+        )}
+
+        {isGrooming && (
+          <label>
+            Length
+            <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+              {[30, 45, 60, 90, 120, 180, 240].map((m) => (
+                <option key={m} value={String(m)}>{m < 60 ? `${m} min` : `${m / 60} hour${m === 60 ? '' : 's'}`}</option>
+              ))}
+              {![30, 45, 60, 90, 120, 180, 240].includes(Number(duration)) && <option value={duration}>{duration} min</option>}
             </select>
           </label>
         )}
@@ -235,7 +257,7 @@ export default function EditAppointmentModal({ appointment, rooms, vets, staffLi
           <input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder={type === 'meeting' ? 'Meeting note / details (optional)' : 'Reason for visit (optional)'}
+            placeholder={type === 'meeting' ? 'Meeting note / details (optional)' : isGrooming ? 'What to do (full groom, bath, nails...)' : 'Reason for visit (optional)'}
           />
         </label>
 

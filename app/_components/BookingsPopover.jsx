@@ -28,7 +28,7 @@ const RANGES = [
   { key: 'tomorrow', label: 'Tomorrow', days: [1] },
   { key: 'week', label: 'Next 7 days', days: [0, 1, 2, 3, 4, 5, 6] },
 ];
-const TYPE_LABELS = { consult: 'Consult', surgery: 'Surgery', video: 'Video' };
+const TYPE_LABELS = { consult: 'Consult', surgery: 'Surgery', video: 'Video', grooming: '✂️ Grooming' };
 const INACTIVE = new Set(['cancelled', 'no_show']);
 
 export default function BookingsPopover({
@@ -126,7 +126,10 @@ export default function BookingsPopover({
     const status = rowStatus(a);
     const busy = openingConsultId === a.id;
     const items = [];
-    if (status === 'booked' && a.patient_id && !openVisitFor(a)) {
+    // Grooming has no consult to open (migration 208).
+    if (a.type === 'grooming') {
+      // nothing to check in to
+    } else if (status === 'booked' && a.patient_id && !openVisitFor(a)) {
       items.push(<button key="go" type="button" className="bookings-act go" disabled={busy} onClick={() => onOpenRecord(a)} title="Check in and open the consult / day procedure">{busy ? '…' : 'Check in'}</button>);
     } else if (status === 'checked_in' || status === 'complete' || openVisitFor(a)) {
       items.push(<button key="go" type="button" className="bookings-act go" disabled={busy} onClick={() => onOpenRecord(a)} title="Open the consult / day procedure">{busy ? '…' : a.type === 'surgery' ? 'View procedure' : 'View consult'}</button>);

@@ -16,7 +16,7 @@ import { buildStaffColorMap, UNASSIGNED_STAFF_COLOR, INACTIVE_APPOINTMENT_COLOR 
 import { BOOKING_SOURCE_BADGES } from '@/lib/appointmentBooking';
 import { readViewCache, useRestoredView, writeViewCache } from '@/lib/viewCache';
 
-const TYPE_ICONS = { consult: '🩺', video: '🎥', surgery: '📋', meeting: '👥' };
+const TYPE_ICONS = { consult: '🩺', video: '🎥', surgery: '📋', meeting: '👥', grooming: '✂️' };
 const SWIPE_MIN_DISTANCE = 60;
 
 function pad(n) {
