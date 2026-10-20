@@ -13,6 +13,7 @@ import BookingsPopover from '@/app/_components/BookingsPopover';
 import { buildStaffColorMap, colorForAppointment, UNASSIGNED_STAFF_COLOR, INACTIVE_APPOINTMENT_COLOR, GROOMING_COLOR } from '@/lib/staffColors';
 import { BOOKING_SOURCE_BADGES } from '@/lib/appointmentBooking';
 import PhoneTop from '@/app/_components/PhoneTop';
+import { sortScheduleRooms } from '@/lib/scheduleRoomOrder';
 
 const OPEN_HOUR = 8;
 const CLOSE_HOUR = 19;
@@ -267,7 +268,7 @@ function AppointmentsPageInner() {
   useLayoutEffect(() => {
     const cached = readLayoutCache();
     if (!cached) return;
-    setRooms(cached.rooms);
+    setRooms(sortScheduleRooms(cached.rooms));
     setVets(cached.vets || []);
     setStaffList(cached.staff || []);
     if (cached.rooms.length) setRoomsKnown(true);
@@ -280,7 +281,7 @@ function AppointmentsPageInner() {
       fetch('/api/staff').then((res) => res.json()),
     ]).then(([roomsData, vetsData, staffData]) => {
       const fresh = {
-        rooms: Array.isArray(roomsData) ? roomsData : [],
+        rooms: Array.isArray(roomsData) ? sortScheduleRooms(roomsData) : [],
         vets: Array.isArray(vetsData) ? vetsData : [],
         staff: Array.isArray(staffData) ? staffData : [],
       };
