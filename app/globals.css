@@ -12717,6 +12717,11 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .social-media-cover .social-media-pick { border-color: var(--pink); }
 .social-media-out .social-media-pick { opacity: 0.35; }
 .social-media figcaption { display: flex; gap: 0.25rem; align-items: center; flex-wrap: wrap; margin-top: 0.25rem; }
+.social-headline { display: flex; align-items: flex-end; gap: 0.5rem; }
+.social-headline-field { flex: 1; min-width: 0; display: grid !important; gap: 0.25rem; }
+.social-headline-field input { width: 100% !important; font-weight: 700; }
+.social-headline-view { white-space: nowrap; font-weight: 400; }
+.social-headline .social-link-button { white-space: nowrap; padding-bottom: 0.55rem !important; }
 .social-media-note { font-size: 0.75rem; color: #a12a2a; margin-top: 0.15rem; }
 .social-seg { display: flex; background: #f2efea; border-radius: 999px; padding: 3px; gap: 3px; }
 .social-seg button { flex: 1; background: none; color: #6b6660; border-radius: 999px; padding: 0.35rem; font-size: 0.85rem; font-weight: 600; }

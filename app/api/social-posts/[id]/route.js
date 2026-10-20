@@ -3,7 +3,7 @@
 //          AI's notes, and whether the owner has agreed to social media.
 // PATCH -> { media, story, patient_id } while uploading, or
 //          { action: 'save' | 'approve' | 'posted' | 'reopen' | 'unschedule' | 'discard',
-//            caption_instagram, caption_facebook, cover_index, media, staff_id }
+//            caption_instagram, caption_facebook, cover_headline, cover_index, media, staff_id }
 //
 // Approving checks the owner's consent (lib/socialPosts.js) on the server
 // too, not only in the page. Server-only table (migration 202).
@@ -12,6 +12,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { publicUrl } from '@/lib/socialDraft';
 import { approvalBlocker, postConsent } from '@/lib/socialPosts';
+import { cleanHeadline } from '@/lib/socialCoverLayout';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +76,7 @@ export async function PATCH(request, { params }) {
   if (typeof body.caption_facebook === 'string') update.caption_facebook = body.caption_facebook;
   if (Number.isInteger(body.cover_index)) update.cover_index = body.cover_index;
   if (typeof body.story === 'string') update.story = body.story.trim() || null;
+  if (typeof body.cover_headline === 'string') update.cover_headline = cleanHeadline(body.cover_headline) || null;
 
   const action = body.action || 'save';
   if (action === 'approve') {

@@ -1,7 +1,9 @@
 // app/(admin)/social/[id]/page.jsx
 // One social post (migration 202): the AI's draft from the staff photos
 // (lib/socialDraft.js), which staff can edit, re-order the cover of, leave
-// photos out of, redo or approve. Once approved, and until Meta is
+// photos out of, redo or approve. The cover photo carries a short headline
+// the AI wrote (lib/socialCover.js), shown live on the cover's thumbnail
+// while staff edit it. Once approved, and until Meta is
 // connected (lib/metaSocial.js, app/(admin)/social/connect) an approved
 // post goes out now or at a set time; otherwise it's posted by hand: copy
 // the caption, share or download the files, then mark it as posted.
@@ -41,11 +43,22 @@ export default function SocialPostPage() {
   const [conn, setConn] = useState(null);
   const [targets, setTargets] = useState({ instagram: true, facebook: true });
   const [laterAt, setLaterAt] = useState('');
+  const [headline, setHeadline] = useState('');
+  // What the cover preview was last drawn with: follows the field after a
+  // short pause, so it isn't redrawn on every key.
+  const [shownHeadline, setShownHeadline] = useState('');
 
   function apply(data) {
     setPost(data);
     setCaptions({ instagram: data.caption_instagram || '', facebook: data.caption_facebook || '' });
+    setHeadline(data.cover_headline || '');
+    setShownHeadline(data.cover_headline || '');
   }
+
+  useEffect(() => {
+    const t = setTimeout(() => setShownHeadline(headline), 700);
+    return () => clearTimeout(t);
+  }, [headline]);
 
   useEffect(() => {
     fetch(`/api/social-posts/${id}`)
@@ -84,7 +97,7 @@ export default function SocialPostPage() {
   }
 
   const editable = post && (post.status === 'draft' || post.status === 'new');
-  const edits = () => ({ caption_instagram: captions.instagram, caption_facebook: captions.facebook });
+  const edits = () => ({ caption_instagram: captions.instagram, caption_facebook: captions.facebook, cover_headline: headline });
 
   function setCover(i) {
     if (!editable || post.media[i].excluded) return;
@@ -99,7 +112,10 @@ export default function SocialPostPage() {
   }
 
   async function redo() {
-    const edited = captions.instagram !== (post.ai_caption_instagram || '') || captions.facebook !== (post.ai_caption_facebook || '');
+    const edited =
+      captions.instagram !== (post.ai_caption_instagram || '') ||
+      captions.facebook !== (post.ai_caption_facebook || '') ||
+      headline !== (post.ai_cover_headline || '');
     if (edited && !confirm('Write a new draft? Your edits to this one will be replaced.')) return;
     setBusy('redo');
     setError(null);
@@ -189,6 +205,9 @@ export default function SocialPostPage() {
   if (!post) return <p className="visit-meta">Loading...</p>;
 
   const chip = CONSENT_CHIP[post.consent];
+  const coverItem = post.media[post.cover_index];
+  const coverIsPhoto = coverItem && !coverItem.excluded && coverItem.kind === 'image';
+  const coverUrl = (h) => `/api/social-posts/${id}/cover?i=${post.cover_index}&h=${encodeURIComponent(h)}`;
   const processing = post.publish_state?.instagram?.status === 'processing' && !post.publish_error;
   const scheduled = !!post.scheduled_for && !post.publish_error && new Date(post.scheduled_for).getTime() > Date.now() - 60 * 1000;
 
@@ -229,7 +248,11 @@ export default function SocialPostPage() {
           {post.media.map((m, i) => (
             <figure key={m.path} className={`social-media${i === post.cover_index ? ' social-media-cover' : ''}${m.excluded ? ' social-media-out' : ''}`}>
               <button type="button" className="social-media-pick" onClick={() => setCover(i)} disabled={!editable} title={editable ? 'Use as the cover' : undefined}>
-                {m.kind === 'video' ? <video src={m.url} poster={m.preview_path ? m.preview_url : undefined} muted playsInline controls={!editable} /> : <img src={m.preview_url} alt="" />}
+                {m.kind === 'video' ? (
+                  <video src={m.url} poster={m.preview_path ? m.preview_url : undefined} muted playsInline controls={!editable} />
+                ) : (
+                  <img src={i === post.cover_index && shownHeadline.trim() ? coverUrl(shownHeadline) : m.preview_url} alt="" />
+                )}
               </button>
               <figcaption>
                 {i === post.cover_index && !m.excluded && <span className="social-chip social-chip-pink">Cover</span>}
@@ -244,6 +267,37 @@ export default function SocialPostPage() {
             </figure>
           ))}
         </div>
+
+        {coverIsPhoto && (editable || headline) && (
+          <div className="social-headline">
+            <label className="social-headline-field">
+              <span className="social-field-label">
+                Text on the cover{' '}
+                <a href={coverUrl(headline)} target="_blank" rel="noopener noreferrer" className="visit-meta social-headline-view">
+                  🔍 View
+                </a>
+              </span>
+              <input
+                type="text"
+                value={headline}
+                maxLength={60}
+                onChange={(e) => setHeadline(e.target.value)}
+                readOnly={!editable}
+                placeholder="No text: the photo goes out as it is"
+              />
+            </label>
+            {editable && headline && (
+              <button type="button" className="social-link-button" onClick={() => setHeadline('')}>
+                No text
+              </button>
+            )}
+            {editable && !headline && post.ai_cover_headline && (
+              <button type="button" className="social-link-button" onClick={() => setHeadline(post.ai_cover_headline)}>
+                Use the AI&apos;s
+              </button>
+            )}
+          </div>
+        )}
 
         {post.ai_notes && <div className="social-ai">✨ {post.ai_notes}</div>}
         {post.ai_error && !post.caption_instagram && <p className="error">The AI couldn&apos;t write this one yet. Tap ↻ Redo to try again.</p>}
@@ -298,7 +352,7 @@ export default function SocialPostPage() {
                 Discard
               </button>
             </div>
-            <p className="visit-meta">Edit the caption right in the box. What you approve teaches the AI how we sound.</p>
+            <p className="visit-meta">Edit the caption and the cover text right here. What you approve teaches the AI how we sound.</p>
           </>
         )}
 
