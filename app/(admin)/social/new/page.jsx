@@ -1,12 +1,13 @@
 // app/(admin)/social/new/page.jsx
 // Staff take or pick real photos and videos for a social media post,
 // straight from their phone's camera or gallery (lib/socialUpload.js), with
-// one line about what happened and, optionally, the patient in them. "✨ Make the post" then has the AI
-// draft the captions (lib/socialDraft.js) and opens the draft.
+// one line about what happened and, optionally, the patient in them.
+// "✨ Make the post" then has the AI draft the captions (lib/socialDraft.js)
+// and opens the draft.
 
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import { uploadSocialFile, MAX_UPLOAD_BYTES } from '@/lib/socialUpload';
@@ -33,6 +34,10 @@ function NewSocialPostForm() {
   const [ownerPets, setOwnerPets] = useState(null);
   const [step, setStep] = useState(null);
   const [error, setError] = useState(null);
+  // After a failed upload, trying again carries on with the same post and
+  // skips the files that already went up, instead of starting a new, empty one.
+  const postIdRef = useRef(null);
+  const uploadedRef = useRef(new Map()); // preview url -> media entry
 
   useEffect(() => {
     fetch('/api/staff')
@@ -114,41 +119,46 @@ function NewSocialPostForm() {
     } catch {}
 
     setStep('Starting...');
-    const created = await fetch('/api/social-posts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ story: story || idea?.title || '', patient_id: patient?.id || null, created_by: staffId || null, plan_idea: idea && planIdea ? planIdea : null }),
-    });
-    const post = await created.json().catch(() => ({}));
-    if (!created.ok) {
-      setStep(null);
-      return setError(post.error || 'Could not start the post.');
+    if (!postIdRef.current) {
+      const created = await fetch('/api/social-posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ story: story || idea?.title || '', patient_id: patient?.id || null, created_by: staffId || null, plan_idea: idea && planIdea ? planIdea : null }),
+      });
+      const post = await created.json().catch(() => ({}));
+      if (!created.ok) {
+        setStep(null);
+        return setError(post.error || 'Could not start the post.');
+      }
+      postIdRef.current = post.id;
     }
+    const postId = postIdRef.current;
 
     const media = [];
     try {
       for (let i = 0; i < files.length; i += 1) {
         setStep(`Uploading ${i + 1} of ${files.length}...`);
-        media.push(await uploadSocialFile(post.id, files[i].file));
+        if (!uploadedRef.current.has(files[i].url)) uploadedRef.current.set(files[i].url, await uploadSocialFile(postId, files[i].file));
+        media.push(uploadedRef.current.get(files[i].url));
       }
     } catch (err) {
       setStep(null);
       return setError(err.message);
     }
-    await fetch(`/api/social-posts/${post.id}`, {
+    await fetch(`/api/social-posts/${postId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ media }),
+      body: JSON.stringify({ media, story: story || idea?.title || '' }),
     });
 
     setStep('✨ Writing the post...');
-    const drafted = await fetch(`/api/social-posts/${post.id}/draft`, { method: 'POST' });
+    const drafted = await fetch(`/api/social-posts/${postId}/draft`, { method: 'POST' });
     if (!drafted.ok) {
       const data = await drafted.json().catch(() => ({}));
       // The files are safe on the post: open it anyway, where Redo tries again.
       alert(data.error || 'The AI could not write this one. Open it and tap Redo.');
     }
-    router.push(`/social/${post.id}`);
+    router.push(`/social/${postId}`);
   }
 
   const busy = !!step;
