@@ -3,7 +3,8 @@
 //          AI's notes, and whether the owner has agreed to social media.
 // PATCH -> { media, story, patient_id } while uploading, or
 //          { action: 'save' | 'approve' | 'posted' | 'reopen' | 'unschedule' | 'discard',
-//            caption_instagram, caption_facebook, cover_headline, cover_index, media, staff_id }
+//            caption_instagram, caption_facebook, cover_headline, cover_index, media, staff_id,
+//            post_as, reel_lines, reel_music }
 //
 // Approving checks the owner's consent (lib/socialPosts.js) on the server
 // too, not only in the page. Server-only table (migration 202).
@@ -12,7 +13,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { publicUrl } from '@/lib/socialDraft';
 import { approvalBlocker, postConsent } from '@/lib/socialPosts';
-import { cleanHeadline } from '@/lib/socialCoverLayout';
+import { cleanReelEdits, reelKey } from '@/lib/socialReelPlan';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,9 +30,11 @@ function present(post) {
     url: publicUrl(m.path),
     preview_url: publicUrl(m.preview_path || m.path),
   }));
+  const reel = post.reel?.path ? { ...post.reel, url: publicUrl(post.reel.path), current: post.reel.key === reelKey(post) } : null;
   return {
     ...post,
     media,
+    reel,
     consent: postConsent(post),
     client_id: post.patients?.client_id || null,
     created_by_name: post.creator?.full_name || null,
@@ -76,7 +79,7 @@ export async function PATCH(request, { params }) {
   if (typeof body.caption_facebook === 'string') update.caption_facebook = body.caption_facebook;
   if (Number.isInteger(body.cover_index)) update.cover_index = body.cover_index;
   if (typeof body.story === 'string') update.story = body.story.trim() || null;
-  if (typeof body.cover_headline === 'string') update.cover_headline = cleanHeadline(body.cover_headline) || null;
+  Object.assign(update, cleanReelEdits(body, update.media || post.media));
 
   const action = body.action || 'save';
   if (action === 'approve') {

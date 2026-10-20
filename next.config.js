@@ -19,6 +19,15 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_BUILD_ID: buildId,
   },
+  experimental: {
+    // Social Reels (lib/socialReel.js) run the ffmpeg binary from
+    // ffmpeg-static: keep the package out of the bundle so it finds its
+    // binary, and make sure the binary is shipped with the route.
+    serverComponentsExternalPackages: ['ffmpeg-static'],
+    outputFileTracingIncludes: {
+      '/api/social-posts/[id]/reel': ['./node_modules/ffmpeg-static/ffmpeg'],
+    },
+  },
   async headers() {
     return [
       {

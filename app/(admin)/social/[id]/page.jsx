@@ -3,7 +3,9 @@
 // (lib/socialDraft.js), which staff can edit, re-order the cover of, leave
 // photos out of, redo or approve. The cover photo carries a short headline
 // the AI wrote (lib/socialCover.js), shown live on the cover's thumbnail
-// while staff edit it. Once approved, and until Meta is
+// while staff edit it. It can go out as photos or as a Reel made from them
+// (lib/socialReel.js): a line of text per photo, a backing track, made on
+// the server in about half a minute and previewed here. Once approved, and until Meta is
 // connected (lib/metaSocial.js, app/(admin)/social/connect) an approved
 // post goes out now or at a set time; otherwise it's posted by hand: copy
 // the caption, share or download the files, then mark it as posted.
@@ -12,6 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { REEL_MUSIC, reelPhotos, reelKey, reelTimeline } from '@/lib/socialReelPlan';
 
 const CONSENT_CHIP = {
   yes: { label: '✓ Owner said yes', className: 'social-consent-yes' },
@@ -47,12 +50,18 @@ export default function SocialPostPage() {
   // What the cover preview was last drawn with: follows the field after a
   // short pause, so it isn't redrawn on every key.
   const [shownHeadline, setShownHeadline] = useState('');
+  const [postAs, setPostAs] = useState('photos');
+  const [reelLines, setReelLines] = useState([]);
+  const [music, setMusic] = useState('sunny');
 
   function apply(data) {
     setPost(data);
     setCaptions({ instagram: data.caption_instagram || '', facebook: data.caption_facebook || '' });
     setHeadline(data.cover_headline || '');
     setShownHeadline(data.cover_headline || '');
+    setPostAs(data.post_as || 'photos');
+    setReelLines(Array.isArray(data.reel_lines) ? data.reel_lines : []);
+    setMusic(data.reel_music || 'sunny');
   }
 
   useEffect(() => {
@@ -97,7 +106,41 @@ export default function SocialPostPage() {
   }
 
   const editable = post && (post.status === 'draft' || post.status === 'new');
-  const edits = () => ({ caption_instagram: captions.instagram, caption_facebook: captions.facebook, cover_headline: headline });
+  const edits = () => ({
+    caption_instagram: captions.instagram,
+    caption_facebook: captions.facebook,
+    cover_headline: headline,
+    post_as: postAs,
+    reel_lines: reelLines,
+    reel_music: music,
+  });
+
+  function choosePostAs(next) {
+    setPostAs(next);
+    patch({ ...edits(), post_as: next }, 'post_as');
+  }
+
+  function setReelLine(i, value) {
+    setReelLines((prev) => {
+      const nextLines = [...prev];
+      nextLines[i] = value;
+      return nextLines;
+    });
+  }
+
+  async function makeReel() {
+    setBusy('reel');
+    setError(null);
+    const res = await fetch(`/api/social-posts/${id}/reel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cover_headline: headline, reel_lines: reelLines, reel_music: music }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) setError(data.error || "Couldn't make the Reel. Try again.");
+    // Saves the caption edits too, and brings back the post with its Reel.
+    await patch({ caption_instagram: captions.instagram, caption_facebook: captions.facebook }, 'reel');
+  }
 
   function setCover(i) {
     if (!editable || post.media[i].excluded) return;
@@ -207,6 +250,9 @@ export default function SocialPostPage() {
   const chip = CONSENT_CHIP[post.consent];
   const coverItem = post.media[post.cover_index];
   const coverIsPhoto = coverItem && !coverItem.excluded && coverItem.kind === 'image';
+  const reelOrder = reelPhotos(post);
+  const reelDraft = { ...post, cover_headline: headline, reel_lines: reelLines, reel_music: music };
+  const reelCurrent = !!post.reel && post.reel.key === reelKey(reelDraft);
   const coverUrl = (h) => `/api/social-posts/${id}/cover?i=${post.cover_index}&h=${encodeURIComponent(h)}`;
   const processing = post.publish_state?.instagram?.status === 'processing' && !post.publish_error;
   const scheduled = !!post.scheduled_for && !post.publish_error && new Date(post.scheduled_for).getTime() > Date.now() - 60 * 1000;
@@ -299,6 +345,75 @@ export default function SocialPostPage() {
           </div>
         )}
 
+        {reelOrder.length > 0 && (editable || postAs === 'reel') && (
+          <div className="social-reel">
+            <div className="social-reel-head">
+              <span className="social-field-label">Post as</span>
+              <div className="social-seg social-seg-small" role="tablist">
+                {[
+                  ['photos', '📷 Photos'],
+                  ['reel', '🎬 Reel'],
+                ].map(([key, label]) => (
+                  <button key={key} type="button" role="tab" aria-selected={postAs === key} className={postAs === key ? 'social-seg-on' : ''} onClick={() => editable && postAs !== key && choosePostAs(key)} disabled={!editable || !!busy}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {postAs === 'reel' && (
+              <>
+                {reelOrder.length > 1 && (
+                  <div className="social-reel-lines">
+                    {reelOrder.slice(1).map((i) => (
+                      <label key={post.media[i].path} className="social-reel-line">
+                        <img src={post.media[i].preview_url} alt="" />
+                        <input
+                          type="text"
+                          value={reelLines[i] || ''}
+                          maxLength={60}
+                          onChange={(e) => setReelLine(i, e.target.value)}
+                          readOnly={!editable}
+                          placeholder="No text on this photo"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <div className="social-reel-music" role="group" aria-label="Music">
+                  <span aria-hidden="true">🎵</span>
+                  {REEL_MUSIC.map((m) => (
+                    <button key={m.key} type="button" className={`social-chip-button${music === m.key ? ' social-chip-on' : ''}`} onClick={() => setMusic(m.key)} disabled={!editable || !!busy} title={m.title} aria-label={m.title || m.label}>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="social-reel-made">
+                  {post.reel?.url && (
+                    <div className="social-reel-preview">
+                      {/* #t=0.1 makes phones show the first frame before it plays. */}
+                      <video key={post.reel.url} src={`${post.reel.url}#t=0.1`} controls playsInline preload="metadata" />
+                    </div>
+                  )}
+                  <div className="social-reel-side">
+                    {post.reel && !reelCurrent && <span className="social-chip social-consent-not_asked">Out of date</span>}
+                    {editable && (
+                      <button type="button" className={reelCurrent ? 'secondary' : 'social-primary'} onClick={makeReel} disabled={!!busy}>
+                        {busy === 'reel' ? '🎬 Making it...' : post.reel ? (reelCurrent ? '↻ Make it again' : '🎬 Make it again') : '🎬 Make the Reel'}
+                      </button>
+                    )}
+                    <span className="visit-meta">
+                      {busy === 'reel'
+                        ? 'About half a minute. Keep this page open.'
+                        : `${reelOrder.length} photo${reelOrder.length === 1 ? '' : 's'}, ${Math.round(post.reel && reelCurrent ? post.reel.duration : reelTimeline(reelOrder.length).total)} seconds, ends on our @ card.`}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {post.ai_notes && <div className="social-ai">✨ {post.ai_notes}</div>}
         {post.ai_error && !post.caption_instagram && <p className="error">The AI couldn&apos;t write this one yet. Tap ↻ Redo to try again.</p>}
 
@@ -332,7 +447,11 @@ export default function SocialPostPage() {
 
         {editable && (
           <>
-            {post.blocker && <p className="social-hint">{post.blocker}</p>}
+            {post.blocker ? (
+              <p className="social-hint">{post.blocker}</p>
+            ) : (
+              postAs === 'reel' && !reelCurrent && <p className="social-hint">{post.reel ? 'You changed the text or music: tap 🎬 Make it again before approving.' : 'Make the Reel first (🎬 Make the Reel).'}</p>
+            )}
             <div className="social-actions">
               <select value={staffId} onChange={(e) => setStaffId(e.target.value)} aria-label="Approved by" className="social-approver">
                 <option value="">Approved by...</option>
@@ -342,7 +461,7 @@ export default function SocialPostPage() {
                   </option>
                 ))}
               </select>
-              <button type="button" className="social-primary" onClick={approve} disabled={!!busy || !!post.blocker || !staffId}>
+              <button type="button" className="social-primary" onClick={approve} disabled={!!busy || !!post.blocker || !staffId || (postAs === 'reel' && !reelCurrent)}>
                 {busy === 'approve' ? 'Approving...' : '✓ Approve'}
               </button>
               <button type="button" className="secondary" onClick={redo} disabled={!!busy}>
