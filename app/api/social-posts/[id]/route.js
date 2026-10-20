@@ -13,7 +13,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { publicUrl } from '@/lib/socialDraft';
 import { approvalBlocker, postConsent } from '@/lib/socialPosts';
-import { cleanReelEdits, reelKey } from '@/lib/socialReelPlan';
+import { cleanReelEdits, reelKey, preparedClip } from '@/lib/socialReelPlan';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +59,7 @@ function cleanMedia(media, id) {
       path: m.path,
       preview_path: typeof m.preview_path === 'string' && m.preview_path.startsWith(`social/${id}/`) ? m.preview_path : null,
       post_path: typeof m.post_path === 'string' && m.post_path.startsWith(`social/${id}/`) ? m.post_path : null,
+      reel_clip: preparedClip(m, id),
       kind: m.kind === 'video' ? 'video' : 'image',
       name: typeof m.name === 'string' ? m.name.slice(0, 200) : null,
       excluded: !!m.excluded,

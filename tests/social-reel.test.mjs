@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { reelPhotos, reelTimeline, reelFilterGraph, reelTexts, reelKey, reelBlocker, cleanReelEdits, REEL_FADE, REEL_END } from '../lib/socialReelPlan.js';
+import { reelItems, reelContents, reelTimeline, reelFilterGraph, reelTexts, reelKey, reelBlocker, cleanReelEdits, REEL_FADE, REEL_END } from '../lib/socialReelPlan.js';
 import { approvalBlocker } from '../lib/socialPosts.js';
 
 const photo = (path, extra = {}) => ({ path, kind: 'image', ...extra });
@@ -14,25 +14,26 @@ const base = {
   post_as: 'reel',
 };
 
-test('the Reel uses the photos only, cover first, nothing left out', () => {
-  assert.deepEqual(reelPhotos(base), [2, 0, 4]);
-  assert.deepEqual(reelTexts(base), ['Four minutes of cake', '', 'Make a wish']);
+test('the Reel uses the photos and clips, cover first, nothing left out', () => {
+  assert.deepEqual(reelItems(base), [2, 0, 1, 4]);
+  assert.deepEqual(reelTexts(base), ['Four minutes of cake', '', '', 'Make a wish']);
+  assert.equal(reelContents(base), '3 photos + 1 video');
 });
 
 test('the Reel stays short whatever goes in, and adds up', () => {
   for (let n = 1; n <= 6; n++) {
-    const { durations, offsets, total } = reelTimeline(n);
+    const { durations, offsets, total } = reelTimeline(Array(n).fill('image'));
     assert.equal(durations.length, n);
     assert.ok(total >= 6 && total <= 13.5, `${n} photos: ${total}s`);
     const sum = durations.reduce((a, b) => a + b, 0);
     assert.equal(total, Number((sum + REEL_END - REEL_FADE * n).toFixed(3)));
     assert.ok(offsets.every((o, k) => k === 0 || o > offsets[k - 1]));
   }
-  assert.equal(reelTimeline(9).durations.length, 6);
+  assert.equal(reelTimeline(Array(9).fill('image')).durations.length, 6);
 });
 
 test('the filter graph chains one crossfade per photo and maps video and music', () => {
-  const { graph, total } = reelFilterGraph(3, { music: true });
+  const { graph, total } = reelFilterGraph(['image', 'image', 'image'], [], { music: true });
   assert.equal((graph.match(/xfade=/g) || []).length, 3);
   assert.equal((graph.match(/zoompan=/g) || []).length, 3);
   assert.match(graph, /\[x2\]\[end\]xfade=.*\[v\]/);
@@ -41,7 +42,7 @@ test('the filter graph chains one crossfade per photo and maps video and music',
   // The first photo's text is there from the first frame (the thumbnail).
   assert.doesNotMatch(graph.split(';').find((p) => p.startsWith('[3:v]')), /fade=t=in/);
   assert.match(graph.split(';').find((p) => p.startsWith('[4:v]')), /fade=t=in/);
-  assert.doesNotMatch(reelFilterGraph(1, { music: false }).graph, /:a\]/);
+  assert.doesNotMatch(reelFilterGraph(['image'], [], { music: false }).graph, /:a\]/);
 });
 
 test('a made Reel goes out of date when its text, photos or music change', () => {
@@ -62,4 +63,18 @@ test('Reel edits from the page are cleaned to one line per file', () => {
   assert.equal(edits.post_as, 'reel');
   assert.equal(edits.cover_headline, 'Cake');
   assert.deepEqual(cleanReelEdits({}, base.media), {});
+});
+
+test('clips play a few seconds from just after the start, and a long Reel is cut down', () => {
+  const t = reelTimeline(['image', 'video', 'video'], [undefined, 12, 1.5]);
+  assert.equal(t.starts[1], 0.3);
+  assert.equal(t.durations[1], 4.5);
+  assert.equal(t.starts[2], 0);
+  assert.equal(t.durations[2], 1.5);
+  const long = reelTimeline(Array(6).fill('video'), Array(6).fill(30));
+  assert.ok(long.total <= 15.001, `total ${long.total}`);
+  assert.ok(long.durations.every((d) => d >= 2));
+  const { graph } = reelFilterGraph(['video', 'image'], [10], { music: true });
+  assert.match(graph.split(';')[0], /^\[0:v\]fps=24,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920/);
+  assert.doesNotMatch(graph.split(';')[0], /zoompan/);
 });

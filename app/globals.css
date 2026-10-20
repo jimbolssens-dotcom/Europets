@@ -12728,7 +12728,10 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .social-seg-small { flex: 0 1 15rem; }
 .social-reel-lines { display: grid; gap: 0.4rem; grid-template-columns: minmax(0, 1fr); }
 .social-reel-line { display: flex !important; flex-direction: row !important; align-items: center; gap: 0.5rem; }
-.social-reel-line img { width: 2.6rem; height: 2.6rem; object-fit: cover; border-radius: 8px; flex: 0 0 auto; }
+.social-reel-line-thumb { position: relative; flex: 0 0 auto; display: block; }
+.social-reel-line img { width: 2.6rem; height: 2.6rem; object-fit: cover; border-radius: 8px; display: block; }
+.social-reel-line-play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 0.85rem; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); }
+.social-reel-line-video { width: 2.6rem; height: 2.6rem; border-radius: 8px; flex: 0 0 auto; display: grid; place-items: center; background: #1c1418; color: #fff; }
 .social-reel-line input { flex: 1; min-width: 0; width: auto !important; }
 .social-reel-music { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
 .social-reel-music .social-chip-button { padding: 0.25rem 0.55rem; }

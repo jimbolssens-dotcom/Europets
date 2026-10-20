@@ -4,7 +4,7 @@
 // photos out of, redo or approve. The cover photo carries a short headline
 // the AI wrote (lib/socialCover.js), shown live on the cover's thumbnail
 // while staff edit it. It can go out as photos or as a Reel made from them
-// (lib/socialReel.js): a line of text per photo, a backing track, made on
+// and clips (lib/socialReel.js): a line of text per file, a backing track, made on
 // the server in about half a minute and previewed here. Once approved, and until Meta is
 // connected (lib/metaSocial.js, app/(admin)/social/connect) an approved
 // post goes out now or at a set time; otherwise it's posted by hand: copy
@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { REEL_MUSIC, reelPhotos, reelKey, reelTimeline } from '@/lib/socialReelPlan';
+import { REEL_MUSIC, reelItems, reelKey, reelTimeline, reelContents, preparedClip } from '@/lib/socialReelPlan';
 
 const CONSENT_CHIP = {
   yes: { label: '✓ Owner said yes', className: 'social-consent-yes' },
@@ -129,12 +129,36 @@ export default function SocialPostPage() {
   }
 
   async function makeReel() {
-    setBusy('reel');
     setError(null);
+    // Clips first, each in a call of its own and side by side (a phone's 4K
+    // clip can take most of a minute); ones already done are kept.
+    const clips = {};
+    const toPrepare = reelItems(post).filter((i) => post.media[i].kind === 'video' && !preparedClip(post.media[i], id));
+    if (toPrepare.length) {
+      setBusy('clips');
+      const results = await Promise.all(
+        toPrepare.map((i) =>
+          fetch(`/api/social-posts/${id}/reel/clip`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: i }),
+          })
+            .then(async (r) => ({ i, ok: r.ok, data: await r.json().catch(() => ({})) }))
+            .catch(() => ({ i, ok: false, data: {} }))
+        )
+      );
+      const failed = results.find((r) => !r.ok);
+      if (failed) {
+        setBusy(null);
+        return setError(`${failed.data.error || "Couldn't get a video ready"}. Try again, or leave that video out.`);
+      }
+      for (const r of results) clips[r.i] = r.data;
+    }
+    setBusy('reel');
     const res = await fetch(`/api/social-posts/${id}/reel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cover_headline: headline, reel_lines: reelLines, reel_music: music }),
+      body: JSON.stringify({ cover_headline: headline, reel_lines: reelLines, reel_music: music, clips }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) setError(data.error || "Couldn't make the Reel. Try again.");
@@ -250,7 +274,7 @@ export default function SocialPostPage() {
   const chip = CONSENT_CHIP[post.consent];
   const coverItem = post.media[post.cover_index];
   const coverIsPhoto = coverItem && !coverItem.excluded && coverItem.kind === 'image';
-  const reelOrder = reelPhotos(post);
+  const reelOrder = reelItems(post);
   const reelDraft = { ...post, cover_headline: headline, reel_lines: reelLines, reel_music: music };
   const reelCurrent = !!post.reel && post.reel.key === reelKey(reelDraft);
   const coverUrl = (h) => `/api/social-posts/${id}/cover?i=${post.cover_index}&h=${encodeURIComponent(h)}`;
@@ -367,7 +391,14 @@ export default function SocialPostPage() {
                   <div className="social-reel-lines">
                     {reelOrder.slice(1).map((i) => (
                       <label key={post.media[i].path} className="social-reel-line">
-                        <img src={post.media[i].preview_url} alt="" />
+                        {post.media[i].kind === 'video' && !post.media[i].preview_path ? (
+                          <span className="social-reel-line-video">▶</span>
+                        ) : (
+                          <span className="social-reel-line-thumb">
+                            <img src={post.media[i].preview_url} alt="" />
+                            {post.media[i].kind === 'video' && <span className="social-reel-line-play">▶</span>}
+                          </span>
+                        )}
                         <input
                           type="text"
                           value={reelLines[i] || ''}
@@ -399,13 +430,13 @@ export default function SocialPostPage() {
                     {post.reel && !reelCurrent && <span className="social-chip social-consent-not_asked">Out of date</span>}
                     {editable && (
                       <button type="button" className={reelCurrent ? 'secondary' : 'social-primary'} onClick={makeReel} disabled={!!busy}>
-                        {busy === 'reel' ? '🎬 Making it...' : post.reel ? (reelCurrent ? '↻ Make it again' : '🎬 Make it again') : '🎬 Make the Reel'}
+                        {busy === 'clips' ? '🎬 Getting the videos ready...' : busy === 'reel' ? '🎬 Making it...' : post.reel ? (reelCurrent ? '↻ Make it again' : '🎬 Make it again') : '🎬 Make the Reel'}
                       </button>
                     )}
                     <span className="visit-meta">
-                      {busy === 'reel'
+                      {busy === 'clips' || busy === 'reel'
                         ? 'About half a minute. Keep this page open.'
-                        : `${reelOrder.length} photo${reelOrder.length === 1 ? '' : 's'}, ${Math.round(post.reel && reelCurrent ? post.reel.duration : reelTimeline(reelOrder.length).total)} seconds, ends on our @ card.`}
+                        : `${reelContents(post, reelOrder)}, ${post.reel && reelCurrent ? '' : 'about '}${Math.round(post.reel && reelCurrent ? post.reel.duration : reelTimeline(reelOrder.map((i) => post.media[i].kind)).total)} seconds, ends on our @ card.`}
                     </span>
                   </div>
                 </div>
