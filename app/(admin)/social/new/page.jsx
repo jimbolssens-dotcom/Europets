@@ -1,7 +1,7 @@
 // app/(admin)/social/new/page.jsx
-// Staff upload real photos and videos for a social media post, straight
-// from their phone (lib/socialUpload.js), with one line about what happened
-// and, optionally, the patient in them. "✨ Make the post" then has the AI
+// Staff take or pick real photos and videos for a social media post,
+// straight from their phone's camera or gallery (lib/socialUpload.js), with
+// one line about what happened and, optionally, the patient in them. "✨ Make the post" then has the AI
 // draft the captions (lib/socialDraft.js) and opens the draft.
 
 'use client';
@@ -72,6 +72,12 @@ function NewSocialPostForm() {
     const tooBig = picked.find((f) => f.size > MAX_UPLOAD_BYTES);
     setError(tooBig ? `${tooBig.name} is over 50 MB. Trim the video or film in 1080p.` : null);
     setFiles((prev) => [...prev, ...picked.filter((f) => f.size <= MAX_UPLOAD_BYTES).map((file) => ({ file, url: URL.createObjectURL(file) }))]);
+  }
+
+  // Clear the input so the same file (or another shot) can be picked again.
+  function pickFrom(e) {
+    addFiles(e.target.files);
+    e.target.value = '';
   }
 
   function removeFile(i) {
@@ -184,10 +190,21 @@ function NewSocialPostForm() {
             ))}
           </div>
         )}
-        <label className="social-drop">
-          <input type="file" accept="image/*,video/*" multiple onChange={(e) => addFiles(e.target.files)} disabled={busy} />
-          ＋ {files.length ? 'Add more' : 'Add photos or videos'}
-        </label>
+        {/* Camera straight from the phone (capture), or what's already in the gallery. */}
+        <div className="social-drops">
+          <label className="social-drop">
+            <input type="file" accept="image/*" capture="environment" onChange={pickFrom} disabled={busy} />
+            📷 Photo
+          </label>
+          <label className="social-drop">
+            <input type="file" accept="video/*" capture="environment" onChange={pickFrom} disabled={busy} />
+            🎥 Video
+          </label>
+          <label className="social-drop">
+            <input type="file" accept="image/*,video/*" multiple onChange={pickFrom} disabled={busy} />
+            🖼 Gallery
+          </label>
+        </div>
 
         <label>
           <span>

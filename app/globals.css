@@ -12690,6 +12690,8 @@ select.social-consent-chip.social-consent-no { background: #fdecec; border-color
   color: #6b6660; font-weight: 600; cursor: pointer;
 }
 .social-drop input { display: none; }
+.social-drops { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.social-drops .social-drop { padding: 0.8rem 0.3rem; white-space: nowrap; }
 .social-field { display: grid; gap: 0.35rem; }
 .social-field-label { font-weight: 600; }
 .social-field p { margin: 0; }
