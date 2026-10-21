@@ -29,6 +29,9 @@ function NewSocialPostForm() {
   const [staffId, setStaffId] = useState('');
   const [files, setFiles] = useState([]); // { file, url }
   const [story, setStory] = useState('');
+  // 'photos', or 'tip': a Tip card, written by the AI from a topic and
+  // drawn as a branded card, no photo needed (lib/socialLayoutPlan.js).
+  const [mode, setMode] = useState('photos');
   const [patient, setPatient] = useState(null); // { id, name, species, client_id }
   const [consent, setConsent] = useState(null);
   const [ownerPets, setOwnerPets] = useState(null);
@@ -109,8 +112,44 @@ function NewSocialPostForm() {
     setOwnerPets((Array.isArray(pets) ? pets : []).filter((p) => !p.deceased && !p.rehomed).map((p) => ({ ...p, client_id: c.id })));
   }
 
+  async function submitTip() {
+    if (!story.trim()) return setError("Type what the tip is about.");
+    setError(null);
+    try {
+      localStorage.setItem('social_staff_id', staffId);
+    } catch {}
+    setStep('Starting...');
+    if (!postIdRef.current) {
+      const created = await fetch('/api/social-posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ story, created_by: staffId || null, plan_idea: idea && planIdea ? planIdea : null }),
+      });
+      const post = await created.json().catch(() => ({}));
+      if (!created.ok) {
+        setStep(null);
+        return setError(post.error || 'Could not start the post.');
+      }
+      postIdRef.current = post.id;
+    }
+    const postId = postIdRef.current;
+    await fetch(`/api/social-posts/${postId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ story, layout: { kind: 'tip', items: [], title: '', points: [] } }),
+    });
+    setStep('✨ Writing the tip...');
+    const drafted = await fetch(`/api/social-posts/${postId}/draft`, { method: 'POST' });
+    if (!drafted.ok) {
+      const data = await drafted.json().catch(() => ({}));
+      alert(data.error || 'The AI could not write this one. Open it and tap Redo.');
+    }
+    router.push(`/social/${postId}`);
+  }
+
   async function submit(e) {
     e.preventDefault();
+    if (mode === 'tip') return submitTip();
     if (files.length === 0) return setError('Add at least one photo or video.');
     if (consent === 'no') return setError(`${patient.name}'s owner said no to social media, so this pet can't be posted.`);
     setError(null);
@@ -173,6 +212,16 @@ function NewSocialPostForm() {
       </div>
 
       <form className="card social-card social-new" onSubmit={submit}>
+        <div className="social-seg" role="tablist" aria-label="What kind of post">
+          {[
+            ['photos', '📷 Photos'],
+            ['tip', '💡 Tip card'],
+          ].map(([key, label]) => (
+            <button key={key} type="button" role="tab" aria-selected={mode === key} className={mode === key ? 'social-seg-on' : ''} onClick={() => setMode(key)} disabled={busy}>
+              {label}
+            </button>
+          ))}
+        </div>
         {error && <p className="error">{error}</p>}
         {idea && (
           <div className="social-ai">
@@ -185,7 +234,7 @@ function NewSocialPostForm() {
           </div>
         )}
 
-        {files.length > 0 && (
+        {mode === 'photos' && files.length > 0 && (
           <div className="social-thumbs">
             {files.map((f, i) => (
               <div key={f.url} className="social-thumb">
@@ -201,6 +250,7 @@ function NewSocialPostForm() {
           </div>
         )}
         {/* Camera straight from the phone (capture), or what's already in the gallery. */}
+        {mode === 'photos' && (
         <div className="social-drops">
           <label className="social-drop">
             <input type="file" accept="image/*" capture="environment" onChange={pickFrom} disabled={busy} />
@@ -215,20 +265,23 @@ function NewSocialPostForm() {
             🖼 Gallery
           </label>
         </div>
+        )}
 
         <label>
           <span>
-            What happened? <span className="visit-meta">One line is enough</span>
+            {mode === 'tip' ? "What's the tip about?" : 'What happened?'} <span className="visit-meta">One line is enough</span>
           </span>
           <textarea
             rows={2}
             value={story}
             onChange={(e) => setStory(e.target.value)}
-            placeholder="e.g. Home today after his dental, 3 teeth out, already eating"
+            placeholder={mode === 'tip' ? 'e.g. Signs your cat is in pain' : 'e.g. Home today after his dental, 3 teeth out, already eating'}
             disabled={busy}
           />
         </label>
+        {mode === 'tip' && <p className="visit-meta">The AI writes a title and a few short points, drawn as a Europets card. You can change every word before approving.</p>}
 
+        {mode === 'photos' && (
         <div className="social-field">
           <span className="social-field-label">Patient in the photos <span className="visit-meta">optional</span></span>
           {patient ? (
@@ -263,6 +316,7 @@ function NewSocialPostForm() {
           )}
           <p className="visit-meta">Only the pet&apos;s first name and story are ever used. Never the owner, phone or anything private.</p>
         </div>
+        )}
 
         <label className="social-inline-label">
           Uploaded by
@@ -276,8 +330,8 @@ function NewSocialPostForm() {
           </select>
         </label>
 
-        <button type="submit" className="social-primary" disabled={busy || files.length === 0}>
-          {step || '✨ Make the post'}
+        <button type="submit" className="social-primary" disabled={busy || (mode === 'photos' ? files.length === 0 : !story.trim())}>
+          {step || (mode === 'tip' ? '✨ Make the tip card' : '✨ Make the post')}
         </button>
       </form>
     </div>

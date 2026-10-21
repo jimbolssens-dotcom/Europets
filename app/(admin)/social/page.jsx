@@ -117,7 +117,7 @@ export default function SocialPage() {
           return (
             <a key={p.id} href={`/social/${p.id}`} className="card social-card social-item">
               <div className="social-item-thumb">
-                {p.cover_url ? <img src={p.cover_url} alt="" /> : <span>{mediaLabel(p) || 'no files'}</span>}
+                {p.cover_url ? <img src={p.cover_url} alt="" /> : <span>{p.tip ? '💡' : mediaLabel(p) || 'no files'}</span>}
               </div>
               <div className="social-item-body">
                 <div className="social-item-title">{p.title || p.story || (p.status === 'new' ? 'Being written...' : 'Untitled')}</div>
@@ -128,6 +128,7 @@ export default function SocialPage() {
                   {chip && <span className={`social-chip ${chip.className}`}>{chip.label}</span>}
                   {p.patient_name && <span className="social-chip">🐾 {p.patient_name}</span>}
                   {mediaLabel(p) && <span className="social-chip">{mediaLabel(p)}</span>}
+                  {p.tip && <span className="social-chip">💡 Tip card</span>}
                 </div>
               </div>
             </a>

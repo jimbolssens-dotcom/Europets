@@ -1,8 +1,8 @@
 // app/api/social-posts/[id]/layout/route.js
 // Staff only (middleware.js gates every path not in its public patterns).
-// GET ?kind=before_after|collage&items=0,2&h=<cover text>[&full=1] -> that
-// layout picture (lib/socialLayout.js, migration 211) as a JPEG: small for
-// the live preview on the draft while staff pick photos, full size with
+// GET ?layout=<the layout as JSON>&h=<cover text>[&full=1] -> that layout
+// picture (lib/socialLayout.js, migration 211) as a JPEG: small for the
+// live preview on the draft while staff pick photos or type, full size with
 // full=1 for posting by hand. The photos' saved touch-ups are drawn on them.
 // What's posted is drawn the same way (lib/metaSocial.js).
 
@@ -20,9 +20,13 @@ export async function GET(request, { params }) {
   if (!post) return new Response('not found', { status: 404 });
 
   const full = searchParams.get('full') === '1';
-  const layout = cleanLayout({ kind: searchParams.get('kind'), items: String(searchParams.get('items') || '').split(',').filter(Boolean).map(Number) }, post.media);
-  const items = layoutItems({ ...post, post_as: 'photos', layout });
-  if (!items) return new Response('Pick more photos for this layout', { status: 400 });
+  let asked = null;
+  try {
+    asked = JSON.parse(searchParams.get('layout') || 'null');
+  } catch {}
+  const layout = cleanLayout(asked, post.media);
+  const items = layout && layoutItems({ ...post, post_as: 'photos', layout });
+  if (!items) return new Response(layout?.kind === 'tip' ? 'Give the tip card a title' : 'Pick more photos for this layout', { status: 400 });
   const headline = searchParams.has('h') ? searchParams.get('h') : post.cover_headline;
 
   try {
@@ -35,7 +39,7 @@ export async function GET(request, { params }) {
         return { image: Buffer.from(await res.arrayBuffer()), item };
       })
     );
-    const jpeg = await renderLayout(layout.kind, photos, headline || '', full ? {} : { width: 720, quality: 82 });
+    const jpeg = await renderLayout(layout, photos, headline || '', full ? {} : { width: 720, quality: 82 });
     return new Response(jpeg, { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' } });
   } catch (err) {
     console.error('social layout preview:', err);

@@ -49,3 +49,24 @@ test('the layout goes first, then the photos not in it; its key follows what it 
   assert.deepEqual(defaultLayoutItems(base, 'before_after'), [2, 0]);
   assert.deepEqual(defaultLayoutItems(base, 'collage'), [2, 0, 4, 5]);
 });
+
+test('Patient of the week takes one photo and the pet name; a Tip card needs only its title', async () => {
+  const { tipPoints, isTipCard } = await import('../lib/socialLayoutPlan.js');
+  assert.deepEqual(cleanLayout({ kind: 'potw', items: [4, 0], name: '  Poes — the brave  ' }, media), { kind: 'potw', items: [4], name: 'Poes, the brave' });
+  assert.deepEqual(layoutItems({ ...base, layout: { kind: 'potw', items: [2] } }), [2]);
+  assert.match(layoutBlocker({ ...base, layout: { kind: 'potw', items: [] } }), /Patient of the week/);
+  assert.equal(layoutCells('potw', 1).length, 1);
+
+  const tip = cleanLayout({ kind: 'tip', items: [0], title: 'Keep cool', points: ['Walk early — before 8am', '', 'x'.repeat(200), 'a', 'b', 'c'] }, media);
+  assert.deepEqual(tip.items, []);
+  assert.equal(tip.points.length, 5);
+  assert.equal(tip.points[0], 'Walk early, before 8am');
+  assert.ok(tip.points[2].length <= 90);
+  assert.deepEqual(tipPoints(tip), ['Walk early, before 8am', tip.points[2], 'a', 'b']);
+  const post = { ...base, media: [], layout: tip };
+  assert.ok(isTipCard(post));
+  assert.deepEqual(layoutItems(post), []);
+  assert.equal(approvalBlocker(post), null);
+  assert.match(approvalBlocker({ ...post, layout: { ...tip, title: '' } }), /title/);
+  assert.notEqual(layoutKey(post), layoutKey({ ...post, layout: { ...tip, points: ['other'] } }));
+});

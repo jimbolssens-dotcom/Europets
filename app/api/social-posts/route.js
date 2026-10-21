@@ -21,7 +21,7 @@ export async function GET(request) {
   const statuses = LIST_STATUSES[searchParams.get('status')] || LIST_STATUSES.draft;
   const { data, error } = await supabaseAdmin
     .from('social_posts')
-    .select('id, status, title, story, media, cover_index, created_at, approved_at, posted_at, patient_id, patients(name, species, clients(social_media_consent)), creator:staff!social_posts_created_by_fkey(full_name)')
+    .select('id, status, title, story, media, cover_index, layout, created_at, approved_at, posted_at, patient_id, patients(name, species, clients(social_media_consent)), creator:staff!social_posts_created_by_fkey(full_name)')
     .in('status', statuses)
     .order(statuses.includes('posted') ? 'posted_at' : 'created_at', { ascending: false })
     .limit(60);
@@ -53,6 +53,7 @@ export async function GET(request) {
           photo_count: media.filter((m) => m.kind === 'image' && !m.excluded).length,
           video_count: media.filter((m) => m.kind === 'video' && !m.excluded).length,
           cover_url: cover ? publicUrl(cover.preview_path || cover.path) : null,
+          tip: p.layout?.kind === 'tip',
         };
       }),
     },
