@@ -12855,3 +12855,9 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 
 /* Online Payments: the payment number in the Edit form (YY-MM-NN). */
 .note-form input.donation-number-input { max-width: 7.5rem; font-variant-numeric: tabular-nums; }
+
+/* Correcting a logged payment's method (InvoicePaymentPanel). */
+.invoice-payment-method-edit { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+.invoice-payment-method-edit select { width: auto !important; margin: 0 !important; }
+.invoice-payment-method-edit button, button.invoice-payment-method-btn { width: auto !important; padding: 0.15rem 0.55rem !important; font-size: 0.8rem; margin: 0 !important; }
+.invoice-payment-corrected { color: #8a7f86; font-size: 0.85em; }

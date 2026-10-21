@@ -4,7 +4,8 @@
 // page. An invoice only ever becomes 'paid' by logged payments adding up
 // to the total (see app/api/invoices/[id]/payments) — there's no direct
 // "Mark Paid" button anymore, so the status can't drift from what was
-// actually collected.
+// actually collected. A payment's method can be corrected afterwards, even
+// on a paid invoice (✎ Method), and the line then shows what it was.
 
 'use client';
 
@@ -21,6 +22,10 @@ const PAYMENT_METHOD_LABELS = {
   paypal: 'PayPal',
 };
 
+// What a logged payment's method can be corrected to
+// (app/api/invoices/[id]/payments/[paymentId], PATCH).
+const CORRECTABLE_METHODS = ['cash', 'card', 'bank_transfer', 'payment_link'];
+
 function money(n) {
   return Number(n || 0).toFixed(2);
 }
@@ -36,6 +41,9 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
   const [removingPaymentId, setRemovingPaymentId] = useState(null);
   const [confirmingRemovePaymentId, setConfirmingRemovePaymentId] = useState(null);
   const [error, setError] = useState(null);
+  const [changingMethodId, setChangingMethodId] = useState(null);
+  const [newMethod, setNewMethod] = useState('');
+  const [savingMethod, setSavingMethod] = useState(false);
 
   const balanceDue = Math.max(
     0,
@@ -82,6 +90,25 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
   // whole remaining balance in one click once method/staff are picked.
   function payInFull() {
     submitPayment(balanceDue);
+  }
+
+  async function saveMethod(paymentId) {
+    if (!newMethod) return;
+    setSavingMethod(true);
+    setError(null);
+    const res = await fetch(`/api/invoices/${invoice.id}/payments/${paymentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payment_method: newMethod }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSavingMethod(false);
+    if (!res.ok) {
+      setError(data.error || 'Failed to change the payment method');
+      return;
+    }
+    setChangingMethodId(null);
+    onChanged();
   }
 
   // Same inline-confirm reasoning as voidInvoice — no window.confirm()/alert().
@@ -136,19 +163,57 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
         </p>
       )}
 
+      {error && !canTakePayment && <p className="error">{error}</p>}
       {payments.length > 0 && (
         <ul className="invoice-payments-list">
           {payments.map((p) => (
             <li key={p.id}>
               <span className="invoice-payment-date">{formatDateTime(p.paid_at)}</span>
               <span className="invoice-payment-amount">AED {money(p.amount)}</span>
-              <span>{PAYMENT_METHOD_LABELS[p.payment_method] || p.payment_method}</span>
+              {changingMethodId === p.id ? (
+                <span className="invoice-payment-method-edit">
+                  <select value={newMethod} onChange={(e) => setNewMethod(e.target.value)} aria-label="Correct payment method" disabled={savingMethod}>
+                    {CORRECTABLE_METHODS.map((m) => (
+                      <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={() => saveMethod(p.id)} disabled={savingMethod || newMethod === p.payment_method}>
+                    {savingMethod ? 'Saving...' : 'Save'}
+                  </button>
+                  <button type="button" className="secondary" onClick={() => setChangingMethodId(null)} disabled={savingMethod}>
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <span>
+                  {PAYMENT_METHOD_LABELS[p.payment_method] || p.payment_method}
+                  {p.method_corrected_from && (
+                    <span className="invoice-payment-corrected" title={p.method_corrected_at ? `Corrected ${formatDateTime(p.method_corrected_at)}` : undefined}>
+                      {' '}(was {PAYMENT_METHOD_LABELS[p.method_corrected_from] || p.method_corrected_from})
+                    </span>
+                  )}
+                </span>
+              )}
               <span className="invoice-payment-by">
                 {p.donations
                   ? `Donation #${p.donations.donation_number}`
                   : p.staff?.full_name || (p.payment_method === 'payment_link' ? 'Online (Nomod)' : 'unassigned')}
               </span>
               {p.note && <span className="invoice-payment-note">“{p.note}”</span>}
+              {invoice.status !== 'void' && changingMethodId !== p.id && (
+                <button
+                  type="button"
+                  className="invoice-payment-method-btn"
+                  onClick={() => {
+                    setChangingMethodId(p.id);
+                    setNewMethod(CORRECTABLE_METHODS.includes(p.payment_method) ? p.payment_method : 'card');
+                    setError(null);
+                  }}
+                  title="Fix the payment method if it was logged wrong"
+                >
+                  ✎ Method
+                </button>
+              )}
               {canTakePayment &&
                 (confirmingRemovePaymentId === p.id ? (
                   <span className="invoice-payment-remove-confirm">
