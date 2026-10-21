@@ -9,7 +9,8 @@
 // photo a full-screen frame with its text (lib/socialStory.js), previewed
 // frame by frame. Each photo can be touched up (a look, what stays in
 // frame, the pet's speech bubble, a sticker; app/_components/SocialTouchUp.jsx)
-// and the captions and cover text remixed by the AI. Once approved, and until Meta is
+// and the captions and cover text remixed by the AI. Photos can open with
+// a layout picture, a Before / After or a Collage (lib/socialLayoutPlan.js). Once approved, and until Meta is
 // connected (lib/metaSocial.js, app/(admin)/social/connect) an approved
 // post goes out now or at a set time; otherwise it's posted by hand: copy
 // the caption, share or download the files, then mark it as posted.
@@ -20,6 +21,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { REEL_MUSIC, reelItems, reelKey, reelTimeline, reelContents, preparedClip, storyItems } from '@/lib/socialReelPlan';
 import { touchUpKey } from '@/lib/socialTouchUpPlan';
+import { LAYOUTS, layoutItems, afterLayout, defaultLayoutItems } from '@/lib/socialLayoutPlan';
 import { RemixButtons, RemixOptions, TouchUpPanel } from '@/app/_components/SocialTouchUp';
 
 const CONSENT_CHIP = {
@@ -39,6 +41,13 @@ function lookTag(item) {
   let h = 0;
   for (let k = 0; k < key.length; k++) h = (h * 31 + key.charCodeAt(k)) | 0;
   return key ? (h >>> 0).toString(36) : '';
+}
+
+// The layout picture's preview (app/api/social-posts/[id]/layout), fetched
+// again when its photos' touch-ups change.
+function layoutPreviewUrl(id, layout, headline, media) {
+  const tags = layout.items.map((i) => lookTag(media[i] || {})).join('.');
+  return `/api/social-posts/${id}/layout?kind=${layout.kind}&items=${layout.items.join(',')}&h=${encodeURIComponent(headline || '')}&v=${tags}`;
 }
 
 async function fileFromUrl(url, name, fallbackType) {
@@ -75,6 +84,7 @@ export default function SocialPostPage() {
   // versions of whichever text was last remixed ({ field, tone, options }).
   const [touching, setTouching] = useState(null);
   const [remix, setRemix] = useState(null);
+  const [layout, setLayout] = useState(null);
 
   function apply(data) {
     setPost(data);
@@ -84,6 +94,7 @@ export default function SocialPostPage() {
     setPostAs(data.post_as || 'photos');
     setReelLines(Array.isArray(data.reel_lines) ? data.reel_lines : []);
     setMusic(data.reel_music || 'sunny');
+    setLayout(data.layout || null);
   }
 
   useEffect(() => {
@@ -140,11 +151,29 @@ export default function SocialPostPage() {
     post_as: postAs,
     reel_lines: reelLines,
     reel_music: music,
+    layout,
   });
 
   function choosePostAs(next) {
     setPostAs(next);
     patch({ ...edits(), post_as: next }, 'post_as');
+  }
+
+  // A layout's photos are tapped in order (before, then after); tapping one
+  // again takes it out. A full Before / After swaps its after photo.
+  function chooseLayout(kind) {
+    const next = kind ? { kind, items: layout?.kind === kind ? layout.items : defaultLayoutItems(post, kind) } : null;
+    setLayout(next);
+    patch({ ...edits(), layout: next }, 'layout');
+  }
+
+  function toggleLayoutPhoto(i) {
+    const max = LAYOUTS.find((l) => l.key === layout.kind).max;
+    let items = layout.items.includes(i) ? layout.items.filter((x) => x !== i) : [...layout.items, i];
+    if (items.length > max) items = layout.kind === 'before_after' ? [items[0], i] : items.slice(0, max);
+    const next = { ...layout, items };
+    setLayout(next);
+    patch({ ...edits(), layout: next }, 'layout');
   }
 
   function setReelLine(i, value) {
@@ -275,9 +304,12 @@ export default function SocialPostPage() {
     setBusy('share');
     setError(null);
     try {
+      const laid = layoutItems({ ...post, post_as: postAs, layout });
+      const toShare = laid ? afterLayout(post, laid).map((i) => ({ ...post.media[i], i })) : ordered;
       const files = await Promise.all(
-        ordered.map((m, n) => fileFromUrl(m.url, m.name || `europets-${n + 1}${m.kind === 'video' ? '.mp4' : '.jpg'}`, m.kind === 'video' ? 'video/mp4' : 'image/jpeg'))
+        toShare.map((m, n) => fileFromUrl(m.url, m.name || `europets-${n + 1}${m.kind === 'video' ? '.mp4' : '.jpg'}`, m.kind === 'video' ? 'video/mp4' : 'image/jpeg'))
       );
+      if (laid) files.unshift(await fileFromUrl(`${layoutPreviewUrl(id, layout, headline, post.media)}&full=1`, 'europets-layout.jpg', 'image/jpeg'));
       if (navigator.canShare && navigator.canShare({ files })) {
         await navigator.clipboard.writeText(captions[network]).catch(() => {});
         await navigator.share({ files });
@@ -329,6 +361,8 @@ export default function SocialPostPage() {
     `/api/social-posts/${id}/story-frame?i=${i}&first=${k === 0 ? 1 : 0}&t=${encodeURIComponent(k === 0 ? shownHeadline : shownLines[i] || '')}&v=${lookTag(post.media[i])}`;
   const reelDraft = { ...post, cover_headline: headline, reel_lines: reelLines, reel_music: music };
   const reelCurrent = !!post.reel && post.reel.key === reelKey(reelDraft);
+  const photoChoices = post.media.map((m, i) => ({ ...m, i })).filter((m) => m.kind === 'image' && !m.excluded);
+  const laidOut = layoutItems({ ...post, post_as: postAs, layout });
   const coverUrl = (h, i = post.cover_index) => `/api/social-posts/${id}/cover?i=${i}&h=${encodeURIComponent(h)}`;
   const processing = post.publish_state?.instagram?.status === 'processing' && !post.publish_error;
   const scheduled = !!post.scheduled_for && !post.publish_error && new Date(post.scheduled_for).getTime() > Date.now() - 60 * 1000;
@@ -412,11 +446,11 @@ export default function SocialPostPage() {
           />
         )}
 
-        {coverIsPhoto && (editable || headline) && (
+        {(coverIsPhoto || laidOut) && (editable || headline) && (
           <div className="social-headline">
             <label className="social-headline-field">
               <span className="social-field-label">
-                Text on the cover{' '}
+                {laidOut ? 'Text on the layout' : 'Text on the cover'}{' '}
                 <a href={coverUrl(headline)} target="_blank" rel="noopener noreferrer" className="visit-meta social-headline-view">
                   🔍 View
                 </a>
@@ -468,6 +502,48 @@ export default function SocialPostPage() {
                 ))}
               </div>
             </div>
+
+            {postAs === 'photos' && photoChoices.length >= 2 && (editable || layout) && (
+              <div className="social-layout">
+                <div className="social-reel-head">
+                  <span className="social-field-label">Layout</span>
+                  <div className="social-seg social-seg-small" role="tablist">
+                    {[{ key: null, label: 'Single' }, ...LAYOUTS].map((l) => (
+                      <button key={l.key || 'none'} type="button" role="tab" aria-selected={(layout?.kind || null) === l.key} className={(layout?.kind || null) === l.key ? 'social-seg-on' : ''} onClick={() => editable && (layout?.kind || null) !== l.key && chooseLayout(l.key)} disabled={!editable || !!busy}>
+                        {l.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {layout && (
+                  <div className="social-layout-pair">
+                    {laidOut ? (
+                      <a href={`${layoutPreviewUrl(id, layout, shownHeadline, post.media)}&full=1`} target="_blank" rel="noopener noreferrer" className="social-layout-preview">
+                        <img src={layoutPreviewUrl(id, layout, shownHeadline, post.media)} alt="The layout picture" />
+                      </a>
+                    ) : (
+                      <div className="social-layout-preview social-layout-empty">{layout.kind === 'before_after' ? 'Pick 2 photos' : 'Pick 2 to 4 photos'}</div>
+                    )}
+                    <div className="social-layout-side">
+                      <span className="visit-meta">
+                        {layout.kind === 'before_after' ? 'Tap the before photo, then the after.' : 'Tap 2 to 4 photos, in order.'} It goes first{afterLayout(post, laidOut || []).length ? ', then the other photos' : ''}.
+                      </span>
+                      <div className="social-layout-picks">
+                        {photoChoices.map((m) => {
+                          const n = layout.items.indexOf(m.i);
+                          return (
+                            <button key={m.path} type="button" className={`social-layout-pick${n >= 0 ? ' social-layout-pick-on' : ''}`} onClick={() => toggleLayoutPhoto(m.i)} disabled={!editable || !!busy} aria-pressed={n >= 0}>
+                              <img src={m.preview_url} alt="" />
+                              {n >= 0 && <span>{layout.kind === 'before_after' ? (n === 0 ? 'Before' : 'After') : n + 1}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {postAs === 'reel' && (
               <>

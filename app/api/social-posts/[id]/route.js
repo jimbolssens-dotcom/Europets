@@ -4,9 +4,10 @@
 // PATCH -> { media, story, patient_id } while uploading, or
 //          { action: 'save' | 'approve' | 'posted' | 'reopen' | 'unschedule' | 'discard',
 //            caption_instagram, caption_facebook, cover_headline, cover_index, media, staff_id,
-//            post_as, reel_lines, reel_music }
+//            post_as, reel_lines, reel_music, layout }
 //          media items carry their touch-ups (look, focus, bubble, sticker;
-//          lib/socialTouchUpPlan.js).
+//          lib/socialTouchUpPlan.js); layout is { kind, items } or null
+//          (migration 211, lib/socialLayoutPlan.js).
 //
 // Approving checks the owner's consent (lib/socialPosts.js) on the server
 // too, not only in the page. Server-only table (migration 202).
@@ -17,6 +18,7 @@ import { publicUrl } from '@/lib/socialDraft';
 import { approvalBlocker, postConsent } from '@/lib/socialPosts';
 import { cleanReelEdits, reelKey, preparedClip } from '@/lib/socialReelPlan';
 import { cleanTouchUp } from '@/lib/socialTouchUpPlan';
+import { cleanLayout } from '@/lib/socialLayoutPlan';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +88,7 @@ export async function PATCH(request, { params }) {
   if (Number.isInteger(body.cover_index)) update.cover_index = body.cover_index;
   if (typeof body.story === 'string') update.story = body.story.trim() || null;
   Object.assign(update, cleanReelEdits(body, update.media || post.media));
+  if (body.layout !== undefined) update.layout = cleanLayout(body.layout, update.media || post.media);
 
   const action = body.action || 'save';
   if (action === 'approve') {
