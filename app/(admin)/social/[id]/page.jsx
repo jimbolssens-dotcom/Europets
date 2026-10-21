@@ -7,7 +7,9 @@
 // and clips (lib/socialReel.js): a line of text per file, a backing track, made on
 // the server in about half a minute and previewed here; or as a Story, each
 // photo a full-screen frame with its text (lib/socialStory.js), previewed
-// frame by frame. Once approved, and until Meta is
+// frame by frame. Each photo can be touched up (a look, what stays in
+// frame, the pet's speech bubble, a sticker; app/_components/SocialTouchUp.jsx)
+// and the captions and cover text remixed by the AI. Once approved, and until Meta is
 // connected (lib/metaSocial.js, app/(admin)/social/connect) an approved
 // post goes out now or at a set time; otherwise it's posted by hand: copy
 // the caption, share or download the files, then mark it as posted.
@@ -17,6 +19,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { REEL_MUSIC, reelItems, reelKey, reelTimeline, reelContents, preparedClip, storyItems } from '@/lib/socialReelPlan';
+import { touchUpKey } from '@/lib/socialTouchUpPlan';
+import { RemixButtons, RemixOptions, TouchUpPanel } from '@/app/_components/SocialTouchUp';
 
 const CONSENT_CHIP = {
   yes: { label: '✓ Owner said yes', className: 'social-consent-yes' },
@@ -26,6 +30,15 @@ const CONSENT_CHIP = {
 
 function formatWhen(iso) {
   return new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' });
+}
+
+// A short tag for a photo's touch-ups, so its preview is fetched again
+// when they change.
+function lookTag(item) {
+  const key = touchUpKey(item);
+  let h = 0;
+  for (let k = 0; k < key.length; k++) h = (h * 31 + key.charCodeAt(k)) | 0;
+  return key ? (h >>> 0).toString(36) : '';
 }
 
 async function fileFromUrl(url, name, fallbackType) {
@@ -58,6 +71,10 @@ export default function SocialPostPage() {
   // What the Story frame previews were last drawn with (follows the text
   // fields after a short pause, like the cover preview).
   const [shownLines, setShownLines] = useState([]);
+  // The photo being touched up (its media index), and the AI's three
+  // versions of whichever text was last remixed ({ field, tone, options }).
+  const [touching, setTouching] = useState(null);
+  const [remix, setRemix] = useState(null);
 
   function apply(data) {
     setPost(data);
@@ -188,6 +205,28 @@ export default function SocialPostPage() {
     patch({ ...edits(), media, cover_index: cover }, 'media');
   }
 
+  async function remixText(field, tone, text, index) {
+    setRemix({ field, tone, options: null });
+    setError(null);
+    const res = await fetch(`/api/social-posts/${id}/remix`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ field, tone, text, index }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setRemix(null);
+      return setError(data.error || "The AI couldn't do that one. Try again.");
+    }
+    setRemix((prev) => (prev?.field === field ? { field, tone, options: data.options } : prev));
+  }
+
+  async function saveTouchUp(touchUps) {
+    const media = post.media.map((m, j) => (j === touching ? { ...m, ...touchUps } : m));
+    const saved = await patch({ ...edits(), media }, 'touchup');
+    if (saved) setTouching(null);
+  }
+
   async function redo() {
     const edited =
       captions.instagram !== (post.ai_caption_instagram || '') ||
@@ -287,10 +326,10 @@ export default function SocialPostPage() {
   const reelOrder = reelItems(post);
   const storyOrder = storyItems(post);
   const storyFrameUrl = (i, k) =>
-    `/api/social-posts/${id}/story-frame?i=${i}&first=${k === 0 ? 1 : 0}&t=${encodeURIComponent(k === 0 ? shownHeadline : shownLines[i] || '')}`;
+    `/api/social-posts/${id}/story-frame?i=${i}&first=${k === 0 ? 1 : 0}&t=${encodeURIComponent(k === 0 ? shownHeadline : shownLines[i] || '')}&v=${lookTag(post.media[i])}`;
   const reelDraft = { ...post, cover_headline: headline, reel_lines: reelLines, reel_music: music };
   const reelCurrent = !!post.reel && post.reel.key === reelKey(reelDraft);
-  const coverUrl = (h) => `/api/social-posts/${id}/cover?i=${post.cover_index}&h=${encodeURIComponent(h)}`;
+  const coverUrl = (h, i = post.cover_index) => `/api/social-posts/${id}/cover?i=${i}&h=${encodeURIComponent(h)}`;
   const processing = post.publish_state?.instagram?.status === 'processing' && !post.publish_error;
   const scheduled = !!post.scheduled_for && !post.publish_error && new Date(post.scheduled_for).getTime() > Date.now() - 60 * 1000;
 
@@ -334,9 +373,14 @@ export default function SocialPostPage() {
                 {m.kind === 'video' ? (
                   <video src={m.url} poster={m.preview_path ? m.preview_url : undefined} muted playsInline controls={!editable} />
                 ) : (
-                  <img src={i === post.cover_index && shownHeadline.trim() ? coverUrl(shownHeadline) : m.preview_url} alt="" />
+                  <img src={(i === post.cover_index && shownHeadline.trim()) || lookTag(m) ? `${coverUrl(i === post.cover_index ? shownHeadline : '', i)}&v=${lookTag(m)}` : m.preview_url} alt="" />
                 )}
               </button>
+              {editable && m.kind === 'image' && !m.excluded && (
+                <button type="button" className="social-media-edit" onClick={() => { setTouching(touching === i ? null : i); setRemix(null); }} disabled={!!busy}>
+                  ✨ Edit
+                </button>
+              )}
               <figcaption>
                 {i === post.cover_index && !m.excluded && <span className="social-chip social-chip-pink">Cover</span>}
                 {m.kind === 'video' && <span className="social-chip">▶ video</span>}
@@ -350,6 +394,23 @@ export default function SocialPostPage() {
             </figure>
           ))}
         </div>
+
+        {editable && touching !== null && post.media[touching]?.kind === 'image' && (
+          <TouchUpPanel
+            key={touching}
+            postId={id}
+            index={touching}
+            item={post.media[touching]}
+            number={ordered.findIndex((m) => m.i === touching) + 1}
+            headline={touching === post.cover_index ? shownHeadline : ''}
+            busy={busy === 'touchup'}
+            onSave={saveTouchUp}
+            onCancel={() => { setTouching(null); setRemix(null); }}
+            remix={remix?.field === 'bubble' ? remix : null}
+            onRemix={(text) => remixText('bubble', null, text, touching)}
+            onCloseRemix={() => setRemix(null)}
+          />
+        )}
 
         {coverIsPhoto && (editable || headline) && (
           <div className="social-headline">
@@ -369,6 +430,11 @@ export default function SocialPostPage() {
                 placeholder="No text: the photo goes out as it is"
               />
             </label>
+            {editable && (
+              <button type="button" className="social-chip-button" onClick={() => remixText('cover_headline', null, headline)} disabled={remix?.field === 'cover_headline' && !remix.options}>
+                {remix?.field === 'cover_headline' && !remix.options ? '✨ ...' : '💡 Ideas'}
+              </button>
+            )}
             {editable && headline && (
               <button type="button" className="social-link-button" onClick={() => setHeadline('')}>
                 No text
@@ -380,6 +446,10 @@ export default function SocialPostPage() {
               </button>
             )}
           </div>
+        )}
+
+        {remix?.field === 'cover_headline' && (
+          <RemixOptions remix={remix} onPick={(o) => { setHeadline(o); setRemix(null); }} onClose={() => setRemix(null)} />
         )}
 
         {reelOrder.length > 0 && (editable || postAs !== 'photos') && (
@@ -511,6 +581,16 @@ export default function SocialPostPage() {
           onChange={(e) => setCaptions({ ...captions, [network]: e.target.value })}
           readOnly={!editable}
         />
+        {editable && captions[network] && (
+          <RemixButtons
+            onRemix={(tone) => remixText(`caption_${network}`, tone, captions[network])}
+            busyTone={remix?.field === `caption_${network}` && !remix.options ? remix.tone : null}
+            disabled={!!remix && !remix.options}
+          />
+        )}
+        {remix?.field === `caption_${network}` && (
+          <RemixOptions remix={remix} onPick={(o) => { setCaptions({ ...captions, [network]: o }); setRemix(null); }} onClose={() => setRemix(null)} />
+        )}
 
         <div className="social-inline">
           {chip && (

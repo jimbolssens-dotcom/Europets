@@ -5,6 +5,8 @@
 //          { action: 'save' | 'approve' | 'posted' | 'reopen' | 'unschedule' | 'discard',
 //            caption_instagram, caption_facebook, cover_headline, cover_index, media, staff_id,
 //            post_as, reel_lines, reel_music }
+//          media items carry their touch-ups (look, focus, bubble, sticker;
+//          lib/socialTouchUpPlan.js).
 //
 // Approving checks the owner's consent (lib/socialPosts.js) on the server
 // too, not only in the page. Server-only table (migration 202).
@@ -14,6 +16,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { publicUrl } from '@/lib/socialDraft';
 import { approvalBlocker, postConsent } from '@/lib/socialPosts';
 import { cleanReelEdits, reelKey, preparedClip } from '@/lib/socialReelPlan';
+import { cleanTouchUp } from '@/lib/socialTouchUpPlan';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,11 +62,13 @@ function cleanMedia(media, id) {
       path: m.path,
       preview_path: typeof m.preview_path === 'string' && m.preview_path.startsWith(`social/${id}/`) ? m.preview_path : null,
       post_path: typeof m.post_path === 'string' && m.post_path.startsWith(`social/${id}/`) ? m.post_path : null,
+      post_key: typeof m.post_key === 'string' ? m.post_key.slice(0, 2000) : null,
       reel_clip: preparedClip(m, id),
       kind: m.kind === 'video' ? 'video' : 'image',
       name: typeof m.name === 'string' ? m.name.slice(0, 200) : null,
       excluded: !!m.excluded,
       note: typeof m.note === 'string' ? m.note.slice(0, 300) : null,
+      ...cleanTouchUp(m),
     }));
 }
 

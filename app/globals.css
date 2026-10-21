@@ -12872,3 +12872,29 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .social-story-clip span { position: relative; }
 .social-story-frame input { width: 100% !important; font-size: 0.8rem; padding: 0.3rem 0.4rem !important; }
 .social-story-frame-note { font-size: 0.72rem; text-align: center; }
+
+/* Social draft: remix buttons and photo touch-ups (app/_components/SocialTouchUp.jsx). */
+.social-remix { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.social-remix .social-chip-button, .social-touchup-row .social-chip-button, .social-touchup-bubble .social-chip-button, .social-headline .social-chip-button { white-space: nowrap; flex: 0 0 auto; padding: 0.25rem 0.6rem; width: auto !important; margin: 0 !important; }
+.social-remix-options { display: grid; gap: 0.35rem; justify-items: start; }
+.social-remix-option { width: 100% !important; margin: 0 !important; text-align: left; white-space: pre-line; background: var(--pink-tint); color: var(--text, #1d1b19); border: 1px solid #f3c6d9; border-radius: 10px; padding: 0.5rem 0.65rem; font-size: 0.88rem; font-weight: 400; line-height: 1.4; }
+.social-remix-option:hover { background: #fbdbe8; }
+.social-touchup { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.55rem; border: 1px solid #f3c6d9; border-radius: 12px; padding: 0.6rem; background: #fffafc; }
+.social-touchup-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.social-touchup-actions { display: flex; gap: 0.35rem; }
+.social-touchup-actions button { width: auto !important; margin: 0 !important; padding: 0.35rem 0.8rem; }
+.social-touchup-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.5rem; align-items: start; }
+.social-touchup-pair figure { margin: 0; display: grid; gap: 0.2rem; min-width: 0; }
+.social-touchup-pair figcaption { font-size: 0.72rem; text-align: center; }
+.social-touchup-tap { position: relative; cursor: crosshair; border-radius: 10px; overflow: hidden; touch-action: manipulation; }
+.social-touchup-tap img, .social-touchup-result { width: 100%; display: block; border-radius: 10px; background: #f2efea; user-select: none; -webkit-user-select: none; }
+.social-touchup-dot { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
+.social-touchup-focus { width: 26px; height: 26px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 2px var(--pink), 0 1px 4px rgba(0,0,0,0.4); }
+.social-touchup-pet { font-size: 1.3rem; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
+.social-touchup-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.social-touchup-bubble { display: flex; gap: 0.35rem; align-items: center; }
+.social-touchup-bubble input { flex: 1; min-width: 0; width: auto !important; margin: 0 !important; }
+.social-touchup .social-seg-small button { white-space: nowrap; font-size: 0.78rem; }
+.social-media { position: relative; }
+.social-media-edit { position: absolute; top: 7px; right: 7px; width: auto !important; margin: 0 !important; padding: 0.15rem 0.5rem !important; border-radius: 999px; background: rgba(255,255,255,0.92); color: var(--pink-dark); font-size: 0.75rem; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+.social-media-edit:hover { background: white; }

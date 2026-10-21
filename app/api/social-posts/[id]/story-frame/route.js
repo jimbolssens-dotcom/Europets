@@ -26,6 +26,7 @@ export async function GET(request, { params }) {
       first: searchParams.get('first') === '1',
       width: 360,
       quality: 80,
+      item,
     });
     return new Response(jpeg, { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' } });
   } catch (err) {
