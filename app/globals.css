@@ -12852,3 +12852,6 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .social-duty-go { background: white; color: var(--pink-dark); font-weight: 800; border-radius: 999px; padding: 0.35rem 0.85rem; }
 .social-duty-done { margin: 0.75rem 0 0; text-align: center; color: #11795a; font-weight: 600; }
 .social-duty-line { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin: 0.6rem 0 0; font-size: 0.92rem; }
+
+/* Online Payments: the payment number in the Edit form (YY-MM-NN). */
+.note-form input.donation-number-input { max-width: 7.5rem; font-variant-numeric: tabular-nums; }

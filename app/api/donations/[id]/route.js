@@ -8,11 +8,13 @@
 //        migration 199).
 // DELETE /api/donations/:id  -> remove one (blocked once any of its money
 //        has been applied to an invoice — same guard pattern as staff/
-//        catalog deletes elsewhere in the app).
+//        catalog deletes elsewhere in the app). Deleting the latest
+//        payment of a month gives its number back to the counter.
 // PATCH  /api/donations/:id  -> correct a payment logged in error (wrong
-//        amount, source, date, ...). donation_number is never editable —
-//        it's the sequence position, not a field. Any subset of fields may
-//        be sent; amount is blocked from dropping below whatever's already
+//        amount, source, date, number...). donation_number can be corrected
+//        by hand (YY-MM-NN, must be free); the month's counter is kept in
+//        step (lib/paymentSequence.js), so a freed latest number is given
+//        out next instead of skipped. Any subset of fields may be sent; amount is blocked from dropping below whatever's already
 //        applied to an invoice (see the apply endpoint), same balance
 //        invariant DELETE already protects.
 
@@ -20,6 +22,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { allocatedByDonation } from '@/lib/donationAllocations';
+import { claimPaymentNumber, releasePaymentNumber } from '@/lib/paymentSequence';
+import { parseOnlinePaymentNumber } from '@/lib/paymentNumberRules';
 
 const SOURCES = ['nomod', 'paymob', 'paypal', 'bank_transfer'];
 
@@ -66,9 +70,15 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { donor_name, donor_contact, amount, source, received_at, notes } = body;
+  const { donor_name, donor_contact, amount, source, received_at, notes, donation_number } = body;
 
   const update = {};
+  let newNumber = null;
+  if (donation_number !== undefined) {
+    newNumber = parseOnlinePaymentNumber(donation_number);
+    if (!newNumber) return NextResponse.json({ error: 'Use the format YY-MM-NN for the number, e.g. 26-10-30' }, { status: 400 });
+    update.donation_number = newNumber.number;
+  }
   if (donor_name !== undefined) update.donor_name = donor_name || null;
   if (donor_contact !== undefined) update.donor_contact = donor_contact || null;
   if (notes !== undefined) update.notes = notes || null;
@@ -103,14 +113,30 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'nothing to update' }, { status: 400 });
   }
 
+  const { data: before } = await supabaseAdmin.from('donations').select('donation_number').eq('id', params.id).maybeSingle();
+  if (!before) return NextResponse.json({ error: 'donation not found' }, { status: 404 });
+
   const { data, error } = await supabaseAdmin.from('donations').update(update).eq('id', params.id).select().single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    if (error.code === '23505') {
+      return NextResponse.json({ error: `Payment number ${update.donation_number} is already used by another payment.` }, { status: 409 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   if (!data) return NextResponse.json({ error: 'donation not found' }, { status: 404 });
+
+  // A changed number: the old one is freed, the new one taken.
+  if (newNumber && newNumber.number !== before.donation_number) {
+    const old = parseOnlinePaymentNumber(before.donation_number);
+    if (old) await releasePaymentNumber(old.prefix, old.seq);
+    await claimPaymentNumber(newNumber.prefix, newNumber.seq);
+  }
 
   return NextResponse.json(data);
 }
 
 export async function DELETE(request, { params }) {
+  const { data: gone } = await supabaseAdmin.from('donations').select('donation_number').eq('id', params.id).maybeSingle();
   const { error } = await supabaseAdmin.from('donations').delete().eq('id', params.id);
 
   if (error) {
@@ -122,5 +148,8 @@ export async function DELETE(request, { params }) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  // The month's latest number comes back, so deleting a mistake leaves no gap.
+  const number = parseOnlinePaymentNumber(gone?.donation_number);
+  if (number) await releasePaymentNumber(number.prefix, number.seq);
   return NextResponse.json({ ok: true });
 }

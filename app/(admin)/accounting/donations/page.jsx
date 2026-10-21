@@ -152,6 +152,7 @@ export default function DonationsPage() {
     setEditingId(donation.id);
     setEditError(null);
     setEditForm({
+      donation_number: donation.donation_number || '',
       donor_name: donation.donor_name || '',
       donor_contact: donation.donor_contact || '',
       amount: String(donation.amount),
@@ -176,6 +177,7 @@ export default function DonationsPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        ...(editForm.donation_number !== donation.donation_number ? { donation_number: editForm.donation_number } : {}),
         donor_name: editForm.donor_name || null,
         donor_contact: editForm.donor_contact || null,
         amount: Number(editForm.amount),
@@ -414,6 +416,14 @@ export default function DonationsPage() {
                         }}
                       >
                         {editError && <p className="error">{editError}</p>}
+                        <input
+                          className="donation-number-input"
+                          aria-label="Payment number"
+                          title="Payment number (YY-MM-NN). Change it to fix a skipped or wrong number."
+                          placeholder="26-10-30"
+                          value={editForm.donation_number}
+                          onChange={(e) => setEditForm({ ...editForm, donation_number: e.target.value })}
+                        />
                         <input
                           placeholder="Donor name (optional)"
                           value={editForm.donor_name}
