@@ -10,7 +10,9 @@
 // frame by frame. Each photo can be touched up (a look, what stays in
 // frame, the pet's speech bubble, a sticker; app/_components/SocialTouchUp.jsx)
 // and the captions and cover text remixed by the AI. Photos can open with
-// a layout picture, a Before / After or a Collage (lib/socialLayoutPlan.js). Once approved, and until Meta is
+// a layout picture, a Before / After or a Collage (lib/socialLayoutPlan.js).
+// A Reel's clips can carry subtitles of what's said in them
+// (lib/socialSubtitlesPlan.js), which staff can correct. Once approved, and until Meta is
 // connected (lib/metaSocial.js, app/(admin)/social/connect) an approved
 // post goes out now or at a set time; otherwise it's posted by hand: copy
 // the caption, share or download the files, then mark it as posted.
@@ -22,6 +24,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { REEL_MUSIC, reelItems, reelKey, reelTimeline, reelContents, preparedClip, storyItems } from '@/lib/socialReelPlan';
 import { touchUpKey } from '@/lib/socialTouchUpPlan';
 import { LAYOUTS, layoutItems, afterLayout, defaultLayoutItems } from '@/lib/socialLayoutPlan';
+import { retimeWords } from '@/lib/socialSubtitlesPlan';
 import { RemixButtons, RemixOptions, TouchUpPanel } from '@/app/_components/SocialTouchUp';
 
 const CONSENT_CHIP = {
@@ -85,6 +88,13 @@ export default function SocialPostPage() {
   const [touching, setTouching] = useState(null);
   const [remix, setRemix] = useState(null);
   const [layout, setLayout] = useState(null);
+  // The clips' subtitles by media index: as saved or being edited, the
+  // words as heard (edits are timed from them), the text in each field, and
+  // which clips are being listened to now.
+  const [subs, setSubs] = useState({});
+  const [subBase, setSubBase] = useState({});
+  const [subText, setSubText] = useState({});
+  const [hearing, setHearing] = useState({});
 
   function apply(data) {
     setPost(data);
@@ -95,6 +105,13 @@ export default function SocialPostPage() {
     setReelLines(Array.isArray(data.reel_lines) ? data.reel_lines : []);
     setMusic(data.reel_music || 'sunny');
     setLayout(data.layout || null);
+    const saved = {};
+    (data.media || []).forEach((m, i) => {
+      if (m.kind === 'video' && m.subtitles) saved[i] = m.subtitles;
+    });
+    setSubs(saved);
+    setSubBase(Object.fromEntries(Object.entries(saved).map(([i, sub]) => [i, sub.words || []])));
+    setSubText(Object.fromEntries(Object.entries(saved).map(([i, sub]) => [i, (sub.words || []).map((x) => x.w).join(' ')])));
   }
 
   useEffect(() => {
@@ -176,6 +193,38 @@ export default function SocialPostPage() {
     patch({ ...edits(), layout: next }, 'layout');
   }
 
+  const withSubs = (map) => post.media.map((m, i) => (m.kind === 'video' && map[i] ? { ...m, subtitles: map[i] } : m));
+
+  // Switching a clip's subtitles on listens to it the first time (about
+  // ten seconds); after that it's kept, so on and off is instant.
+  async function toggleSubtitles(i) {
+    const m = post.media[i];
+    const cur = subs[i];
+    if (cur && cur.source === m.path) {
+      const next = { ...subs, [i]: { ...cur, on: !cur.on } };
+      setSubs(next);
+      return patch({ ...edits(), media: withSubs(next) }, 'subs');
+    }
+    setHearing((h) => ({ ...h, [i]: true }));
+    setError(null);
+    const res = await fetch(`/api/social-posts/${id}/reel/subtitles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ index: i }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setHearing((h) => ({ ...h, [i]: false }));
+    if (!res.ok) return setError(data.error || "Couldn't hear what's said in that video. Try again.");
+    const next = { ...subs, [i]: data };
+    setSubs(next);
+    patch({ ...edits(), media: withSubs(next) }, 'subs');
+  }
+
+  function editSubtitles(i, text) {
+    setSubText((t) => ({ ...t, [i]: text }));
+    setSubs((prev) => ({ ...prev, [i]: { ...prev[i], words: retimeWords(subBase[i] || [], text) } }));
+  }
+
   function setReelLine(i, value) {
     setReelLines((prev) => {
       const nextLines = [...prev];
@@ -214,7 +263,7 @@ export default function SocialPostPage() {
     const res = await fetch(`/api/social-posts/${id}/reel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cover_headline: headline, reel_lines: reelLines, reel_music: music, clips }),
+      body: JSON.stringify({ cover_headline: headline, reel_lines: reelLines, reel_music: music, clips, subtitles: subs }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) setError(data.error || "Couldn't make the Reel. Try again.");
@@ -359,7 +408,7 @@ export default function SocialPostPage() {
   const storyOrder = storyItems(post);
   const storyFrameUrl = (i, k) =>
     `/api/social-posts/${id}/story-frame?i=${i}&first=${k === 0 ? 1 : 0}&t=${encodeURIComponent(k === 0 ? shownHeadline : shownLines[i] || '')}&v=${lookTag(post.media[i])}`;
-  const reelDraft = { ...post, cover_headline: headline, reel_lines: reelLines, reel_music: music };
+  const reelDraft = { ...post, cover_headline: headline, reel_lines: reelLines, reel_music: music, media: withSubs(subs) };
   const reelCurrent = !!post.reel && post.reel.key === reelKey(reelDraft);
   const photoChoices = post.media.map((m, i) => ({ ...m, i })).filter((m) => m.kind === 'image' && !m.excluded);
   const laidOut = layoutItems({ ...post, post_as: postAs, layout });
@@ -571,6 +620,34 @@ export default function SocialPostPage() {
                     ))}
                   </div>
                 )}
+                {reelOrder.filter((i) => post.media[i].kind === 'video').map((i) => {
+                  const sub = subs[i];
+                  const on = !!sub?.on && sub.source === post.media[i].path;
+                  return (
+                    <div key={`sub-${post.media[i].path}`} className="social-reel-sub">
+                      <span className="social-reel-line-thumb">
+                        {post.media[i].preview_path && <img src={post.media[i].preview_url} alt="" />}
+                        <span className="social-reel-line-play">▶</span>
+                      </span>
+                      <button type="button" className={`social-chip-button${on ? ' social-chip-on' : ''}`} onClick={() => toggleSubtitles(i)} disabled={!editable || !!busy || hearing[i]} aria-pressed={on}>
+                        {hearing[i] ? '💬 Listening...' : '💬 Subtitles'}
+                      </button>
+                      {on && sub.words.length + (subText[i] || '').length > 0 ? (
+                        <input
+                          type="text"
+                          value={subText[i] ?? ''}
+                          maxLength={300}
+                          onChange={(e) => editSubtitles(i, e.target.value)}
+                          onBlur={() => patch({ ...edits(), media: withSubs(subs) }, 'subs')}
+                          readOnly={!editable}
+                          aria-label="What's said in this clip"
+                        />
+                      ) : (
+                        <span className="visit-meta">{hearing[i] ? 'About ten seconds.' : on ? 'Nothing said in this clip.' : "What's said, word by word."}</span>
+                      )}
+                    </div>
+                  );
+                })}
                 <div className="social-reel-music" role="group" aria-label="Music">
                   <span aria-hidden="true">🎵</span>
                   {REEL_MUSIC.map((m) => (

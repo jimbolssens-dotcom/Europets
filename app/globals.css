@@ -12723,7 +12723,7 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .social-headline-view { white-space: nowrap; font-weight: 400; }
 .social-headline .social-link-button { white-space: nowrap; padding-bottom: 0.55rem !important; }
 /* Reel */
-.social-reel { display: grid; gap: 0.55rem; border-top: 1px solid #efebe6; padding-top: 0.6rem; }
+.social-reel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.55rem; border-top: 1px solid #efebe6; padding-top: 0.6rem; }
 .social-reel-head { display: flex; align-items: center; gap: 0.6rem; }
 .social-seg-small { flex: 1 1 auto; max-width: 21rem; }
 .social-seg-small button { white-space: nowrap; padding: 0.35rem 0.5rem; }
@@ -12914,3 +12914,11 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .social-layout-pick-on { border-color: var(--pink); }
 .social-layout-pick-on img { opacity: 1; }
 .social-layout-pick span { position: absolute; left: 50%; bottom: 3px; transform: translateX(-50%); background: var(--pink); color: white; border-radius: 999px; padding: 0 0.4rem; font-size: 0.65rem; font-weight: 700; white-space: nowrap; }
+
+/* Social draft: a Reel clip's subtitles (lib/socialSubtitlesPlan.js). */
+.social-reel-sub { display: flex; align-items: center; gap: 0.45rem; }
+.social-reel-sub .social-reel-line-thumb { width: 2.6rem; height: 2.6rem; border-radius: 8px; overflow: hidden; background: #1c1418; }
+.social-reel-sub img { width: 2.6rem; height: 2.6rem; object-fit: cover; display: block; }
+.social-reel-sub .social-chip-button { white-space: nowrap; flex: 0 0 auto; width: auto !important; margin: 0 !important; padding: 0.25rem 0.6rem; }
+.social-reel-sub input { flex: 1; min-width: 0; width: auto !important; margin: 0 !important; font-size: 0.85rem; }
+.social-reel-sub .visit-meta { font-size: 0.78rem; min-width: 0; }

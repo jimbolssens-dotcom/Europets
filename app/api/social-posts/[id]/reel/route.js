@@ -5,12 +5,15 @@
 // migration 207) and sets the post to go out as a Reel. Returns the post's
 // new `reel` with its URL. Takes about half a minute. clips: { [media index]:
 // reel_clip } from ./clip, the clips' prepared parts, saved on the post here.
+// subtitles: { [media index]: subtitles }, the clips' subtitles as staff
+// left them (lib/socialSubtitlesPlan.js), saved here too.
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { publicUrl } from '@/lib/socialDraft';
 import { makeSocialReel } from '@/lib/socialReel';
 import { cleanReelEdits, preparedClip } from '@/lib/socialReelPlan';
+import { cleanSubtitles } from '@/lib/socialSubtitlesPlan';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -23,11 +26,14 @@ export async function POST(request, { params }) {
 
   const edits = { ...cleanReelEdits(body, post.media), post_as: 'reel' };
   const clips = body.clips && typeof body.clips === 'object' ? body.clips : {};
-  if (Object.keys(clips).length) {
+  const subtitles = body.subtitles && typeof body.subtitles === 'object' ? body.subtitles : {};
+  if (Object.keys(clips).length || Object.keys(subtitles).length) {
     edits.media = (post.media || []).map((m, i) => {
+      let next = m;
+      if (m.kind === 'video' && subtitles[i]) next = { ...next, subtitles: cleanSubtitles({ subtitles: subtitles[i] }) };
       const clip = clips[i];
-      if (!clip || !preparedClip({ path: m.path, reel_clip: clip }, post.id)) return m;
-      return { ...m, reel_clip: { path: clip.path, source: clip.source, length: Number(clip.length) } };
+      if (!clip || !preparedClip({ path: m.path, reel_clip: clip }, post.id)) return next;
+      return { ...next, reel_clip: { path: clip.path, source: clip.source, length: Number(clip.length) } };
     });
   }
   const next = { ...post, ...edits };

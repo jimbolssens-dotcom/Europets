@@ -19,6 +19,7 @@ import { approvalBlocker, postConsent } from '@/lib/socialPosts';
 import { cleanReelEdits, reelKey, preparedClip } from '@/lib/socialReelPlan';
 import { cleanTouchUp } from '@/lib/socialTouchUpPlan';
 import { cleanLayout } from '@/lib/socialLayoutPlan';
+import { cleanSubtitles } from '@/lib/socialSubtitlesPlan';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,6 +72,7 @@ function cleanMedia(media, id) {
       excluded: !!m.excluded,
       note: typeof m.note === 'string' ? m.note.slice(0, 300) : null,
       ...cleanTouchUp(m),
+      subtitles: m.kind === 'video' ? cleanSubtitles(m) : null,
     }));
 }
 
