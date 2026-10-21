@@ -12725,7 +12725,8 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 /* Reel */
 .social-reel { display: grid; gap: 0.55rem; border-top: 1px solid #efebe6; padding-top: 0.6rem; }
 .social-reel-head { display: flex; align-items: center; gap: 0.6rem; }
-.social-seg-small { flex: 0 1 15rem; }
+.social-seg-small { flex: 1 1 auto; max-width: 21rem; }
+.social-seg-small button { white-space: nowrap; padding: 0.35rem 0.5rem; }
 .social-reel-lines { display: grid; gap: 0.4rem; grid-template-columns: minmax(0, 1fr); }
 .social-reel-line { display: flex !important; flex-direction: row !important; align-items: center; gap: 0.5rem; }
 .social-reel-line-thumb { position: relative; flex: 0 0 auto; display: block; }
@@ -12861,3 +12862,13 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .invoice-payment-method-edit select { width: auto !important; margin: 0 !important; }
 .invoice-payment-method-edit button, button.invoice-payment-method-btn { width: auto !important; padding: 0.15rem 0.55rem !important; font-size: 0.8rem; margin: 0 !important; }
 .invoice-payment-corrected { color: #8a7f86; font-size: 0.85em; }
+
+/* Story frames on the Social draft (migration 210): 9:16 previews side by side. */
+.social-story-frames { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.25rem; scroll-snap-type: x mandatory; }
+.social-story-frame { flex: 0 0 7.2rem; display: grid; gap: 0.3rem; scroll-snap-align: start; }
+.social-story-frame img, .social-story-clip { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 10px; background: #1c1418; display: block; }
+.social-story-clip { position: relative; overflow: hidden; display: grid; place-items: center; color: #fff; font-size: 0.75rem; font-weight: 700; }
+.social-story-clip img { position: absolute; inset: 0; height: 100%; opacity: 0.6; border-radius: 0; }
+.social-story-clip span { position: relative; }
+.social-story-frame input { width: 100% !important; font-size: 0.8rem; padding: 0.3rem 0.4rem !important; }
+.social-story-frame-note { font-size: 0.72rem; text-align: center; }

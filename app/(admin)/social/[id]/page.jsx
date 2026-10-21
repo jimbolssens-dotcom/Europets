@@ -5,7 +5,9 @@
 // the AI wrote (lib/socialCover.js), shown live on the cover's thumbnail
 // while staff edit it. It can go out as photos or as a Reel made from them
 // and clips (lib/socialReel.js): a line of text per file, a backing track, made on
-// the server in about half a minute and previewed here. Once approved, and until Meta is
+// the server in about half a minute and previewed here; or as a Story, each
+// photo a full-screen frame with its text (lib/socialStory.js), previewed
+// frame by frame. Once approved, and until Meta is
 // connected (lib/metaSocial.js, app/(admin)/social/connect) an approved
 // post goes out now or at a set time; otherwise it's posted by hand: copy
 // the caption, share or download the files, then mark it as posted.
@@ -14,7 +16,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { REEL_MUSIC, reelItems, reelKey, reelTimeline, reelContents, preparedClip } from '@/lib/socialReelPlan';
+import { REEL_MUSIC, reelItems, reelKey, reelTimeline, reelContents, preparedClip, storyItems } from '@/lib/socialReelPlan';
 
 const CONSENT_CHIP = {
   yes: { label: '✓ Owner said yes', className: 'social-consent-yes' },
@@ -53,6 +55,9 @@ export default function SocialPostPage() {
   const [postAs, setPostAs] = useState('photos');
   const [reelLines, setReelLines] = useState([]);
   const [music, setMusic] = useState('sunny');
+  // What the Story frame previews were last drawn with (follows the text
+  // fields after a short pause, like the cover preview).
+  const [shownLines, setShownLines] = useState([]);
 
   function apply(data) {
     setPost(data);
@@ -68,6 +73,11 @@ export default function SocialPostPage() {
     const t = setTimeout(() => setShownHeadline(headline), 700);
     return () => clearTimeout(t);
   }, [headline]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShownLines(reelLines), 700);
+    return () => clearTimeout(t);
+  }, [reelLines]);
 
   useEffect(() => {
     fetch(`/api/social-posts/${id}`)
@@ -275,6 +285,9 @@ export default function SocialPostPage() {
   const coverItem = post.media[post.cover_index];
   const coverIsPhoto = coverItem && !coverItem.excluded && coverItem.kind === 'image';
   const reelOrder = reelItems(post);
+  const storyOrder = storyItems(post);
+  const storyFrameUrl = (i, k) =>
+    `/api/social-posts/${id}/story-frame?i=${i}&first=${k === 0 ? 1 : 0}&t=${encodeURIComponent(k === 0 ? shownHeadline : shownLines[i] || '')}`;
   const reelDraft = { ...post, cover_headline: headline, reel_lines: reelLines, reel_music: music };
   const reelCurrent = !!post.reel && post.reel.key === reelKey(reelDraft);
   const coverUrl = (h) => `/api/social-posts/${id}/cover?i=${post.cover_index}&h=${encodeURIComponent(h)}`;
@@ -369,7 +382,7 @@ export default function SocialPostPage() {
           </div>
         )}
 
-        {reelOrder.length > 0 && (editable || postAs === 'reel') && (
+        {reelOrder.length > 0 && (editable || postAs !== 'photos') && (
           <div className="social-reel">
             <div className="social-reel-head">
               <span className="social-field-label">Post as</span>
@@ -377,6 +390,7 @@ export default function SocialPostPage() {
                 {[
                   ['photos', '📷 Photos'],
                   ['reel', '🎬 Reel'],
+                  ['story', '📖 Story'],
                 ].map(([key, label]) => (
                   <button key={key} type="button" role="tab" aria-selected={postAs === key} className={postAs === key ? 'social-seg-on' : ''} onClick={() => editable && postAs !== key && choosePostAs(key)} disabled={!editable || !!busy}>
                     {label}
@@ -440,6 +454,41 @@ export default function SocialPostPage() {
                     </span>
                   </div>
                 </div>
+              </>
+            )}
+
+            {postAs === 'story' && (
+              <>
+                <div className="social-story-frames">
+                  {storyOrder.map((i, k) => (
+                    <div key={post.media[i].path} className="social-story-frame">
+                      {post.media[i].kind === 'video' ? (
+                        <div className="social-story-clip">
+                          {post.media[i].preview_path && <img src={post.media[i].preview_url} alt="" />}
+                          <span>▶ Clip, as it is</span>
+                        </div>
+                      ) : (
+                        <img src={storyFrameUrl(i, k)} alt={`Story frame ${k + 1}`} />
+                      )}
+                      {k === 0 ? (
+                        <span className="visit-meta social-story-frame-note">Cover text above</span>
+                      ) : post.media[i].kind === 'image' ? (
+                        <input
+                          type="text"
+                          value={reelLines[i] || ''}
+                          maxLength={60}
+                          onChange={(e) => setReelLine(i, e.target.value)}
+                          readOnly={!editable}
+                          placeholder="No text"
+                          aria-label={`Text on frame ${k + 1}`}
+                        />
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                <p className="visit-meta">
+                  {storyOrder.length} frame{storyOrder.length === 1 ? '' : 's'}, one after another. Stories show no caption, so the text is on the frames. Gone after 24 hours.
+                </p>
               </>
             )}
           </div>

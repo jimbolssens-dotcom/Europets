@@ -78,3 +78,12 @@ test('clips play a few seconds from just after the start, and a long Reel is cut
   assert.match(graph.split(';')[0], /^\[0:v\]fps=24,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920/);
   assert.doesNotMatch(graph.split(';')[0], /zoompan/);
 });
+
+test('a Story uses the photos and clips as frames, cover first, up to ten', async () => {
+  const { storyItems, storyFrameKey } = await import('../lib/socialReelPlan.js');
+  assert.deepEqual(storyItems(base), [2, 0, 1, 4]);
+  const many = { cover_index: 0, media: Array.from({ length: 14 }, (_, i) => photo(`p${i}`)) };
+  assert.equal(storyItems(many).length, 10);
+  assert.notEqual(storyFrameKey(photo('a'), 'Hi'), storyFrameKey(photo('a'), 'Hello'));
+  assert.equal(cleanReelEdits({ post_as: 'story' }, base.media).post_as, 'story');
+});
