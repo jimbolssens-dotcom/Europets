@@ -2,7 +2,8 @@
 // The Social page (migration 202): posts the AI drafted from staff photos,
 // waiting for a staff member to approve them; approved ones waiting to be
 // posted (by Meta's API once connected, app/(admin)/social/connect, or by
-// hand); and what's been posted.
+// hand); and what's been posted, with how each did (likes, comments, saves;
+// migration 212) and the week's best post on top.
 
 'use client';
 
@@ -45,6 +46,8 @@ export default function SocialPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [conn, setConn] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     fetch('/api/social-posts/connection')
@@ -59,7 +62,16 @@ export default function SocialPage() {
       .then((res) => res.json())
       .then((d) => (d.error ? setError(d.error) : setData(d)))
       .catch(() => setError('Could not load the posts.'));
-  }, [tab]);
+  }, [tab, reload]);
+
+  async function refreshNumbers() {
+    setRefreshing(true);
+    const res = await fetch('/api/social-posts/stats', { method: 'POST' });
+    const out = await res.json().catch(() => ({}));
+    setRefreshing(false);
+    if (!res.ok || (out.updated === 0 && out.errors?.length)) setError(`Couldn't get the numbers: ${out.errors?.[0] || out.error || 'try again later'}`);
+    setReload((n) => n + 1);
+  }
 
   const counts = data?.counts || {};
 
@@ -80,6 +92,17 @@ export default function SocialPage() {
       <SocialDutyLine />
       <SocialWeekPlan />
 
+      {data?.best && (
+        <a href={`/social/${data.best.id}`} className="card social-card social-best">
+          <span className="social-best-thumb">{data.best.cover_url ? <img src={data.best.cover_url} alt="" /> : '💡'}</span>
+          <span className="social-best-body">
+            <span className="social-best-label">🏆 Best this week</span>
+            <span className="social-item-title">{data.best.title}</span>
+            <span className="social-best-stats">{data.best.stats_line}</span>
+          </span>
+        </a>
+      )}
+
       <div className="social-tabs" role="tablist">
         {TABS.map((t) => (
           <button
@@ -97,6 +120,18 @@ export default function SocialPage() {
       </div>
 
       {error && <p className="error">{error}</p>}
+      {tab === 'posted' && data?.posts.length > 0 && conn?.ok && (
+        <div className="social-inline social-numbers">
+          <span className="visit-meta">
+            {data.posts.some((p) => p.stats_at)
+              ? `Numbers from Instagram and Facebook, ${when(data.posts.map((p) => p.stats_at).filter(Boolean).sort().pop())}. The AI learns from the best ones.`
+              : 'Numbers from Instagram and Facebook come in by themselves. The AI learns from the best ones.'}
+          </span>
+          <button type="button" className="social-link-button" onClick={refreshNumbers} disabled={refreshing}>
+            {refreshing ? 'Updating...' : '↻ Update'}
+          </button>
+        </div>
+      )}
       {!data && !error && <p className="visit-meta">Loading...</p>}
       {data && data.posts.length === 0 && (
         <div className="card social-card social-empty">
@@ -129,6 +164,7 @@ export default function SocialPage() {
                   {p.patient_name && <span className="social-chip">🐾 {p.patient_name}</span>}
                   {mediaLabel(p) && <span className="social-chip">{mediaLabel(p)}</span>}
                   {p.tip && <span className="social-chip">💡 Tip card</span>}
+                  {p.stats_line && <span className="social-chip social-chip-stats">{p.stats_line}</span>}
                 </div>
               </div>
             </a>
