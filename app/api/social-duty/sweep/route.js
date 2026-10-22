@@ -1,11 +1,13 @@
 // app/api/social-duty/sweep/route.js
 // GET -> the daily Social post duty's next step (lib/socialDuty.js): pick
 // today's person at 8am, nudge at noon and 4pm, tell the admin at 6pm
-// if there's still no post. Vercel Cron (vercel.json); public in
+// if there's still no post. Also the daily rescue updates' reminders
+// (lib/rescueUpdates.js). Vercel Cron (vercel.json); public in
 // middleware.js, verified with the same CRON_SECRET as the other cron routes.
 
 import { NextResponse } from 'next/server';
 import { runDutySweep } from '@/lib/socialDuty';
+import { runRescueUpdateSweep } from '@/lib/rescueUpdates';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,5 +16,7 @@ export async function GET(request) {
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
-  return NextResponse.json(await runDutySweep());
+  const duty = await runDutySweep();
+  const rescue = await runRescueUpdateSweep().catch((err) => ({ error: err.message }));
+  return NextResponse.json({ ...duty, rescue });
 }

@@ -85,6 +85,7 @@ export default function SocialPage() {
               {conn.ok ? '✓ IG & FB' : 'Connect IG & FB'}
             </a>
           )}
+          <a href="/social/rescue" className="button-link social-ghost">🐾 Rescue</a>
           <a href="/social/new" className="button-link">＋ Upload</a>
         </div>
       </div>

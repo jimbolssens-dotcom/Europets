@@ -817,6 +817,12 @@ export default function SocialPostPage() {
               : <span className={`social-chip ${chip.className}`}>{chip.label}</span>
           )}
           {post.patients?.name && <span className="social-chip">🐾 {post.patients.name}</span>}
+          {(post.collaborators || []).map((u) => (
+            <span key={u} className="social-chip" title="Invited as a collaborator on Instagram: it shows on their profile too once they accept">
+              🤝 with @{u}
+            </span>
+          ))}
+          {post.publish_state?.instagram?.collab_dropped && <span className="social-chip social-consent-not_asked" title={post.publish_state.instagram.collab_dropped}>Posted without the collab</span>}
           {post.created_by_name && <span className="social-chip">by {post.created_by_name}</span>}
           {post.approved_by_name && <span className="social-chip">✓ {post.approved_by_name}</span>}
         </div>

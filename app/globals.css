@@ -12996,3 +12996,18 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .pay-page-check input { flex: 0 0 auto !important; }
 .pay-page-links .pay-link-row input { min-width: 0 !important; max-width: none !important; width: 0 !important; flex: 1 1 0 !important; margin: 0 !important; font-size: 0.85rem; }
 .pay-page-links .pay-link-row input[type='url'] { flex-grow: 1.3 !important; }
+.rescue-day { display: grid; gap: 0.55rem; }
+.rescue-day-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.rescue-day-head strong { margin-right: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rescue-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: 0.4rem; }
+.rescue-tile { position: relative; display: block !important; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #f6eef2; border: 2px dashed #e7c9d6; margin: 0 !important; cursor: pointer; }
+.rescue-tile-done { border: 2px solid #2e7d4f; }
+.rescue-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rescue-tile-cam { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.6rem; padding-bottom: 1.2rem; }
+.rescue-tile-name { position: absolute; left: 0; right: 0; bottom: 0; padding: 0.15rem 0.3rem; background: rgba(28, 20, 24, 0.72); color: white; font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rescue-tile-busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255, 255, 255, 0.6); font-weight: 700; }
+.rescue-tile input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100% !important; height: 100%; margin: 0 !important; }
+.rescue-day-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.rescue-day-actions button { width: auto !important; margin: 0 !important; }
+.rescue-tile-name { font-weight: 700; }
+.rescue-tile-day { position: absolute; top: 0.25rem; left: 0.25rem; padding: 0.05rem 0.35rem; border-radius: 999px; background: rgba(255, 255, 255, 0.9); color: #1c1418; font-size: 0.68rem; font-weight: 700; }
