@@ -47,6 +47,10 @@ export default function ClientDetailPage() {
   const [payLinkOpen, setPayLinkOpen] = useState(false);
   const [payLinkBusy, setPayLinkBusy] = useState(false);
   const [payLinkNote, setPayLinkNote] = useState(null);
+  // Sending it from the clinic's WhatsApp number: who's sending (remembered).
+  const [payLinkStaff, setPayLinkStaff] = useState([]);
+  const [payLinkStaffId, setPayLinkStaffId] = useState('');
+  const [payLinkSending, setPayLinkSending] = useState(false);
   useEffect(() => {
     fetch(`/api/clients/${id}/payment-reminders`)
       .then((res) => res.json())
@@ -88,7 +92,41 @@ export default function ClientDetailPage() {
 
   async function openPayLink() {
     setPayLinkOpen((open) => !open);
+    if (!payLinkStaff.length) {
+      fetch('/api/staff')
+        .then((res) => res.json())
+        .then((d) => setPayLinkStaff(Array.isArray(d) ? d.filter((m) => m.active !== false) : []))
+        .catch(() => {});
+      try {
+        setPayLinkStaffId(localStorage.getItem('pay_link_staff_id') || '');
+      } catch {}
+    }
     if (!payLink?.link) await savePayLink({});
+  }
+
+  const payLinkMessage = () => {
+    const pet = payLink.link.patient_name;
+    return `Here is your personal payment link${pet ? ` for ${pet}` : ''}. You, or anyone helping, can pay any amount by card and it goes straight onto your account: ${payLink.link.url}`;
+  };
+
+  // From the clinic's WhatsApp number, into the client's chat thread: a
+  // plain message if they wrote in the last 24 hours, otherwise the
+  // approved clinic template (POST /api/clients/[id]/messages does both).
+  async function sendPayLinkFromClinic() {
+    if (!payLinkStaffId) return setPayLinkNote('Pick who is sending it.');
+    try {
+      localStorage.setItem('pay_link_staff_id', payLinkStaffId);
+    } catch {}
+    setPayLinkSending(true);
+    setPayLinkNote(null);
+    const res = await fetch(`/api/clients/${id}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: payLinkMessage(), staff_id: payLinkStaffId, channel: 'whatsapp' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setPayLinkSending(false);
+    setPayLinkNote(res.ok ? '✅ Sent from the clinic WhatsApp. It is in their messages.' : data.error || 'Could not send it. Try again.');
   }
 
   async function copyPayLink() {
@@ -101,11 +139,7 @@ export default function ClientDetailPage() {
   }
 
   function sendPayLink() {
-    const pet = payLink.link.patient_name;
-    openWhatsApp(
-      client.phone,
-      `Hi ${client.full_name}! Here is your personal Europets payment link${pet ? ` for ${pet}` : ''}. You, or anyone helping, can pay any amount by card and it goes straight onto your account: ${payLink.link.url}`
-    );
+    openWhatsApp(client.phone, `Hi ${client.full_name}! ${payLinkMessage().replace('Here is your personal', 'Here is your personal Europets')}`);
   }
 
   async function newPayLink() {
@@ -886,7 +920,18 @@ export default function ClientDetailPage() {
                 <div className="pay-link-row">
                   <input type="text" readOnly value={payLink.link.url} onFocus={(e) => e.target.select()} aria-label="Payment link" />
                   <button type="button" className="secondary" onClick={copyPayLink}>Copy</button>
-                  <button type="button" onClick={sendPayLink} disabled={!client.phone}>💬 Send</button>
+                  <button type="button" className="secondary" onClick={sendPayLink} disabled={!client.phone} title="Opens your own WhatsApp with the message ready">💬 Mine</button>
+                </div>
+                <div className="pay-link-row">
+                  <select value={payLinkStaffId} onChange={(e) => setPayLinkStaffId(e.target.value)} aria-label="Sent by">
+                    <option value="">Sent by...</option>
+                    {payLinkStaff.map((m) => (
+                      <option key={m.id} value={m.id}>{m.full_name}</option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={sendPayLinkFromClinic} disabled={!client.phone || payLinkSending || !payLinkStaffId} title="Sends it from the clinic's WhatsApp number, into their chat with us">
+                    {payLinkSending ? 'Sending...' : '📲 Clinic WhatsApp'}
+                  </button>
                 </div>
                 <div className="pay-link-row">
                   {patients.length > 0 && (

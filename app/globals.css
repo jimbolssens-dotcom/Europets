@@ -12960,7 +12960,7 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .pay-link-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.45rem; margin: -0.4rem 0 1rem; padding: 0.6rem; border: 1px solid #f3c6d9; border-radius: 10px; background: #fffafc; }
 .pay-link-row { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
 .pay-link-row input { flex: 1 1 6rem; min-width: 0; width: auto !important; margin: 0 !important; font-size: 0.85rem; }
-.pay-link-row select { flex: 1 1 10rem; min-width: 0; width: auto !important; margin: 0 !important; }
+.pay-link-row select { flex: 1 1 7rem; min-width: 0; width: auto !important; margin: 0 !important; }
 .pay-link-row button { width: auto !important; margin: 0 !important; white-space: nowrap; }
 .pay-link-panel .visit-meta { margin: 0; font-size: 0.8rem; }
 .donation-pay-link-client { display: block; font-size: 0.78rem; font-weight: 600; color: var(--pink-dark); text-decoration: none; }
