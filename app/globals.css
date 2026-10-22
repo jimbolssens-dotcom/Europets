@@ -12968,3 +12968,15 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 @media (min-width: 701px) {
   .financial-overview .fo-short { display: none; }
 }
+/* Client page: a rescuer's personalised pay page (migration 214, PayLinkPageEditor). */
+.pay-page-editor { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.45rem; padding: 0.55rem; border-radius: 8px; background: white; border: 1px solid #f0e4ea; }
+.pay-page-editor textarea { width: 100% !important; margin: 0 !important; font: inherit; font-size: 0.85rem; padding: 0.35rem 0.45rem; border-radius: 8px; resize: vertical; }
+.pay-page-editor > input, .pay-page-fields > input { width: 100% !important; margin: 0 !important; font-size: 0.85rem; }
+.pay-page-check { display: flex !important; flex-direction: row !important; align-items: center; gap: 0.35rem; margin: 0 !important; font-size: 0.85rem; flex-wrap: wrap; }
+.pay-page-check input { width: auto !important; margin: 0 !important; }
+.pay-page-top { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 0.5rem; align-items: start; }
+.pay-page-photo { position: relative; display: grid !important; place-items: center; aspect-ratio: 4 / 5; border-radius: 8px; overflow: hidden; background: #1c1418; color: #f6eef2; font-size: 0.8rem; cursor: pointer; margin: 0 !important; }
+.pay-page-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pay-page-photo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pay-page-fields { display: grid; gap: 0.35rem; min-width: 0; }
+.pay-page-at { color: #6b6660; font-weight: 700; }

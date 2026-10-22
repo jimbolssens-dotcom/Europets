@@ -22,6 +22,7 @@ import { readViewCacheEntry, writeViewCacheEntry } from '@/lib/viewCache';
 import { fetchJsonPrefetched } from '@/lib/prefetchData';
 import ActionMenu from '@/app/_components/ActionMenu';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
+import PayLinkPageEditor from '@/app/_components/PayLinkPageEditor';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -51,6 +52,8 @@ export default function ClientDetailPage() {
   const [payLinkStaff, setPayLinkStaff] = useState([]);
   const [payLinkStaffId, setPayLinkStaffId] = useState('');
   const [payLinkSending, setPayLinkSending] = useState(false);
+  // Its personalised page, for a rescuer (migration 214).
+  const [payPageOpen, setPayPageOpen] = useState(false);
   useEffect(() => {
     fetch(`/api/clients/${id}/payment-reminders`)
       .then((res) => res.json())
@@ -942,8 +945,12 @@ export default function ClientDetailPage() {
                       ))}
                     </select>
                   )}
-                  <button type="button" className="secondary" onClick={newPayLink} disabled={payLinkBusy}>↻ New link</button>
+                  <button type="button" className={payPageOpen ? '' : 'secondary'} onClick={() => setPayPageOpen((o) => !o)} aria-expanded={payPageOpen}>
+                    ✨ Page{payLink.link.page?.enabled ? ' ✓' : ''}
+                  </button>
+                  <button type="button" className="secondary" onClick={newPayLink} disabled={payLinkBusy}>↻ New</button>
                 </div>
+                {payPageOpen && <PayLinkPageEditor clientId={id} client={client} link={payLink.link} onSaved={setPayLink} />}
                 <p className="visit-meta">Any amount from AED 20 to 5,000, as often as they like. Each payment shows in Online Payments, pays the oldest bills first within 10 minutes, and anything left is kept as credit for the next invoice.</p>
               </>
             ) : (

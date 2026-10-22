@@ -2,20 +2,21 @@
 // A client's personal payment link (lib/payLinks.js): any amount, paid by
 // anyone, towards that client's account.
 //
-// GET [?link=<id>] -> who it's for (first name, pet) and what's still owed.
+// GET [?link=<id>] -> who it's for (first name, pet), what's still owed and,
+//          for a rescuer, their personalised page (lib/payLinks.js#payPage).
 //          Also where payments started through this link get confirmed:
 //          the page polls this after the payer comes back from Nomod, and
 //          each call re-checks Nomod (lib/nomodPayments.js). With ?link,
 //          also whether that one payment (the one this browser started)
 //          has been received.
-// POST { amount, name } -> creates a Nomod link for that amount and
+// POST { amount, name, show_name } -> creates a Nomod link for that amount and
 //          returns its URL for the page to go to.
 
 import { NextResponse } from 'next/server';
 import { supabaseServerAdmin } from '@/lib/supabaseServerAdmin';
 import { createPaymentLink } from '@/lib/nomod';
 import { reconcilePendingPayLinkPayments } from '@/lib/nomodPayments';
-import { loadPayLink, balanceDue, payLinkAmountError, PAY_LINK_STARTS_PER_HOUR } from '@/lib/payLinks';
+import { loadPayLink, balanceDue, payPage, payLinkAmountError, PAY_LINK_STARTS_PER_HOUR } from '@/lib/payLinks';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,8 @@ export async function GET(request, { params }) {
     pet_name: payLink.patients?.name || null,
     balance_due: await balanceDue(payLink.client_id),
     payment,
+    // A rescuer's personalised page, when staff turned it on (else null).
+    page: await payPage(payLink),
   });
 }
 
@@ -48,6 +51,8 @@ export async function POST(request, { params }) {
   const amountError = payLinkAmountError(amount);
   if (amountError) return NextResponse.json({ error: amountError }, { status: 400 });
   const name = String(body.name || '').replace(/\s+/g, ' ').trim().slice(0, 80) || null;
+  // Shown on the page with their gift only if they ticked it (and gave a name).
+  const showName = body.show_name === true && !!name;
 
   // Card testers start payment after payment: a handful an hour is plenty.
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -77,7 +82,7 @@ export async function POST(request, { params }) {
 
   const { data: row, error } = await supabaseServerAdmin
     .from('nomod_payment_links')
-    .insert([{ client_id: payLink.client_id, pay_link_id: payLink.id, payer_name: name, nomod_link_id: nomodLink.id, url: nomodLink.url, amount }])
+    .insert([{ client_id: payLink.client_id, pay_link_id: payLink.id, payer_name: name, show_name: showName, nomod_link_id: nomodLink.id, url: nomodLink.url, amount }])
     .select('id, url')
     .single();
   // The Nomod link exists and can be paid either way (see settle-bill).

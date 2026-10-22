@@ -7,16 +7,15 @@
 //         sets the pet it's shown as for (null for none).
 
 import { NextResponse } from 'next/server';
-import { activePayLink, getOrCreatePayLink, payLinkUrl } from '@/lib/clientPayLinks';
+import { activePayLink, getOrCreatePayLink, presentPayLink } from '@/lib/clientPayLinks';
+import { drawPayPagePictures } from '@/lib/payLinkPages';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { clientCreditBalance } from '@/lib/clientCredit';
 
 export const dynamic = 'force-dynamic';
 
 function present(link, credit) {
-  return {
-    link: link ? { token: link.token, url: payLinkUrl(link.token), patient_id: link.patient_id, patient_name: link.patients?.name || null, created_at: link.created_at } : null,
-    credit: credit ?? 0,
-  };
+  return { link: presentPayLink(link), credit: credit ?? 0 };
 }
 
 export async function GET(request, { params }) {
@@ -33,6 +32,15 @@ export async function POST(request, { params }) {
     fresh: body.fresh === true,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // A new link's Story picture shows the new address: draw it again.
+  let shown = link;
+  if (body.fresh === true && link.page_photo_path) {
+    const pictures = await drawPayPagePictures(link).catch(() => null);
+    if (pictures) {
+      await supabaseAdmin.from('client_payment_links').update(pictures).eq('id', link.id);
+      shown = { ...link, ...pictures };
+    }
+  }
   const { credit } = await clientCreditBalance(params.id);
-  return NextResponse.json(present(link, credit));
+  return NextResponse.json(present(shown, credit));
 }

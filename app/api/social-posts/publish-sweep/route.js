@@ -1,12 +1,14 @@
 // app/api/social-posts/publish-sweep/route.js
 // GET -> posts the Social posts that are due and finishes Instagram videos
 // still being processed (lib/metaSocial.js), then fetches the numbers of
-// recently posted ones that are due (migration 212). Run every five minutes by
+// recently posted ones that are due (migration 212), and refreshes the
+// Instagram on rescuers' pay pages (migration 214). Run every five minutes by
 // Vercel Cron (vercel.json); public in middleware.js, verified with the
 // same CRON_SECRET bearer token as the other cron routes.
 
 import { NextResponse } from 'next/server';
 import { sweepDueSocialPosts, refreshSocialStats } from '@/lib/metaSocial';
+import { refreshDuePayPages } from '@/lib/payLinkPages';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -19,5 +21,7 @@ export async function GET(request) {
   const published = await sweepDueSocialPosts();
   // The numbers never hold up posting.
   const stats = await refreshSocialStats({ limit: 4 }).catch((err) => ({ error: err.message }));
-  return NextResponse.json({ ...published, stats });
+  // Rescuers' pay pages: their Instagram, twice a day (migration 214).
+  const payPages = await refreshDuePayPages().catch((err) => ({ error: err.message }));
+  return NextResponse.json({ ...published, stats, payPages });
 }
