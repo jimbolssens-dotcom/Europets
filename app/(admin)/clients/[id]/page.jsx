@@ -89,7 +89,7 @@ export default function ClientDetailPage() {
       setPayLinkNote(data.error || 'Could not make the link.');
       return null;
     }
-    setPayLink(data);
+    setPayLink((prev) => ({ ...data, bonus: prev?.bonus ?? null }));
     return data;
   }
 
@@ -939,7 +939,7 @@ export default function ClientDetailPage() {
                 <div className="pay-link-row">
                   {patients.length > 0 && (
                     <select value={payLink.link.patient_id || ''} onChange={(e) => savePayLink({ patient_id: e.target.value || null })} disabled={payLinkBusy} aria-label="Shown as for">
-                      <option value="">For the whole account</option>
+                      <option value="">Whole account</option>
                       {patients.map((p) => (
                         <option key={p.id} value={p.id}>For {p.name}</option>
                       ))}
@@ -950,7 +950,12 @@ export default function ClientDetailPage() {
                   </button>
                   <button type="button" className="secondary" onClick={newPayLink} disabled={payLinkBusy}>↻ New</button>
                 </div>
-                {payPageOpen && <PayLinkPageEditor clientId={id} client={client} link={payLink.link} onSaved={setPayLink} />}
+                {payPageOpen && <PayLinkPageEditor clientId={id} client={client} link={payLink.link} onSaved={(data) => setPayLink((prev) => ({ ...data, bonus: prev?.bonus ?? null }))} />}
+                {payLink.bonus && (
+                  <p className="pay-link-bonus">
+                    🎁 Supporter bonus on: {[...payLink.bonus.tiers].sort((a, b) => a.min - b.min).map((t) => `${Number(t.min).toLocaleString('en-US')} → ${t.bonus} off`).join(' · ')}. Applied to their bills automatically. Approved by {payLink.bonus.approved_by}.
+                  </p>
+                )}
                 <p className="visit-meta">Any amount from AED 20 to 5,000, as often as they like. Each payment shows in Online Payments, pays the oldest bills first within 10 minutes, and anything left is kept as credit for the next invoice.</p>
               </>
             ) : (

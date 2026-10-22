@@ -2,15 +2,17 @@
 // A client's personal payment link (lib/payLinks.js): any amount, paid by
 // anyone, towards that client's account.
 //
-// GET [?link=<id>] -> who it's for (first name, pet), what's still owed and,
+// GET [?link=<id>][&view=clinic] -> who it's for (first name, pet), what's still owed and,
 //          for a rescuer, their personalised page (lib/payLinks.js#payPage).
 //          Also where payments started through this link get confirmed:
 //          the page polls this after the payer comes back from Nomod, and
 //          each call re-checks Nomod (lib/nomodPayments.js). With ?link,
 //          also whether that one payment (the one this browser started)
-//          has been received.
-// POST { amount, name, show_name } -> creates a Nomod link for that amount and
-//          returns its URL for the page to go to.
+//          has been received. view=clinic is the clinic's own page for the
+//          rescuer (app/rescues/[token]): always the photo style.
+// POST { amount, name, show_name, view? } -> creates a Nomod link for that
+//          amount and returns its URL for the page to go to (and back to
+//          the same page afterwards).
 
 import { NextResponse } from 'next/server';
 import { supabaseServerAdmin } from '@/lib/supabaseServerAdmin';
@@ -27,7 +29,9 @@ export async function GET(request, { params }) {
   if (!payLink) return NextResponse.json({ error: 'not found' }, { status: 404 });
   await reconcilePendingPayLinkPayments(payLink);
 
-  const linkId = new URL(request.url).searchParams.get('link');
+  const search = new URL(request.url).searchParams;
+  const clinicView = search.get('view') === 'clinic';
+  const linkId = search.get('link');
   let payment = null;
   if (linkId && /^[0-9a-f-]{36}$/.test(linkId)) {
     const { data } = await supabaseServerAdmin.from('nomod_payment_links').select('amount, status').eq('id', linkId).eq('pay_link_id', payLink.id).maybeSingle();
@@ -35,11 +39,13 @@ export async function GET(request, { params }) {
   }
   return NextResponse.json({
     client_first_name: firstName(payLink),
+    // The address to share: the short name when it has one.
+    share_path: `/${clinicView ? 'rescues' : 'pay'}/${payLink.slug || payLink.token}`,
     pet_name: payLink.patients?.name || null,
     balance_due: await balanceDue(payLink.client_id),
     payment,
     // A rescuer's personalised page, when staff turned it on (else null).
-    page: await payPage(payLink),
+    page: await payPage(payLink, clinicView ? { style: 'photo' } : {}),
   });
 }
 
@@ -73,8 +79,8 @@ export async function POST(request, { params }) {
       amount,
       title: `Europets Clinic: payment for ${who ? `${who}'s` : 'an'} account`,
       itemName: payLink.patients?.name ? `Towards ${payLink.patients.name}'s care` : 'Payment towards account',
-      successUrl: `${origin}/pay/${params.token}?paid=1`,
-      failureUrl: `${origin}/pay/${params.token}?paid=0`,
+      successUrl: `${origin}/${body.view === 'clinic' ? 'rescues' : 'pay'}/${params.token}?paid=1`,
+      failureUrl: `${origin}/${body.view === 'clinic' ? 'rescues' : 'pay'}/${params.token}?paid=0`,
     });
   } catch {
     return NextResponse.json({ error: 'Payments are temporarily unavailable, please try again shortly.' }, { status: 502 });

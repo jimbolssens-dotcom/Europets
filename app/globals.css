@@ -12980,3 +12980,19 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .pay-page-photo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .pay-page-fields { display: grid; gap: 0.35rem; min-width: 0; }
 .pay-page-at { color: #6b6660; font-weight: 700; }
+.pay-link-bonus { margin: 0; font-size: 0.8rem; font-weight: 600; color: #11795a; background: #e3f6ee; border-radius: 8px; padding: 0.35rem 0.5rem; }
+.pay-page-slug span { color: #6b6660; font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+.pay-page-slug input { flex: 1 1 5rem !important; }
+.pay-page-fields .pay-link-row input { flex: 1 1 5rem; }
+.pay-page-fields .pay-link-row button { padding: 0.3rem 0.55rem; }
+.pay-page-styles { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+.pay-page-style { display: grid !important; gap: 0.05rem; text-align: left; padding: 0.4rem 0.55rem !important; border-radius: 8px; border: 1px solid #f0e4ea !important; background: #fbf7f9 !important; color: #1c1418 !important; margin: 0 !important; font-size: 0.82rem; }
+.pay-page-style span { color: #6b6660; font-size: 0.74rem; }
+.pay-page-style-on { border-color: #c2185b !important; background: #fdeef4 !important; box-shadow: inset 0 0 0 1px #c2185b; }
+.pay-page-links { display: grid; gap: 0.3rem; }
+.pay-page-links .pay-link-row { flex-wrap: nowrap; }
+.pay-page-links .pay-link-row button { padding: 0.3rem 0.5rem; flex: 0 0 auto; }
+.pay-page-add-link { justify-self: start; padding: 0.25rem 0.6rem !important; font-size: 0.8rem; }
+.pay-page-check input { flex: 0 0 auto !important; }
+.pay-page-links .pay-link-row input { min-width: 0 !important; max-width: none !important; width: 0 !important; flex: 1 1 0 !important; margin: 0 !important; font-size: 0.85rem; }
+.pay-page-links .pay-link-row input[type='url'] { flex-grow: 1.3 !important; }

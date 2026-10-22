@@ -1526,3 +1526,25 @@ p {
 .rescue-share-plain { grid-template-columns: minmax(0, 1fr); }
 .rescue-share a.btn { display: flex; }
 .pay-link-check { display: flex; gap: 0.5rem; align-items: center; font-weight: 400 !important; font-size: 0.88rem !important; color: var(--ink-soft) !important; margin-top: 0.25rem !important; }
+.rescue-promo { padding: 1rem 1.2rem; display: grid; gap: 0.35rem; border-color: var(--hair-hot, var(--hot)); background: linear-gradient(160deg, rgba(230, 24, 109, 0.16), var(--void-2)); }
+.rescue-promo strong { color: var(--ink); font-size: 1.05rem; }
+.rescue-promo span, .rescue-promo em { color: var(--ink-soft); font-size: 0.88rem; font-style: normal; }
+.rescue-promo ul { list-style: none; margin: 0.2rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; }
+.rescue-promo li { text-align: center; padding: 0.5rem 0.3rem; border-radius: 12px; background: var(--void-2); border: 1px solid var(--line); color: var(--ink-soft); font-size: 0.8rem; line-height: 1.35; display: flex; flex-direction: column; }
+.rescue-promo li b { color: var(--ink); font-size: 0.95rem; }
+.rescue-promo li b:last-of-type { color: var(--blush); }
+.rescue-bonus-hint { margin: 0.4rem 0 0; color: var(--blush); font-size: 0.9rem; text-align: center; }
+.rescue-profile { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.35rem; padding-top: 0.5rem; }
+.rescue-profile .rescue-avatar { width: 96px; height: 96px; border-width: 3px; }
+.rescue-hex-lg { width: 84px; height: 96px; font-size: 2rem; }
+.rescue-profile h1 { font-family: var(--font-display), Georgia, serif; font-size: 1.7rem; color: var(--ink); margin: 0.4rem 0 0; }
+.rescue-handle { color: var(--blush); font-weight: 700; text-decoration: none; }
+.rescue-stats { margin: 0; color: var(--ink-soft); font-size: 0.85rem; }
+.rescue-bio { margin: 0.2rem 0 0; color: var(--ink); white-space: pre-line; line-height: 1.5; font-size: 0.95rem; }
+.rescue-links { display: grid; gap: 0.5rem; width: 100%; margin-top: 0.6rem; }
+.rescue-links .btn { display: flex; justify-content: center; width: 100%; }
+.rescue-promo li { gap: 0.1rem; }
+.rescue-promo li b.rescue-promo-off { color: var(--blush); }
+.rescue-share-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem; }
+.rescue-share-row .btn { display: flex; justify-content: center; width: 100%; }
+.rescue-foot { color: var(--ink-soft); font-size: 0.78rem; text-align: center; margin: 0.5rem 0 0; }
