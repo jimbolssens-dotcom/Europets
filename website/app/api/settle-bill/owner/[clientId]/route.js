@@ -79,6 +79,7 @@ export async function POST(request, { params }) {
     .from('nomod_payment_links')
     .select('id, url, amount')
     .eq('client_id', params.clientId)
+    .is('pay_link_id', null)
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(1)

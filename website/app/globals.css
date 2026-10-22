@@ -1444,3 +1444,47 @@ p {
   font-size: 0.78em;
   opacity: 0.75;
 }
+
+/* ---- Personal payment link (app/pay/[token]) ---- */
+.pay-link-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.pay-link-form .settle-bill-amount {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.pay-link-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pay-link-chip {
+  font: inherit;
+  font-weight: 700;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--void-2);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.pay-link-chip-on {
+  border-color: var(--hot);
+  background: var(--pink-tint);
+  color: var(--blush);
+}
+
+.pay-link-form .btn {
+  margin-top: 1rem;
+}
+
+.pay-link-form .review-submit-hint {
+  text-align: center;
+}

@@ -40,6 +40,13 @@ export default function ClientDetailPage() {
   const [reminderLog, setReminderLog] = useState([]);
   const [outstandingSending, setOutstandingSending] = useState(null); // 'whatsapp' | 'email' | null
   const [showAllOutstanding, setShowAllOutstanding] = useState(false);
+  // The client's personal payment link (migration 213, lib/clientPayLinks.js):
+  // anyone can pay any amount towards their account; it's applied to their
+  // invoices automatically and the rest kept as credit.
+  const [payLink, setPayLink] = useState(null); // { link, credit }
+  const [payLinkOpen, setPayLinkOpen] = useState(false);
+  const [payLinkBusy, setPayLinkBusy] = useState(false);
+  const [payLinkNote, setPayLinkNote] = useState(null);
   useEffect(() => {
     fetch(`/api/clients/${id}/payment-reminders`)
       .then((res) => res.json())
@@ -54,6 +61,59 @@ export default function ClientDetailPage() {
   // One message for "please pay": the balance and the pay-everything link
   // (whose page also offers the statement download), from the clinic's
   // WhatsApp number. Staff WhatsApp only while Meta is still approving it.
+  useEffect(() => {
+    fetch(`/api/clients/${id}/pay-link`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data && setPayLink(data))
+      .catch(() => {});
+  }, [id]);
+
+  async function savePayLink(body) {
+    setPayLinkBusy(true);
+    setPayLinkNote(null);
+    const res = await fetch(`/api/clients/${id}/pay-link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    setPayLinkBusy(false);
+    if (!res.ok) {
+      setPayLinkNote(data.error || 'Could not make the link.');
+      return null;
+    }
+    setPayLink(data);
+    return data;
+  }
+
+  async function openPayLink() {
+    setPayLinkOpen((open) => !open);
+    if (!payLink?.link) await savePayLink({});
+  }
+
+  async function copyPayLink() {
+    try {
+      await navigator.clipboard.writeText(payLink.link.url);
+      setPayLinkNote('✅ Copied');
+    } catch {
+      setPayLinkNote('Select the link and copy it by hand.');
+    }
+  }
+
+  function sendPayLink() {
+    const pet = payLink.link.patient_name;
+    openWhatsApp(
+      client.phone,
+      `Hi ${client.full_name}! Here is your personal Europets payment link${pet ? ` for ${pet}` : ''}. You, or anyone helping, can pay any amount by card and it goes straight onto your account: ${payLink.link.url}`
+    );
+  }
+
+  async function newPayLink() {
+    if (!confirm('Make a new link? The old one stops working.')) return;
+    const data = await savePayLink({ fresh: true });
+    if (data) setPayLinkNote('✅ New link made. The old one no longer works.');
+  }
+
   async function sendOutstandingWhatsApp() {
     setPaymentLinkError(null);
     setOutstandingSending('whatsapp');
@@ -640,6 +700,11 @@ export default function ClientDetailPage() {
             <span className={`financial-overview-total-amount${totalOutstanding > 0 ? ' financial-overview-total-amount-due' : ''}`}>
               AED {money(totalOutstanding)}
             </span>
+            {payLink?.credit > 0 && (
+              <span className="financial-overview-credit" title="Paid in through their payment link, not needed yet: used automatically on their next invoice">
+                +{money(payLink.credit)} credit
+              </span>
+            )}
           </div>
           <div className="financial-overview-auto">
             <label className="payment-reminders-toggle">
@@ -809,7 +874,39 @@ export default function ClientDetailPage() {
           <button type="button" className="secondary" onClick={downloadStatement}>
             📄 <span className="fo-long">Statement </span>PDF
           </button>
+          <button type="button" className={payLinkOpen ? '' : 'secondary'} onClick={openPayLink} disabled={payLinkBusy} aria-expanded={payLinkOpen}
+            title="A personal link: anyone can pay any amount towards this client's account, applied to their bills automatically">
+            💳 <span className="fo-long">Pay link</span><span className="fo-short">Link</span>
+          </button>
         </div>
+        {payLinkOpen && (
+          <div className="pay-link-panel">
+            {payLink?.link ? (
+              <>
+                <div className="pay-link-row">
+                  <input type="text" readOnly value={payLink.link.url} onFocus={(e) => e.target.select()} aria-label="Payment link" />
+                  <button type="button" className="secondary" onClick={copyPayLink}>Copy</button>
+                  <button type="button" onClick={sendPayLink} disabled={!client.phone}>💬 Send</button>
+                </div>
+                <div className="pay-link-row">
+                  {patients.length > 0 && (
+                    <select value={payLink.link.patient_id || ''} onChange={(e) => savePayLink({ patient_id: e.target.value || null })} disabled={payLinkBusy} aria-label="Shown as for">
+                      <option value="">For the whole account</option>
+                      {patients.map((p) => (
+                        <option key={p.id} value={p.id}>For {p.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  <button type="button" className="secondary" onClick={newPayLink} disabled={payLinkBusy}>↻ New link</button>
+                </div>
+                <p className="visit-meta">Any amount from AED 20 to 5,000, as often as they like. Each payment shows in Online Payments, pays the oldest bills first within 10 minutes, and anything left is kept as credit for the next invoice.</p>
+              </>
+            ) : (
+              <p className="visit-meta">{payLinkBusy ? 'Making the link...' : 'No link yet.'}</p>
+            )}
+            {payLinkNote && <p className={payLinkNote.startsWith('✅') ? 'visit-meta' : 'error'}>{payLinkNote}</p>}
+          </div>
+        )}
         {paymentLinkError && <p className={paymentLinkError.startsWith('✅') || paymentLinkError.startsWith('Opened') ? 'visit-meta' : 'error'}>{paymentLinkError}</p>}
 
         {outstandingInvoices.length > 0 ? (

@@ -42,6 +42,7 @@ export async function reconcilePendingNomodOwnerLink(clientId) {
     .from('nomod_payment_links')
     .select('id, nomod_link_id, amount')
     .eq('client_id', clientId)
+    .is('pay_link_id', null) // a personal link's payments are recorded below, not spread here
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(1)
@@ -53,6 +54,67 @@ export async function reconcilePendingNomodOwnerLink(clientId) {
   if (!remoteLink) return;
 
   await recordNomodOwnerPayment(pending, clientId);
+}
+
+// A client's personal payment link (lib/payLinks.js): checks the payments
+// started through it in the last few days that Nomod hasn't confirmed to
+// us yet, and logs each one that's now paid as an Online Payment for the
+// client. Called by the pay page's polling, like the two above.
+export async function reconcilePendingPayLinkPayments(payLink) {
+  const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: pending } = await supabaseServerAdmin
+    .from('nomod_payment_links')
+    .select('id, nomod_link_id, amount, payer_name')
+    .eq('pay_link_id', payLink.id)
+    .eq('status', 'pending')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(5);
+  for (const row of pending || []) {
+    if (!row.nomod_link_id) continue;
+    const remoteLink = await fetchIfPaid(row.nomod_link_id, row.id);
+    if (remoteLink) await recordPayLinkPayment(row, payLink);
+  }
+}
+
+// Logs a paid personal-link payment as an Online Payment (donations, with
+// its YY-MM-NN number) for the client. The link is claimed first (pending
+// to paid), so two polls at once can't log it twice; the donation's link
+// column is unique as a second guard. Applying it to invoices is the
+// clinic app's job (its lib/clientCredit.js, every 10 minutes).
+export async function recordPayLinkPayment(row, payLink) {
+  const { data: claimed } = await supabaseServerAdmin
+    .from('nomod_payment_links')
+    .update({ status: 'paid', paid_at: new Date().toISOString() })
+    .eq('id', row.id)
+    .eq('status', 'pending')
+    .select('id');
+  if (!claimed?.length) return;
+
+  // The UAE date (UTC+4), for the received date and the month's number.
+  const today = new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const prefix = `${today.slice(2, 4)}-${today.slice(5, 7)}`;
+  const { data: seq, error: seqError } = await supabaseServerAdmin.rpc('next_payment_sequence', { prefix });
+  if (seqError) {
+    // No number, no Online Payment: put the link back so the next check tries again.
+    await supabaseServerAdmin.from('nomod_payment_links').update({ status: 'pending', paid_at: null }).eq('id', row.id);
+    console.error('Pay-link payment: no payment number', row.id, seqError.message);
+    return;
+  }
+  const pet = payLink.patients?.name;
+  const { error } = await supabaseServerAdmin.from('donations').insert([
+    {
+      donation_number: `${prefix}-${String(seq).padStart(2, '0')}`,
+      donor_name: row.payer_name || payLink.clients?.full_name || null,
+      amount: row.amount,
+      source: 'nomod',
+      received_at: today,
+      notes: `Personal payment link${pet ? ` (for ${pet})` : ''}`,
+      client_id: payLink.client_id,
+      nomod_payment_link_id: row.id,
+    },
+  ]);
+  if (error) console.error('Pay-link payment received but not logged', row.id, error.message);
 }
 
 // Each check also stores Nomod's raw answer in nomod_link_checks

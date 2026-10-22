@@ -386,7 +386,14 @@ export default function DonationsPage() {
                 <tr>
                   <td>{d.donation_number}</td>
                   <td>{d.received_at}</td>
-                  <td>{d.donor_name || '—'}</td>
+                  <td>
+                    {d.donor_name || '—'}
+                    {d.clients && (
+                      <a href={`/clients/${d.clients.id}`} className="donation-pay-link-client" title="Paid through this client's payment link: applied to their invoices automatically, the rest kept as their credit">
+                        💳 {d.clients.full_name}
+                      </a>
+                    )}
+                  </td>
                   <td>{SOURCE_LABELS[d.source] || d.source}</td>
                   <td>AED {money(d.amount)}</td>
                   <td>AED {money(d.allocated)}</td>

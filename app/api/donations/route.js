@@ -28,7 +28,9 @@ function today() {
 export async function GET() {
   const { data: donations, error } = await supabase
     .from('donations')
-    .select('*')
+    // clients: the client it came in for, through their personal payment
+    // link (migration 213); applied to their invoices automatically.
+    .select('*, clients(id, full_name)')
     .order('received_at', { ascending: false })
     .order('created_at', { ascending: false });
 
