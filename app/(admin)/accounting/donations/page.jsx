@@ -220,9 +220,12 @@ export default function DonationsPage() {
   }
 
   async function pickApplyPatient(patient) {
-    if (patient.clients) {
-      pickApplyClient({ id: patient.clients.id, full_name: patient.clients.full_name });
-    }
+    // The patient search (/api/patients?patient_number=) returns the owner's
+    // name but not their id: the id is the patient's own client_id. Using
+    // clients.id looked up invoices for no client at all, so every owner
+    // picked by patient number showed "No unpaid invoices".
+    const clientId = patient.client_id || patient.clients?.id;
+    if (clientId) pickApplyClient({ id: clientId, full_name: patient.clients?.full_name || '' });
   }
 
   async function applyToInvoice(donation) {
