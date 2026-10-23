@@ -3,14 +3,15 @@
 // Accounting charts page (app/(admin)/accounting/charts), bucketed by
 // lib/accountingCharts.js: the last 8 weeks by week, or the last 12 months by
 // month, plus the last 12 months of takings and outgoing for the trend chart
-// whichever range is picked. Behind the accounting password like the rest of
+// whichever range is picked, and the client app's login-code requests and
+// logins (migration 128) with how many clients use it. Behind the accounting password like the rest of
 // /api/accounting (middleware.js).
 
 import { NextResponse } from 'next/server';
 import { selectAll } from '@/lib/selectAll';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { bucketsUpTo, rangeStartIso, buildChartData, lineItemCategory } from '@/lib/accountingCharts';
+import { bucketsUpTo, rangeStartIso, buildChartData, lineItemCategory, appLoginStats } from '@/lib/accountingCharts';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,10 +90,24 @@ export async function GET(request) {
     clients: clientRes.data,
     unpaid: unpaidRes.data,
   });
+  // The client app: who asked for a login code, who logged in, who uses it.
+  const since30 = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const [codesRes, { data: staffPhones }, { count: usedEver }, { count: used30 }] = await Promise.all([
+    selectAll(() => supabaseAdmin.from('client_otp_codes').select('id, phone, created_at, consumed_at, attempts').order('id')),
+    supabaseAdmin.from('staff').select('whatsapp_phone').not('whatsapp_phone', 'is', null),
+    supabaseAdmin.from('clients').select('id', { count: 'exact', head: true }).not('client_app_last_seen_at', 'is', null),
+    supabaseAdmin.from('clients').select('id', { count: 'exact', head: true }).gte('client_app_last_seen_at', since30),
+  ]);
+  if (codesRes.error) return NextResponse.json({ error: codesRes.error.message }, { status: 500 });
+  const app = appLoginStats({ codes: codesRes.data, unit, buckets, staffPhones: (staffPhones || []).map((s) => s.whatsapp_phone) });
   const trend = buildChartData({ unit: 'month', buckets: months, now, payments: payRes.data, legacyPayments: legacyRes.data, expenses: expRes.data });
 
   return NextResponse.json(
-    { ...data, trend: { buckets: months, takings: trend.takingsTotal, outgoing: trend.outgoing } },
+    {
+      ...data,
+      trend: { buckets: months, takings: trend.takingsTotal, outgoing: trend.outgoing },
+      app: { ...app, totals: { ...app.totals, usedEver: usedEver || 0, used30: used30 || 0 } },
+    },
     { headers: { 'Cache-Control': 'no-store' } }
   );
 }

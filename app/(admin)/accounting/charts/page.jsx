@@ -264,6 +264,25 @@ export default function AccountingChartsPage() {
             />
           </Card>
 
+          <Card title="Client app" why="People who asked for a login code to install the app (counted once, in the period of their first request), and how many of them logged in.">
+            <Legend items={[{ label: 'Asked for a code', color: 'var(--chart-neutral)' }, { label: 'Logged in', color: 'var(--chart-3)' }]} />
+            <BarChart
+              buckets={data.buckets}
+              unit={unit}
+              total={false}
+              format={(v) => String(Math.round(v))}
+              tooltipFormat={(v) => `${v} ${v === 1 ? 'person' : 'people'}`}
+              series={[
+                { key: 'asked', label: 'Asked for a code', color: 'var(--chart-neutral)', values: data.app.asked },
+                { key: 'in', label: 'Logged in', color: 'var(--chart-3)', values: data.app.loggedIn },
+              ]}
+              height={190}
+            />
+            <p className="visit-meta">
+              Since it started: {data.app.totals.asked} asked, {data.app.totals.loggedIn} logged in, {data.app.totals.usedEver} clients have used the app ({data.app.totals.used30} in the last 30 days)
+            </p>
+          </Card>
+
           <Card title="Discounts given" why="Discount amount on invoices made in each period (hover for how many invoices).">
             <BarChart
               buckets={data.buckets}

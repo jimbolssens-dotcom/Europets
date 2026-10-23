@@ -77,3 +77,20 @@ test('food invoicing per period', () => {
   });
   assert.deepEqual(d.food, { '2026-10-05': 80, '2026-10-12': 20 });
 });
+
+import { appLoginStats } from '../lib/accountingCharts.js';
+
+test('client app: each number once, in the week of its first code, staff left out', () => {
+  const buckets = ['2026-10-12', '2026-10-19'];
+  const codes = [
+    { phone: '971500000001', created_at: '2026-10-13T08:00:00Z', consumed_at: '2026-10-13T08:01:00Z', attempts: 0 },
+    { phone: '971500000001', created_at: '2026-10-20T08:00:00Z', consumed_at: null, attempts: 0 },
+    { phone: '971500000002', created_at: '2026-10-21T08:00:00Z', consumed_at: '2026-10-21T08:10:00Z', attempts: 5 },
+    { phone: '971500000003', created_at: '2026-10-22T08:00:00Z', consumed_at: null, attempts: 1 },
+    { phone: '971566051330', created_at: '2026-10-22T08:00:00Z', consumed_at: '2026-10-22T08:01:00Z', attempts: 0 },
+  ];
+  const s = appLoginStats({ codes, unit: 'week', buckets, staffPhones: ['971566051330'] });
+  assert.deepEqual(s.asked, { '2026-10-12': 1, '2026-10-19': 2 });
+  assert.deepEqual(s.loggedIn, { '2026-10-12': 1, '2026-10-19': 0 });
+  assert.deepEqual(s.totals, { asked: 3, loggedIn: 1 });
+});
