@@ -45,7 +45,7 @@ test('unread: newer than the last read, not your own', () => {
   assert.equal(unreadCount(msgs, 'v1', null), 2);
 });
 
-import { normalizeWhatsAppPhone, whatsappWindowOpen, whatsappCopy, groupForReply } from '../lib/teamChatPlan.js';
+import { normalizeWhatsAppPhone, whatsappWindowOpen, whatsappCopy, groupForReply, startsWithTeamTag } from '../lib/teamChatPlan.js';
 
 test('WhatsApp numbers as typed become digits with the country code', () => {
   assert.equal(normalizeWhatsAppPhone('050 123 4567'), '971501234567');
@@ -78,4 +78,11 @@ test('a WhatsApp reply goes to the #group named, else the quoted group, else the
   assert.deepEqual(groupForReply('ok', { lastGroup: 'finance', groupKeys: keys }), { group: 'finance', body: 'ok' });
   assert.deepEqual(groupForReply('#reception hi', { groupKeys: keys }), { group: 'everyone', body: '#reception hi' });
   assert.deepEqual(groupForReply('#Medical bloods are back', { groupKeys: keys }), { group: 'vets', body: 'bloods are back' });
+});
+
+test('a staff member who is also a client reaches the team only with a #group', () => {
+  assert.equal(startsWithTeamTag('#medical bloods back'), true);
+  assert.equal(startsWithTeamTag('  #Finance paid'), true);
+  assert.equal(startsWithTeamTag('#hashtag fun'), false);
+  assert.equal(startsWithTeamTag('my dog is sick'), false);
 });

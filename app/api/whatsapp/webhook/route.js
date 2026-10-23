@@ -22,6 +22,7 @@ import { sendFallbackEmailForFailedWhatsApp } from '@/lib/emailFallback';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
 import { staffForPhone, quotedTeamGroup, postFromWhatsApp } from '@/lib/teamWhatsapp';
+import { startsWithTeamTag } from '@/lib/teamChatPlan';
 import { maybeRunConcierge, applyConciergeDecision, isWhatsAppAiEnabled } from '@/lib/whatsappConcierge';
 import { isAssistantOwnerPhone, relayToAssistant } from '@/lib/personalAssistantRelay';
 import { transcribeVoiceNote } from '@/lib/assemblyai';
@@ -225,12 +226,17 @@ async function handleInboundMessage(message, contactPhone) {
     return;
   }
 
-  if (staff) {
+  const clientId = await findClientIdForPhone(digits);
+
+  // A staff number goes to the team chat. One that's also a client's
+  // (staff with their own pets, the owner testing) only when it's meant for
+  // the team (a reply to a team message, above, or starting with a
+  // #group), so their own client conversation keeps working.
+  if (staff && (!clientId || startsWithTeamTag(extractBody(message)))) {
     await handleStaffInbound(message, staff);
     return;
   }
 
-  const clientId = await findClientIdForPhone(digits);
   const media = INBOUND_MEDIA_TYPES[message.type] ? await downloadInboundMedia(message) : {};
 
   const { error } = await supabaseAdmin.from('client_messages').insert([
