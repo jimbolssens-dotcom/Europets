@@ -11,7 +11,7 @@ import { useState } from 'react';
 
 const GROUPS = [
   ['everyone', 'Everyone'],
-  ['vets', 'Vets'],
+  ['vets', 'Medical'],
   ['reception', 'Reception'],
   ['finance', 'Finance'],
 ];

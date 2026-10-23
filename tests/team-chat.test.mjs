@@ -77,4 +77,5 @@ test('a WhatsApp reply goes to the #group named, else the quoted group, else the
   assert.deepEqual(groupForReply('ok will do', { quotedGroup: 'vets', lastGroup: 'finance', groupKeys: keys }), { group: 'vets', body: 'ok will do' });
   assert.deepEqual(groupForReply('ok', { lastGroup: 'finance', groupKeys: keys }), { group: 'finance', body: 'ok' });
   assert.deepEqual(groupForReply('#reception hi', { groupKeys: keys }), { group: 'everyone', body: '#reception hi' });
+  assert.deepEqual(groupForReply('#Medical bloods are back', { groupKeys: keys }), { group: 'vets', body: 'bloods are back' });
 });
