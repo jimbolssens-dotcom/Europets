@@ -66,6 +66,7 @@ export default function StaffPage() {
       role: member.role,
       email: member.email || '',
       color: member.color || '',
+      whatsapp_phone: member.whatsapp_phone || '',
     });
     setRowError(null);
   }
@@ -213,6 +214,7 @@ export default function StaffPage() {
             <th>Name</th>
             <th>Role</th>
             <th>Email</th>
+            <th>WhatsApp</th>
             <th>Color</th>
             <th>Status</th>
             <th></th>
@@ -250,6 +252,15 @@ export default function StaffPage() {
                 </td>
                 <td>
                   <input
+                    type="tel"
+                    placeholder="050 123 4567"
+                    title="Their WhatsApp: team chat messages reach them there"
+                    value={editForm.whatsapp_phone}
+                    onChange={(e) => setEditForm({ ...editForm, whatsapp_phone: e.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
                     type="color"
                     title="Appointment schedule color"
                     value={editForm.color || '#e6186d'}
@@ -272,6 +283,7 @@ export default function StaffPage() {
                   <td>{s.full_name}</td>
                   <td>{s.role}</td>
                   <td>{s.email}</td>
+                  <td>{s.whatsapp_phone ? `+${s.whatsapp_phone}` : <span className="visit-meta">none</span>}</td>
                   <td>
                     {s.color && (
                       <span

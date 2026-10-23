@@ -4,6 +4,7 @@
 //                           deactivate instead of delete — see migration 108)
 // DELETE /api/staff/:id  -> remove a staff member (blocked if referenced elsewhere)
 
+import { normalizeWhatsAppPhone } from '@/lib/teamChatPlan';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
@@ -21,7 +22,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { full_name, role, email, color, active } = body;
+  const { full_name, role, email, color, active, whatsapp_phone } = body;
 
   if (role && !VALID_ROLES.includes(role)) {
     return NextResponse.json(
@@ -36,6 +37,13 @@ export async function PATCH(request, { params }) {
   if (email !== undefined) update.email = email;
   if (color !== undefined) update.color = color || null;
   if (active !== undefined) update.active = Boolean(active);
+  // Their WhatsApp for the team chat (migration 220), as digits with the
+  // country code; empty clears it.
+  if (whatsapp_phone !== undefined) {
+    const phone = whatsapp_phone ? normalizeWhatsAppPhone(whatsapp_phone) : null;
+    if (whatsapp_phone && !phone) return NextResponse.json({ error: 'That WhatsApp number does not look right. Use the full number, e.g. 050 123 4567.' }, { status: 400 });
+    update.whatsapp_phone = phone;
+  }
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
@@ -49,6 +57,7 @@ export async function PATCH(request, { params }) {
     .single();
 
   if (error) {
+    if (error.code === '23505') return NextResponse.json({ error: 'Another staff member already has that WhatsApp number.' }, { status: 409 });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json(data);

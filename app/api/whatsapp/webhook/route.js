@@ -21,6 +21,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendFallbackEmailForFailedWhatsApp } from '@/lib/emailFallback';
 import { clientIdsWithPhoneLike } from '@/lib/phoneMatch';
 import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
+import { staffForPhone, quotedTeamGroup, postFromWhatsApp } from '@/lib/teamWhatsapp';
 import { maybeRunConcierge, applyConciergeDecision, isWhatsAppAiEnabled } from '@/lib/whatsappConcierge';
 import { isAssistantOwnerPhone, relayToAssistant } from '@/lib/personalAssistantRelay';
 import { transcribeVoiceNote } from '@/lib/assemblyai';
@@ -193,8 +194,27 @@ async function runConciergeForInbound(message, clientId, digits) {
   }
 }
 
+// A staff member writing to the clinic number (migration 220): it's the
+// team chat on their WhatsApp, so it goes into the group, never the client
+// inbox or the concierge (lib/teamWhatsapp.js). Reactions are left out.
+async function handleStaffInbound(message, staff) {
+  if (message.type === 'reaction') return;
+  const media = INBOUND_MEDIA_TYPES[message.type] ? await downloadInboundMedia(message) : {};
+  const body = INBOUND_MEDIA_TYPES[message.type] && !extractBody(message) ? '' : extractBody(message);
+  const result = await postFromWhatsApp(staff, message, { body, media }).catch((err) => ({ error: err.message }));
+  if (result?.error) console.error('Failed to post a staff WhatsApp message to the team chat', message.id, result.error);
+}
+
 async function handleInboundMessage(message, contactPhone) {
   const digits = (contactPhone || message.from || '').replace(/\D/g, '');
+  const staff = await staffForPhone(digits);
+
+  // A staff member replying to a team chat copy (even from the owner's own
+  // phone, whose other messages go to the assistant below).
+  if (staff && (await quotedTeamGroup(message.context?.id))) {
+    await handleStaffInbound(message, staff);
+    return;
+  }
 
   // The owner's own phone(s): hand off to the personal assistant and stop
   // here, before any lookup, media download, storage or concierge — so none
@@ -202,6 +222,11 @@ async function handleInboundMessage(message, contactPhone) {
   // lib/personalAssistantRelay.js.
   if (isAssistantOwnerPhone(digits)) {
     await relayToAssistant(message, digits);
+    return;
+  }
+
+  if (staff) {
+    await handleStaffInbound(message, staff);
     return;
   }
 
@@ -264,6 +289,11 @@ async function handleStatusUpdate(status) {
       .join(' — ') || null;
   }
   const { error } = await supabaseAdmin.from('client_messages').update(update).eq('wa_message_id', status.id);
+  // Or a team chat copy sent to a staff member (migration 220).
+  await supabaseAdmin
+    .from('team_deliveries')
+    .update({ status: status.status, ...(update.wa_error ? { error: update.wa_error } : {}) })
+    .eq('wa_message_id', status.id);
   if (error) {
     console.error('Failed to update WhatsApp message status', status.id, error);
   }

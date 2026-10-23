@@ -14,11 +14,13 @@ import { uploadTeamMedia } from '@/lib/attachments';
 
 const STAFF_KEYS = ['team_staff_id', 'europets_mobile_staff_id', 'pay_link_staff_id', 'social_staff_id'];
 const ROLE_LABEL = { vet: 'vet', tech: 'tech', reception: 'reception', admin: 'finance' };
+// What reaches this person's WhatsApp (or phone, with no number on file).
 const LEVELS = [
-  ['mentions', '🔔@'],
   ['all', '🔔'],
+  ['mentions', '🔔@'],
   ['off', '🔕'],
 ];
+const LEVEL_TEXT = { all: 'every message', mentions: 'only when someone @mentions you', off: 'nothing (an @mention still does)' };
 
 function rememberedStaff() {
   try {
@@ -164,7 +166,7 @@ export default function TeamChat({ staff: staffProp = null, initialGroup = null 
   const [staff, setStaff] = useState(staffProp || []);
   const [me, setMe] = useState('');
   const [groups, setGroups] = useState(null);
-  const [level, setLevel] = useState('mentions');
+  const [level, setLevel] = useState('all');
   const [groupKey, setGroupKey] = useState(initialGroup || 'everyone');
   const [thread, setThread] = useState(null);
   const [error, setError] = useState(null);
@@ -335,6 +337,17 @@ export default function TeamChat({ staff: staffProp = null, initialGroup = null 
         ))}
       </div>
 
+      {thread?.group && (
+        <p className="team-on-wa visit-meta">
+          📱 {members.filter((m) => m.on_whatsapp).length} of {members.length} get {thread.group.name} on WhatsApp
+          {members.some((m) => !m.on_whatsapp) && (
+            <>
+              {' · '}
+              <a href="/staff">add numbers</a>
+            </>
+          )}
+        </p>
+      )}
       {!me && (
         <div className="team-who-pick">
           <span>Who are you?</span>
@@ -370,7 +383,7 @@ export default function TeamChat({ staff: staffProp = null, initialGroup = null 
       )}
       <form className="team-compose" onSubmit={send}>
         {me && (
-          <button type="button" className="team-icon team-bell" onClick={changeLevel} title={`Phone alerts: ${LEVELS.find(([k]) => k === level)?.[1]}. Tap to change. An @mention always alerts.`} aria-label="Phone alerts">
+          <button type="button" className="team-icon team-bell" onClick={changeLevel} title={`Your WhatsApp gets ${LEVEL_TEXT[level]}. Tap to change.`} aria-label="Phone alerts">
             {LEVELS.find(([k]) => k === level)?.[1]}
           </button>
         )}
