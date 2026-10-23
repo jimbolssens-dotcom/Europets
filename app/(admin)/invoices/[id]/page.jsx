@@ -22,7 +22,6 @@ import InfoHint from '@/app/_components/InfoHint';
 import { appOrigin } from '@/lib/appOrigin';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import { sendPaymentMessage } from '@/lib/sendPaymentMessageClient';
-import { openWhatsApp } from '@/lib/whatsapp';
 import { formatShortDate } from '@/lib/formatTimestamp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
 import { fetchJsonPrefetched } from '@/lib/prefetchData';
@@ -56,6 +55,15 @@ export default function InvoiceDetailPage() {
   const [catalog, setCatalog] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [staff, setStaff] = useState([]);
+  // Who sends the invoice from the clinic WhatsApp (remembered on this device).
+  const [waStaffId, setWaStaffId] = useState('');
+  const [waPicking, setWaPicking] = useState(false);
+  const [waSending, setWaSending] = useState(false);
+  useEffect(() => {
+    try {
+      setWaStaffId(localStorage.getItem('pay_link_staff_id') || '');
+    } catch {}
+  }, []);
   const [goodsServiceId, setGoodsServiceId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [error, setError] = useState(null);
@@ -349,17 +357,37 @@ export default function InvoiceDetailPage() {
   // the staff PIN gate for exactly this (see middleware.js) — so no
   // cache-busting param here; whatever they open always regenerates the
   // PDF fresh from the route's own no-store headers regardless.
-  function sendInvoiceViaWhatsApp() {
+  // Sent from the clinic's WhatsApp number through the app (POST
+  // /api/clients/:id/messages, channel 'whatsapp'), so it lands in their
+  // chat in Messages: a plain message while their 24-hour window is open,
+  // else the first-contact template. Who sends it is asked once and
+  // remembered (the same as the client page's pay link).
+  async function sendInvoiceViaWhatsApp(senderId = waStaffId) {
     setPaymentLinkError(null);
     const url = `${appOrigin()}/api/invoices/${id}/tax-invoice-pdf`;
     const digits = (invoice.clients?.phone || '').replace(/\D/g, '');
-    const message = `Hi ${invoice.clients?.full_name || ''}! Here is your invoice from Europets Clinic: ${url}`;
-    if (digits.length > 3) {
-      openWhatsApp(invoice.clients?.phone, message);
-    } else {
+    if (digits.length <= 3 || !invoice.clients?.id) {
       navigator.clipboard.writeText(url);
-      setPaymentLinkError('No phone number on file — link copied to clipboard instead.');
+      setPaymentLinkError('No phone number on file, so the link was copied instead.');
+      return;
     }
+    if (!senderId) {
+      setWaPicking(true);
+      return;
+    }
+    try {
+      localStorage.setItem('pay_link_staff_id', senderId);
+    } catch {}
+    setWaPicking(false);
+    setWaSending(true);
+    const res = await fetch(`/api/clients/${invoice.clients.id}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: `Here is your invoice from Europets Clinic: ${url}`, staff_id: senderId, channel: 'whatsapp' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setWaSending(false);
+    setPaymentLinkError(res.ok ? '✅ Sent from the clinic WhatsApp. It is in their messages.' : data.error || 'Could not send it. Try again.');
   }
 
   // Sends straight from the app via lib/email.js (see /api/clients/:id/
@@ -503,9 +531,30 @@ export default function InvoiceDetailPage() {
         <button type="button" onClick={downloadTaxInvoice}>
           📄 Download
         </button>
-        <button type="button" onClick={sendInvoiceViaWhatsApp}>
-          💬 WhatsApp
+        <button type="button" onClick={() => sendInvoiceViaWhatsApp()} disabled={waSending} title="Sends it from the clinic's WhatsApp number, into their chat with us">
+          {waSending ? 'Sending...' : '💬 WhatsApp'}
         </button>
+        {waPicking && (
+          <select
+            className="invoice-wa-sender"
+            value=""
+            autoFocus
+            aria-label="Sent by"
+            onChange={(e) => {
+              setWaStaffId(e.target.value);
+              sendInvoiceViaWhatsApp(e.target.value);
+            }}
+          >
+            <option value="">Sent by...</option>
+            {staff
+              .filter((s) => s.active !== false)
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.full_name}
+                </option>
+              ))}
+          </select>
+        )}
         <button type="button" onClick={sendInvoiceViaEmail} disabled={emailSending}>
           {emailSending ? 'Sending...' : emailSent ? '✅ Sent' : '✉️ Email'}
         </button>

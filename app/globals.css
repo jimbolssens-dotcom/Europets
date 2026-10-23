@@ -13011,3 +13011,4 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .rescue-day-actions button { width: auto !important; margin: 0 !important; }
 .rescue-tile-name { font-weight: 700; }
 .rescue-tile-day { position: absolute; top: 0.25rem; left: 0.25rem; padding: 0.05rem 0.35rem; border-radius: 999px; background: rgba(255, 255, 255, 0.9); color: #1c1418; font-size: 0.68rem; font-weight: 700; }
+.invoice-wa-sender { width: auto !important; max-width: 11rem; margin: 0 !important; }
