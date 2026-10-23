@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { uploadTeamMedia } from '@/lib/attachments';
 
 const STAFF_KEYS = ['team_staff_id', 'europets_mobile_staff_id', 'pay_link_staff_id', 'social_staff_id'];
-const ROLE_LABEL = { vet: 'vet', tech: 'tech', reception: 'reception', admin: 'finance' };
+const ROLE_LABEL = { vet: 'vet', tech: 'tech', intern: 'intern', reception: 'reception', admin: 'finance' };
 // What reaches this person's WhatsApp (or phone, with no number on file).
 const LEVELS = [
   ['all', '🔔'],

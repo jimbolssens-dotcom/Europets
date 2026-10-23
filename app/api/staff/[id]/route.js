@@ -5,11 +5,12 @@
 // DELETE /api/staff/:id  -> remove a staff member (blocked if referenced elsewhere)
 
 import { normalizeWhatsAppPhone } from '@/lib/teamChatPlan';
+import { STAFF_ROLES } from '@/lib/staffRoles';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
-const VALID_ROLES = ['vet', 'tech', 'reception', 'cleaner', 'driver', 'admin'];
+const VALID_ROLES = STAFF_ROLES;
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase.from('staff').select('*').eq('id', params.id).single();
@@ -22,7 +23,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { full_name, role, email, color, active, whatsapp_phone } = body;
+  const { full_name, role, email, color, active, whatsapp_phone, access_until } = body;
 
   if (role && !VALID_ROLES.includes(role)) {
     return NextResponse.json(
@@ -37,6 +38,11 @@ export async function PATCH(request, { params }) {
   if (email !== undefined) update.email = email;
   if (color !== undefined) update.color = color || null;
   if (active !== undefined) update.active = Boolean(active);
+  // Temporary staff (migration 223): the last day they have access; empty clears it.
+  if (access_until !== undefined) {
+    if (access_until && !/^\d{4}-\d{2}-\d{2}$/.test(access_until)) return NextResponse.json({ error: 'access_until must be a date' }, { status: 400 });
+    update.access_until = access_until || null;
+  }
   // Their WhatsApp for the team chat (migration 220), as digits with the
   // country code; empty clears it.
   if (whatsapp_phone !== undefined) {

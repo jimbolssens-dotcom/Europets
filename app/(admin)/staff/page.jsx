@@ -1,12 +1,20 @@
 // app/staff/page.jsx
-// Staff list + create form, with inline edit and delete.
+// Staff list + create form, with inline edit and delete. Interns are
+// temporary staff (migration 223, lib/staffRoles.js): "+ Intern" adds one
+// under a placeholder name if needed, with a last day after which they're
+// switched off automatically.
 
 'use client';
 
 import { useEffect, useState } from 'react';
 import { dubaiLocalDateString } from '@/lib/dubaiTime';
+import { STAFF_ROLES, ROLE_NAMES, nextInternName } from '@/lib/staffRoles';
 
-const emptyForm = { full_name: '', role: 'vet', email: '', color: '' };
+const emptyForm = { full_name: '', role: 'vet', email: '', color: '', whatsapp_phone: '', access_until: '' };
+
+function untilLabel(d) {
+  return new Date(`${d}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
 
 export default function StaffPage() {
   const [staff, setStaff] = useState([]);
@@ -67,6 +75,7 @@ export default function StaffPage() {
       email: member.email || '',
       color: member.color || '',
       whatsapp_phone: member.whatsapp_phone || '',
+      access_until: member.access_until || '',
     });
     setRowError(null);
   }
@@ -161,18 +170,36 @@ export default function StaffPage() {
         <h1>Staff</h1>
         <div className="page-header-actions">
           <a href="/staff/roster">📅 Staff Roster</a>
-          <button type="button" onClick={() => setShowAdd((v) => !v)} aria-expanded={showAdd}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              setForm({ ...emptyForm, role: 'intern' });
+              setShowAdd(true);
+            }}
+            title="Temporary staff: a placeholder name is fine, and they're switched off after their last day"
+          >
+            + Intern
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!showAdd) setForm(emptyForm);
+              setShowAdd((v) => !v);
+            }}
+            aria-expanded={showAdd}
+          >
             {showAdd ? 'Close' : '+ Add staff'}
           </button>
         </div>
       </div>
       {showAdd && (
       <form className="card" onSubmit={handleSubmit}>
-        <h2>Add Staff</h2>
+        <h2>{form.role === 'intern' ? 'Add an intern' : 'Add Staff'}</h2>
         {error && <p className="error">{error}</p>}
         <input
-          placeholder="Full name"
-          required
+          placeholder={form.role === 'intern' ? `Name (or leave empty for "${nextInternName(staff)}")` : 'Full name'}
+          required={form.role !== 'intern'}
           value={form.full_name}
           onChange={(e) => setForm({ ...form, full_name: e.target.value })}
         />
@@ -180,13 +207,26 @@ export default function StaffPage() {
           value={form.role}
           onChange={(e) => setForm({ ...form, role: e.target.value })}
         >
-          <option value="vet">Vet</option>
-          <option value="tech">Tech</option>
-          <option value="reception">Reception</option>
-          <option value="cleaner">Cleaner</option>
-          <option value="driver">Driver</option>
-          <option value="admin">Admin</option>
+          {STAFF_ROLES.map((r) => (
+            <option key={r} value={r}>
+              {ROLE_NAMES[r]}
+            </option>
+          ))}
         </select>
+        <div className="staff-add-row">
+          <input
+            type="tel"
+            placeholder="WhatsApp (team chat)"
+            value={form.whatsapp_phone}
+            onChange={(e) => setForm({ ...form, whatsapp_phone: e.target.value })}
+          />
+          {form.role === 'intern' && (
+            <label className="staff-until">
+              Last day
+              <input type="date" value={form.access_until} onChange={(e) => setForm({ ...form, access_until: e.target.value })} />
+            </label>
+          )}
+        </div>
         <input
           placeholder="Email"
           type="email"
@@ -235,13 +275,18 @@ export default function StaffPage() {
                     value={editForm.role}
                     onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                   >
-                    <option value="vet">Vet</option>
-                    <option value="tech">Tech</option>
-                    <option value="reception">Reception</option>
-                    <option value="cleaner">Cleaner</option>
-                    <option value="driver">Driver</option>
-                    <option value="admin">Admin</option>
+                    {STAFF_ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {ROLE_NAMES[r]}
+                      </option>
+                    ))}
                   </select>
+                  {(editForm.role === 'intern' || editForm.access_until) && (
+                    <label className="staff-until">
+                      Last day
+                      <input type="date" value={editForm.access_until} onChange={(e) => setEditForm({ ...editForm, access_until: e.target.value })} />
+                    </label>
+                  )}
                 </td>
                 <td>
                   <input
@@ -281,7 +326,14 @@ export default function StaffPage() {
               <>
                 <tr key={s.id} className={s.active ? '' : 'appointments-row-inactive'}>
                   <td>{s.full_name}</td>
-                  <td>{s.role}</td>
+                  <td>
+                    {s.role}
+                    {s.access_until && (
+                      <span className={`staff-until-chip${s.access_until < dubaiLocalDateString() ? ' staff-until-ended' : ''}`}>
+                        {s.access_until < dubaiLocalDateString() ? 'ended' : `until ${untilLabel(s.access_until)}`}
+                      </span>
+                    )}
+                  </td>
                   <td>{s.email}</td>
                   <td>{s.whatsapp_phone ? `+${s.whatsapp_phone}` : <span className="visit-meta">none</span>}</td>
                   <td>
