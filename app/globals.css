@@ -13067,3 +13067,9 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .staff-until input { width: auto !important; margin: 0 !important; }
 .staff-until-chip { display: inline-block; margin-left: 0.35rem; padding: 0.05rem 0.45rem; border-radius: 999px; background: #fdeef4; color: #c2185b; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
 .staff-until-ended { background: #eee; color: #666; }
+/* AI dictation in a client chat's reply box (app/_components/DictateButton.jsx) */
+.portal-chat-form:has(.dictate-btn) { position: relative; }
+.dictate-btn { flex: 0 0 auto; width: auto !important; margin: 0 !important; padding: 0.35rem 0.6rem !important; }
+.dictate-rec { background: #c62828 !important; color: white !important; animation: team-pulse 1s infinite; font-variant-numeric: tabular-nums; }
+.dictate-note { position: absolute; left: 0; right: 0; bottom: calc(100% + 0.3rem); z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.3rem 0.5rem; border-radius: 10px; background: #fdeef4; font-size: 0.8rem; color: #6b6660; }
+.dictate-swap { width: auto !important; margin: 0 !important; padding: 0.1rem 0.55rem !important; font-size: 0.78rem; border-radius: 999px; background: white !important; color: #e0156b !important; border: 1px solid #f7cfe0 !important; }

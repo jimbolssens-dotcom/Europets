@@ -12,6 +12,7 @@
 
 'use client';
 
+import DictateButton from '@/app/_components/DictateButton';
 import ShareToTeamButton from '@/app/_components/ShareToTeamButton';
 import { messageAssignees, assigneeLabel } from '@/lib/messageAssignees';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -563,6 +564,7 @@ export default function ClientMessageThreadPage() {
             onChange={(e) => setReplyDraft(e.target.value)}
             onKeyDown={handleReplyKeyDown}
           />
+          {currentChannel() !== 'email' && <DictateButton clientId={client?.id} current={replyDraft} onDraft={setReplyDraft} disabled={sendingReply} />}
           <button
             type="button"
             onClick={() => cameraInputRef.current?.click()}

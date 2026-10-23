@@ -22,6 +22,7 @@
 
 'use client';
 
+import DictateButton from '@/app/_components/DictateButton';
 import ShareToTeamButton from '@/app/_components/ShareToTeamButton';
 import { messageAssignees, assigneeLabel } from '@/lib/messageAssignees';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -506,6 +507,7 @@ export default function MobileMessageThreadPage() {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
           />
+          {isMatched && <DictateButton clientId={client?.id} current={draft} onDraft={setDraft} disabled={sending} />}
           <button type="submit" disabled={sending || uploadingFile || !draft.trim() || !staffId}>
             {sending ? '…' : uploadingFile ? '…' : 'Send'}
           </button>
