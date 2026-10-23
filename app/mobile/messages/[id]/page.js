@@ -22,6 +22,7 @@
 
 'use client';
 
+import { messageAssignees, assigneeLabel } from '@/lib/messageAssignees';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -380,17 +381,15 @@ export default function MobileMessageThreadPage() {
           value={assignedStaffId}
           onChange={(e) => assignTo(e.target.value)}
           className={`mobile-messages-assign ${assignedStaffId ? 'on' : ''}`}
-          title="Assign this conversation to one doctor or nurse"
+          title="Assign this conversation to one doctor or nurse, or to finance for bills and payments"
           aria-label="Assign to"
         >
           <option value="">👤 Assign</option>
-          {staffList
-            .filter((s) => s.role === 'vet' || s.role === 'tech')
-            .map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.full_name}
-              </option>
-            ))}
+          {messageAssignees(staffList).map((s) => (
+            <option key={s.id} value={s.id}>
+              {assigneeLabel(s)}
+            </option>
+          ))}
         </select>
       </div>
       {error && <p className="error">{error}</p>}

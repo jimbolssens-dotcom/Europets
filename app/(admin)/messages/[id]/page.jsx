@@ -12,6 +12,7 @@
 
 'use client';
 
+import { messageAssignees, assigneeLabel } from '@/lib/messageAssignees';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -399,16 +400,14 @@ export default function ClientMessageThreadPage() {
           <select
             value={assignedStaffId}
             onChange={(e) => assignTo(e.target.value)}
-            title="Assign this conversation to one doctor or nurse — pushes a notification to their phone if they have one set up"
+            title="Assign this conversation to one doctor or nurse, or to finance for bills and payments. Pushes a notification to their phone if they have one set up"
           >
             <option value="">Assign to...</option>
-            {staff
-              .filter((s) => s.role === 'vet' || s.role === 'tech')
-              .map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.full_name}
-                </option>
-              ))}
+            {messageAssignees(staff).map((s) => (
+              <option key={s.id} value={s.id}>
+                {assigneeLabel(s)}
+              </option>
+            ))}
           </select>
         </div>
       </div>
