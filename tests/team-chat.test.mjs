@@ -86,3 +86,9 @@ test('a staff member who is also a client reaches the team only with a #group', 
   assert.equal(startsWithTeamTag('#hashtag fun'), false);
   assert.equal(startsWithTeamTag('my dog is sick'), false);
 });
+
+test('a passed-on message says it is from Europets on WhatsApp', () => {
+  const text = whatsappCopy({ groupName: 'Finance', senderName: 'Europets', msg: { body: '↪ From Reception · Genie\nINV-740 paid by bank transfer' } });
+  assert.equal(text.split('\n')[0], '*Europets · Finance*');
+  assert.match(text, /↪ From Reception · Genie/);
+});

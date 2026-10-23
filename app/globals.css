@@ -13073,3 +13073,8 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .dictate-rec { background: #c62828 !important; color: white !important; animation: team-pulse 1s infinite; font-variant-numeric: tabular-nums; }
 .dictate-note { position: absolute; left: 0; right: 0; bottom: calc(100% + 0.3rem); z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.3rem 0.5rem; border-radius: 10px; background: #fdeef4; font-size: 0.8rem; color: #6b6660; }
 .dictate-swap { width: auto !important; margin: 0 !important; padding: 0.1rem 0.55rem !important; font-size: 0.78rem; border-radius: 999px; background: white !important; color: #e0156b !important; border: 1px solid #f7cfe0 !important; }
+.team-av-app { background: #e0156b; }
+.team-via { font-style: italic; }
+.team-divert { width: auto !important; margin: 0 0 0 0.4rem !important; padding: 0 0.35rem !important; border: 0 !important; background: none !important; color: #e0156b !important; font-size: 0.72rem; font-weight: 700; }
+.team-divert-pick { justify-content: flex-end; margin-top: 0.25rem; }
+.team-divert-pick .team-group { padding: 0.2rem 0.5rem !important; font-size: 0.75rem; }

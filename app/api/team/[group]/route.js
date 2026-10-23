@@ -3,7 +3,9 @@
 // GET ?staff_id= -> the group's latest messages and members (lib/teamChat.js),
 //      and marks it read for that person.
 // POST { staff_id, body?, media_url?, media_type?, media_name?, mentions?,
-//      ref? } -> posts a message and sends the phone alerts.
+//      ref?, as_app? } -> posts a message and sends the phone alerts.
+//      as_app with a ref (a client message shared in): passed on as from
+//      Europets, by anyone, to any group (migration 224).
 
 import { NextResponse } from 'next/server';
 import { groupThread, postTeamMessage } from '@/lib/teamChat';
@@ -21,7 +23,7 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   const body = await request.json().catch(() => ({}));
-  const result = await postTeamMessage(params.group, uuid(body.staff_id), body);
+  const result = await postTeamMessage(params.group, uuid(body.staff_id), { ...body, asApp: body.as_app === true && !!body.ref });
   if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
   return NextResponse.json(result, { status: 201 });
 }

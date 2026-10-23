@@ -3,7 +3,8 @@
 // (app/(admin)/messages/[id], app/mobile/messages/[id]): posts it into a
 // team chat group (migration 219, lib/teamChat.js) as a card, with an
 // optional note and @mention, so whoever picks it up can reply to the
-// client from there (from the clinic WhatsApp number).
+// client from there (from the clinic WhatsApp number). Anyone can share to
+// any group, and it arrives as from Europets (migration 224).
 
 'use client';
 
@@ -41,6 +42,8 @@ export default function ShareToTeamButton({ message, clientId, clientName, staff
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         staff_id: sender,
+        // From Europets, to any group, whoever shares it (migration 224).
+        as_app: true,
         body,
         mentions: who ? [who.id] : [],
         ref: { kind: 'client_message', client_id: clientId, client_name: clientName, message_id: message.id, quote },

@@ -97,12 +97,33 @@ function ReplyToClient({ message, staffId, onDone }) {
   );
 }
 
-function Message({ m, me, members, staffId, onReplied }) {
+const GROUP_KEYS = [
+  ['everyone', 'Everyone'],
+  ['vets', 'Medical'],
+  ['reception', 'Reception'],
+  ['finance', 'Finance'],
+];
+
+function Message({ m, me, members, staffId, onReplied, groupKey }) {
   const [replying, setReplying] = useState(false);
+  const [diverting, setDiverting] = useState(null); // null | 'pick' | 'sending' | 'done' | error text
+  // Passes it on to another group, as from Europets (migration 224).
+  async function divert(to) {
+    if (!staffId) return setDiverting('Pick who you are first.');
+    setDiverting('sending');
+    const res = await fetch(`/api/team/messages/${m.id}/divert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staff_id: staffId, group: to }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setDiverting(res.ok ? 'done' : data.error || 'Could not divert it.');
+    if (res.ok) setTimeout(() => setDiverting(null), 1800);
+  }
   const mine = m.staff_id === me;
   return (
     <div className={`team-msg${mine ? ' team-msg-mine' : ''}`}>
-      {!mine && <span className="team-av">{(m.staff_name || '?')[0]}</span>}
+      {!mine && <span className={`team-av${m.staff_id ? '' : ' team-av-app'}`}>{m.staff_id ? (m.staff_name || '?')[0] : 'E'}</span>}
       <div className="team-bubble">
         <div className="team-who">
           {mine ? 'You' : m.staff_name}
@@ -154,9 +175,27 @@ function Message({ m, me, members, staffId, onReplied }) {
           </div>
         )}
         <div className="team-time">
+          {m.shared_by_name && <span className="team-via">passed on by {m.shared_by_name} · </span>}
           {timeOf(m.created_at)}
           {mine && m.seen_by > 0 && ` · ✓✓ seen by ${m.seen_by}`}
+          <button type="button" className="team-divert" onClick={() => setDiverting(diverting === 'pick' ? null : 'pick')} title="This belongs in another group: pass it on there, from Europets">
+            ↪ Divert
+          </button>
         </div>
+        {diverting === 'pick' && (
+          <div className="team-row team-divert-pick">
+            {GROUP_KEYS.filter(([k]) => k !== groupKey).map(([k, name]) => (
+              <button key={k} type="button" className="team-group" onClick={() => divert(k)}>
+                → {name}
+              </button>
+            ))}
+          </div>
+        )}
+        {diverting && diverting !== 'pick' && (
+          <div className={diverting === 'done' ? 'team-replied' : diverting === 'sending' ? 'team-time' : 'error'}>
+            {diverting === 'done' ? '✓ Passed on, from Europets' : diverting === 'sending' ? 'Passing it on...' : diverting}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -366,7 +405,7 @@ export default function TeamChat({ staff: staffProp = null, initialGroup = null 
         {!thread && !error && <p className="visit-meta">Loading...</p>}
         {thread?.messages?.length === 0 && <p className="visit-meta">No messages in {thread.group.name} yet. Say hello 👋</p>}
         {thread?.messages?.map((m) => (
-          <Message key={m.id} m={m} me={me} members={members} staffId={me} onReplied={loadThread} />
+          <Message key={m.id} m={m} me={me} members={members} staffId={me} onReplied={loadThread} groupKey={groupKey} />
         ))}
         <div ref={endRef} />
       </div>
