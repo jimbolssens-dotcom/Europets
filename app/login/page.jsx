@@ -20,7 +20,7 @@ export default function LoginPage() {
       <p className="visit-meta">
         {otpEnabled
           ? "We'll send a code to the clinic's WhatsApp — check the usual phone."
-          : 'Enter the staff PIN to continue.'}
+          : 'Enter the staff PIN, or your own login code.'}
       </p>
       <LoginForm otpEnabled={otpEnabled} />
     </div>

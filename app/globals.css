@@ -13078,3 +13078,7 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .team-divert { width: auto !important; margin: 0 0 0 0.4rem !important; padding: 0 0.35rem !important; border: 0 !important; background: none !important; color: #e0156b !important; font-size: 0.72rem; font-weight: 700; }
 .team-divert-pick { justify-content: flex-end; margin-top: 0.25rem; }
 .team-divert-pick .team-group { padding: 0.2rem 0.5rem !important; font-size: 0.75rem; }
+.link-button { display: block; margin: 0 auto !important; width: auto !important; background: none !important; border: 0 !important; color: #c2185b !important; text-decoration: underline; font-size: 0.9rem; padding: 0.2rem !important; }
+.staff-login-code { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; max-width: 640px; }
+.staff-login-code code { font-size: 1.6rem; font-weight: 800; letter-spacing: 0.25em; color: #c2185b; }
+.staff-login-code button { width: auto !important; margin: 0 0 0 auto !important; }

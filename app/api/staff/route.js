@@ -9,6 +9,7 @@
 //                                    access_until? }); an intern with no
 //                                    name gets "Intern N" (migration 223)
 
+import { publicStaff } from '@/lib/staffPublic';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
@@ -33,7 +34,7 @@ export async function GET(request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data);
+  return NextResponse.json(Array.isArray(data) ? data.map(publicStaff) : publicStaff(data));
 }
 
 export async function POST(request) {
@@ -63,5 +64,5 @@ export async function POST(request) {
     if (error.code === '23505') return NextResponse.json({ error: 'That email or WhatsApp number is already on another staff member.' }, { status: 409 });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(publicStaff(data), { status: 201 });
 }

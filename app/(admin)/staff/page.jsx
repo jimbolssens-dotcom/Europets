@@ -27,6 +27,7 @@ export default function StaffPage() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [rowError, setRowError] = useState(null);
+  const [loginCode, setLoginCode] = useState(null); // { name, code, until }: shown once
   const [logOpenId, setLogOpenId] = useState(null);
   const [logDate, setLogDate] = useState(dubaiLocalDateString());
   const [logLoading, setLogLoading] = useState(false);
@@ -100,6 +101,27 @@ export default function StaffPage() {
       setEditingId(null);
       loadStaff();
     }
+  }
+
+  // Their own login (migration 225): a 6-digit code, shown once here.
+  async function makeLoginCode(member) {
+    if (member.has_login_code && !confirm(`Make a new login code for ${member.full_name}? Their old code stops working.`)) return;
+    setRowError(null);
+    setLoginCode(null);
+    const res = await fetch(`/api/staff/${member.id}/login-code`, { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return setRowError(data.error || 'Could not make a login code.');
+    setLoginCode({ name: member.full_name, code: data.code, until: member.access_until });
+    loadStaff();
+  }
+
+  async function removeLoginCode(member) {
+    if (!confirm(`Remove ${member.full_name}'s login code? It stops working at once.`)) return;
+    setRowError(null);
+    const res = await fetch(`/api/staff/${member.id}/login-code`, { method: 'DELETE' });
+    if (!res.ok) return setRowError('Could not remove the login code.');
+    setLoginCode(null);
+    loadStaff();
   }
 
   async function deleteStaff(member) {
@@ -247,6 +269,21 @@ export default function StaffPage() {
       </form>
       )}
       {rowError && <p className="error">{rowError}</p>}
+      {loginCode && (
+        <div className="card staff-login-code">
+          <span>
+            🔑 <strong>{loginCode.name}</strong>'s login code
+          </span>
+          <code>{loginCode.code}</code>
+          <span className="visit-meta">
+            They type it on the login page instead of the clinic PIN. It's only shown now, so give it to them.
+            {loginCode.until ? ` It stops after ${untilLabel(loginCode.until)}.` : ' It works until you remove it or switch them off.'}
+          </span>
+          <button type="button" className="secondary" onClick={() => setLoginCode(null)}>
+            Done
+          </button>
+        </div>
+      )}
       <div className="table-wrap">
       <table>
         <thead>
@@ -350,6 +387,16 @@ export default function StaffPage() {
                     <button type="button" onClick={() => startEdit(s)}>
                       Edit
                     </button>
+                    {(s.role === 'intern' || s.has_login_code) && s.active && (
+                      <button type="button" onClick={() => makeLoginCode(s)} title="Their own login code for the app, instead of the clinic PIN">
+                        🔑 {s.has_login_code ? 'New code' : 'Login code'}
+                      </button>
+                    )}
+                    {s.has_login_code && (
+                      <button type="button" className="secondary" onClick={() => removeLoginCode(s)} title="Their login code stops working at once">
+                        Remove code
+                      </button>
+                    )}
                     <button type="button" onClick={() => toggleActive(s)}>
                       {s.active ? 'Deactivate' : 'Activate'}
                     </button>

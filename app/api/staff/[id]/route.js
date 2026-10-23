@@ -4,6 +4,7 @@
 //                           deactivate instead of delete — see migration 108)
 // DELETE /api/staff/:id  -> remove a staff member (blocked if referenced elsewhere)
 
+import { publicStaff } from '@/lib/staffPublic';
 import { normalizeWhatsAppPhone } from '@/lib/teamChatPlan';
 import { STAFF_ROLES } from '@/lib/staffRoles';
 import { supabase } from '@/lib/supabaseClient';
@@ -18,7 +19,7 @@ export async function GET(request, { params }) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 404 });
   }
-  return NextResponse.json(data);
+  return NextResponse.json(Array.isArray(data) ? data.map(publicStaff) : publicStaff(data));
 }
 
 export async function PATCH(request, { params }) {
@@ -66,7 +67,7 @@ export async function PATCH(request, { params }) {
     if (error.code === '23505') return NextResponse.json({ error: 'Another staff member already has that WhatsApp number.' }, { status: 409 });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data);
+  return NextResponse.json(Array.isArray(data) ? data.map(publicStaff) : publicStaff(data));
 }
 
 export async function DELETE(request, { params }) {

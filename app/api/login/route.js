@@ -19,11 +19,29 @@
 // this file needed. The OTP branch (`{ code }`) only exists once that
 // flag is on; the request-code step that sends the code lives at
 // /api/login/request-code.
+//
+// `{ personal_code }` (or a 6-digit `{ pincode }` that isn't the shared
+// PIN): a staff member's own login code (an intern's, migration 225,
+// lib/personalLogin.js), in either mode. It sets the staff_person cookie
+// naming them, and the reply says who they are so the app can remember it.
 
 import { NextResponse } from 'next/server';
 import { STAFF_COOKIE, getEffectiveStaffPincode, isStaffOtpEnabled, verifyStaffOtpCode } from '@/lib/staffAuth';
 import { sha256Hex } from '@/lib/accountingAuth';
 import { checkRateLimit, recordFailedAttempt, clearAttempts, getClientKey } from '@/lib/loginRateLimit';
+import { PERSONAL_COOKIE, PERSONAL_COOKIE_MAX_AGE, personalSessionToken, staffForLoginCode } from '@/lib/personalLogin';
+
+async function personalLogin(staff) {
+  const res = NextResponse.json({ ok: true, staff_id: staff.id, full_name: staff.full_name });
+  res.cookies.set(PERSONAL_COOKIE, await personalSessionToken(staff.id), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: PERSONAL_COOKIE_MAX_AGE,
+    path: '/',
+  });
+  return res;
+}
 
 function setStaffCookie(token) {
   const res = NextResponse.json({ ok: true });
@@ -48,6 +66,20 @@ export async function POST(request) {
   }
 
   const body = await request.json();
+
+  // A personal login code (migration 225), in either mode.
+  const personal = body.personal_code || (/^\d{6}$/.test(String(body.pincode || '')) ? body.pincode : null);
+  if (personal) {
+    const staff = await staffForLoginCode(personal);
+    if (staff) {
+      clearAttempts(clientKey);
+      return personalLogin(staff);
+    }
+    if (body.personal_code) {
+      recordFailedAttempt(clientKey);
+      return NextResponse.json({ error: 'That login code is not right, or it has ended.' }, { status: 401 });
+    }
+  }
 
   if (isStaffOtpEnabled()) {
     if (!body.code) {
@@ -104,5 +136,6 @@ export async function POST(request) {
 export async function DELETE() {
   const res = NextResponse.json({ ok: true });
   res.cookies.delete(STAFF_COOKIE);
+  res.cookies.delete(PERSONAL_COOKIE);
   return res;
 }

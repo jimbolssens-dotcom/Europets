@@ -20,6 +20,7 @@
 
 import { NextResponse } from 'next/server';
 import { STAFF_COOKIE, getEffectiveStaffPincode } from '@/lib/staffAuth';
+import { personalStaffId } from '@/lib/personalLogin';
 import { ACCOUNTING_COOKIE, sha256Hex } from '@/lib/accountingAuth';
 
 // Path patterns reachable with no login at all — the public client portal
@@ -187,7 +188,8 @@ export async function middleware(request) {
 
   const staffExpected = await sha256Hex(staffPincode);
   const staffCookie = request.cookies.get(STAFF_COOKIE)?.value;
-  if (staffCookie !== staffExpected) {
+  // Or their own login (an intern's code, migration 225), while it's valid.
+  if (staffCookie !== staffExpected && !(await personalStaffId(request))) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Staff login required at /login' }, { status: 401 });
     }
