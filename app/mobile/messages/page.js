@@ -64,7 +64,14 @@ export default function MobileMessagesListPage() {
   return (
     <div className="mobile-page">
       <MobileHomeButton />
-      <h1>Messages</h1>
+      <div className="page-header">
+        <h1>Messages</h1>
+        <div className="page-header-actions">
+          <a href="/mobile/team" className="button-link">
+            👥 Team
+          </a>
+        </div>
+      </div>
 
       {loading ? (
         <p>Loading...</p>

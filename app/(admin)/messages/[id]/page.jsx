@@ -12,6 +12,7 @@
 
 'use client';
 
+import ShareToTeamButton from '@/app/_components/ShareToTeamButton';
 import { messageAssignees, assigneeLabel } from '@/lib/messageAssignees';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -451,6 +452,9 @@ export default function ClientMessageThreadPage() {
               </p>
             )}
             {m.body && <p>{m.body}</p>}
+            {m.sender === 'client' && (
+              <ShareToTeamButton message={m} clientId={client?.id} clientName={client?.full_name} staffId={replyStaffId} staff={staff} />
+            )}
             {escalationReason && m.id === lastClientMessageId && (
               <span className="thread-escalation-note">🤖 Handed to staff: {escalationReason}</span>
             )}

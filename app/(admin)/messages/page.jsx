@@ -709,6 +709,9 @@ export default function MessagesInboxPage() {
               </button>
             </span>
           )}
+          <a href="/messages/team" className="button-link phone-hide" title="The clinic's team chat">
+            👥 Team
+          </a>
           <a
             href="/intake"
             className={`button-link phone-hide${hasPendingInviteRequest ? ' button-link-alarm' : ''}`}
@@ -737,6 +740,7 @@ export default function MessagesInboxPage() {
                 📵<span className="phone-top-btn-text">{unmatched.length}</span>
               </button>
             )}
+            <a href="/messages/team" className="phone-top-btn" title="Team chat" aria-label="Team chat">👥</a>
             <a href="/intake" className={`phone-top-btn${hasPendingInviteRequest ? ' phone-top-btn-alarm' : ''}`} title="Invite" aria-label="Invite">
               ✉️
             </a>
