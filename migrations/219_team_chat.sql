@@ -64,5 +64,5 @@ insert into team_groups (key, name, roles, sort) values
   ('everyone', 'Everyone', null, 0),
   ('vets', 'Vets', array['vet'], 1),
   ('reception', 'Reception', array['reception'], 2),
-  ('finance', 'Finance', array['admin'], 3)
+  ('finance', 'Finance', array['admin', 'reception'], 3)
 on conflict (key) do nothing;
