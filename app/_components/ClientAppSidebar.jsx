@@ -8,6 +8,7 @@
 
 'use client';
 
+import { websiteUrl } from '@/lib/websiteUrl';
 import { usePathname } from 'next/navigation';
 import { useClientAppSession } from './useClientAppSession';
 import HexIcon from './HexIcon';
@@ -52,7 +53,7 @@ export default function ClientAppSidebar() {
       </nav>
 
       <a
-        href={process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet'}
+        href={websiteUrl()}
         className="client-app-website-link client-app-sidebar-website-link"
       >
         ← Back to website

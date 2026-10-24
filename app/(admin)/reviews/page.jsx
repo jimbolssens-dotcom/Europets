@@ -10,6 +10,7 @@
 
 'use client';
 
+import { websiteUrl as clinicWebsiteUrl } from '@/lib/websiteUrl';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import InfoHint from '@/app/_components/InfoHint';
@@ -47,7 +48,7 @@ export default function ReviewsPage() {
   }, []);
 
   function submitUrl(id) {
-    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
+    const websiteUrl = clinicWebsiteUrl();
     return `${websiteUrl}/reviews/submit/${id}`;
   }
 

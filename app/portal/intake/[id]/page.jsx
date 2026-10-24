@@ -28,6 +28,7 @@
 
 'use client';
 
+import { websiteUrl } from '@/lib/websiteUrl';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -73,7 +74,7 @@ function todayISODate() {
 // separate Next.js projects/deployments. Only shown when fromWebsite is
 // true (see below): someone who followed a WhatsApp link here has no
 // reason to see the rest of the marketing site.
-const WEBSITE_URL = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
+const WEBSITE_URL = websiteUrl();
 const WEBSITE_NAV_LINKS = [
   { href: `${WEBSITE_URL}/about`, label: 'About' },
   { href: `${WEBSITE_URL}/services`, label: 'Services' },

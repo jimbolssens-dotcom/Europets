@@ -5,6 +5,7 @@
 
 'use client';
 
+import { websiteUrl as clinicWebsiteUrl } from '@/lib/websiteUrl';
 import InvoiceReminderLog from '@/app/_components/InvoiceReminderLog';
 import { Fragment, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -332,7 +333,7 @@ export default function InvoiceDetailPage() {
   // staff WhatsApp only while Meta is still approving that message.
   async function sendPaymentLink() {
     setPaymentLinkError(null);
-    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
+    const websiteUrl = clinicWebsiteUrl();
     const url = `${websiteUrl}/settle-bill/${id}`;
     const digits = (invoice.clients?.phone || '').replace(/\D/g, '');
     const message = `Hi ${invoice.clients?.full_name || ''}! You can settle your Europets Clinic invoice online here: ${url}`;

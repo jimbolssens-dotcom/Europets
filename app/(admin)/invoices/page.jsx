@@ -10,6 +10,7 @@
 
 'use client';
 
+import { websiteUrl as clinicWebsiteUrl } from '@/lib/websiteUrl';
 import { Fragment, Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -200,7 +201,7 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
   // actual Nomod link itself for whatever the balance happens to be.
   async function sendPaymentLink() {
     setPaymentLinkError(null);
-    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
+    const websiteUrl = clinicWebsiteUrl();
     const url = `${websiteUrl}/settle-bill/${summary.id}`;
     const digits = (invoice.clients?.phone || '').replace(/\D/g, '');
     const message = `Hi ${invoice.clients?.full_name || ''}! You can settle your Europets Clinic invoice online here: ${url}`;

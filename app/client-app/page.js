@@ -10,6 +10,7 @@
 
 'use client';
 
+import { websiteUrl } from '@/lib/websiteUrl';
 import { useEffect, useRef, useState } from 'react';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import { useClientAppTheme } from '@/app/_components/ClientAppThemeContext';
@@ -423,7 +424,7 @@ export default function ClientAppHomePage() {
     return (
       <div className="mobile-page client-app-login">
         <a
-          href={process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet'}
+          href={websiteUrl()}
           className="client-app-website-link"
         >
           ← Back to website

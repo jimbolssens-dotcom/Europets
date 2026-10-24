@@ -4,6 +4,7 @@
 
 'use client';
 
+import { websiteUrl } from '@/lib/websiteUrl';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -62,7 +63,7 @@ export default function ClientDetailPage() {
   }, [id]);
 
   function payAllUrl() {
-    return `${process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet'}/settle-bill/owner/${id}`;
+    return `${websiteUrl()}/settle-bill/owner/${id}`;
   }
 
   // One message for "please pay": the balance and the pay-everything link

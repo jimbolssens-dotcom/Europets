@@ -7,6 +7,7 @@
 
 'use client';
 
+import { websiteUrl as clinicWebsiteUrl } from '@/lib/websiteUrl';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -304,7 +305,7 @@ export default function PatientDetailPage() {
       setReviewLinkError(data?.error || 'Failed to generate a review link');
       return;
     }
-    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://epc.vet';
+    const websiteUrl = clinicWebsiteUrl();
     const url = `${websiteUrl}/reviews/submit/${data.id}`;
     const ownerName = patient.clients?.full_name || 'there';
     const digits = (patient.clients?.phone || '').replace(/\D/g, '');
