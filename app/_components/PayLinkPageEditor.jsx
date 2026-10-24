@@ -87,7 +87,7 @@ export default function PayLinkPageEditor({ clientId, client, link, onSaved }) {
     onSaved(data);
     const ig = data.link?.page?.instagram;
     setNote(
-      `✅ Saved.${form.instagram_handle && !ig ? " Instagram posts couldn't be loaded: the account may be personal rather than business or creator, so only a Follow button shows." : ''}`
+      `✅ Saved.${form.instagram_handle && !ig ? ` Their Instagram couldn't be loaded, so only a Follow button shows. Instagram said: ${data.link?.page?.instagram_error || 'no reason given'}` : ''}`
     );
   }
 

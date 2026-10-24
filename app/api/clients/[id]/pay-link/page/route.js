@@ -61,7 +61,10 @@ export async function POST(request, { params }) {
   }
   const { data: saved, error: saveError } = await supabaseAdmin.from('client_payment_links').update(update).eq('id', link.id).select(PAY_LINK_FIELDS).single();
   if (saveError) return NextResponse.json({ error: saveError.message }, { status: 500 });
-  const instagram = await refreshPayPageInstagram(saved, { force: saved.instagram_handle !== link.instagram_handle });
+  // Saving always fetches their Instagram afresh (and says why, if it can't).
+  const instagram = await refreshPayPageInstagram(saved, { force: true });
+  const { data: after } = await supabaseAdmin.from('client_payment_links').select('page_instagram_error').eq('id', link.id).maybeSingle();
+  saved.page_instagram_error = after?.page_instagram_error || null;
   const { credit } = await clientCreditBalance(params.id);
   return NextResponse.json({ link: presentPayLink({ ...saved, page_instagram: instagram }), credit: credit ?? 0 });
 }
