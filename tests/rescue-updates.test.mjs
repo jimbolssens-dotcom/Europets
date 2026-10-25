@@ -42,5 +42,30 @@ test('the AI is told each animal, the day, and to tag and thank the rescue', () 
   assert.match(text, /1: one of their rescues/);
   assert.match(text, /as a collaboration with @some_rescue/);
   assert.match(text, /link in @some_rescue's bio/);
-  assert.match(text, /no diagnoses/);
+  assert.match(text, /Never name diagnoses/);
+});
+
+import { caseFacts } from '../lib/rescueUpdatesPlan.js';
+
+test("a cat's line comes from its hospital sheet: eating, temperature, weight", () => {
+  const notes = [
+    { note_date: '2026-10-22', weight_kg: '1.23' },
+    { note_date: '2026-10-24', appetite: 'none', mood: 'unhappy', temperature_c: '39.6' },
+    { note_date: '2026-10-25', appetite: 'reduced', mood: 'happy', temperature_c: '38.2', weight_kg: '1.29' },
+  ];
+  const facts = caseFacts(notes, '2026-10-25');
+  assert.ok(facts.includes('starting to eat a little'));
+  assert.ok(facts.includes('seems much brighter'));
+  assert.ok(facts.includes('temperature back to normal'));
+  assert.ok(facts.includes('put on a little weight since coming in'));
+  assert.deepEqual(caseFacts([], '2026-10-25'), []);
+  assert.ok(caseFacts([{ note_date: '2026-10-25', temperature_c: '39.8' }], '2026-10-25').includes('has a bit of a temperature today'));
+  assert.ok(caseFacts([{ note_date: '2026-10-23', appetite: 'good' }], '2026-10-25').some((f) => f.includes('latest entry is from 2026-10-23')));
+});
+
+test('the AI gets each animal\'s sheet facts and is told one cute sentence each', () => {
+  const text = rescueUpdateText({ handle: 'some_rescue', collab: true, in_hospital: 1, animals: [{ name: 'Bridgeth', species: 'cat', day: 4, facts: ['starting to eat a little', 'temperature back to normal'] }] }).join('\n');
+  assert.match(text, /From the hospital sheet: starting to eat a little; temperature back to normal/);
+  assert.match(text, /One short, cute sentence per animal/);
+  assert.match(text, /no °C or kg/);
 });
