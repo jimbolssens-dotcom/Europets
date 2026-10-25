@@ -56,16 +56,17 @@ test("a cat's line comes from its hospital sheet: eating, temperature, weight", 
   const facts = caseFacts(notes, '2026-10-25');
   assert.ok(facts.includes('starting to eat a little'));
   assert.ok(facts.includes('seems much brighter'));
-  assert.ok(facts.includes('temperature back to normal'));
+  assert.ok(facts.includes('fever has gone, temperature back to normal'));
   assert.ok(facts.includes('put on a little weight since coming in'));
   assert.deepEqual(caseFacts([], '2026-10-25'), []);
-  assert.ok(caseFacts([{ note_date: '2026-10-25', temperature_c: '39.8' }], '2026-10-25').includes('has a bit of a temperature today'));
+  assert.ok(caseFacts([{ note_date: '2026-10-25', temperature_c: '39.8' }], '2026-10-25').includes('has a fever today'));
   assert.ok(caseFacts([{ note_date: '2026-10-23', appetite: 'good' }], '2026-10-25').some((f) => f.includes('latest entry is from 2026-10-23')));
 });
 
 test('the AI gets each animal\'s sheet facts and is told one cute sentence each', () => {
-  const text = rescueUpdateText({ handle: 'some_rescue', collab: true, in_hospital: 1, animals: [{ name: 'Bridgeth', species: 'cat', day: 4, facts: ['starting to eat a little', 'temperature back to normal'] }] }).join('\n');
-  assert.match(text, /From the hospital sheet: starting to eat a little; temperature back to normal/);
+  const text = rescueUpdateText({ handle: 'some_rescue', collab: true, in_hospital: 1, animals: [{ name: 'Bridgeth', species: 'cat', day: 4, facts: ['starting to eat a little', 'fever has gone, temperature back to normal'] }] }).join('\n');
+  assert.match(text, /From the hospital sheet: starting to eat a little; fever has gone, temperature back to normal/);
   assert.match(text, /One short, cute sentence per animal/);
   assert.match(text, /no °C or kg/);
+  assert.match(text, /a fever is called a fever, never "a bit warm"/);
 });
