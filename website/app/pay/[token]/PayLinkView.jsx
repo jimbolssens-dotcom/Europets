@@ -251,6 +251,11 @@ export default function PayLinkView({ view = null }) {
             </li>
           ))}
         </ul>
+        {page.bonus_given > 0 && (
+          <p className="rescue-promo-given">
+            Europets has already taken <b>AED {Math.round(page.bonus_given).toLocaleString('en-US')}</b> off {who ? `${who}'s` : 'their'} bills thanks to your gifts 💗
+          </p>
+        )}
         {promo.ends_at && <em>Until {new Date(promo.ends_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}</em>}
       </div>
     );

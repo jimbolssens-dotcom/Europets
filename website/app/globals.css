@@ -1548,3 +1548,5 @@ p {
 .rescue-share-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem; }
 .rescue-share-row .btn { display: flex; justify-content: center; width: 100%; }
 .rescue-foot { color: var(--ink-soft); font-size: 0.78rem; text-align: center; margin: 0.5rem 0 0; }
+.rescue-promo-given { margin: 0.2rem 0 0; font-size: 0.9rem; color: var(--ink); }
+.rescue-promo-given b { color: var(--blush); }

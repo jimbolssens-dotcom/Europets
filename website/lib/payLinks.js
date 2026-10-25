@@ -77,6 +77,10 @@ export async function payPage(link, { style: asStyle = null } = {}) {
     .eq('client_id', link.client_id)
     .eq('active', true)
     .maybeSingle();
+  // What Europets has taken off their bills so far as the supporter bonus
+  // (the clinic app's migration 215), for the page to show.
+  const { data: bonuses } = await supabaseServerAdmin.from('promotion_bonuses').select('amount').eq('client_id', link.client_id);
+  const bonusGiven = Math.round((bonuses || []).reduce((t, b) => t + Number(b.amount || 0), 0) * 100) / 100;
   const promotion = promo && (!promo.ends_at || Date.parse(promo.ends_at) > Date.now()) && Date.parse(promo.starts_at) <= Date.now()
     ? { tiers: [...promo.tiers].sort((a, b) => a.min - b.min), ends_at: promo.ends_at }
     : null;
@@ -110,5 +114,6 @@ export async function payPage(link, { style: asStyle = null } = {}) {
       : null,
     supporter_count: (paid || []).length,
     bills_paid: link.show_bills ? billsPaid || 0 : null,
+    bonus_given: bonusGiven,
   };
 }
