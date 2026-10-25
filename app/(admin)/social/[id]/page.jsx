@@ -134,6 +134,19 @@ export default function SocialPostPage() {
     return () => clearTimeout(t);
   }, [layout]);
 
+  // While it's posting in the background, look again every 30s until it's out.
+  const posting = post?.status === 'approved' && !!post.scheduled_for && !post.publish_error && Date.parse(post.scheduled_for) <= Date.now();
+  useEffect(() => {
+    if (!posting) return undefined;
+    const t = setInterval(() => {
+      fetch(`/api/social-posts/${id}`)
+        .then((res) => res.json())
+        .then((d) => !d.error && setPost(d))
+        .catch(() => {});
+    }, 30 * 1000);
+    return () => clearInterval(t);
+  }, [posting, id]);
+
   useEffect(() => {
     fetch(`/api/social-posts/${id}`)
       .then((res) => res.json())
@@ -417,8 +430,10 @@ export default function SocialPostPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
+    // A long post (a carousel of photos) can outlast the request: with no
+    // error from us it's still going, and the five-minute sweep finishes it.
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) setError(data.error || 'Could not post.');
+    if (!res.ok && data.error) setError(data.error);
     const fresh = await fetch(`/api/social-posts/${id}`).then((r) => r.json());
     setBusy(null);
     if (!fresh.error) apply(fresh);
@@ -441,8 +456,10 @@ export default function SocialPostPage() {
   const laidOut = layoutItems({ ...post, post_as: postAs, layout });
   const shareCount = laidOut ? 1 + afterLayout(post, laidOut).length : ordered.length;
   const coverUrl = (h, i = post.cover_index) => `/api/social-posts/${id}/cover?i=${i}&h=${encodeURIComponent(h)}`;
-  const processing = post.publish_state?.instagram?.status === 'processing' && !post.publish_error;
-  const scheduled = !!post.scheduled_for && !post.publish_error && new Date(post.scheduled_for).getTime() > Date.now() - 60 * 1000;
+  // Due and not failed: Post now (or the time it was scheduled for) has
+  // started, and the five-minute sweep carries on until it's out.
+  const processing = !!post.scheduled_for && !post.publish_error && new Date(post.scheduled_for).getTime() <= Date.now();
+  const scheduled = !!post.scheduled_for && !post.publish_error && !processing;
 
   const byHand = (
     <div className="social-steps">
@@ -867,7 +884,7 @@ export default function SocialPostPage() {
                   <p className="error">Couldn&apos;t post: {post.publish_error}</p>
                 )}
                 {processing ? (
-                  <p className="social-hint">⏳ Instagram is still processing the video. It goes out by itself within a few minutes.{post.publish_state?.facebook?.status === 'done' ? ' Facebook is already done.' : ''}</p>
+                  <p className="social-hint">⏳ Still posting. It goes out by itself within a few minutes, no need to press again.{post.publish_state?.facebook?.status === 'done' ? ' Facebook is already done.' : ''}</p>
                 ) : scheduled ? (
                   <div className="social-inline">
                     <span className="social-chip social-chip-pink">📅 {formatWhen(post.scheduled_for)}</span>
