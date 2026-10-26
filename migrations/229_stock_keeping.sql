@@ -104,8 +104,7 @@ begin
   return null;
 end $$;
 
-drop trigger if exists trg_stock_treatment_item on treatment_items;
-create trigger trg_stock_treatment_item after insert or update of goods_service_id, quantity on treatment_items
+create or replace trigger trg_stock_treatment_item after insert or update of goods_service_id, quantity on treatment_items
 for each row execute function stock_sync_treatment_item();
 
 -- A test added straight onto an invoice (not synced from a treatment item,
@@ -126,8 +125,7 @@ begin
   return null;
 end $$;
 
-drop trigger if exists trg_stock_invoice_line on invoice_line_items;
-create trigger trg_stock_invoice_line after insert or update of goods_service_id, quantity, source_treatment_item_ids on invoice_line_items
+create or replace trigger trg_stock_invoice_line after insert or update of goods_service_id, quantity, source_treatment_item_ids on invoice_line_items
 for each row execute function stock_sync_invoice_line();
 
 -- Vaccines, per dose given. A rabies dose given in a combo vial uses
@@ -153,8 +151,7 @@ begin
   return null;
 end $$;
 
-drop trigger if exists trg_stock_vaccination on vaccinations;
-create trigger trg_stock_vaccination after insert or update of date_given, given_as, vaccine_protocol_id on vaccinations
+create or replace trigger trg_stock_vaccination after insert or update of date_given, given_as, vaccine_protocol_id on vaccinations
 for each row execute function stock_sync_vaccination();
 
 -- ---- Phase 1 items ----
