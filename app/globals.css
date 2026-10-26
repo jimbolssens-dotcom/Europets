@@ -13138,14 +13138,13 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
   gap: 0.4rem;
 }
 
-/* The name gives way (ellipsis) so the count, chip and buttons always
-   stay on its line. */
+/* The name gives way (a long one wraps under itself) so the count, chip
+   and buttons always stay on its line. */
 .stock-name {
   flex: 1 1 0;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
 }
 
 .stock-on-hand {

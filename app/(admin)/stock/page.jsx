@@ -114,7 +114,7 @@ function Item({ item, staffId, onChanged }) {
         <strong className="stock-name" title={item.name}>
           {item.name}
         </strong>
-        <span className="stock-on-hand">{item.started ? fmt(item.on_hand) : '–'}</span>
+        {item.started && <span className="stock-on-hand">{fmt(item.on_hand)}</span>}
         {status}
         <span className="stock-actions">
           <button type="button" className="secondary" onClick={() => toggle('in')}>
