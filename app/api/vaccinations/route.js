@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { selectAll } from '@/lib/selectAll';
 import { NextResponse } from 'next/server';
+import { futureDateError, supersedeEarlierDoses } from '@/lib/vaccinationSupersede';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
 
@@ -59,6 +60,7 @@ export async function GET(request) {
       horizon.setDate(horizon.getDate() + withinDays);
       query = query
         .not('next_due_date', 'is', null)
+        .is('superseded_by', null) // a later dose replaced it (migration 228)
         .lte('next_due_date', horizon.toISOString().slice(0, 10));
     }
     return query.order('id');
@@ -111,6 +113,9 @@ export async function POST(request) {
     );
   }
 
+  const futureError = futureDateError(date_given);
+  if (futureError) return NextResponse.json({ error: futureError }, { status: 400 });
+
   const { data: protocol, error: protocolError } = await supabase
     .from('vaccine_protocols')
     .select('name, interval_months')
@@ -153,5 +158,7 @@ export async function POST(request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  // Earlier doses of this vaccine stop counting as due (migration 228).
+  await supersedeEarlierDoses(data);
   return NextResponse.json(data, { status: 201 });
 }

@@ -404,6 +404,26 @@ export default function ConsultDetailPage() {
     }
   }
 
+  // A vaccination logged here adds its line to the Treatment Notes
+  // (lib/vaccinationCourse.js#vaccinationNoteLine): on screen, and saved
+  // straight away onto what's already saved, so it isn't lost if nobody
+  // presses Save, and nothing typed but unsaved is overwritten.
+  async function appendVaccinationNote(line) {
+    if (!line) return;
+    appendRecordField('treatment_notes', line);
+    const saved = await fetch(`/api/visits/${id}`).then((res) => (res.ok ? res.json() : null)).catch(() => null);
+    if (!saved) return;
+    const next = saved.treatment_notes ? `${saved.treatment_notes}\n${line}` : line;
+    const res = await fetch(`/api/visits/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ treatment_notes: next }),
+    });
+    if (res.ok && lastServerRecordRef.current) {
+      lastServerRecordRef.current = { ...lastServerRecordRef.current, treatment_notes: next };
+    }
+  }
+
   // Dictated straight into the treatment item's own Instructions field —
   // this is the same text that gets copied onto the invoice line item (see
   // /api/visits/[id]/invoice) and from there onto the printed dispensing
@@ -876,7 +896,7 @@ export default function ConsultDetailPage() {
   const vac = useVaccinations(
     consult?.patients?.id,
     consult?.patients?.species,
-    { visitId: id, onBilled: () => { loadTreatmentItems(); loadInvoiceInfo(); } },
+    { visitId: id, onBilled: () => { loadTreatmentItems(); loadInvoiceInfo(); }, onNote: appendVaccinationNote },
     consult?.attending_vet_id || ''
   );
 

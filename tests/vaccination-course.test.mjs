@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ageInMonths, openPrimaryCourse, defaultVaccineTicks } from '../lib/vaccinationCourse.js';
+import { ageInMonths, openPrimaryCourse, defaultVaccineTicks, vaccinationNoteLine } from '../lib/vaccinationCourse.js';
 
 const PCH = { id: 'pch', core: true, is_rabies: false, interval_months: 12 };
 const RAB = { id: 'rab', core: true, is_rabies: true, interval_months: 12 };
@@ -59,4 +59,22 @@ test('once the booster is linked, the course is closed', () => {
 
 test('a primary visit from long ago no longer waits on a booster', () => {
   assert.equal(openPrimaryCourse(young, protocols, '2027-03-01'), null);
+});
+
+test('the consult notes line: a primary course with rabies held back', () => {
+  const line = vaccinationNoteLine({
+    kind: 'primary',
+    doses: [
+      { name: 'PCH (Feline Flu + Enteritis)', booster: true, nextDue: '2026-11-26' },
+      { name: 'Rabies', heldBack: true, nextDue: '2026-11-26' },
+    ],
+    batch: 'AB12',
+    vetName: 'Dr. Jim Bolssens',
+  });
+  assert.equal(line, 'Vaccination, primary course (booster included): PCH (Feline Flu + Enteritis), next due 26/11/2026 (booster); Rabies at the booster on 26/11/2026. Batch AB12. Given by Dr. Jim Bolssens.');
+});
+
+test('the consult notes line: the booster says it was paid at the first visit', () => {
+  const line = vaccinationNoteLine({ kind: 'booster', courseDate: '2026-09-26', doses: [{ name: 'PCH (Feline Flu + Enteritis)', nextDue: '2027-10-26' }] });
+  assert.equal(line, 'Vaccination, primary course booster (paid at the first visit on 26/09/2026): PCH (Feline Flu + Enteritis), next due 26/10/2027.');
 });

@@ -7,12 +7,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { classifySpecies } from '@/lib/species';
 import { formatDate, dueStatus } from '@/lib/vaccinationDueStatus';
-import { ageInMonths, defaultVaccineTicks, openPrimaryCourse } from '@/lib/vaccinationCourse';
+import { ageInMonths, defaultVaccineTicks, openPrimaryCourse, vaccinationNoteLine } from '@/lib/vaccinationCourse';
 
 export { formatDate, dueStatus };
 
+// Today in the clinic's own time (UAE, UTC+4): in UTC, a dose logged just
+// after midnight would be dated the day before.
 export function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 function addMonths(dateStr, months) {
@@ -120,7 +122,9 @@ async function addInvoiceLine(invoiceId, item, itemName, quantity, description, 
 // POST /api/visits/:id/invoice already runs (see lib/invoicing.js
 // #syncInvoiceTreatmentItems) — this just needs to run first, so that
 // sync has something new to pick up.
-async function addTreatmentItem(visitId, item, itemName, quantity, instructions, missing) {
+// billable false: on the plan (and the consult report) but never charged,
+// e.g. a primary course's booster, paid at the first visit.
+async function addTreatmentItem(visitId, item, itemName, quantity, instructions, missing, billable = true) {
   if (!item) {
     missing.push(itemName);
     return;
@@ -128,7 +132,7 @@ async function addTreatmentItem(visitId, item, itemName, quantity, instructions,
   const res = await fetch('/api/treatment-items', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ visit_id: visitId, goods_service_id: item.id, quantity, instructions: instructions || undefined }),
+    body: JSON.stringify({ visit_id: visitId, goods_service_id: item.id, quantity, instructions: instructions || undefined, ...(billable ? {} : { billable: false }) }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -408,6 +412,23 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     } else {
       setForm(makeEmptyForm(defaultVetId));
       setTicksTouched(false);
+      // The consult's Treatment Notes get a line saying what was given and
+      // when each is due next (only from a consult: invoiceContext.onNote),
+      // unless it's an earlier annual dose only being put on record.
+      if (isPrimary || dateGiven === todayISODate()) invoiceContext.onNote?.(
+        vaccinationNoteLine({
+          kind: isPrimary ? 'primary' : 'annual',
+          doses: [
+            ...checkedProtocols.map((p) => {
+              const booster = isPrimary && coreProtocol && p.id === coreProtocol.id;
+              return { name: p.name, booster, nextDue: booster ? boosterDue : addMonths(dateGiven, p.interval_months || 12) };
+            }),
+            ...(isPrimary && !rabiesGiven ? relevantProtocols.filter((p) => p.is_rabies).map((p) => ({ name: p.name, heldBack: true, nextDue: boosterDue })) : []),
+          ],
+          batch: form.batch_number,
+          vetName: results.find((r) => r.data?.staff?.full_name)?.data.staff.full_name,
+        })
+      );
       // An annual vaccination logged for any date other than today almost
       // always means it was already given — by this clinic earlier, or by
       // another clinic entirely — and is only being recorded here for the
@@ -481,6 +502,32 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     } else {
       setForm(makeEmptyForm(defaultVetId));
       setTicksTouched(false);
+      // On the consult: each dose on the treatment plan, not charged, and a
+      // line in the Treatment Notes, so the visit shows what was given.
+      const paidOn = `booster, paid at the first visit on ${formatDate(openCourse.course.date_given)}`;
+      if (invoiceContext.visitId && speciesClass) {
+        try {
+          const productCatalog = await fetch('/api/goods-services?main_category=product').then((res) => res.json());
+          const missing = [];
+          for (const p of checkedProtocols) {
+            const itemName = p.is_rabies ? RABIES_VACCINE_NAME : CORE_VACCINE_NAME[speciesClass];
+            await addTreatmentItem(invoiceContext.visitId, findByName(productCatalog, itemName), itemName, 1, paidOn, missing, false);
+          }
+          invoiceContext.onBilled?.();
+          if (missing.length) setError(`Booster saved, but couldn't add ${missing.join(', ')} to the treatment plan.`);
+        } catch (planError) {
+          setError(planError.message || 'Booster saved, but adding it to the treatment plan failed');
+        }
+      }
+      invoiceContext.onNote?.(
+        vaccinationNoteLine({
+          kind: 'booster',
+          courseDate: openCourse.course.date_given,
+          doses: checkedProtocols.map((p) => ({ name: p.name, nextDue: addMonths(form.date_given, p.interval_months || 12) })),
+          batch: form.batch_number,
+          vetName: results.find((r) => r.data?.staff?.full_name)?.data.staff.full_name,
+        })
+      );
     }
     loadVaccinations();
     setSubmitting(false);

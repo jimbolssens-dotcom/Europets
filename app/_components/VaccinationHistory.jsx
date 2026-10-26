@@ -22,7 +22,9 @@ export default function VaccinationHistory({ vaccinations, onDelete }) {
       </thead>
       <tbody>
         {vaccinations.map((v) => {
-          const status = dueStatus(v.next_due_date);
+          // A later dose of this vaccine replaced it (migration 228): done,
+          // not overdue.
+          const status = v.superseded_by ? { label: 'Done, next dose given', className: 'visit-meta' } : dueStatus(v.next_due_date);
           return (
             <tr key={v.id}>
               <td>
@@ -31,7 +33,7 @@ export default function VaccinationHistory({ vaccinations, onDelete }) {
                 {v.batch_number && <div className="visit-meta">Batch {v.batch_number}</div>}
                 {v.notes && <div className="visit-meta">{v.notes}</div>}
               </td>
-              <td>{v.date_given ? formatDate(v.date_given) : <em>Scheduled</em>}</td>
+              <td>{v.date_given ? formatDate(v.date_given) : <em>{v.superseded_by ? 'Given later' : 'Scheduled'}</em>}</td>
               <td className={status?.className}>{status?.label || '—'}</td>
               <td>{v.staff?.full_name || '—'}</td>
               <td>

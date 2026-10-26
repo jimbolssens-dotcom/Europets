@@ -6,6 +6,7 @@
 'use client';
 
 import InfoHint from '@/app/_components/InfoHint';
+import { todayISODate } from '@/app/_components/useVaccinations';
 
 function formatShort(iso) {
   return new Date(`${String(iso).slice(0, 10)}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -85,6 +86,7 @@ export default function VaccinationForm({
         <input
           type="date"
           required
+          max={todayISODate()}
           value={form.date_given}
           onChange={(e) => setForm({ ...form, date_given: e.target.value })}
         />

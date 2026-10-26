@@ -4,6 +4,7 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { futureDateError, supersedeEarlierDoses } from '@/lib/vaccinationSupersede';
 
 // booster_of: the Primary visit a booster dose belongs to (migration 227),
 // set when a rabies reminder held back at that visit is filled in.
@@ -28,6 +29,9 @@ export async function PATCH(request, { params }) {
   if (body.mark_reminded) update.reminder_sent_at = new Date().toISOString();
   if (body.clear_reminder) update.reminder_sent_at = null;
 
+  const futureError = futureDateError(update.date_given);
+  if (futureError) return NextResponse.json({ error: futureError }, { status: 400 });
+
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
   }
@@ -42,9 +46,14 @@ export async function PATCH(request, { params }) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  // A reminder filled in as given (a held-back rabies dose, at the booster)
+  // replaces the earlier doses of that vaccine (migration 228).
+  if (update.date_given) await supersedeEarlierDoses(data);
   return NextResponse.json(data);
 }
 
+// Deleting a later dose puts the earlier one back on the due list
+// (superseded_by is "on delete set null", migration 228).
 export async function DELETE(request, { params }) {
   const { error } = await supabaseAdmin.from('vaccinations').delete().eq('id', params.id);
 
