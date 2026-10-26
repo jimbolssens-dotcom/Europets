@@ -31,6 +31,10 @@ function makeEmptyForm(defaultVetId = '') {
     administered_by: defaultVetId,
     notes: '',
     skip_billing: false,
+    // The core vaccine and rabies together: one combo vial (PCH-R,
+    // DHPPiL-R), or two jabs when the combo has run out. For stock only
+    // (migration 229); charging is the same either way.
+    given_as: 'combo',
   };
 }
 
@@ -371,6 +375,9 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     // Primary: the core vaccine is due again in a month (the booster).
     // Rabies given today (3 months or older) is one dose, so it stays on the
     // normal 12-month cycle and the booster is the core vaccine only.
+    // Both in one go: say which vials (stock, migration 229).
+    const bothGiven = !!coreProtocol && checkedProtocols.some((p) => p.id === coreProtocol.id) && rabiesGiven;
+    const givenAs = bothGiven ? form.given_as || 'combo' : null;
     const payloads = checkedProtocols.map((p) => ({
       patient_id: patientId,
       vaccine_protocol_id: p.id,
@@ -379,6 +386,7 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
       administered_by: form.administered_by || null,
       notes: form.notes,
       is_primary: isPrimary,
+      ...(givenAs && (p.is_rabies || p.id === coreProtocol.id) ? { given_as: givenAs } : {}),
       ...(isPrimary && coreProtocol && p.id === coreProtocol.id ? { next_due_date: boosterDue } : {}),
     }));
 
@@ -472,6 +480,9 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     setSubmitting(true);
     setError(null);
     const checkedProtocols = relevantProtocols.filter((p) => form.vaccine_protocol_ids.includes(p.id));
+    const boosterCore = relevantProtocols.find((p) => p.core && !p.is_rabies);
+    const boosterGivenAs =
+      boosterCore && checkedProtocols.some((p) => p.id === boosterCore.id) && checkedProtocols.some((p) => p.is_rabies) ? form.given_as || 'combo' : null;
     const note = [`Primary course booster (paid at the first visit on ${formatDate(openCourse.course.date_given)})`, form.notes].filter(Boolean).join('. ');
     const results = await Promise.all(
       checkedProtocols.map((p) => {
@@ -481,6 +492,7 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
           administered_by: form.administered_by || null,
           notes: note,
           booster_of: openCourse.course.id,
+          ...(boosterGivenAs && (p.is_rabies || p.id === boosterCore.id) ? { given_as: boosterGivenAs } : {}),
         };
         if (p.is_rabies && openCourse.rabiesReminder) {
           return fetch(`/api/vaccinations/${openCourse.rabiesReminder.id}`, {

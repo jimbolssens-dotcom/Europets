@@ -58,6 +58,7 @@ const PHONE_PAGE_TITLES = {
   '/invoices': 'Invoices',
   '/settings': 'Settings',
   '/vaccinations': 'Vaccinations',
+  '/stock': 'Stock',
   '/follow-ups': 'Follow-ups',
   '/intake': 'Invite',
   '/accounting': 'Accounting',
@@ -79,6 +80,18 @@ export default function AdminLayout({ children }) {
   // lighting up a link with no cage anywhere to show it on.
   const hospitalizationAlarmLevel = useHospitalizationUpdatePending();
   const { weightOverdue: catteryWeightOverdue, pendingRequests: catteryRequests } = useCatteryAlarm();
+  // Stock items at or below their reorder level (migration 229), for the menu.
+  const [stockLow, setStockLow] = useState(0);
+  useEffect(() => {
+    const check = () =>
+      fetch('/api/stock?low=1')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((d) => d && setStockLow(d.low || 0))
+        .catch(() => {});
+    check();
+    const t = setInterval(check, 10 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
   const hospitalizationAlarmClass = navAlarmClass(hospitalizationAlarmLevel);
   const hospitalizationAlarmIcon =
     hospitalizationAlarmLevel === 'red' || hospitalizationAlarmLevel === 'both' ? ' 🩺' : hospitalizationAlarmLevel === 'yellow' ? ' 🔔' : '';
@@ -307,6 +320,9 @@ export default function AdminLayout({ children }) {
             Cattery{catteryWeightOverdue && ' ⚖️'}{catteryRequests > 0 && ' 🔔'}
           </a>
           <a href="/invoices">Invoices</a>
+          <a href="/stock" className={stockLow ? 'nav-alarm-red' : ''} title={stockLow ? `${stockLow} stock item${stockLow === 1 ? '' : 's'} low` : undefined}>
+            Stock{stockLow > 0 && ' 📦'}
+          </a>
         </div>
         {/* A separate flex item from .topnav-links (not nested inside it) so
             it can be reordered independently — see .topnav-icons in
@@ -403,6 +419,7 @@ export default function AdminLayout({ children }) {
           { href: '/clients', icon: '👥', label: 'Clients' },
           { href: '/cattery', icon: '🐱', label: 'Cattery', alert: catteryWeightOverdue ? 'red' : catteryRequests ? 'amber' : '' },
           { href: '/invoices', icon: '🧾', label: 'Invoices' },
+          { href: '/stock', icon: '📦', label: 'Stock', alert: stockLow ? 'red' : '' },
           { href: '/social', icon: '📸', label: 'Social', title: 'Social media posts' },
           { href: '/mobile', icon: '📱', label: 'Phone app', title: 'Mobile recording app' },
         ]}

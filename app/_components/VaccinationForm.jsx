@@ -81,6 +81,25 @@ export default function VaccinationForm({
         </fieldset>
       )}
 
+      {(() => {
+        const core = relevantProtocols.find((p) => p.core && !p.is_rabies);
+        const rabies = relevantProtocols.find((p) => p.is_rabies);
+        const both = core && rabies && form.vaccine_protocol_ids.includes(core.id) && form.vaccine_protocol_ids.includes(rabies.id);
+        if (!both) return null;
+        return (
+          <div className="vaccine-given-as" role="radiogroup" aria-label="Vials used">
+            <label>
+              <input type="radio" name="given_as" checked={(form.given_as || 'combo') === 'combo'} onChange={() => setForm({ ...form, given_as: 'combo' })} />
+              One combo vial
+            </label>
+            <label>
+              <input type="radio" name="given_as" checked={form.given_as === 'separate'} onChange={() => setForm({ ...form, given_as: 'separate' })} />
+              Two separate vials
+            </label>
+          </div>
+        );
+      })()}
+
       <label>
         Date given
         <input

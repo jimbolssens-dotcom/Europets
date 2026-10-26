@@ -100,6 +100,7 @@ export async function POST(request) {
     notes,
     is_primary,
     booster_of,
+    given_as,
   } = body;
 
   // date_given is normally required (a real dose given today), but a
@@ -150,6 +151,8 @@ export async function POST(request) {
         is_primary: Boolean(is_primary),
         // The Primary visit this booster dose belongs to (migration 227).
         ...(booster_of ? { booster_of } : {}),
+        // One combo vial or two jabs, for stock (migration 229).
+        ...(given_as === 'combo' || given_as === 'separate' ? { given_as } : {}),
       },
     ])
     .select('*, staff(full_name)')

@@ -46,6 +46,10 @@
     {
       "path": "/api/social-duty/sweep",
       "schedule": "4 4,8,12,14 * * *"
+    },
+    {
+      "path": "/api/stock/low-sweep",
+      "schedule": "13 4-14 * * *"
     }
   ]
 }
