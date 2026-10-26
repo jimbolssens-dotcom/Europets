@@ -103,7 +103,7 @@ function Item({ item, staffId, onChanged }) {
   }
 
   const status = !item.started ? (
-    <span className="stock-chip stock-chip-new">Not counted yet</span>
+    <span className="stock-chip stock-chip-new">To count</span>
   ) : item.low ? (
     <span className="stock-chip stock-chip-low">{item.on_hand <= 0 ? 'Out' : 'Low'}</span>
   ) : null;
@@ -111,7 +111,9 @@ function Item({ item, staffId, onChanged }) {
   return (
     <div className={`stock-item${item.low ? ' stock-item-low' : ''}`}>
       <div className="stock-item-row">
-        <strong className="stock-name">{item.name}</strong>
+        <strong className="stock-name" title={item.name}>
+          {item.name}
+        </strong>
         <span className="stock-on-hand">{item.started ? fmt(item.on_hand) : '–'}</span>
         {status}
         <span className="stock-actions">
@@ -128,7 +130,8 @@ function Item({ item, staffId, onChanged }) {
           reorder at {fmt(item.reorder_level)} ✎
         </button>
         {item.last_counted_at && <span> · counted {day(item.last_counted_at)}</span>}
-        <span> · used by {item.used_by.join(', ') || 'nothing linked'}</span>
+        {/* Only when it says more than the item's own name. */}
+        {!(item.used_by.length === 1 && item.used_by[0] === item.name) && <span> · used by {item.used_by.join(', ') || 'nothing linked'}</span>}
         {' · '}
         <button type="button" className="social-link-button" onClick={() => toggle('history')}>
           {open === 'history' ? 'Hide history' : 'History'}
@@ -236,7 +239,7 @@ export default function StockPage() {
       </div>
       {notCounted > 0 && (
         <p className="visit-meta">
-          {notCounted} item{notCounted === 1 ? '' : 's'} not counted yet: press Count and type what&apos;s on the shelf to start. Each item then counts down by itself when it&apos;s charged or a dose is given.
+          {notCounted} to count: press Count and type what&apos;s on the shelf. After that each one counts down by itself.
         </p>
       )}
       {error && <p className="error">{error}</p>}

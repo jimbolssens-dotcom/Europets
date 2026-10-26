@@ -22,7 +22,7 @@ export async function GET(request) {
   const usedBy = new Map();
   for (const l of links || []) usedBy.set(l.stock_item_id, [...(usedBy.get(l.stock_item_id) || []), l.goods_services?.name].filter(Boolean));
   for (const v of vaccineLinks || []) {
-    const label = `${v.vaccine_protocols?.name} (${v.vaccine_protocols?.species}${v.form === 'combo' ? ', with rabies in one vial' : ''})`;
+    const label = `${v.vaccine_protocols?.species} ${v.vaccine_protocols?.name}${v.form === 'combo' ? ' + rabies' : ''}`;
     usedBy.set(v.stock_item_id, [...(usedBy.get(v.stock_item_id) || []), label]);
   }
   return NextResponse.json(
