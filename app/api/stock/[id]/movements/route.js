@@ -20,6 +20,7 @@ export async function GET(request, { params }) {
       'id, change, kind, supplier, batch_number, expiry_date, note, created_at, staff(full_name), vaccinations(patients(name)), treatment_items(visits(patients(name)))'
     )
     .eq('stock_item_id', params.id)
+    .neq('change', 0) // an edited charge's earlier count, replaced (migration 229)
     .order('created_at', { ascending: false })
     .limit(40);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

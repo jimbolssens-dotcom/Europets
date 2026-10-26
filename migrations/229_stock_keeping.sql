@@ -94,7 +94,8 @@ begin
   if tg_op = 'UPDATE' and not exists (select 1 from stock_movements where treatment_item_id = new.id) then
     return null;
   end if;
-  delete from stock_movements where treatment_item_id = new.id;
+  -- An edit replaces the row's earlier count: zeroed, then counted afresh.
+  update stock_movements set change = 0 where treatment_item_id = new.id and change <> 0;
   if new.goods_service_id is not null then
     insert into stock_movements (stock_item_id, change, kind, treatment_item_id)
     select l.stock_item_id, -coalesce(new.quantity, 1) * l.per_unit, 'used', new.id
@@ -115,7 +116,8 @@ begin
   if tg_op = 'UPDATE' and not exists (select 1 from stock_movements where invoice_line_item_id = new.id) then
     return null;
   end if;
-  delete from stock_movements where invoice_line_item_id = new.id;
+  -- An edit replaces the row's earlier count: zeroed, then counted afresh.
+  update stock_movements set change = 0 where invoice_line_item_id = new.id and change <> 0;
   if new.goods_service_id is not null and coalesce(array_length(new.source_treatment_item_ids, 1), 0) = 0 then
     insert into stock_movements (stock_item_id, change, kind, invoice_line_item_id)
     select l.stock_item_id, -coalesce(new.quantity, 1) * l.per_unit, 'used', new.id
@@ -140,7 +142,8 @@ begin
      and not (old.date_given is null and new.date_given is not null) then
     return null;
   end if;
-  delete from stock_movements where vaccination_id = new.id;
+  -- An edit replaces the row's earlier count: zeroed, then counted afresh.
+  update stock_movements set change = 0 where vaccination_id = new.id and change <> 0;
   if new.date_given is not null then
     insert into stock_movements (stock_item_id, change, kind, vaccination_id, batch_number)
     select l.stock_item_id, -1, 'used', new.id, new.batch_number
