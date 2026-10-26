@@ -7,6 +7,10 @@
 
 import InfoHint from '@/app/_components/InfoHint';
 
+function formatShort(iso) {
+  return new Date(`${String(iso).slice(0, 10)}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
 export default function VaccinationForm({
   species,
   speciesClass,
@@ -18,6 +22,9 @@ export default function VaccinationForm({
   error,
   toggleProtocol,
   addVaccination,
+  addBooster,
+  openCourse,
+  ageMonths,
   staff,
 }) {
   return (
@@ -25,14 +32,21 @@ export default function VaccinationForm({
       <h3>
         Add Vaccination{' '}
         <InfoHint>
-          Primary Booster schedules the core vaccine for a 1-month booster and, if rabies isn&apos;t
-          checked above, adds a rabies reminder for that same date. Giving that 1-month booster
-          itself later? Log it as Annual with &quot;Already paid for&quot; checked below — it was
-          billed as part of the Primary visit already, and Annual keeps it on the normal 12-month
-          cycle afterward instead of scheduling another 1-month booster.
+          Primary charges the whole course today (the consult, both doses of the core vaccine and
+          rabies) and books the core vaccine&apos;s booster a month later. From 3 months old rabies
+          goes in today; younger, it waits for the booster. At the booster visit, press Booster:
+          it&apos;s free, linked to the first visit, and starts the normal 12-month cycle.
         </InfoHint>
+        {ageMonths != null && <span className="vaccine-chip">{ageMonths < 24 ? `${ageMonths} months old` : `${Math.floor(ageMonths / 12)} years old`}</span>}
       </h3>
       {error && <p className="error">{error}</p>}
+      {openCourse && (
+        <div className="vaccine-course-line">
+          <span className="vaccine-chip vaccine-chip-paid">
+            Primary {formatShort(openCourse.course.date_given)} · booster {openCourse.boosterDue ? formatShort(openCourse.boosterDue) : 'due'} · paid
+          </span>
+        </div>
+      )}
       {protocolsError && (
         <p className="error">
           {protocolsError} — check the <a href="/vaccine-protocols">Vaccine Protocols catalog</a> in
@@ -111,8 +125,14 @@ export default function VaccinationForm({
       </label>
 
       <div className="vaccine-submit-actions">
+        {openCourse && (
+          <button type="button" onClick={addBooster} disabled={submitting || form.vaccine_protocol_ids.length === 0}>
+            {submitting ? 'Saving...' : '💉 Booster'}
+          </button>
+        )}
         <button
           type="button"
+          className={openCourse ? 'secondary' : undefined}
           onClick={(e) => addVaccination(e, false)}
           disabled={submitting || form.vaccine_protocol_ids.length === 0}
         >

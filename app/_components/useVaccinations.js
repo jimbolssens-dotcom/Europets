@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { classifySpecies } from '@/lib/species';
 import { formatDate, dueStatus } from '@/lib/vaccinationDueStatus';
+import { ageInMonths, defaultVaccineTicks, openPrimaryCourse } from '@/lib/vaccinationCourse';
 
 export { formatDate, dueStatus };
 
@@ -44,8 +45,12 @@ const RABIES_VACCINE_NAME = 'Biocan R';
 const CONSULT_PRIMARY_NAME = 'Consult primo vacc';
 const CONSULT_ANNUAL_NAME = 'Consult vacc';
 
+// An active item first: a retired duplicate under the same name (an old
+// "Biocan R" at a different price, migration 227) must never be the one
+// billed.
 function findByName(list, name) {
-  return Array.isArray(list) ? list.find((item) => item.name === name) : null;
+  if (!Array.isArray(list)) return null;
+  return list.find((item) => item.name === name && item.active !== false) || list.find((item) => item.name === name) || null;
 }
 
 // Finds (or opens) whichever invoice this vaccination belongs on: the
@@ -138,6 +143,7 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
   const [form, setForm] = useState(() => makeEmptyForm(defaultVetId));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [dateOfBirth, setDateOfBirth] = useState(null);
 
   // The attending vet (e.g. the consult's) usually loads a moment after
   // this hook's first render — pre-fill "Administered by" once it's known,
@@ -153,6 +159,14 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     fetch(`/api/vaccinations?patient_id=${patientId}`)
       .then((res) => res.json())
       .then((data) => setVaccinations(Array.isArray(data) ? data : []));
+
+  useEffect(() => {
+    if (!patientId) return;
+    fetch(`/api/patients/${patientId}`)
+      .then((res) => res.json())
+      .then((p) => setDateOfBirth(p?.date_of_birth || null))
+      .catch(() => {});
+  }, [patientId]);
 
   useEffect(() => {
     loadVaccinations();
@@ -186,7 +200,27 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     return protocols.filter((p) => p.species === speciesClass);
   }, [protocols, speciesClass]);
 
+  // The Primary visit still waiting on its booster (lib/vaccinationCourse.js),
+  // and how old the animal is on the day being logged.
+  const openCourse = useMemo(() => openPrimaryCourse(vaccinations, relevantProtocols, form.date_given), [vaccinations, relevantProtocols, form.date_given]);
+  const ageMonths = ageInMonths(dateOfBirth, form.date_given);
+
+  // The boxes start ticked for what's due (the booster, or a first
+  // vaccination by age), until someone changes them.
+  const [ticksTouched, setTicksTouched] = useState(false);
+  const suggestedTicks = useMemo(
+    () => defaultVaccineTicks({ protocols: relevantProtocols, vaccinations, dateOfBirth, dateGiven: form.date_given, openCourse }),
+    [relevantProtocols, vaccinations, dateOfBirth, form.date_given, openCourse]
+  );
+  const suggestedKey = suggestedTicks.join(',');
+  useEffect(() => {
+    if (ticksTouched) return;
+    setForm((prev) => (prev.vaccine_protocol_ids.join(',') === suggestedKey ? prev : { ...prev, vaccine_protocol_ids: suggestedTicks }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestedKey, ticksTouched]);
+
   function toggleProtocol(protocolId) {
+    setTicksTouched(true);
     setForm((prev) => ({
       ...prev,
       vaccine_protocol_ids: prev.vaccine_protocol_ids.includes(protocolId)
@@ -313,6 +347,14 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
       setError('Check at least one vaccine given');
       return;
     }
+    // The booster of a Primary course is already paid: logging it as a
+    // charged Annual is almost always a slip.
+    if (
+      openCourse &&
+      !form.skip_billing &&
+      !confirm(`This looks like the booster of the primary course from ${formatDate(openCourse.course.date_given)}, which is already paid. Charge it anyway?`)
+    )
+      return;
     setSubmitting(true);
     setError(null);
 
@@ -322,13 +364,9 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     const boosterDue = isPrimary ? addMonths(form.date_given, 1) : null;
     const dateGiven = form.date_given;
 
-    // Primary means a 1-month booster follow-up for whatever was actually
-    // given today — the core vaccine and, if it was checked too, rabies
-    // right alongside it. Rabies only fell through to the server's normal
-    // annual-interval default (see POST /api/vaccinations) when it WAS
-    // given, which is backwards: the un-given case below already
-    // schedules its placeholder reminder for this same one-month date —
-    // a given dose needs the same follow-up, not a longer one.
+    // Primary: the core vaccine is due again in a month (the booster).
+    // Rabies given today (3 months or older) is one dose, so it stays on the
+    // normal 12-month cycle and the booster is the core vaccine only.
     const payloads = checkedProtocols.map((p) => ({
       patient_id: patientId,
       vaccine_protocol_id: p.id,
@@ -337,7 +375,7 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
       administered_by: form.administered_by || null,
       notes: form.notes,
       is_primary: isPrimary,
-      ...(isPrimary && ((coreProtocol && p.id === coreProtocol.id) || p.is_rabies) ? { next_due_date: boosterDue } : {}),
+      ...(isPrimary && coreProtocol && p.id === coreProtocol.id ? { next_due_date: boosterDue } : {}),
     }));
 
     if (isPrimary && !rabiesGiven) {
@@ -369,6 +407,7 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
       setError(failed.data.error || 'Failed to record one or more vaccinations');
     } else {
       setForm(makeEmptyForm(defaultVetId));
+      setTicksTouched(false);
       // An annual vaccination logged for any date other than today almost
       // always means it was already given — by this clinic earlier, or by
       // another clinic entirely — and is only being recorded here for the
@@ -398,6 +437,55 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     setSubmitting(false);
   }
 
+  // The booster of a Primary course: already paid at the first visit, so
+  // nothing is charged. Each dose is linked to that visit (booster_of) and
+  // goes onto the normal 12-month cycle; a rabies reminder held back at the
+  // first visit is filled in rather than doubled.
+  async function addBooster(e) {
+    e.preventDefault();
+    if (!openCourse) return;
+    if (form.vaccine_protocol_ids.length === 0) {
+      setError('Check at least one vaccine given');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    const checkedProtocols = relevantProtocols.filter((p) => form.vaccine_protocol_ids.includes(p.id));
+    const note = [`Primary course booster (paid at the first visit on ${formatDate(openCourse.course.date_given)})`, form.notes].filter(Boolean).join('. ');
+    const results = await Promise.all(
+      checkedProtocols.map((p) => {
+        const fields = {
+          date_given: form.date_given,
+          batch_number: form.batch_number,
+          administered_by: form.administered_by || null,
+          notes: note,
+          booster_of: openCourse.course.id,
+        };
+        if (p.is_rabies && openCourse.rabiesReminder) {
+          return fetch(`/api/vaccinations/${openCourse.rabiesReminder.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...fields, next_due_date: addMonths(form.date_given, p.interval_months || 12) }),
+          }).then(async (res) => ({ ok: res.ok, data: await res.json() }));
+        }
+        return fetch('/api/vaccinations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...fields, patient_id: patientId, vaccine_protocol_id: p.id, is_primary: false }),
+        }).then(async (res) => ({ ok: res.ok, data: await res.json() }));
+      })
+    );
+    const failed = results.find((r) => !r.ok);
+    if (failed) {
+      setError(failed.data.error || 'Failed to record the booster');
+    } else {
+      setForm(makeEmptyForm(defaultVetId));
+      setTicksTouched(false);
+    }
+    loadVaccinations();
+    setSubmitting(false);
+  }
+
   async function deleteVaccination(v) {
     const when = v.date_given ? formatDate(v.date_given) : 'not yet given';
     if (!confirm(`Delete this ${v.vaccine_name} record (${when})?`)) return;
@@ -416,6 +504,9 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
     error,
     toggleProtocol,
     addVaccination,
+    addBooster,
+    openCourse,
+    ageMonths,
     deleteVaccination,
   };
 }

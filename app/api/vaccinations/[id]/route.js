@@ -5,7 +5,9 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
-const EDITABLE_FIELDS = ['date_given', 'next_due_date', 'batch_number', 'administered_by', 'notes'];
+// booster_of: the Primary visit a booster dose belongs to (migration 227),
+// set when a rabies reminder held back at that visit is filled in.
+const EDITABLE_FIELDS = ['date_given', 'next_due_date', 'batch_number', 'administered_by', 'notes', 'booster_of'];
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
