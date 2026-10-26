@@ -1785,7 +1785,11 @@ form.card label {
 }
 
 .vaccine-submit-actions button {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-width: 0;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  white-space: nowrap;
 }
 
 /* The animal's age and an open primary course, as chips on one line. */
