@@ -180,7 +180,7 @@ async function runConciergeForInbound(message, clientId, digits) {
     await new Promise((resolve) => setTimeout(resolve, CONCIERGE_DEBOUNCE_MS));
     if (await newerClientMessageSince(clientId, digits, message.id)) return;
 
-    const decision = await maybeRunConcierge({ clientId, phone: digits });
+    const decision = await maybeRunConcierge({ clientId, phone: digits, inboundWaId: message.id });
     // The model can take several seconds, long past the debounce above: a
     // client who writes again meanwhile ("Can we move appointment to
     // Tuesday please", then "Something urgent came up on Monday") starts a
