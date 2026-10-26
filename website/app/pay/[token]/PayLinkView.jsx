@@ -17,6 +17,10 @@ import { PAY_LINK_MIN, PAY_LINK_MAX, payLinkAmountError, bonusFor } from '@/lib/
 
 const QUICK = [50, 100, 200, 500];
 
+// Visitors come from the rescuer's own Instagram, so the follow button is
+// for the clinic's.
+const CLINIC_INSTAGRAM = 'https://instagram.com/europetsclinic';
+
 function when(iso) {
   const mins = Math.round((Date.now() - Date.parse(iso)) / 60000);
   if (!Number.isFinite(mins)) return '';
@@ -316,11 +320,9 @@ export default function PayLinkView({ view = null }) {
               </p>
               {ig?.biography && <p className="rescue-bio">{ig.biography}</p>}
               <div className="rescue-links">
-                {ig && (
-                  <a className="btn btn-primary" href={`https://instagram.com/${ig.username}`} target="_blank" rel="noreferrer">
-                    📸 Follow on Instagram
-                  </a>
-                )}
+                <a className="btn btn-primary" href={CLINIC_INSTAGRAM} target="_blank" rel="noreferrer">
+                  📸 Follow Europets
+                </a>
                 {linkButtons}
               </div>
             </div>
@@ -358,11 +360,6 @@ export default function PayLinkView({ view = null }) {
               <strong>{displayName}</strong>
               <span>{[ig && `@${ig.username}`, page.animals ? `${page.animals.toLocaleString('en-US')} animals cared for with us` : null].filter(Boolean).join(' · ')}</span>
             </div>
-            {ig && (
-              <a className="rescue-follow" href={`https://instagram.com/${ig.username}`} target="_blank" rel="noreferrer">
-                Follow
-              </a>
-            )}
           </div>
           {page.story && <p className="rescue-story">{page.story}</p>}
           {linkButtons.length > 0 && <div className="rescue-links">{linkButtons}</div>}
@@ -389,6 +386,9 @@ export default function PayLinkView({ view = null }) {
               <button type="button" className="btn btn-ghost" onClick={copyLink}>
                 {copied ? '✓ Copied' : '🔗 Copy link'}
               </button>
+              <a className="btn btn-ghost" href={CLINIC_INSTAGRAM} target="_blank" rel="noreferrer">
+                📸 Follow Europets
+              </a>
             </div>
           </div>
           {foot}
