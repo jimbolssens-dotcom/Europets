@@ -11,11 +11,13 @@
 //                                      — e.g. an item dictated straight onto
 //                                      the plan that turns out to be
 //                                      something the owner already has at
-//                                      home. Only affects future invoice
-//                                      syncs (lib/invoicing.js); a line
-//                                      already added to an invoice before
-//                                      this is toggled isn't touched — remove
-//                                      or edit it on the invoice itself.
+//                                      home. Switched off, it also comes off
+//                                      an unpaid invoice it's already on
+//                                      (Jim: an otoscopy ticked "Don't
+//                                      charge" was still billed); a paid
+//                                      invoice is left as it is. Switched
+//                                      back on, the next invoice sync adds
+//                                      it again (lib/invoicing.js).
 //                                      administration_method is a one-off
 //                                      correction for this logged item only
 //                                      (e.g. a dictation mismatch) — it does
@@ -61,6 +63,10 @@ export async function PATCH(request, { params }) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (update.billable === false) {
+    const cleanup = await removeTreatmentItemFromInvoiceLines(supabase, params.id, { onlyOpenInvoices: true });
+    if (cleanup.error) console.error('Failed to take a no-charge item off its invoice', params.id, cleanup.error);
   }
   return NextResponse.json(data);
 }
