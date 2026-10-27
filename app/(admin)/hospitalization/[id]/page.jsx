@@ -386,7 +386,8 @@ export default function HospitalizationDetailPage() {
   function applyExtractedFields(fields) {
     setNoteForm((prev) => {
       const next = { ...prev };
-      const extraNotes = [fields.appetite ? `Appetite: ${fields.appetite}` : null, fields.condition, fields.notes]
+      // Eating is written into the notes in plain words (lib/anthropicClient.js), not as an "Appetite:" line.
+      const extraNotes = [fields.condition, fields.notes]
         .filter(Boolean)
         .join('\n');
       if (extraNotes) {
