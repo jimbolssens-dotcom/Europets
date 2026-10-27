@@ -172,6 +172,23 @@ export default function HospitalizationDetailPage() {
   const [pendingItemCategory, setPendingItemCategory] = useState('product');
   const [reportsOpen, setReportsOpen] = useState(false);
 
+  // Opened at #report-surgical / #report-dental (the Follow-ups page's
+  // report links): open Reports and scroll to that report once it's loaded.
+  useEffect(() => {
+    const hash = typeof window !== 'undefined' ? window.location.hash.slice(1) : '';
+    if (!hash.startsWith('report-')) return undefined;
+    setReportsOpen(true);
+    let tries = 0;
+    const timer = setInterval(() => {
+      const el = document.getElementById(hash);
+      if (el || ++tries > 40) {
+        clearInterval(timer);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 250);
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     if (!pendingChecklistAction || !reportsSectionRef.current) return;
     const { action, opts } = pendingChecklistAction;

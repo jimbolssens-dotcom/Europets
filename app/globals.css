@@ -13322,3 +13322,23 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
   padding-left: 1rem;
   font-size: 0.85rem;
 }
+
+/* Follow-ups: straight to the stay's surgical/dental report. */
+.followup-report-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--pink);
+  border-radius: 999px;
+  background: white;
+  color: var(--pink-dark);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.mobile-list-meta .followup-report-link {
+  padding: 0.05rem 0.5rem;
+  font-size: 0.75rem;
+  margin: 0.2rem 0.25rem 0 0;
+}

@@ -26,5 +26,21 @@ export async function GET() {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data);
+  // Which report each stay has, so the page can link straight to it for a
+  // look (or a change) before the message goes out.
+  const stayIds = [...new Set((data || []).map((r) => r.hospitalization_id).filter(Boolean))];
+  const [{ data: surgical }, { data: dental }] = stayIds.length
+    ? await Promise.all([
+        supabase.from('surgical_reports').select('hospitalization_id').in('hospitalization_id', stayIds),
+        supabase.from('dental_reports').select('hospitalization_id').in('hospitalization_id', stayIds),
+      ])
+    : [{ data: [] }, { data: [] }];
+  const hasSurgical = new Set((surgical || []).map((r) => r.hospitalization_id));
+  const hasDental = new Set((dental || []).map((r) => r.hospitalization_id));
+  return NextResponse.json(
+    (data || []).map((r) => ({
+      ...r,
+      reports: [hasSurgical.has(r.hospitalization_id) && 'surgical', hasDental.has(r.hospitalization_id) && 'dental'].filter(Boolean),
+    }))
+  );
 }

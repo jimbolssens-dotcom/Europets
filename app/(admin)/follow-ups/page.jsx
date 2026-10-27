@@ -14,6 +14,18 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import InfoHint from '@/app/_components/InfoHint';
 
+const REPORT_LABEL = { surgical: '📄 Surgery', dental: '🦷 Dental' };
+
+// Straight to the stay's report, to read it over or change it.
+function ReportLinks({ row }) {
+  if (!row.hospitalization_id || !row.reports?.length) return null;
+  return row.reports.map((kind) => (
+    <a key={kind} className="followup-report-link" title="Open the report to read it over or change it" href={`/hospitalization/${row.hospitalization_id}#report-${kind}`} target="_blank" rel="noreferrer">
+      {REPORT_LABEL[kind]}
+    </a>
+  ));
+}
+
 function formatDateTime(iso) {
   return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: 'numeric', minute: '2-digit', hour12: true });
 }
@@ -115,6 +127,7 @@ export default function DischargeFollowupsPage() {
                 <div className="day-plan-consult-actions">
                   <button
                     type="button"
+                    className="day-plan-consult-add"
                     onClick={() => act(r.id, 'send', { message: drafts[r.id] })}
                     disabled={actingId === r.id || !drafts[r.id]?.trim()}
                   >
@@ -128,6 +141,7 @@ export default function DischargeFollowupsPage() {
                   >
                     Skip
                   </button>
+                  <ReportLinks row={r} />
                 </div>
               </div>
             </li>
@@ -146,7 +160,7 @@ export default function DischargeFollowupsPage() {
                 <div className="mobile-list-item">
                   <span className="mobile-list-title">{r.patients?.name}</span>
                   <span className="mobile-list-meta">
-                    {r.procedure_name ? `${r.procedure_name} · ` : ''}due {formatDateTime(r.due_at)}
+                    {r.procedure_name ? `${r.procedure_name} · ` : ''}due {formatDateTime(r.due_at)} <ReportLinks row={r} />
                   </span>
                 </div>
               </li>
@@ -184,7 +198,7 @@ export default function DischargeFollowupsPage() {
                 <div className="mobile-list-item">
                   <span className="mobile-list-title">{r.patients?.name}</span>
                   <span className="mobile-list-meta">
-                    Sent {formatDateTime(r.sent_at)} · {r.message_draft}
+                    Sent {formatDateTime(r.sent_at)} · {r.message_draft} <ReportLinks row={r} />
                   </span>
                 </div>
               </li>
