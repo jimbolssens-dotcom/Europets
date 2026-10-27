@@ -13,6 +13,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useVaccinations } from '@/app/_components/useVaccinations';
 import VaccinationForm from '@/app/_components/VaccinationForm';
+import HealthCertificatePanel from '@/app/_components/HealthCertificatePanel';
 import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import { usePatientAlerts } from '@/app/_components/usePatientAlerts';
 import PatientAlerts from '@/app/_components/PatientAlerts';
@@ -46,6 +47,8 @@ export default function PatientDetailPage() {
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState([]);
+  // The export health certificate form (migration 231).
+  const [certOpen, setCertOpen] = useState(false);
   const [savingDentalChart, setSavingDentalChart] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
@@ -408,6 +411,7 @@ export default function PatientDetailPage() {
       </div>
 
       <PreviousOwners patientId={patient.id} />
+      {certOpen && <HealthCertificatePanel patientId={patient.id} staff={staff} onClose={() => setCertOpen(false)} />}
       {videoConsultError && <p className="error">{videoConsultError}</p>}
       {reviewLinkError && <p className="error">{reviewLinkError}</p>}
 
@@ -433,6 +437,9 @@ export default function PatientDetailPage() {
           <button type="button" onClick={() => setAddingHistoryFiles(true)}
             title="Add history from another clinic, old results, x-rays, photos, PDFs or Word files">
             📁 Add History / Results
+          </button>
+          <button type="button" onClick={() => setCertOpen(true)} title="An export health certificate for travel, from this pet's records">
+            📄 Health certificate
           </button>
           <ActionMenu.Group label="Other" />
           <a href={`/cattery?patient_id=${patient.id}`} title="Book this cat into one of the 7 cattery spaces">

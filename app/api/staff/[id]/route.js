@@ -24,7 +24,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { full_name, role, email, color, active, whatsapp_phone, access_until } = body;
+  const { full_name, role, email, color, active, whatsapp_phone, access_until, licence_number } = body;
 
   if (role && !VALID_ROLES.includes(role)) {
     return NextResponse.json(
@@ -39,6 +39,9 @@ export async function PATCH(request, { params }) {
   if (email !== undefined) update.email = email;
   if (color !== undefined) update.color = color || null;
   if (active !== undefined) update.active = Boolean(active);
+  // A vet's licence number, printed on the health certificates they sign
+  // (migration 231); empty clears it.
+  if (licence_number !== undefined) update.licence_number = String(licence_number || '').trim().slice(0, 60) || null;
   // Temporary staff (migration 223): the last day they have access; empty clears it.
   if (access_until !== undefined) {
     if (access_until && !/^\d{4}-\d{2}-\d{2}$/.test(access_until)) return NextResponse.json({ error: 'access_until must be a date' }, { status: 400 });

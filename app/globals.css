@@ -13252,3 +13252,63 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
   gap: 0.25rem;
   margin: 0;
 }
+
+/* A vet's licence number, under their name on the Staff page (migration 231). */
+.staff-licence-input {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+}
+
+/* Export health certificate form (app/_components/HealthCertificatePanel.jsx). */
+.health-cert-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+}
+
+.health-cert-warnings {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  color: #9a5b00;
+}
+
+.health-cert-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.4rem 0.6rem;
+}
+
+.health-cert-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+  color: #7a6f68;
+  margin: 0;
+}
+
+.health-cert-form input,
+.health-cert-form select {
+  margin: 0.1rem 0 0;
+}
+
+.health-cert-wide {
+  grid-column: 1 / -1;
+}
+
+.health-cert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.health-cert-issued {
+  margin: 0.6rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.85rem;
+}

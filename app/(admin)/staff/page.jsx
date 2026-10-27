@@ -77,6 +77,7 @@ export default function StaffPage() {
       color: member.color || '',
       whatsapp_phone: member.whatsapp_phone || '',
       access_until: member.access_until || '',
+      licence_number: member.licence_number || '',
     });
     setRowError(null);
   }
@@ -306,6 +307,14 @@ export default function StaffPage() {
                     value={editForm.full_name}
                     onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
                   />
+                  {(editForm.role === 'vet' || editForm.licence_number) && (
+                    <input
+                      className="staff-licence-input"
+                      placeholder="Licence no. (on health certificates)"
+                      value={editForm.licence_number}
+                      onChange={(e) => setEditForm({ ...editForm, licence_number: e.target.value })}
+                    />
+                  )}
                 </td>
                 <td>
                   <select
@@ -362,7 +371,10 @@ export default function StaffPage() {
             ) : (
               <>
                 <tr key={s.id} className={s.active ? '' : 'appointments-row-inactive'}>
-                  <td>{s.full_name}</td>
+                  <td>
+                    {s.full_name}
+                    {s.licence_number && <div className="visit-meta">Licence {s.licence_number}</div>}
+                  </td>
                   <td>
                     {s.role}
                     {s.access_until && (
