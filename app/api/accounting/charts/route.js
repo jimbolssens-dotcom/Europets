@@ -26,7 +26,7 @@ export async function GET(request) {
   const start = rangeStartIso(startKey);
   const rangeStart = rangeStartIso(buckets[0]);
 
-  const [payRes, legacyRes, invRes, lineRes, expRes, clientRes, unpaidRes] = await Promise.all([
+  const [payRes, legacyRes, invRes, lineRes, expRes, clientRes, unpaidRes, discRes] = await Promise.all([
     selectAll(() =>
       supabase
         .from('invoice_payments')
@@ -62,8 +62,17 @@ export async function GET(request) {
     selectAll(() =>
       supabase.from('invoices').select('id, total, amount_paid, created_at').in('status', ['unpaid', 'partially_paid']).order('id')
     ),
+    // Discounts by the day they were given (a supporter bonus can go on an old bill).
+    selectAll(() =>
+      supabaseAdmin
+        .from('invoice_discounts')
+        .select('id, amount, invoice_id, created_at, invoices!inner(status)')
+        .neq('invoices.status', 'void')
+        .gte('created_at', rangeStart)
+        .order('id')
+    ),
   ]);
-  for (const res of [payRes, legacyRes, invRes, lineRes, expRes, clientRes, unpaidRes]) {
+  for (const res of [payRes, legacyRes, invRes, lineRes, expRes, clientRes, unpaidRes, discRes]) {
     if (res.error) return NextResponse.json({ error: res.error.message }, { status: 500 });
   }
 
@@ -85,6 +94,7 @@ export async function GET(request) {
     payments: payRes.data,
     legacyPayments: legacyRes.data,
     invoices: invRes.data.map((i) => ({ ...i, vet_name: staffName.get(vetByVisit.get(i.visit_id)) || null })),
+    discountsGiven: discRes.data,
     lineItems: lineRes.data.map((li) => ({ line_total: li.line_total, category: lineItemCategory(li.goods_services), created_at: li.invoices?.created_at })),
     expenses: expRes.data,
     clients: clientRes.data,

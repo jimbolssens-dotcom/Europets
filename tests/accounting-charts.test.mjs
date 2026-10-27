@@ -94,3 +94,20 @@ test('client app: each number once, in the week of its first code, staff left ou
   assert.deepEqual(s.loggedIn, { '2026-10-12': 1, '2026-10-19': 0 });
   assert.deepEqual(s.totals, { asked: 3, loggedIn: 1 });
 });
+
+test('discounts count on the day they were given, not the invoice date', () => {
+  const d = buildChartData({
+    unit: 'week',
+    buckets: ['2026-09-14', '2026-10-19', '2026-10-26'],
+    invoices: [{ total: 500, discount_amount: 95.24, created_at: '2026-09-14T08:00:00Z' }],
+    discountsGiven: [
+      { amount: 47.62, invoice_id: 'i71', created_at: '2026-10-25T17:25:00Z' },
+      { amount: 47.62, invoice_id: 'i71', created_at: '2026-10-25T18:55:00Z' },
+      { amount: 142.86, invoice_id: 'i75', created_at: '2026-10-26T14:15:00Z' },
+    ],
+  });
+  assert.equal(d.discounts['2026-09-14'], 0);
+  assert.equal(Math.round(d.discounts['2026-10-19'] * 100) / 100, 95.24);
+  assert.equal(d.discountCount['2026-10-19'], 1);
+  assert.equal(d.discounts['2026-10-26'], 142.86);
+});
