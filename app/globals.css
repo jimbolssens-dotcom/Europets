@@ -3601,8 +3601,18 @@ button.secondary:hover {
   .invoice-row-summary .status-pill { grid-area: pill; }
   .invoice-row-summary .invoice-row-chev { grid-area: chev; }
   .invoice-row-summary .invoice-row-date { grid-area: meta; text-align: left; }
+  /* One amount on a phone: what's still owed, saying so, or the total
+     once it's settled (a paid invoice used to read "AED 0.00"). */
   .invoice-row-summary .invoice-row-total { display: none; }
   .invoice-row-summary .invoice-row-due { grid-area: total; }
+  .invoice-row-summary .invoice-row-due-label { display: inline; }
+  .invoice-row-summary.is-settled .invoice-row-due { display: none; }
+  .invoice-row-summary.is-settled .invoice-row-total { display: block; grid-area: total; }
+}
+
+.invoice-row-due-label {
+  display: none;
+  font-weight: 400;
 }
 
 /* Balance summary + payment log + "log a payment" form on an invoice —

@@ -230,7 +230,7 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
     <div className="invoice-row-card">
       <button
         type="button"
-        className="invoice-row-summary"
+        className={`invoice-row-summary${balanceDue === 0 ? ' is-settled' : ''}`}
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
@@ -244,7 +244,10 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
         </span>
         <span className="invoice-row-date">{formatShortDate(summary.created_at)}</span>
         <span className="invoice-row-total">AED {money(summary.total)}</span>
-        <span className={`invoice-row-due${balanceDue === 0 ? ' zero' : ''}`}>AED {money(balanceDue)}</span>
+        <span className={`invoice-row-due${balanceDue === 0 ? ' zero' : ''}`}>
+          AED {money(balanceDue)}
+          <span className="invoice-row-due-label"> due</span>
+        </span>
         <span className={`status-pill ${dotClass}`}>{STATUS_LABELS[summary.status] || summary.status}</span>
         <svg className="invoice-row-chev" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
