@@ -50,6 +50,10 @@
     {
       "path": "/api/stock/low-sweep",
       "schedule": "13 4-14 * * *"
+    },
+    {
+      "path": "/api/whatsapp/app-invite-sweep",
+      "schedule": "8,23,38,53 5-15 * * *"
     }
   ]
 }

@@ -49,6 +49,7 @@ const PUBLIC_PATTERNS = [
   /^\/api\/stock\/low-sweep$/, // Vercel Cron's hourly low-stock alert (migration 229); same CRON_SECRET check as the other cron routes.
   /^\/api\/social-plan\/weekly$/, // Vercel Cron's Monday-morning Social plan; same CRON_SECRET check as the other cron routes.
   /^\/api\/social-posts\/publish-sweep$/, // Vercel Cron's five-minute Social post publishing; same CRON_SECRET check as the other cron routes.
+  /^\/api\/whatsapp\/app-invite-sweep$/, // Vercel Cron's app invites (migration 232); same CRON_SECRET check as the other cron routes.
   /^\/api\/whatsapp\/nudge-sweep$/, // Vercel Cron's own five-minute trigger — same reasoning as the other two cron routes above.
   // Report/invoice PDFs staff link directly to a client via WhatsApp/email
   // (see ReportShareActions and the invoice/consult pages) — these need to
