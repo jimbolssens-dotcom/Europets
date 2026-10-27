@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request, { params }) {
   const { data: invoice, error } = await supabase
     .from('invoices')
-    .select('*, clients(client_number, full_name, phone, email, address, trn)')
+    .select('*, clients(client_number, full_name, phone, email, address, trn, client_app_last_seen_at)')
     .eq('id', params.id)
     .single();
 
