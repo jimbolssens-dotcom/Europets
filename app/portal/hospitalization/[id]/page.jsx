@@ -288,7 +288,7 @@ export default function HospitalizationPortalPage() {
                     <strong>Condition:</strong> {n.condition}
                   </p>
                 )}
-                {n.notes && <p>{n.notes}</p>}
+                {n.notes && <p className="worksheet-note-text">{n.notes}</p>}
                 <AttachmentGallery entityType="hospitalization_note" entityId={n.id} />
               </div>
             ))}

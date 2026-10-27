@@ -13342,3 +13342,8 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
   font-size: 0.75rem;
   margin: 0.2rem 0.25rem 0 0;
 }
+
+/* Worksheet entries: appetite, condition and notes each keep their own line. */
+.worksheet-note-text {
+  white-space: pre-line;
+}

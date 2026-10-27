@@ -122,7 +122,7 @@ export default function DayProcedureNotes({ hospitalizationId, staff = [] }) {
                 {formatTime(n.created_at)}
                 {n.staff?.full_name ? ` · ${n.staff.full_name}` : ''}
               </span>
-              <p>{n.notes}</p>
+              <p className="worksheet-note-text">{n.notes}</p>
             </li>
           ))}
         </ul>

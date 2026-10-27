@@ -1828,7 +1828,7 @@ export default function HospitalizationDetailPage() {
                       <strong>Condition:</strong> {n.condition}
                     </p>
                   )}
-                  {n.notes && <p>{n.notes}</p>}
+                  {n.notes && <p className="worksheet-note-text">{n.notes}</p>}
                   {n.treatment_items?.length > 0 && (
                     <ul className="worksheet-entry-items">
                       {n.treatment_items.map((t) => (
