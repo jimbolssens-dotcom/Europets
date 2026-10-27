@@ -19,7 +19,7 @@
 import DragDial from '@/app/_components/DragDial';
 import { temperatureZoneColor } from '@/lib/temperatureZones';
 
-export default function TempDial({ value, onChange, min = 34.0, max = 42.0, height = 132 }) {
+export default function TempDial({ value, onChange, min = 32.0, max = 42.0, height = 132 }) {
   return (
     <DragDial
       value={value}

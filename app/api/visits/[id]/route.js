@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { runConsultCompletionEffects } from '@/lib/consultCompletion';
 import { NextResponse } from 'next/server';
+import { temperatureError } from '@/lib/bodyTemperature';
 
 export const maxDuration = 60;
 
@@ -65,6 +66,8 @@ export async function PATCH(request, { params }) {
   if (body[CLIENT_REPORT_FIELD] !== undefined) {
     update[CLIENT_REPORT_FIELD] = body[CLIENT_REPORT_FIELD];
   }
+  const tempError = temperatureError(update.temperature_c);
+  if (tempError) return NextResponse.json({ error: tempError }, { status: 400 });
 
   if (status !== undefined) {
     if (!VALID_STATUSES.includes(status)) {

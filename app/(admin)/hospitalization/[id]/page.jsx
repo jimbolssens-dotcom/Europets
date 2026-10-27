@@ -49,6 +49,7 @@ import { openWhatsApp } from '@/lib/whatsapp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
 import { fetchJsonPrefetched } from '@/lib/prefetchData';
 import { loadReferenceList } from '@/lib/viewCache';
+import { temperatureError, TEMP_MIN_C, TEMP_MAX_C } from '@/lib/bodyTemperature';
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -542,12 +543,24 @@ export default function HospitalizationDetailPage() {
   }
 
   async function saveEditNote(noteId) {
+    const tempProblem = temperatureError(editNoteForm?.temperature_c);
+    if (tempProblem) {
+      setEditNoteError(tempProblem);
+      return;
+    }
+    setEditNoteError(null);
     setSavingEditNote(true);
-    await fetch(`/api/hospitalizations/${id}/notes/${noteId}`, {
+    const res = await fetch(`/api/hospitalizations/${id}/notes/${noteId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editNoteForm),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setSavingEditNote(false);
+      setEditNoteError(d.error || 'Could not save the entry.');
+      return;
+    }
     setSavingEditNote(false);
     setEditingNoteId(null);
     setEditNoteForm(null);
@@ -1683,6 +1696,8 @@ export default function HospitalizationDetailPage() {
                     <input
                       type="number"
                       step="0.1"
+                      min={TEMP_MIN_C}
+                      max={TEMP_MAX_C}
                       value={editNoteForm.temperature_c}
                       onChange={(e) => setEditNoteForm({ ...editNoteForm, temperature_c: e.target.value })}
                     />

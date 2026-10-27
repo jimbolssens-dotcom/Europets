@@ -20,6 +20,7 @@ import { checklistItemAction } from '@/lib/checklistItemAction';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
 import { ensureSurgicalReport } from '@/lib/surgicalReportAuto';
 import { supabase } from '@/lib/supabaseClient';
+import { temperatureError } from '@/lib/bodyTemperature';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 const CONSOLIDATE_WINDOW_MS = 5 * 60 * 1000;
@@ -298,6 +299,10 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
     const value = parseFloat(vitalsValue);
     if (!Number.isFinite(value) || value <= 0) {
       setError(`Enter a valid ${item.kind === 'vitals_weight' ? 'weight' : 'temperature'}`);
+      return;
+    }
+    if (item.kind !== 'vitals_weight' && temperatureError(value)) {
+      setError(temperatureError(value));
       return;
     }
     setError(null);

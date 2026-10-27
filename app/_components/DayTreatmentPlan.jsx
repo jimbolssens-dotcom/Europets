@@ -46,6 +46,7 @@ import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { checklistItemAction } from '@/lib/checklistItemAction';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
 import { supabase } from '@/lib/supabaseClient';
+import { temperatureError } from '@/lib/bodyTemperature';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 const QUICK_TASKS = ['Cage Cleaned', 'Water Changed', 'Food Given', 'Patient Checked', 'Walked / Exercised'];
@@ -449,6 +450,10 @@ export default function DayTreatmentPlan({
     const value = explicitValue != null ? explicitValue : parseFloat(vitalsValue);
     if (!Number.isFinite(value) || value <= 0) {
       setError(`Enter a valid ${item.kind === 'vitals_weight' ? 'weight' : 'temperature'}`);
+      return;
+    }
+    if (item.kind !== 'vitals_weight' && temperatureError(value)) {
+      setError(temperatureError(value));
       return;
     }
     setError(null);

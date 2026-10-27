@@ -38,6 +38,7 @@ import { formatDateTime } from '@/lib/formatTimestamp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
 import { fetchJsonPrefetched } from '@/lib/prefetchData';
 import { loadReferenceList } from '@/lib/viewCache';
+import { temperatureError, TEMP_MIN_C, TEMP_MAX_C } from '@/lib/bodyTemperature';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
 // catalog link — kept only to label those old rows.
@@ -392,7 +393,16 @@ export default function ConsultDetailPage() {
   // on blur closes that gap instead of just papering over it on this
   // one screen (see loadConsult's merge above for the display side of
   // the same problem).
+  const [tempError, setTempError] = useState(null);
   async function saveVitalField(field, rawValue) {
+    // An impossible temperature isn't saved: it goes back to what was there,
+    // so it can't hold up the rest of the consult's Save either.
+    if (field === 'temperature_c' && temperatureError(rawValue)) {
+      setTempError(temperatureError(rawValue));
+      setRecord((r) => ({ ...r, temperature_c: lastServerRecordRef.current?.temperature_c ?? '' }));
+      return;
+    }
+    if (field === 'temperature_c') setTempError(null);
     const value = rawValue === '' ? null : Number(rawValue);
     const res = await fetch(`/api/visits/${id}`, {
       method: 'PATCH',
@@ -1161,10 +1171,13 @@ export default function ConsultDetailPage() {
             <input
               type="number"
               step="0.1"
+              min={TEMP_MIN_C}
+              max={TEMP_MAX_C}
               value={record.temperature_c}
               onChange={(e) => setRecord({ ...record, temperature_c: e.target.value })}
               onBlur={(e) => saveVitalField('temperature_c', e.target.value)}
             />
+            {tempError && <span className="error">{tempError}</span>}
           </label>
           <label>
             Body condition score (1–9)

@@ -9,6 +9,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { mirrorVitalsToLinkedHospitalizations } from '@/lib/hospitalizationVitalsSync';
 import { removeTreatmentItemFromInvoiceLines } from '@/lib/invoicing';
+import { temperatureError } from '@/lib/bodyTemperature';
 
 const EDITABLE_FIELDS = [
   'note_date',
@@ -85,6 +86,8 @@ export async function PATCH(request, { params }) {
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
   }
+  const tempError = temperatureError(update.temperature_c);
+  if (tempError) return NextResponse.json({ error: tempError }, { status: 400 });
   update.updated_at = new Date().toISOString();
 
   const { data, error } = await supabaseAdmin

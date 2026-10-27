@@ -20,6 +20,7 @@ import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationC
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { mirrorVitalsToLinkedHospitalizations } from '@/lib/hospitalizationVitalsSync';
 import { resolvePlanItemBillable } from '@/lib/planItemBilling';
+import { temperatureError } from '@/lib/bodyTemperature';
 
 // See app/api/hospitalizations/[id]/route.js — same caching gotcha, and
 // this is the route the client portal's Temp/Weight/Appetite fields
@@ -96,6 +97,9 @@ export async function POST(request, { params }) {
   if (!hasContent) {
     return NextResponse.json({ error: 'Nothing to save: add a note, a reading, an item or a photo first.' }, { status: 400 });
   }
+
+  const tempError = temperatureError(temperature_c);
+  if (tempError) return NextResponse.json({ error: tempError }, { status: 400 });
 
   const checkinFields = { stool, urine, vomit, drinking, mood, temperature_feel, medication_given, force_feeding_done, appetite, temperature_c };
   let clientSummary = null;
