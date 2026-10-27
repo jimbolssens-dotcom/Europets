@@ -95,7 +95,7 @@ test('client app: each number once, in the week of its first code, staff left ou
   assert.deepEqual(s.totals, { asked: 3, loggedIn: 1 });
 });
 
-test('discounts count on the day they were given, not the invoice date', () => {
+test('discounts count on the day they were given, VAT included, not by the invoice date', () => {
   const d = buildChartData({
     unit: 'week',
     buckets: ['2026-09-14', '2026-10-19', '2026-10-26'],
@@ -107,7 +107,7 @@ test('discounts count on the day they were given, not the invoice date', () => {
     ],
   });
   assert.equal(d.discounts['2026-09-14'], 0);
-  assert.equal(Math.round(d.discounts['2026-10-19'] * 100) / 100, 95.24);
+  assert.equal(Math.round(d.discounts['2026-10-19'] * 100) / 100, 100);
   assert.equal(d.discountCount['2026-10-19'], 1);
-  assert.equal(d.discounts['2026-10-26'], 142.86);
+  assert.equal(d.discounts['2026-10-26'], 150);
 });

@@ -283,7 +283,7 @@ export default function AccountingChartsPage() {
             </p>
           </Card>
 
-          <Card title="Discounts given" why="Discounts given in each period, on the day they were given, supporter bonuses included (hover for how many invoices).">
+          <Card title="Discounts given" why="What came off bills in each period (VAT included), on the day it was given, supporter bonuses included (hover for how many invoices).">
             <BarChart
               buckets={data.buckets}
               unit={unit}
