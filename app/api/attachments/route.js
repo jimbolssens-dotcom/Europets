@@ -1,10 +1,15 @@
 // app/api/attachments/route.js
-// GET  /api/attachments?entity_type=X&entity_id=Y  -> list attachments for an entity
+// GET  /api/attachments?entity_type=X&entity_id=Y  -> list attachments for an entity.
+//      For a consult ('visit') or a stay/day procedure ('hospitalization'),
+//      the whole linked case's photos (lib/caseFamily.js), so a photo taken
+//      on any of them shows on all of them and on the client's live updates
+//      page. Each row keeps its own entity_type/entity_id.
 // POST /api/attachments                            -> record a file already uploaded to Storage
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { caseFamily } from '@/lib/caseFamily';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -18,12 +23,20 @@ export async function GET(request) {
     );
   }
 
-  const { data, error } = await supabase
-    .from('attachments')
-    .select('*, staff(full_name)')
-    .eq('entity_type', entityType)
-    .eq('entity_id', entityId)
-    .order('created_at', { ascending: true });
+  if (!/^[0-9a-f-]{36}$/i.test(entityId)) {
+    return NextResponse.json({ error: 'entity_id must be an id' }, { status: 400 });
+  }
+  let query = supabase.from('attachments').select('*, staff(full_name)');
+  if (entityType === 'visit' || entityType === 'hospitalization') {
+    const family = await caseFamily(supabase, entityType === 'visit' ? { visitId: entityId } : { hospitalizationId: entityId });
+    const parts = [];
+    if (family.visitIds.length) parts.push(`and(entity_type.eq.visit,entity_id.in.(${family.visitIds.join(',')}))`);
+    if (family.hospitalizationIds.length) parts.push(`and(entity_type.eq.hospitalization,entity_id.in.(${family.hospitalizationIds.join(',')}))`);
+    query = query.or(parts.join(','));
+  } else {
+    query = query.eq('entity_type', entityType).eq('entity_id', entityId);
+  }
+  const { data, error } = await query.order('created_at', { ascending: true });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
