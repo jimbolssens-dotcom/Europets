@@ -13347,3 +13347,34 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
 .worksheet-note-text {
   white-space: pre-line;
 }
+
+/* Stock: Remove reads as a quieter, red action. */
+.stock-meta .stock-remove {
+  color: #b42318;
+}
+.stock-add .stock-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+form.card.stock-add .stock-form label.stock-expiry {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-weight: 600;
+}
+form.card.stock-add .stock-form input[type='number'] {
+  flex: none;
+  width: 5rem;
+  height: auto;
+  min-height: 0;
+  padding: 0.45rem 0.6rem;
+  margin: 0;
+}
+.stock-add .stock-form button {
+  margin: 0;
+}

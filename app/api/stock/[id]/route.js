@@ -1,5 +1,7 @@
 // app/api/stock/[id]/route.js
 // PATCH { reorder_level?, active? } -> change a stock item (migration 229).
+// active: false stops tracking it (the Stock page's Remove): it stops
+// counting down and leaves the list, its history kept for a re-add.
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';

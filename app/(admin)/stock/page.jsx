@@ -5,9 +5,12 @@
 // fluorescein and urine strips. Each item counts down by itself when it's
 // charged or a dose is given; here staff log a delivery (+ In), count the
 // shelf (Count), set the reorder level and see what moved. A low item goes
-// to the Stock team group (app/api/stock/low-sweep).
+// to the Stock team group (app/api/stock/low-sweep). + Add starts tracking
+// any catalog item; Remove stops tracking one (its history is kept).
 
 import { useEffect, useState } from 'react';
+import CatalogPicker from '@/app/_components/CatalogPicker';
+import { loadReferenceList } from '@/lib/viewCache';
 
 const STAFF_KEYS = ['stock_staff_id', 'team_staff_id', 'europets_mobile_staff_id', 'pay_link_staff_id', 'social_staff_id'];
 
@@ -102,6 +105,20 @@ function Item({ item, staffId, onChanged }) {
     onChanged();
   }
 
+  async function remove() {
+    if (!confirm(`Stop tracking ${item.name}? It leaves this list and stops counting down. Its history is kept if you add it again.`)) return;
+    setBusy(true);
+    const res = await fetch(`/api/stock/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: false }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) return setError(data.error || 'Could not remove it');
+    onChanged();
+  }
+
   const status = !item.started ? (
     <span className="stock-chip stock-chip-new">To count</span>
   ) : item.low ? (
@@ -135,6 +152,10 @@ function Item({ item, staffId, onChanged }) {
         {' · '}
         <button type="button" className="social-link-button" onClick={() => toggle('history')}>
           {open === 'history' ? 'Hide history' : 'History'}
+        </button>
+        {' · '}
+        <button type="button" className="social-link-button stock-remove" onClick={remove} disabled={busy}>
+          Remove
         </button>
       </div>
       {error && <p className="error">{error}</p>}
@@ -190,11 +211,72 @@ function Item({ item, staffId, onChanged }) {
   );
 }
 
+function AddItem({ onAdded, onClose }) {
+  const [catalog, setCatalog] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
+  const [goodsServiceId, setGoodsServiceId] = useState('');
+  const [level, setLevel] = useState('2');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadReferenceList('/api/goods-services?active=true', setCatalog);
+    loadReferenceList('/api/catalog-subcategories', setSubcategories);
+  }, []);
+
+  async function add(e) {
+    e.preventDefault();
+    if (!goodsServiceId) return setError('Pick a catalog item');
+    setBusy(true);
+    setError(null);
+    const res = await fetch('/api/stock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goods_service_id: goodsServiceId, reorder_level: level }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) return setError(data.error || 'Could not add it');
+    onAdded();
+  }
+
+  return (
+    <form className="card stock-add" onSubmit={add}>
+      <div className="page-header">
+        <h3>Add to stock</h3>
+        <div className="page-header-actions">
+          <button type="button" className="secondary" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+      <CatalogPicker
+        catalog={catalog}
+        subcategories={subcategories}
+        value={goodsServiceId}
+        onChange={setGoodsServiceId}
+        onItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+      />
+      <div className="stock-form">
+        <label className="stock-expiry">
+          Reorder at <input type="number" min="0" step="1" inputMode="numeric" value={level} onChange={(e) => setLevel(e.target.value)} />
+        </label>
+        <button type="submit" disabled={busy || !goodsServiceId}>
+          {busy ? 'Adding...' : '+ Add'}
+        </button>
+      </div>
+      <p className="visit-meta">It counts down by one each time it's charged. Press Count on it once to set what's on the shelf.</p>
+      {error && <p className="error">{error}</p>}
+    </form>
+  );
+}
+
 export default function StockPage() {
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [staff, setStaff] = useState([]);
   const [staffId, setStaffId] = useState('');
+  const [adding, setAdding] = useState(false);
 
   const load = () =>
     fetch('/api/stock')
@@ -227,6 +309,9 @@ export default function StockPage() {
         <h1>📦 Stock</h1>
         <div className="page-header-actions">
           {low > 0 && <span className="stock-chip stock-chip-low">{low} low</span>}
+          <button type="button" onClick={() => setAdding((v) => !v)}>
+            + Add
+          </button>
           <select value={staffId} onChange={(e) => pickStaff(e.target.value)} aria-label="Who is logging">
             <option value="">Who are you?</option>
             {staff.map((s) => (
@@ -241,6 +326,15 @@ export default function StockPage() {
         <p className="visit-meta">
           {notCounted} to count: press Count and type what&apos;s on the shelf. After that each one counts down by itself.
         </p>
+      )}
+      {adding && (
+        <AddItem
+          onClose={() => setAdding(false)}
+          onAdded={() => {
+            setAdding(false);
+            load();
+          }}
+        />
       )}
       {error && <p className="error">{error}</p>}
       {!items && !error && <p className="visit-meta">Loading...</p>}
