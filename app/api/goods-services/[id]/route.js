@@ -1,7 +1,10 @@
 // app/api/goods-services/[id]/route.js
 // PATCH  /api/goods-services/:id  -> update name/subcategory/price/active/etc
 //         on a catalog item — changing subcategory_id re-derives main_category
-//         from the new subcategory, same as on create
+//         from the new subcategory, same as on create. Deactivating is
+//         refused while it still has stock, and takes its stock item off
+//         the Stock list; a rename renames its stock item
+//         (lib/stockCatalogGuard.js)
 // DELETE /api/goods-services/:id  -> remove one (blocked if it's been used
 //         in a treatment item, invoice line, or diagnostic — those keep
 //         referencing it for historical records)
@@ -9,6 +12,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { deactivationBlocked, retireStockFor, renameStockFor } from '@/lib/stockCatalogGuard';
 
 const EDITABLE_FIELDS = [
   'name',
@@ -55,6 +59,11 @@ export async function PATCH(request, { params }) {
     update.main_category = subcategory.main_category;
   }
 
+  if (update.active === false) {
+    const blocked = await deactivationBlocked(supabaseAdmin, params.id);
+    if (blocked) return NextResponse.json({ error: blocked }, { status: 409 });
+  }
+
   const { data, error } = await supabaseAdmin
     .from('goods_services')
     .update(update)
@@ -65,6 +74,8 @@ export async function PATCH(request, { params }) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  if (update.active === false) await retireStockFor(supabaseAdmin, params.id);
+  if (update.name && data?.name) await renameStockFor(supabaseAdmin, params.id, data.name);
   return NextResponse.json(data);
 }
 

@@ -157,11 +157,16 @@ export default function CatalogPage() {
 
   async function toggleItemActive(item) {
     setDeleteError(null);
-    await fetch(`/api/goods-services/${item.id}`, {
+    const res = await fetch(`/api/goods-services/${item.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !item.active }),
     });
+    // e.g. still in stock (lib/stockCatalogGuard.js)
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setDeleteError(data.error || 'Could not change it');
+    }
     loadItems();
   }
 
