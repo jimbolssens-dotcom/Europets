@@ -189,6 +189,11 @@ async function runConciergeForInbound(message, clientId, digits) {
     // one stays silent.
     if (await newerClientMessageSince(clientId, digits, message.id)) return;
     console.log('WhatsApp concierge', message.id, decision.action, decision.reason || '');
+    // What it did, step by step, whenever it didn't simply answer, so a
+    // handover can be traced afterwards in the logs.
+    if (decision.action !== 'reply' && decision.action !== 'silent' && decision.trace) {
+      console.log('WhatsApp concierge trace', message.id, JSON.stringify(decision.trace).slice(0, 8000));
+    }
     await applyConciergeDecision(decision, { clientId, phone: digits });
   } catch (err) {
     console.error('WhatsApp AI concierge failed', message.id, err);
@@ -311,7 +316,7 @@ async function handleStatusUpdate(status) {
 }
 
 // Room for a voice-note transcription plus the concierge's reply.
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(request) {
   const rawBody = await request.text();
