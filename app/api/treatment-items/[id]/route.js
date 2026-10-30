@@ -72,7 +72,9 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const cleanup = await removeTreatmentItemFromInvoiceLines(supabase, params.id);
+  // A paid invoice stays as it was paid (Jim, 30 Oct: a test removed from a
+  // consult took its line off the paid bill, which then no longer matched).
+  const cleanup = await removeTreatmentItemFromInvoiceLines(supabase, params.id, { onlyOpenInvoices: true });
   if (cleanup.error) {
     console.error('Failed to remove treatment item from an invoice it was already on', params.id, cleanup.error);
   }

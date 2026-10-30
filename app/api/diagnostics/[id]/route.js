@@ -50,7 +50,7 @@ export async function DELETE(request, { params }) {
   }
 
   if (diagnostic?.treatment_item_id) {
-    const cleanup = await removeTreatmentItemFromInvoiceLines(supabase, diagnostic.treatment_item_id);
+    const cleanup = await removeTreatmentItemFromInvoiceLines(supabase, diagnostic.treatment_item_id, { onlyOpenInvoices: true });
     if (cleanup.error) {
       console.error('Failed to remove treatment item from an invoice it was already on', diagnostic.treatment_item_id, cleanup.error);
     }

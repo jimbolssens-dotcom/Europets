@@ -56,7 +56,7 @@ export async function DELETE(request, { params }) {
     .select('id')
     .eq('hospitalization_note_id', note.id);
   for (const item of itemsOnEntry || []) {
-    const cleanup = await removeTreatmentItemFromInvoiceLines(supabase, item.id);
+    const cleanup = await removeTreatmentItemFromInvoiceLines(supabase, item.id, { onlyOpenInvoices: true });
     if (cleanup.error) {
       console.error('Failed to remove treatment item from an invoice it was already on', item.id, cleanup.error);
     }
