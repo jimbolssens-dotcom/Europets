@@ -247,12 +247,17 @@ export default function AccountingHistoryPage() {
               />
             </Card>
 
-            <Card wide title="Net profit, by month" why="From the float: takings less outgoing and the fixed costs (WPS and cash salaries, sponsor, SEWA, landline). Red is a loss.">
+            <Card wide title="Net profit, by month" why="From the float: takings less outgoing (Dr Jim's salary included) and the fixed costs (WPS and cash salaries, sponsor, SEWA, landline). Red is a loss.">
               <SignedBars
                 labels={labels}
                 values={months.map((m) => m.netProfit)}
-                titles={months.map((m) => (m.netProfit == null ? '' : `${monthLabel(m.month)}: ${aed(m.netProfit)} (fixed costs ${aed(m.fixedCosts)})`))}
+                titles={months.map((m) => (m.netProfit == null ? '' : `${monthLabel(m.month)}: ${aed(m.netProfit)} (fixed costs ${aed(m.fixedCosts)})${m.oneOff ? `, before the one-off ${aed(m.oneOff)}` : ''}`))}
               />
+              {months.filter((m) => m.oneOff).map((m) => (
+                <p key={m.month} className="visit-meta">
+                  {monthLabel(m.month)} leaves out a one-off {aed(m.oneOff)}: {m.oneOffNote}.
+                </p>
+              ))}
             </Card>
 
             <Card title="How clients pay" why="Each month's takings by method, as a share. The float's PayPal/transfer column and the app's payment links and transfers count as online.">

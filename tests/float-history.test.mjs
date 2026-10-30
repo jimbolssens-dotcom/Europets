@@ -55,6 +55,14 @@ test('the float runs to September, the app from October; costs follow the float 
   assert.deepEqual([months[2].cash, months[2].card, months[2].online], [5, 20, 50]);
 });
 
+test('a one-off cost is left out of outgoing and net profit', () => {
+  const [m] = combinedMonths({
+    floatMonths: [{ month: '2023-09-01', takings: 243, outgoing: 534, net_profit: -347, fixed_costs: 77, costs_complete: true, one_off_costs: 374, one_off_note: 'Property purchase' }],
+    now: Date.parse('2023-09-15T08:00:00Z'),
+  });
+  assert.deepEqual([m.outgoing, m.netProfit, m.oneOff, m.oneOffNote], [160, 27, 374, 'Property purchase']);
+});
+
 test('year on year puts each month under its calendar year', () => {
   const yoy = yearOnYear([{ month: '2025-12-01', takings: 10 }, { month: '2026-01-01', takings: 20 }, { month: '2026-02-01', takings: 0 }]);
   assert.deepEqual(yoy.years, ['2025', '2026']);
@@ -105,9 +113,11 @@ test('cost mix averages the complete daily-sheet months only', () => {
     ],
     floatDays: [
       { day: '2025-01-03', stock: 40, staff: 60 },
+      { day: '2025-01-15', staff: 50000 },
       { day: '2026-09-03', stock: 500 },
     ],
   });
   assert.equal(mix.months, 1);
-  assert.deepEqual(mix.rows.map((r) => [r.key, r.value]), [['wps_salaries', 100], ['staff', 60], ['stock', 40], ['sponsor', 10]]);
+  // Dr Jim's salary: its own bar, not in the other staff.
+  assert.deepEqual(mix.rows.map((r) => [r.key, r.value]), [['owner_salary', 50000], ['wps_salaries', 100], ['staff', 60], ['stock', 40], ['sponsor', 10]]);
 });
