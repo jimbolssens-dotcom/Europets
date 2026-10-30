@@ -12638,6 +12638,52 @@ form.card.walkin-inline > .booking-owner-picked {
   }
 }
 
+/* Accounting History (app/(admin)/accounting/history): two headline
+   figures side by side, and the list of months the float's totals got wrong. */
+.acct-history-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+.acct-history-kpi {
+  flex: 1 1 9rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  background: white;
+  border-radius: 10px;
+  border-top: 3px solid var(--pink);
+  padding: 0.55rem 0.8rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.acct-history-kpi span,
+.acct-history-kpi em {
+  font-size: 0.75rem;
+  color: #6b6a66;
+  font-style: normal;
+}
+.acct-history-kpi strong {
+  font-size: 1.15rem;
+}
+@media (max-width: 700px) {
+  .acct-history-kpis {
+    gap: 0.5rem;
+  }
+  .acct-history-kpi {
+    padding: 0.45rem 0.6rem;
+  }
+  .acct-history-kpi strong {
+    font-size: 1rem;
+  }
+}
+.acct-history-notes {
+  margin: 0.2rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
 /* The optional social media consent tick (SocialConsentTick): the box sits
    at the top of a wrapped two-line label. */
 .social-consent-tick {
