@@ -42,3 +42,31 @@ test('several words narrow it down', () => {
   ]);
   assert.deepEqual(p('unpaid Maria'), [{ kind: 'status', statuses: ['unpaid'] }, { kind: 'text', text: 'maria' }]);
 });
+
+test('each search field matches only its own thing', async () => {
+  const { fieldSearchTerms } = await import('../lib/invoiceSearch.js');
+  const now = Date.parse('2026-10-30T08:00:00Z');
+  assert.deepEqual(fieldSearchTerms({ invoice_no: 'INV-000916' }, now), [{ kind: 'invoice', n: 916 }]);
+  assert.deepEqual(fieldSearchTerms({ invoice_no: '#916' }, now), [{ kind: 'invoice', n: 916 }]);
+  assert.deepEqual(fieldSearchTerms({ client_no: '15343' }, now), [{ kind: 'client', n: 15343 }]);
+  assert.deepEqual(fieldSearchTerms({ patient_no: '30330' }, now), [{ kind: 'patient', n: 30330 }]);
+  assert.deepEqual(fieldSearchTerms({ name: 'felix' }, now), [{ kind: 'name', text: 'felix' }]);
+  assert.deepEqual(fieldSearchTerms({ phone: '+971 50 123 4567' }, now), [{ kind: 'phone', digits: '971501234567' }]);
+  assert.deepEqual(fieldSearchTerms({ item: 'PCR' }, now), [{ kind: 'item', text: 'PCR' }]);
+  assert.deepEqual(fieldSearchTerms({ amount: 'AED 619,50' }, now), [{ kind: 'amount', value: 619.5 }]);
+  assert.deepEqual(fieldSearchTerms({ amount: '450' }, now), [{ kind: 'amount', value: 450 }]);
+  const [date] = fieldSearchTerms({ date: '28/10' }, now);
+  assert.deepEqual([date.kind, date.from, date.to], ['date', '2026-10-28', '2026-10-28']);
+  const [month] = fieldSearchTerms({ date: 'Oct 2025' }, now);
+  assert.deepEqual([month.from, month.to], ['2025-10-01', '2025-10-31']);
+});
+
+test('fields combine, blanks are skipped, nonsense finds nothing', async () => {
+  const { fieldSearchTerms } = await import('../lib/invoiceSearch.js');
+  const now = Date.parse('2026-10-30T08:00:00Z');
+  assert.deepEqual(fieldSearchTerms({ client_no: '15343', item: 'pcr', name: '  ' }, now), [{ kind: 'client', n: 15343 }, { kind: 'item', text: 'pcr' }]);
+  assert.deepEqual(fieldSearchTerms({ invoice_no: 'abc' }, now), [{ kind: 'none' }]);
+  assert.deepEqual(fieldSearchTerms({ date: '31/02' }, now), [{ kind: 'none' }]);
+  assert.deepEqual(fieldSearchTerms({ phone: '12' }, now), [{ kind: 'none' }]);
+  assert.deepEqual(fieldSearchTerms({}, now), []);
+});

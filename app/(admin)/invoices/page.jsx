@@ -16,6 +16,20 @@ import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
+import { INVOICE_SEARCH_FIELDS } from '@/lib/invoiceSearch';
+
+const emptyInvoiceSearch = Object.fromEntries(INVOICE_SEARCH_FIELDS.map((f) => [f.key, '']));
+const INVOICE_FIELD_INPUT_MODE = { invoice_no: 'numeric', client_no: 'numeric', patient_no: 'numeric', phone: 'tel', amount: 'decimal' };
+const INVOICE_FIELD_HINTS = {
+  invoice_no: 'Invoice number: 916, INV-000916',
+  client_no: 'Client number',
+  patient_no: 'Patient number: the pet\'s invoices',
+  name: 'Part of the client\'s or the pet\'s name',
+  phone: 'Part of the client\'s phone number',
+  date: 'Date made: 28/10, 28/10/2026, 2026-10-28, 28 Oct, Oct 2026',
+  item: 'An item on the invoice, e.g. PCR',
+  amount: 'The invoice total, e.g. 619.50',
+};
 import InvoicePaymentPanel from '@/app/_components/InvoicePaymentPanel';
 import InvoiceDiscountPanel from '@/app/_components/InvoiceDiscountPanel';
 import { groupLineItemsByCategory, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
@@ -438,22 +452,26 @@ function InvoicesPageInner() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [statusFilter, setStatusFilter] = useState('unpaid,partially_paid');
-  // The search box (GET /api/invoices?q=, lib/invoiceSearch.js): invoice,
-  // client or patient number, names, phone, item, amount, date, status.
-  // While there's a search, it replaces the filtered list.
-  const [search, setSearch] = useState('');
+  // The search fields (GET /api/invoices?invoice_no=&client_no=..., see
+  // lib/invoiceSearch.js), one per thing like the Clients page's search:
+  // each matches only its own thing, and filled fields must all match.
+  // While any is filled, the results replace the filtered list.
+  const [search, setSearch] = useState(emptyInvoiceSearch);
   const [searchResults, setSearchResults] = useState(null); // { rows, total } | null
   const [searching, setSearching] = useState(false);
   const searchSeqRef = useRef(0);
-  const runSearch = (q) => {
+  const searchActive = Object.values(search).some((v) => v.trim());
+  const runSearch = (fields) => {
     const seq = ++searchSeqRef.current;
-    if (!q.trim()) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(fields)) if (value.trim()) params.set(key, value.trim());
+    if (![...params.keys()].length) {
       setSearchResults(null);
       setSearching(false);
       return Promise.resolve();
     }
     setSearching(true);
-    return fetch(`/api/invoices?q=${encodeURIComponent(q.trim())}`)
+    return fetch(`/api/invoices?${params}`)
       .then(async (res) => {
         const rows = await res.json();
         if (seq !== searchSeqRef.current) return;
@@ -645,7 +663,20 @@ function InvoicesPageInner() {
 
   return (
     <div>
-      <h1>Invoices</h1>
+      <div className="page-header">
+        <h1>Invoices</h1>
+        <div className="page-header-actions phone-hide">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter">
+            <option value="unpaid,partially_paid">Unpaid + Partially Paid</option>
+            <option value="unpaid">Unpaid</option>
+            <option value="partially_paid">Partially Paid</option>
+            <option value="paid">Paid</option>
+            <option value="void">Void</option>
+            <option value="">All</option>
+            <option value="proforma">Quotes (Proforma)</option>
+          </select>
+        </div>
+      </div>
 
       <div className="split">
       <div className="split-main">
@@ -660,48 +691,36 @@ function InvoicesPageInner() {
           <option value="proforma">Quotes</option>
         </select>
       </PhoneTop>
-      <div className="invoice-search-row">
-      <div className="invoice-search">
-        <input
-          type="text"
-          inputMode="search"
-          enterKeyHint="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search: invoice, client, pet, phone, item, date…"
-          title="Invoice no. (INV-916), client or patient no., name, phone, item (PCR), amount (619.50), date (28/10, Oct 2026), status (paid, unpaid)"
-          aria-label="Search invoices"
-        />
-        {search && (
-          <button type="button" className="invoice-search-clear" onClick={() => setSearch('')} aria-label="Clear search">
-            ✕
-          </button>
-        )}
-      </div>
-      <label className="phone-hide">
-        Filter:{' '}
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="unpaid,partially_paid">Unpaid + Partially Paid</option>
-          <option value="unpaid">Unpaid</option>
-          <option value="partially_paid">Partially Paid</option>
-          <option value="paid">Paid</option>
-          <option value="void">Void</option>
-          <option value="">All</option>
-          <option value="proforma">Quotes (Proforma)</option>
-        </select>
-      </label>
+      <div className="invoice-field-search">
+        {INVOICE_SEARCH_FIELDS.map((f) => (
+          <input
+            key={f.key}
+            type="text"
+            inputMode={INVOICE_FIELD_INPUT_MODE[f.key] || 'text'}
+            enterKeyHint="search"
+            placeholder={f.label}
+            title={INVOICE_FIELD_HINTS[f.key]}
+            aria-label={`Search by ${f.label.toLowerCase()}`}
+            value={search[f.key]}
+            onChange={(e) => setSearch({ ...search, [f.key]: e.target.value })}
+          />
+        ))}
       </div>
 
       {searchResults || searching ? (
         searching && !searchResults ? (
           <p className="visit-meta">Searching…</p>
         ) : searchResults.rows.length === 0 ? (
-          <p>No invoices match “{search.trim()}”.</p>
+          <p>
+            No invoices match.{' '}
+            <button type="button" className="invoice-search-clear-link" onClick={() => setSearch(emptyInvoiceSearch)}>Clear search</button>
+          </p>
         ) : (
           <div className="invoice-row-list">
             <p className="visit-meta invoice-search-count">
               {searchResults.total} invoice{searchResults.total === 1 ? '' : 's'} match{searchResults.total === 1 ? 'es' : ''}
-              {searchResults.total > searchResults.rows.length ? `, showing the newest ${searchResults.rows.length}` : ''} · all statuses
+              {searchResults.total > searchResults.rows.length ? `, showing the newest ${searchResults.rows.length}` : ''} · all statuses ·{' '}
+              <button type="button" className="invoice-search-clear-link" onClick={() => setSearch(emptyInvoiceSearch)}>Clear search</button>
             </p>
             {searchResults.rows.map((inv) => (
               <InvoiceRow

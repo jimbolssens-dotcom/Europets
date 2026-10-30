@@ -13425,43 +13425,53 @@ form.card.stock-add .stock-form input[type='number'] {
   margin: 0;
 }
 
-/* Invoices: the search box and the status filter share one line. */
-.invoice-search-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem 1rem;
+/* Invoices: the search fields, one per thing like the Clients page's
+   search, four to a row on phones too (two rows), so the list still shows. */
+.invoice-field-search {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
   margin: 0.25rem 0 0.75rem;
 }
-.invoice-search {
-  position: relative;
-  flex: 1 1 22rem;
-  min-width: 0;
-}
-.invoice-search input {
+.invoice-field-search input {
   width: 100%;
-  padding: 0.55rem 2.2rem 0.55rem 0.85rem;
+  min-width: 0;
+  padding: 0.45rem 0.6rem;
   border: 1px solid #ddd;
-  border-radius: 999px;
-  font-size: 0.95rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
   font-family: inherit;
   background: white;
 }
-.invoice-search input:focus {
+.invoice-field-search input:focus {
   outline: none;
   border-color: var(--pink);
   box-shadow: 0 0 0 3px var(--pink-tint);
 }
-.invoice-search-clear {
-  position: absolute;
-  right: 0.45rem;
-  top: 50%;
-  transform: translateY(-50%);
+.invoice-field-search input:not(:placeholder-shown) {
+  border-color: var(--pink);
+  background: var(--pink-tint);
+}
+@media (max-width: 700px) {
+  .invoice-field-search {
+    gap: 0.3rem;
+  }
+  .invoice-field-search input {
+    padding: 0.4rem 0.4rem;
+    font-size: 0.8rem;
+  }
+}
+.invoice-search-clear-link {
+  width: auto;
+  margin: 0;
+  padding: 0;
   border: none;
-  background: transparent;
-  color: #888;
-  font-size: 0.9rem;
-  padding: 0.2rem 0.4rem;
+  background: none;
+  box-shadow: none;
+  color: var(--pink-dark);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
   cursor: pointer;
 }
 .invoice-search-count {

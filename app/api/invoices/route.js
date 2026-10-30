@@ -1,8 +1,10 @@
 // app/api/invoices/route.js
 // GET  /api/invoices?client_id=X&status=unpaid&visit_id=Y&hospitalization_id=Z  -> list invoices
 //      status accepts a comma-separated list (e.g. status=unpaid,partially_paid)
-//      ?q=... -> the Invoices page's search (lib/invoiceSearch.js): every
-//      invoice matching all the terms, whatever its status, newest first
+//      ?invoice_no=&client_no=&patient_no=&name=&phone=&date=&item=&amount=
+//      -> the Invoices page's search fields (lib/invoiceSearch.js), each
+//      matching only its own thing; ?q=... the older single box. Every
+//      invoice matching all of them, whatever its status, newest first
 //      (at most SEARCH_LIMIT). Staff only.
 // POST /api/invoices                            -> open a new (empty) invoice
 //
@@ -17,7 +19,7 @@ import { selectAll } from '@/lib/selectAll';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
-import { parseInvoiceSearch } from '@/lib/invoiceSearch';
+import { parseInvoiceSearch, fieldSearchTerms, INVOICE_SEARCH_FIELDS } from '@/lib/invoiceSearch';
 import { searchInvoiceIds } from '@/lib/invoiceSearchServer';
 
 const SEARCH_LIMIT = 300;
@@ -46,10 +48,12 @@ export async function GET(request) {
   }
 
   const q = (searchParams.get('q') || '').trim();
-  if (q) {
+  const fields = Object.fromEntries(INVOICE_SEARCH_FIELDS.map(({ key }) => [key, (searchParams.get(key) || '').trim()]));
+  const byField = Object.values(fields).some(Boolean);
+  if (q || byField) {
     // Every client's invoices: never for the client app's own session.
     if (!(await isStaffRequest(request))) return NextResponse.json({ error: 'not authorized' }, { status: 403 });
-    const ids = await searchInvoiceIds(supabase, parseInvoiceSearch(q));
+    const ids = await searchInvoiceIds(supabase, byField ? fieldSearchTerms(fields) : parseInvoiceSearch(q));
     if (ids !== null) {
       const rows = [];
       for (let i = 0; i < ids.length; i += 200) {
