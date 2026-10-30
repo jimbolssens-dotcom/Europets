@@ -82,6 +82,7 @@ const PUBLIC_PATTERNS = [
   // and every route below that imports it.
   /^\/client-app(\/.*)?$/,
   /^\/client-app-manifest\.json$/, // the client app's install manifest (public/client-app-manifest.json): clients have no staff cookie, so the staff gate below redirected it to /login and Chrome refused to install the app ("This app cannot be installed")
+  /^\/social-uploads\/[\w.-]+\.(mp4|jpg|png)$/, // finished social media files (public/social-uploads) that Instagram and Facebook fetch to post (lib/socialDraft.js publicUrl): Meta has no staff cookie, so the gate sent it the login page and Facebook called the video unreadable
   /^\/client-app-sw\.js$/, // the client app's push-notification service worker (public/client-app-sw.js): a browser refuses to register one that redirects, and clients have no staff cookie, so the staff gate below sent every client's to /login
   /^\/api\/client-app\/.*$/,
   // A logged-in client requesting their own appointment (any type,
