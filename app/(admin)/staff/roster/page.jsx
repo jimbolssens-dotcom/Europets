@@ -14,6 +14,12 @@ import { supabase } from '@/lib/supabaseClient';
 import { buildStaffColorMap, ROLE_SECTION_TINTS } from '@/lib/staffColors';
 import InfoHint from '@/app/_components/InfoHint';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { readViewCache, writeViewCache, useRestoredView, loadReferenceList } from '@/lib/viewCache';
+
+// Every range this browser has loaded, kept (lib/viewCache.js) so the grid
+// paints straight away, on this visit or the next, and flipping between
+// weeks never blanks it out to "Loading..." and rebuilds it.
+const rosterCacheKey = (start, end) => `europets-roster-v1:${start}:${end}`;
 
 const WEEKDAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const SHIFTS = ['morning', 'afternoon'];
@@ -100,10 +106,12 @@ export default function StaffRosterPage() {
         if (!res.ok) {
           throw new Error(data?.error || 'Failed to load the roster');
         }
+        if (Array.isArray(data)) writeViewCache(rosterCacheKey(gridStartISO, gridEndISO), data);
         if (seq !== loadSeqRef.current) return;
         setError(null);
         setEntries(Array.isArray(data) ? data : []);
         setLoading(false);
+        prefetchNeighbours();
       })
       .catch((err) => {
         if (seq !== loadSeqRef.current) return;
@@ -113,6 +121,30 @@ export default function StaffRosterPage() {
         setLoading(false);
       });
   };
+  // The months either side, fetched quietly into the cache so flipping to
+  // them is instant too. Only the ones this browser doesn't have yet.
+  const prefetchNeighbours = () => {
+    for (const delta of [-1, 1]) {
+      const grid = buildMonthGrid(viewYear, viewMonthIndex + delta);
+      const start = toISODate(grid[0]);
+      const end = toISODate(grid[grid.length - 1]);
+      if (readViewCache(rosterCacheKey(start, end)) != null) continue;
+      fetch(`/api/staff-roster?start=${start}&end=${end}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (Array.isArray(data)) writeViewCache(rosterCacheKey(start, end), data);
+        })
+        .catch(() => {});
+    }
+  };
+  // This range as it last loaded here, shown at once while the fresh copy
+  // loads.
+  useRestoredView(rosterCacheKey(gridStartISO, gridEndISO), (cached) => {
+    if (!Array.isArray(cached)) return;
+    setEntries(cached);
+    setLoading(false);
+  });
+
   // The live-update subscription is set up once, so it calls whatever
   // loadEntries is current, not the one from when the page opened (which
   // reloaded the month first shown, wiping out any other week).
@@ -120,15 +152,14 @@ export default function StaffRosterPage() {
   loadEntriesRef.current = loadEntries;
 
   useEffect(() => {
-    setLoading(true);
+    // Dimmed only while there's no saved copy of this range to show.
+    setLoading(readViewCache(rosterCacheKey(gridStartISO, gridEndISO)) == null);
     loadEntries();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gridStartISO, gridEndISO]);
 
   useEffect(() => {
-    fetch('/api/staff')
-      .then((res) => res.json())
-      .then((data) => setStaff(Array.isArray(data) ? data : []));
+    loadReferenceList('/api/staff', setStaff);
 
     const channel = supabase
       .channel('staff-roster-changes')
@@ -365,14 +396,14 @@ export default function StaffRosterPage() {
           </div>
           {copyMessage && <p className="visit-meta roster-copy-message">{copyMessage}</p>}
 
-          {loading ? (
+          {loading && entries.length === 0 && staff.length === 0 ? (
             <p>Loading roster...</p>
           ) : staff.length === 0 ? (
             <p>
               No staff yet — add some on the <a href="/staff">Staff</a> page first.
             </p>
           ) : (
-            <div className="roster-table-wrap">
+            <div className={`roster-table-wrap${loading ? ' roster-refreshing' : ''}`}>
               <table className="roster-table">
                 <thead>
                   <tr>
@@ -450,14 +481,19 @@ export default function StaffRosterPage() {
                                         )}
                                       </div>
                                     ) : (
-                                      <button
-                                        type="button"
-                                        className="roster-toggle"
-                                        onClick={() => toggleCell(s, iso, shift)}
-                                        title={`${s.full_name} — ${formatShortDate(d)} ${SHIFT_LABELS[shift]} — click to add`}
-                                      >
-                                        +
-                                      </button>
+                                      <div className="roster-cell-on">
+                                        <button
+                                          type="button"
+                                          className="roster-toggle"
+                                          onClick={() => toggleCell(s, iso, shift)}
+                                          title={`${s.full_name} — ${formatShortDate(d)} ${SHIFT_LABELS[shift]} — click to add`}
+                                        >
+                                          +
+                                        </button>
+                                        {/* The same room as a ticked vet cell's C/S badges, so a
+                                            vet's row is one height whichever shifts are on. */}
+                                        {s.role === 'vet' && <div className="roster-capability-badges roster-badges-placeholder" aria-hidden="true" />}
+                                      </div>
                                     )}
                                   </td>
                                 );

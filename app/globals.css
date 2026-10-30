@@ -4121,6 +4121,15 @@ button.secondary:hover {
   display: flex;
   gap: 0.15rem;
 }
+.roster-badges-placeholder {
+  height: 1rem;
+}
+/* A range with no saved copy yet: the grid stays where it is, dimmed,
+   until its entries arrive, instead of blanking to "Loading...". */
+.roster-refreshing {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
 
 .roster-capability-badge {
   width: 1rem;
