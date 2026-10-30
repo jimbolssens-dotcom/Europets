@@ -438,6 +438,35 @@ function InvoicesPageInner() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [statusFilter, setStatusFilter] = useState('unpaid,partially_paid');
+  // The search box (GET /api/invoices?q=, lib/invoiceSearch.js): invoice,
+  // client or patient number, names, phone, item, amount, date, status.
+  // While there's a search, it replaces the filtered list.
+  const [search, setSearch] = useState('');
+  const [searchResults, setSearchResults] = useState(null); // { rows, total } | null
+  const [searching, setSearching] = useState(false);
+  const searchSeqRef = useRef(0);
+  const runSearch = (q) => {
+    const seq = ++searchSeqRef.current;
+    if (!q.trim()) {
+      setSearchResults(null);
+      setSearching(false);
+      return Promise.resolve();
+    }
+    setSearching(true);
+    return fetch(`/api/invoices?q=${encodeURIComponent(q.trim())}`)
+      .then(async (res) => {
+        const rows = await res.json();
+        if (seq !== searchSeqRef.current) return;
+        setSearchResults({ rows: Array.isArray(rows) ? rows : [], total: Number(res.headers.get('X-Total-Matches')) || (Array.isArray(rows) ? rows.length : 0) });
+      })
+      .catch(() => seq === searchSeqRef.current && setSearchResults({ rows: [], total: 0 }))
+      .finally(() => seq === searchSeqRef.current && setSearching(false));
+  };
+  useEffect(() => {
+    const t = setTimeout(() => runSearch(search), 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
   const [quotes, setQuotes] = useState([]);
   const [discardingQuoteId, setDiscardingQuoteId] = useState(null);
 
@@ -631,6 +660,24 @@ function InvoicesPageInner() {
           <option value="proforma">Quotes</option>
         </select>
       </PhoneTop>
+      <div className="invoice-search-row">
+      <div className="invoice-search">
+        <input
+          type="text"
+          inputMode="search"
+          enterKeyHint="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search: invoice, client, pet, phone, item, date…"
+          title="Invoice no. (INV-916), client or patient no., name, phone, item (PCR), amount (619.50), date (28/10, Oct 2026), status (paid, unpaid)"
+          aria-label="Search invoices"
+        />
+        {search && (
+          <button type="button" className="invoice-search-clear" onClick={() => setSearch('')} aria-label="Clear search">
+            ✕
+          </button>
+        )}
+      </div>
       <label className="phone-hide">
         Filter:{' '}
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
@@ -643,8 +690,33 @@ function InvoicesPageInner() {
           <option value="proforma">Quotes (Proforma)</option>
         </select>
       </label>
+      </div>
 
-      {statusFilter === 'proforma' ? (
+      {searchResults || searching ? (
+        searching && !searchResults ? (
+          <p className="visit-meta">Searching…</p>
+        ) : searchResults.rows.length === 0 ? (
+          <p>No invoices match “{search.trim()}”.</p>
+        ) : (
+          <div className="invoice-row-list">
+            <p className="visit-meta invoice-search-count">
+              {searchResults.total} invoice{searchResults.total === 1 ? '' : 's'} match{searchResults.total === 1 ? 'es' : ''}
+              {searchResults.total > searchResults.rows.length ? `, showing the newest ${searchResults.rows.length}` : ''} · all statuses
+            </p>
+            {searchResults.rows.map((inv) => (
+              <InvoiceRow
+                key={inv.id}
+                summary={inv}
+                catalog={catalog}
+                subcategories={subcategories}
+                staff={staff}
+                onCatalogChange={addCatalogItem}
+                onChanged={() => runSearch(search)}
+              />
+            ))}
+          </div>
+        )
+      ) : statusFilter === 'proforma' ? (
         loading ? (
           <p>Loading quotes...</p>
         ) : quotes.length === 0 ? (

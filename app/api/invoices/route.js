@@ -1,6 +1,9 @@
 // app/api/invoices/route.js
 // GET  /api/invoices?client_id=X&status=unpaid&visit_id=Y&hospitalization_id=Z  -> list invoices
 //      status accepts a comma-separated list (e.g. status=unpaid,partially_paid)
+//      ?q=... -> the Invoices page's search (lib/invoiceSearch.js): every
+//      invoice matching all the terms, whatever its status, newest first
+//      (at most SEARCH_LIMIT). Staff only.
 // POST /api/invoices                            -> open a new (empty) invoice
 //
 // An invoice can be tied to a visit (visit_id) or a hospitalization
@@ -14,6 +17,12 @@ import { selectAll } from '@/lib/selectAll';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
+import { parseInvoiceSearch } from '@/lib/invoiceSearch';
+import { searchInvoiceIds } from '@/lib/invoiceSearchServer';
+
+const SEARCH_LIMIT = 300;
+const LIST_SELECT =
+  '*, clients(full_name, phone, email, client_number), visits(patient_id, patients(name, patient_number)), hospitalizations(patient_id, patients(name, patient_number))';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -36,12 +45,27 @@ export async function GET(request) {
     }
   }
 
+  const q = (searchParams.get('q') || '').trim();
+  if (q) {
+    // Every client's invoices: never for the client app's own session.
+    if (!(await isStaffRequest(request))) return NextResponse.json({ error: 'not authorized' }, { status: 403 });
+    const ids = await searchInvoiceIds(supabase, parseInvoiceSearch(q));
+    if (ids !== null) {
+      const rows = [];
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data, error } = await supabase.from('invoices').select(LIST_SELECT).in('id', ids.slice(i, i + 200));
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        rows.push(...(data || []));
+      }
+      rows.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+      return NextResponse.json(rows.slice(0, SEARCH_LIMIT), { headers: { 'X-Total-Matches': String(rows.length) } });
+    }
+  }
+
   const buildQuery = () => {
     let query = supabase
       .from('invoices')
-      .select(
-        '*, clients(full_name, phone, email, client_number), visits(patient_id, patients(name, patient_number)), hospitalizations(patient_id, patients(name, patient_number))'
-      )
+      .select(LIST_SELECT)
       .order('created_at', { ascending: false });
 
     if (clientId) query = query.eq('client_id', clientId);
