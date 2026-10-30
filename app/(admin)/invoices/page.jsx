@@ -15,7 +15,6 @@ import { Fragment, Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import CatalogPicker from '@/app/_components/CatalogPicker';
-import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import { INVOICE_SEARCH_FIELDS } from '@/lib/invoiceSearch';
 
 const emptyInvoiceSearch = Object.fromEntries(INVOICE_SEARCH_FIELDS.map((f) => [f.key, '']));
@@ -485,6 +484,49 @@ function InvoicesPageInner() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
+  // The same fields find the client to open a new invoice for: Client #,
+  // Name and Phone through the clients search, Patient # and Name through
+  // the pets (their owners). The only client search on the page.
+  const [owners, setOwners] = useState([]); // [{ id, full_name, client_number, pets }]
+  const ownerSeqRef = useRef(0);
+  useEffect(() => {
+    const clientNo = search.client_no.trim();
+    const patientNo = search.patient_no.trim().replace(/^#/, '');
+    const name = search.name.trim();
+    const phone = search.phone.replace(/\D/g, '');
+    const seq = ++ownerSeqRef.current;
+    if (!clientNo && !patientNo && name.length < 2 && phone.length < 4) {
+      setOwners([]);
+      return undefined;
+    }
+    const t = setTimeout(async () => {
+      const clientParams = new URLSearchParams();
+      if (clientNo) clientParams.set('client_number', clientNo);
+      if (phone.length >= 4) clientParams.set('phone', phone.slice(-9));
+      const petParams = new URLSearchParams();
+      if (patientNo) petParams.set('patient_number', patientNo);
+      const asJson = (url) => fetch(url).then((r) => r.json()).then((d) => (Array.isArray(d) ? d : [])).catch(() => []);
+      const [byClient, byClientName, byPet] = await Promise.all([
+        clientNo || phone.length >= 4 ? asJson(`/api/clients?${clientParams}${name.length >= 2 && !patientNo ? `&name=${encodeURIComponent(name)}` : ''}`) : [],
+        !clientNo && phone.length < 4 && !patientNo && name.length >= 2 ? asJson(`/api/clients?name=${encodeURIComponent(name)}`) : [],
+        patientNo || (!clientNo && phone.length < 4 && name.length >= 2)
+          ? asJson(`/api/patients?${patientNo ? petParams : `name=${encodeURIComponent(name)}`}`)
+          : [],
+      ]);
+      if (seq !== ownerSeqRef.current) return;
+      const found = new Map();
+      for (const c of [...byClient, ...byClientName]) found.set(c.id, { id: c.id, full_name: c.full_name, client_number: c.client_number, pets: [] });
+      for (const pet of byPet) {
+        if (!pet.client_id) continue;
+        if (clientNo && !found.has(pet.client_id)) continue;
+        const o = found.get(pet.client_id) || { id: pet.client_id, full_name: pet.clients?.full_name || '', client_number: null, pets: [] };
+        o.pets.push(pet.name);
+        found.set(pet.client_id, o);
+      }
+      setOwners([...found.values()].slice(0, 6));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [search.client_no, search.patient_no, search.name, search.phone]);
   const [quotes, setQuotes] = useState([]);
   const [discardingQuoteId, setDiscardingQuoteId] = useState(null);
 
@@ -678,7 +720,7 @@ function InvoicesPageInner() {
         </div>
       </div>
 
-      <div className="split">
+      <div className="split invoices-split">
       <div className="split-main">
       <PhoneTop>
         <select className="phone-top-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter">
@@ -691,22 +733,6 @@ function InvoicesPageInner() {
           <option value="proforma">Quotes</option>
         </select>
       </PhoneTop>
-      <div className="invoice-field-search">
-        {INVOICE_SEARCH_FIELDS.map((f) => (
-          <input
-            key={f.key}
-            type="text"
-            inputMode={INVOICE_FIELD_INPUT_MODE[f.key] || 'text'}
-            enterKeyHint="search"
-            placeholder={f.label}
-            title={INVOICE_FIELD_HINTS[f.key]}
-            aria-label={`Search by ${f.label.toLowerCase()}`}
-            value={search[f.key]}
-            onChange={(e) => setSearch({ ...search, [f.key]: e.target.value })}
-          />
-        ))}
-      </div>
-
       {searchResults || searching ? (
         searching && !searchResults ? (
           <p className="visit-meta">Searching…</p>
@@ -806,12 +832,33 @@ function InvoicesPageInner() {
       </div>
 
       <div className="split-aside">
-      <form className="card" onSubmit={handleSubmit} ref={openInvoiceFormRef}>
-        <h2>Open Invoice</h2>
+      <form className="card invoice-find-card" onSubmit={handleSubmit} ref={openInvoiceFormRef}>
+        <h2>Search &amp; open invoice</h2>
         {error && <p className="error">{error}</p>}
+        <div className="invoice-field-search">
+          {INVOICE_SEARCH_FIELDS.map((f) => (
+            <input
+              key={f.key}
+              type="text"
+              inputMode={INVOICE_FIELD_INPUT_MODE[f.key] || 'text'}
+              enterKeyHint="search"
+              placeholder={f.label}
+              title={INVOICE_FIELD_HINTS[f.key]}
+              aria-label={`Search by ${f.label.toLowerCase()}`}
+              value={search[f.key]}
+              onChange={(e) => setSearch({ ...search, [f.key]: e.target.value })}
+            />
+          ))}
+        </div>
+        {searchActive && (
+          <p className="invoice-find-hint phone-hide">
+            Matching invoices are in the list.{' '}
+            <button type="button" className="invoice-search-clear-link" onClick={() => setSearch(emptyInvoiceSearch)}>Clear</button>
+          </p>
+        )}
         {selectedOwner ? (
           <p className="booking-owner-picked">
-            Client: <strong>{selectedOwner.full_name}</strong>{' '}
+            For <strong>{selectedOwner.full_name}</strong>{' '}
             <button
               type="button"
               onClick={() => {
@@ -822,34 +869,46 @@ function InvoicesPageInner() {
               Change
             </button>
           </p>
+        ) : owners.length > 0 ? (
+          <div className="invoice-find-owners">
+            <span>Open a new invoice for:</span>
+            {owners.map((o) => (
+              <button
+                type="button"
+                key={o.id}
+                onClick={() => {
+                  setSelectedOwner({ id: o.id, full_name: o.full_name });
+                  setForm({ ...form, client_id: o.id, visit_id: '' });
+                }}
+              >
+                <strong>{o.full_name}</strong>
+                {o.client_number ? ` #${o.client_number}` : ''}
+                {o.pets.length ? ` · ${o.pets.join(', ')}` : ''}
+              </button>
+            ))}
+          </div>
         ) : (
-          <ClientOrPatientSearch
-            placeholder="Search for the client..."
-            onPickClient={(c) => {
-              setSelectedOwner({ id: c.id, full_name: c.full_name });
-              setForm({ ...form, client_id: c.id, visit_id: '' });
-            }}
-            onPickPatient={(p) => {
-              setSelectedOwner({ id: p.client_id, full_name: p.clients?.full_name || '' });
-              setForm({ ...form, client_id: p.client_id, visit_id: '' });
-            }}
-          />
+          <p className="invoice-find-hint phone-hide">To open a new invoice, find the client by Client #, Patient #, Name or Phone.</p>
         )}
-        <select
-          disabled={!form.client_id}
-          value={form.visit_id}
-          onChange={(e) => setForm({ ...form, visit_id: e.target.value })}
-        >
-          <option value="">Link to a visit (optional)...</option>
-          {visitsForClient.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.patients?.name} — {formatDateTime(v.started_at)}
-            </option>
-          ))}
-        </select>
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Opening...' : 'Open'}
-        </button>
+        {form.client_id && (
+          <>
+            <select
+              disabled={!form.client_id}
+              value={form.visit_id}
+              onChange={(e) => setForm({ ...form, visit_id: e.target.value })}
+            >
+              <option value="">Link to a visit (optional)...</option>
+              {visitsForClient.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.patients?.name} — {formatDateTime(v.started_at)}
+                </option>
+              ))}
+            </select>
+            <button type="submit" disabled={submitting || !form.client_id}>
+              {submitting ? 'Opening...' : 'Open'}
+            </button>
+          </>
+        )}
       </form>
       </div>
       </div>

@@ -13425,17 +13425,21 @@ form.card.stock-add .stock-form input[type='number'] {
   margin: 0;
 }
 
-/* Invoices: the search fields, one per thing like the Clients page's
-   search, four to a row on phones too (two rows), so the list still shows. */
+/* Invoices: one "Search & open invoice" card on the right holds the search
+   fields (one per thing, like the Clients page's search) and, under them,
+   the clients they match to open a new invoice for. Two fields to a row
+   in the side column; on phones the card goes above the list, four to a
+   row (two rows), so the list still shows. */
 .invoice-field-search {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.45rem;
-  margin: 0.25rem 0 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin: 0.3rem 0 0.5rem;
 }
-.invoice-field-search input {
+form.card .invoice-field-search input {
   width: 100%;
   min-width: 0;
+  margin: 0;
   padding: 0.45rem 0.6rem;
   border: 1px solid #ddd;
   border-radius: 6px;
@@ -13443,24 +13447,71 @@ form.card.stock-add .stock-form input[type='number'] {
   font-family: inherit;
   background: white;
 }
-.invoice-field-search input:focus {
+form.card .invoice-field-search input:focus {
   outline: none;
   border-color: var(--pink);
   box-shadow: 0 0 0 3px var(--pink-tint);
 }
-.invoice-field-search input:not(:placeholder-shown) {
+form.card .invoice-field-search input:not(:placeholder-shown) {
   border-color: var(--pink);
   background: var(--pink-tint);
 }
-@media (max-width: 700px) {
+.invoice-find-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: #6b6a66;
+}
+.invoice-find-owners {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.8rem;
+  color: #6b6a66;
+}
+form.card .invoice-find-owners button {
+  width: 100%;
+  margin: 0;
+  text-align: left;
+  background: white;
+  color: var(--ink);
+  border: 1px solid #e3e1dc;
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+  box-shadow: none;
+}
+form.card .invoice-find-owners button:hover {
+  border-color: var(--pink);
+  background: var(--pink-tint);
+}
+@media (max-width: 900px) {
+  .invoices-split {
+    gap: 0.6rem;
+  }
+  .invoices-split .split-aside {
+    order: -1;
+  }
+  .invoices-split .split-aside form.card {
+    margin-bottom: 0;
+  }
+  .invoice-find-card h2 {
+    display: none;
+  }
   .invoice-field-search {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.3rem;
   }
-  .invoice-field-search input {
-    padding: 0.4rem 0.4rem;
+  form.card .invoice-field-search input {
+    padding: 0.4rem 0.35rem;
     font-size: 0.8rem;
   }
+  form.card.invoice-find-card {
+    padding: 0.6rem;
+  }
 }
+form.card .invoice-search-clear-link,
 .invoice-search-clear-link {
   width: auto;
   margin: 0;
