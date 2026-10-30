@@ -48,7 +48,7 @@ test('the float runs to September, the app from October; costs follow the float 
   const months = combinedMonths({ floatMonths, app, now: Date.parse('2026-10-15T08:00:00Z') });
   assert.deepEqual(months.map((m) => m.month), ['2026-08-01', '2026-09-01', '2026-10-01']);
   assert.deepEqual(months.map((m) => [m.source, m.takings, m.costSource, m.outgoing, m.netProfit]), [
-    ['old', 300, 'old', 180, 40],
+    ['old', 300, 'old', 260, 40],
     ['old', 310, 'app', 250, null],
     ['app', 75, 'app', 90, null],
   ]);
@@ -60,7 +60,7 @@ test('a one-off cost is left out of outgoing and net profit', () => {
     floatMonths: [{ month: '2023-09-01', takings: 243, outgoing: 534, net_profit: -347, fixed_costs: 77, costs_complete: true, one_off_costs: 374, one_off_note: 'Property purchase' }],
     now: Date.parse('2023-09-15T08:00:00Z'),
   });
-  assert.deepEqual([m.outgoing, m.netProfit, m.oneOff, m.oneOffNote], [160, 27, 374, 'Property purchase']);
+  assert.deepEqual([m.outgoing, m.netProfit, m.oneOff, m.oneOffNote], [237, 27, 374, 'Property purchase']);
 });
 
 test('year on year puts each month under its calendar year', () => {

@@ -236,7 +236,7 @@ export default function AccountingHistoryPage() {
               />
             </Card>
 
-            <Card wide title="Every month: takings and outgoing" why="Outgoing is everything paid out from the float (stock, clinic use, staff, other), then the app's expenses from Sep 26. Salaries paid by WPS sit under net profit.">
+            <Card wide title="Every month: takings and outgoing" why="Outgoing is everything paid out: the float's stock, clinic use, staff and other, plus its fixed costs (WPS and cash salaries, sponsor, SEWA, landline), then the app's expenses from Sep 26.">
               <Legend items={[{ label: 'Takings', color: 'var(--chart-1)' }, { label: 'Outgoing', color: 'var(--chart-2)' }]} />
               <LineChart
                 labels={labels}

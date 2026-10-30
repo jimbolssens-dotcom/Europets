@@ -143,7 +143,11 @@ export default function AccountingChartsPage() {
       {!data && !error && <p>Loading...</p>}
       {data && (
         <div className="acct-chart-grid">
-          <Card wide title="Takings, by payment method" why="Everything received, including payments on old-system balances.">
+          <Card
+            wide
+            title="Takings, by payment method"
+            why={`Everything received, including payments on old-system balances.${data.oldFloatBuckets.length ? " Before Oct 26, from the old system's float sheets." : ''}`}
+          >
             <Legend items={takingsSeries} />
             <BarChart buckets={data.buckets} unit={unit} series={takingsSeries} stacked />
           </Card>
@@ -242,7 +246,11 @@ export default function AccountingChartsPage() {
             <HBars rows={data.spending.map((r) => ({ ...r, label: SPEND_LABELS[r.label] || r.label }))} color="var(--chart-2)" />
           </Card>
 
-          <Card wide title="Month by month: takings vs outgoing" why="The last 12 months, whichever range is picked above. Fills in as the months go by.">
+          <Card
+            wide
+            title="Month by month: takings vs outgoing"
+            why={`The last 12 months, whichever range is picked above.${data.trend.oldFloatBuckets.length ? " Before the app, from the old system's float sheets: takings, and outgoing with the fixed costs (salaries, sponsor, SEWA). Older years on the History page." : ''}`}
+          >
             <Legend items={[{ label: 'Takings', color: 'var(--chart-1)' }, { label: 'Outgoing', color: 'var(--chart-2)' }]} />
             <BarChart
               buckets={data.trend.buckets}

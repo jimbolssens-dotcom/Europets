@@ -4,7 +4,8 @@
 // lib/accountingCharts.js: the last 8 weeks by week, or the last 12 months by
 // month, plus the last 12 months of takings and outgoing for the trend chart
 // whichever range is picked, and the client app's login-code requests and
-// logins (migration 128) with how many clients use it. Behind the accounting password like the rest of
+// logins (migration 128) with how many clients use it. Takings and outgoing
+// from before the app come from the old system's float sheets (migration 235). Behind the accounting password like the rest of
 // /api/accounting (middleware.js).
 
 import { NextResponse } from 'next/server';
@@ -72,7 +73,20 @@ export async function GET(request) {
         .order('id')
     ),
   ]);
-  for (const res of [payRes, legacyRes, invRes, lineRes, expRes, clientRes, unpaidRes, discRes]) {
+  // The old system's float sheets for whatever part of the range is before
+  // the app (migration 235; server-only, like legacy_payments).
+  const [floatDaysRes, floatMonthsRes] = await Promise.all([
+    selectAll(() =>
+      supabaseAdmin
+        .from('old_float_days')
+        .select('sheet, sheet_row, day, shift, cash, card, online, outgoing')
+        .gte('day', startKey)
+        .order('sheet')
+        .order('sheet_row')
+    ),
+    supabaseAdmin.from('old_float_months').select('month, outgoing, fixed_costs, one_off_costs, costs_complete').gte('month', startKey),
+  ]);
+  for (const res of [payRes, legacyRes, invRes, lineRes, expRes, clientRes, unpaidRes, discRes, floatDaysRes, floatMonthsRes]) {
     if (res.error) return NextResponse.json({ error: res.error.message }, { status: 500 });
   }
 
@@ -87,6 +101,7 @@ export async function GET(request) {
   const { data: staff } = await supabase.from('staff').select('id, full_name');
   const staffName = new Map((staff || []).map((s) => [s.id, String(s.full_name || '').replace(/\s+/g, ' ').trim()]));
 
+  const oldFloat = { days: floatDaysRes.data, months: floatMonthsRes.data };
   const data = buildChartData({
     unit,
     buckets,
@@ -99,6 +114,7 @@ export async function GET(request) {
     expenses: expRes.data,
     clients: clientRes.data,
     unpaid: unpaidRes.data,
+    oldFloat,
   });
   // The client app: who asked for a login code, who logged in, who uses it.
   const since30 = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -110,12 +126,12 @@ export async function GET(request) {
   ]);
   if (codesRes.error) return NextResponse.json({ error: codesRes.error.message }, { status: 500 });
   const app = appLoginStats({ codes: codesRes.data, unit, buckets, staffPhones: (staffPhones || []).map((s) => s.whatsapp_phone) });
-  const trend = buildChartData({ unit: 'month', buckets: months, now, payments: payRes.data, legacyPayments: legacyRes.data, expenses: expRes.data });
+  const trend = buildChartData({ unit: 'month', buckets: months, now, payments: payRes.data, legacyPayments: legacyRes.data, expenses: expRes.data, oldFloat });
 
   return NextResponse.json(
     {
       ...data,
-      trend: { buckets: months, takings: trend.takingsTotal, outgoing: trend.outgoing },
+      trend: { buckets: months, takings: trend.takingsTotal, outgoing: trend.outgoing, oldFloatBuckets: trend.oldFloatBuckets },
       app: { ...app, totals: { ...app.totals, usedEver: usedEver || 0, used30: used30 || 0 } },
     },
     { headers: { 'Cache-Control': 'no-store' } }

@@ -111,3 +111,49 @@ test('discounts count on the day they were given, VAT included, not by the invoi
   assert.equal(d.discountCount['2026-10-19'], 1);
   assert.equal(d.discounts['2026-10-26'], 150);
 });
+
+test('before the app, takings and outgoing come from the old float, without counting September twice', () => {
+  const oldFloat = {
+    days: [
+      { day: '2026-08-10', shift: 1, cash: 10, card: 100, online: 20, outgoing: 50 },
+      { day: '2026-09-20', shift: 1, cash: 5, card: 200, online: 0, outgoing: 0 },
+      { day: '2026-09-01', shift: 0, cash: 0, card: 0, online: 0, outgoing: 7 }, // a cost-only row
+    ],
+    months: [
+      { month: '2026-08-01', outgoing: 50, fixed_costs: 80, one_off_costs: null, costs_complete: true },
+      { month: '2026-09-01', outgoing: 7, fixed_costs: 0, costs_complete: false },
+    ],
+  };
+  const d = buildChartData({
+    unit: 'month',
+    buckets: ['2026-08-01', '2026-09-01', '2026-10-01'],
+    payments: [
+      { amount: 999, payment_method: 'card', paid_at: '2026-09-20T08:00:00Z' }, // in the float already
+      { amount: 40, payment_method: 'cash', paid_at: '2026-10-02T08:00:00Z' },
+    ],
+    legacyPayments: [{ amount: 888, payment_method: 'Cash', paid_at: '2026-09-21T08:00:00Z' }],
+    expenses: [
+      { total: 9, category: 'supplies', expense_date: '2026-08-12' }, // the float has August's costs
+      { total: 250, category: 'salaries', expense_date: '2026-09-25' },
+      { total: 60, category: 'rent', expense_date: '2026-10-01' },
+    ],
+    oldFloat,
+  });
+  assert.deepEqual(d.takingsTotal, { '2026-08-01': 130, '2026-09-01': 205, '2026-10-01': 40 });
+  assert.equal(d.takings.card['2026-09-01'], 200);
+  assert.equal(d.collected['2026-09-01'], 999); // new invoices only, as before
+  assert.deepEqual(d.outgoing, { '2026-08-01': 130, '2026-09-01': 250, '2026-10-01': 60 });
+  assert.deepEqual(d.oldFloatBuckets, ['2026-08-01', '2026-09-01']);
+});
+
+test('without the old float, nothing changes', () => {
+  const d = buildChartData({
+    unit: 'week',
+    buckets: ['2026-09-14'],
+    payments: [{ amount: 70, payment_method: 'card', paid_at: '2026-09-15T08:00:00Z' }],
+    expenses: [{ total: 12, category: 'supplies', expense_date: '2026-09-15' }],
+  });
+  assert.equal(d.takingsTotal['2026-09-14'], 70);
+  assert.equal(d.outgoing['2026-09-14'], 12);
+  assert.deepEqual(d.oldFloatBuckets, []);
+});
