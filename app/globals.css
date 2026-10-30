@@ -3984,6 +3984,25 @@ button.secondary:hover {
   color: var(--pink-dark);
 }
 
+/* On the roster nearly every day has a count, so it sits under the day
+   number instead of on its corner, where it covered the digits. */
+.roster-layout .mini-cal-day {
+  flex-direction: column;
+  aspect-ratio: auto;
+  min-height: 2.1rem;
+  gap: 1px;
+  line-height: 1;
+}
+.roster-layout .mini-cal-day-count {
+  position: static;
+  min-width: 0;
+  height: auto;
+  padding: 0 3px;
+  border-radius: 999px;
+  font-size: 0.52rem;
+  font-weight: 600;
+}
+
 /* Staff Roster page (app/(admin)/staff/roster) — mini month calendar
    (reusing .date-nav/.mini-cal-* from the Appointments page above) beside
    a week grid: every staff member x every day x morning/afternoon. */

@@ -9,13 +9,13 @@
 
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { buildStaffColorMap, ROLE_SECTION_TINTS } from '@/lib/staffColors';
 import InfoHint from '@/app/_components/InfoHint';
 import { formatShortDate } from '@/lib/formatTimestamp';
 
-const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const WEEKDAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const SHIFTS = ['morning', 'afternoon'];
 const SHIFT_LABELS = { morning: 'AM', afternoon: 'PM' };
 // Row order for the roster grid — vets first (who's actually seeing
@@ -51,12 +51,14 @@ function addDays(d, n) {
   return copy;
 }
 
-// A 6-row Sun-start grid of Date objects covering the given month, padded
-// with the trailing days of the previous/next month — same approach as
-// the Appointments page's mini calendar.
+// A 6-row grid of Date objects covering the given month, padded with the
+// trailing days of the previous/next month. Rows start on Monday, like the
+// roster's weeks, so the selected week is always one row: with Sunday-start
+// rows a week's Sunday sat on the next row, and clicking a Sunday that
+// opens a month picked the week before it in the previous month.
 function buildMonthGrid(year, monthIndex) {
   const firstOfMonth = new Date(year, monthIndex, 1);
-  const startOffset = firstOfMonth.getDay();
+  const startOffset = (firstOfMonth.getDay() + 6) % 7; // days since Monday
   const gridStart = new Date(year, monthIndex, 1 - startOffset);
 
   const days = [];
@@ -79,26 +81,43 @@ export default function StaffRosterPage() {
   const [copyMessage, setCopyMessage] = useState(null);
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonthIndex), [viewYear, viewMonthIndex]);
-  const gridStartISO = toISODate(monthGrid[0]);
-  const gridEndISO = toISODate(monthGrid[monthGrid.length - 1]);
+  // Load whatever's on screen: the mini calendar's six weeks and the
+  // selected week, which can reach outside them.
+  const shownWeekStartISO = toISODate(weekStart);
+  const shownWeekEndISO = toISODate(addDays(weekStart, 6));
+  const gridStartISO = [toISODate(monthGrid[0]), shownWeekStartISO].sort()[0];
+  const gridEndISO = [toISODate(monthGrid[monthGrid.length - 1]), shownWeekEndISO].sort()[1];
 
-  const loadEntries = () =>
-    fetch(`/api/staff-roster?start=${gridStartISO}&end=${gridEndISO}`)
+  // Only the latest load may land: a slower reply for a range no longer on
+  // screen used to overwrite the week being looked at, so the roster
+  // flashed up and then emptied.
+  const loadSeqRef = useRef(0);
+  const loadEntries = () => {
+    const seq = ++loadSeqRef.current;
+    return fetch(`/api/staff-roster?start=${gridStartISO}&end=${gridEndISO}`)
       .then(async (res) => {
         const data = await res.json().catch(() => null);
         if (!res.ok) {
           throw new Error(data?.error || 'Failed to load the roster');
         }
+        if (seq !== loadSeqRef.current) return;
         setError(null);
         setEntries(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch((err) => {
+        if (seq !== loadSeqRef.current) return;
         setError(
           `${err.message} — if you just added this feature, make sure migration 034_staff_roster.sql has been run and RLS is disabled on staff_roster_entries.`
         );
         setLoading(false);
       });
+  };
+  // The live-update subscription is set up once, so it calls whatever
+  // loadEntries is current, not the one from when the page opened (which
+  // reloaded the month first shown, wiping out any other week).
+  const loadEntriesRef = useRef(loadEntries);
+  loadEntriesRef.current = loadEntries;
 
   useEffect(() => {
     setLoading(true);
@@ -113,7 +132,7 @@ export default function StaffRosterPage() {
 
     const channel = supabase
       .channel('staff-roster-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_roster_entries' }, () => loadEntries())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_roster_entries' }, () => loadEntriesRef.current())
       .subscribe();
 
     return () => supabase.removeChannel(channel);
