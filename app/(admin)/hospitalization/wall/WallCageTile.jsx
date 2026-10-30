@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 import styles from './page.module.css';
+import { uaeDate, wallItemsForToday } from '@/lib/wallPlanItems';
 
 // Same tap-to-log-a-worksheet-entry mechanism as DayTreatmentPlan/
 // ProcedureChecklist (POST/PATCH .../notes, tagged with plan_item_ids) —
@@ -13,8 +14,9 @@ import styles from './page.module.css';
 // admission's own page to tick a task would be too slow.
 const CONSOLIDATE_WINDOW_MS = 5 * 60 * 1000;
 
+// Today in the UAE (UTC's date is still yesterday until 4am).
 function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
+  return uaeDate();
 }
 
 function formatTime(iso) {
@@ -30,7 +32,9 @@ export default function WallCageTile({ cage, hospitalization, details, authorId,
   // flag still lights up from vitals_weight_overdue, and from
   // scheduled_update_overdue once that's driven by a missed temperature
   // check (see attachScheduledUpdateStatus).
-  const planItems = (details?.planItems || []).filter(
+  // And only today's: a one-time item shows on the day it was added, not
+  // every day after (lib/wallPlanItems.js).
+  const planItems = wallItemsForToday(details?.planItems).filter(
     (item) => item.kind !== 'vitals_temperature' && item.kind !== 'vitals_weight'
   );
   const todayNotes = details?.todayNotes || [];

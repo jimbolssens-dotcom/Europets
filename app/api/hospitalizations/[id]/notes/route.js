@@ -21,6 +21,7 @@ import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { mirrorVitalsToLinkedHospitalizations } from '@/lib/hospitalizationVitalsSync';
 import { resolvePlanItemBillable } from '@/lib/planItemBilling';
 import { temperatureError } from '@/lib/bodyTemperature';
+import { uaeDate } from '@/lib/wallPlanItems';
 
 // See app/api/hospitalizations/[id]/route.js — same caching gotcha, and
 // this is the route the client portal's Temp/Weight/Appetite fields
@@ -118,7 +119,7 @@ export async function POST(request, { params }) {
       {
         hospitalization_id: params.id,
         author_id: author_id || null,
-        note_date: note_date || new Date().toISOString().slice(0, 10),
+        note_date: note_date || uaeDate(), // the UAE day, not UTC's
         appetite: appetite || null,
         condition: condition || null,
         temperature_c: temperature_c !== undefined && temperature_c !== '' ? Number(temperature_c) : null,

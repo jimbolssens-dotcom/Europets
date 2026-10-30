@@ -6,9 +6,12 @@ import WallFloorPlan from './WallFloorPlan';
 import WallCageTile from './WallCageTile';
 import { supabase } from '@/lib/supabaseClient';
 import styles from './page.module.css';
+import { uaeDate } from '@/lib/wallPlanItems';
 
+// Today in the UAE: UTC's date was still yesterday until 4am, so the
+// wall counted yesterday's ticks as today's.
 function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
+  return uaeDate();
 }
 
 // Whoever is standing at the wall picks themselves once before tapping —

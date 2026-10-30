@@ -47,14 +47,16 @@ import { checklistItemAction } from '@/lib/checklistItemAction';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
 import { supabase } from '@/lib/supabaseClient';
 import { temperatureError } from '@/lib/bodyTemperature';
+import { uaeDate } from '@/lib/wallPlanItems';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 const QUICK_TASKS = ['Cage Cleaned', 'Water Changed', 'Food Given', 'Patient Checked', 'Walked / Exercised'];
 const LONG_PRESS_MS = 550;
 const CONSOLIDATE_WINDOW_MS = 5 * 60 * 1000;
 
+// Today in the UAE (UTC's date is still yesterday until 4am).
 function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
+  return uaeDate();
 }
 
 export default function DayTreatmentPlan({
