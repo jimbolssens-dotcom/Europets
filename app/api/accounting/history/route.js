@@ -1,6 +1,6 @@
 // app/api/accounting/history/route.js
-// GET /api/accounting/history -> the figures for the Accounting History page
-// (app/(admin)/accounting/history): the old system's float sheets (migration
+// GET /api/accounting/history -> the long-run figures on the Accounting
+// Charts page (app/(admin)/accounting/charts): the old system's float sheets (migration
 // 235) beside the app's own payments and expenses since, combined by
 // lib/floatHistory.js. Behind the accounting password like the rest of
 // /api/accounting (middleware.js).
@@ -83,6 +83,8 @@ export async function GET() {
       months,
       yearOnYear: yearOnYear(months),
       weekdays: weekdayAverages(days),
+      // Each day's takings, for the Charts page's "vs a year ago" by week.
+      days: Object.fromEntries([...days].map(([d, t]) => [d, Math.round(t * 100) / 100])),
       monthToDate: monthToDate(days, now),
       trailing: trailingYears(months, now),
       costs: costMix({ floatDays: daysRes.data, floatMonths }),

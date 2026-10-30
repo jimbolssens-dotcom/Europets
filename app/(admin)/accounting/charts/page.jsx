@@ -1,7 +1,9 @@
 // app/(admin)/accounting/charts/page.jsx
-// Accounting charts: takings by method, invoiced vs collected, what's owed
-// by age, average invoice, new clients, discounts, invoicing by type and by
-// vet, spending by category, and month by month takings vs outgoing. Figures
+// Accounting charts: takings by method and against the same period a year
+// ago, invoiced vs collected, what's owed by age, average invoice, new
+// clients, discounts, invoicing by type and by vet, spending by category,
+// and the long run from the old system's float sheets (every month since
+// Mar 2023, year on year, net profit, payment mix, weekdays, costs). Figures
 // from app/api/accounting/charts (lib/accountingCharts.js). Charts are plain
 // SVG drawn at the width they're given, so text stays readable on a phone;
 // every bar has its exact figure on hover (or tap).
@@ -10,6 +12,8 @@
 
 import { useEffect, useState } from 'react';
 import { short, aed, useWidth, niceMax, HBars, Legend, Card } from '../chartParts';
+import { YEAR_COLORS, MONTH_NAMES, METHODS, monthLabel, pct, change, LineChart, SignedBars, ShareBars, Kpi } from './historyParts';
+import { yearAgoTakings } from '@/lib/floatHistory';
 
 const SERIES = {
   card: { label: 'Card', color: 'var(--chart-1)' },
@@ -105,6 +109,17 @@ export default function AccountingChartsPage() {
   const [range, setRange] = useState('weeks');
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  // The long run (old float sheets + the app, app/api/accounting/history),
+  // loaded once whatever range is picked.
+  const [hist, setHist] = useState(null);
+  const [histError, setHistError] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/accounting/history')
+      .then((r) => r.json())
+      .then((d) => (d.error ? setHistError(d.error) : setHist(d)))
+      .catch((e) => setHistError(e.message));
+  }, []);
 
   useEffect(() => {
     setData(null);
@@ -121,15 +136,47 @@ export default function AccountingChartsPage() {
         .map((k) => ({ key: k, ...SERIES[k], values: data.takings[k] }))
     : [];
 
+  // The same weeks or months a year earlier, from the float's days.
+  const yearAgo = data && hist ? yearAgoTakings({ buckets: data.buckets, unit, days: hist.days, months: hist.months }) : {};
+  const comparable = data ? data.buckets.filter((b) => yearAgo[b] != null) : [];
+  const rangeTotal = comparable.reduce((t, b) => t + (data.takingsTotal[b] || 0), 0);
+  const yearAgoTotal = comparable.reduce((t, b) => t + (yearAgo[b] || 0), 0);
+  const histMonths = hist?.months || [];
+  const histLabels = histMonths.map((m) => monthLabel(m.month));
+  const methodMonths = histMonths.filter((m) => m.hasMethods && m.takings > 0);
+
   return (
     <div className="acct-charts">
       <div className="page-header">
         <h1>📈 Charts</h1>
         <div className="page-header-actions">
-          <a href="/accounting/history" className="button-link">📜 History</a>
           <a href="/accounting" className="button-link">← Accounting</a>
         </div>
       </div>
+      {hist && (
+        <div className="acct-history-kpis">
+          {hist.monthToDate?.rows?.[0] && (
+            <Kpi
+              label={`${monthLabel(hist.monthToDate.month, false)} 1 to ${hist.monthToDate.throughDay}`}
+              value={aed(hist.monthToDate.rows[0].total)}
+              note={
+                hist.monthToDate.rows
+                  .slice(1)
+                  .map((r) => `${r.year}: ${short(r.total)} (${change(pct(hist.monthToDate.rows[0].total, r.total))})`)
+                  .join(' · ') || 'No earlier year to compare'
+              }
+            />
+          )}
+          {hist.trailing && (
+            <Kpi
+              label={`${monthLabel(hist.trailing.from)} to ${monthLabel(hist.trailing.to)}`}
+              value={aed(hist.trailing.takings)}
+              note={`Year before: ${short(hist.trailing.priorTakings)} (${change(pct(hist.trailing.takings, hist.trailing.priorTakings))})`}
+            />
+          )}
+        </div>
+      )}
+      {histError && <p className="error">Older figures: {histError}</p>}
       <div className="acct-chart-range" role="tablist">
         {[['weeks', 'Last 8 weeks'], ['months', 'Last 12 months']].map(([key, label]) => (
           <button key={key} type="button" role="tab" aria-selected={range === key} className={range === key ? 'on' : ''} onClick={() => setRange(key)}>
@@ -151,6 +198,30 @@ export default function AccountingChartsPage() {
             <Legend items={takingsSeries} />
             <BarChart buckets={data.buckets} unit={unit} series={takingsSeries} stacked />
           </Card>
+
+          {hist && (
+            <Card
+              wide
+              title="This period vs a year ago"
+              why={unit === 'month' ? 'Takings each month beside the same month last year.' : 'Takings each week beside the same week last year (Monday to Sunday, 52 weeks back).'}
+            >
+              <Legend items={[{ label: 'A year ago', color: 'var(--chart-neutral)' }, { label: 'This year', color: 'var(--chart-1)' }]} />
+              <BarChart
+                buckets={data.buckets}
+                unit={unit}
+                total={false}
+                series={[
+                  { key: 'ago', label: 'A year ago', color: 'var(--chart-neutral)', values: yearAgo },
+                  { key: 'now', label: 'This year', color: 'var(--chart-1)', values: data.takingsTotal },
+                ]}
+              />
+              {yearAgoTotal > 0 && (
+                <p className="visit-meta">
+                  This range: {aed(rangeTotal)} against {aed(yearAgoTotal)} a year ago ({change(pct(rangeTotal, yearAgoTotal))})
+                </p>
+              )}
+            </Card>
+          )}
 
           <Card title="Invoiced vs collected" why="When invoiced runs ahead of collected, unpaid balances are building up (collected: new invoices only).">
             <Legend items={[{ label: 'Invoiced', color: 'var(--chart-neutral)' }, { label: 'Collected', color: 'var(--chart-1)' }]} />
@@ -246,22 +317,75 @@ export default function AccountingChartsPage() {
             <HBars rows={data.spending.map((r) => ({ ...r, label: SPEND_LABELS[r.label] || r.label }))} color="var(--chart-2)" />
           </Card>
 
-          <Card
-            wide
-            title="Month by month: takings vs outgoing"
-            why={`The last 12 months, whichever range is picked above.${data.trend.oldFloatBuckets.length ? " Before the app, from the old system's float sheets: takings, and outgoing with the fixed costs (salaries, sponsor, SEWA). Older years on the History page." : ''}`}
-          >
-            <Legend items={[{ label: 'Takings', color: 'var(--chart-1)' }, { label: 'Outgoing', color: 'var(--chart-2)' }]} />
-            <BarChart
-              buckets={data.trend.buckets}
-              unit="month"
-              total={false}
-              series={[
-                { key: 't', label: 'Takings', color: 'var(--chart-1)', values: data.trend.takings },
-                { key: 'o', label: 'Outgoing', color: 'var(--chart-2)', values: data.trend.outgoing },
-              ]}
-            />
-          </Card>
+          {hist && (
+            <>
+              <Card wide title="Every month: takings and outgoing" why="Since Mar 23: the old system's float sheets, then the app from Oct 26. Outgoing is everything paid out, salaries and the other fixed costs included.">
+                <Legend items={[{ label: 'Takings', color: 'var(--chart-1)' }, { label: 'Outgoing', color: 'var(--chart-2)' }]} />
+                <LineChart
+                  labels={histLabels}
+                  lines={[
+                    { key: 't', label: 'Takings', color: 'var(--chart-1)', values: histMonths.map((m) => m.takings || null), bold: true },
+                    { key: 'o', label: 'Outgoing', color: 'var(--chart-2)', values: histMonths.map((m) => m.outgoing || null) },
+                  ]}
+                />
+              </Card>
+
+              <Card wide title="Takings, year on year" why="Everything taken each month, a line per year. Tap a dot for the figure.">
+                <Legend items={hist.yearOnYear.years.map((y, i) => ({ label: y, color: YEAR_COLORS[Math.max(0, YEAR_COLORS.length - hist.yearOnYear.years.length + i)] }))} />
+                <LineChart
+                  labels={MONTH_NAMES}
+                  every={1}
+                  lines={hist.yearOnYear.years.map((y, i) => ({
+                    key: y,
+                    label: y,
+                    color: YEAR_COLORS[Math.max(0, YEAR_COLORS.length - hist.yearOnYear.years.length + i)],
+                    values: hist.yearOnYear.values[y],
+                    bold: i === hist.yearOnYear.years.length - 1,
+                  }))}
+                />
+              </Card>
+
+              <Card wide title="Net profit, by month" why="From the old float: takings less outgoing (Dr Jim's salary included) and the fixed costs. Red is a loss.">
+                <SignedBars
+                  labels={histLabels}
+                  values={histMonths.map((m) => m.netProfit)}
+                  titles={histMonths.map((m) => (m.netProfit == null ? '' : `${monthLabel(m.month)}: ${aed(m.netProfit)} (fixed costs ${aed(m.fixedCosts)})${m.oneOff ? `, before the one-off ${aed(m.oneOff)}` : ''}`))}
+                />
+                {histMonths.filter((m) => m.oneOff).map((m) => (
+                  <p key={m.month} className="visit-meta">
+                    {monthLabel(m.month)} leaves out a one-off {aed(m.oneOff)}: {m.oneOffNote}.
+                  </p>
+                ))}
+              </Card>
+
+              <Card title="How clients pay, over time" why="Each month's takings by method, as a share. PayPal/transfer in the float and the app's payment links and transfers count as online.">
+                <Legend items={METHODS} />
+                <ShareBars labels={methodMonths.map((m) => monthLabel(m.month))} rows={methodMonths} />
+              </Card>
+
+              <Card title="Busiest days of the week" why="Average takings on each day of the week, over every day the clinic took something since Jan 25.">
+                <HBars rows={hist.weekdays.map((d) => ({ label: d.label, value: d.value }))} />
+              </Card>
+
+              <Card wide title="Where the money went" why={`Average per month from the old float, over the ${hist.costs.months} months with its full cost side (Jan 25 to Aug 26).`}>
+                <HBars rows={hist.costs.rows} color="var(--chart-2)" />
+              </Card>
+
+              {hist.corrections.length > 0 && (
+                <Card wide title="Where the old float's own totals were off" why="These months are added up from the float's daily rows; the sheet's own totals said otherwise.">
+                  <ul className="acct-history-notes">
+                    {hist.corrections.map((c) => (
+                      <li key={c.month}>
+                        <strong>{monthLabel(c.month)}</strong>
+                        {c.sheetTakings != null && Math.abs(c.sheetTakings - c.takings) > 1 && ` takings ${aed(c.takings)}, the sheet says ${aed(c.sheetTakings)}.`}
+                        {c.sheetNetProfit != null && c.netProfit != null && Math.abs(c.sheetNetProfit - c.netProfit) > 1 && ` Net profit ${aed(c.netProfit)}, the sheet says ${aed(c.sheetNetProfit)}.`}
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

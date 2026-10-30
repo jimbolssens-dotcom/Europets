@@ -121,3 +121,13 @@ test('cost mix averages the complete daily-sheet months only', () => {
   // Dr Jim's salary: its own bar, not in the other staff.
   assert.deepEqual(mix.rows.map((r) => [r.key, r.value]), [['owner_salary', 50000], ['wps_salaries', 100], ['staff', 60], ['stock', 40], ['sponsor', 10]]);
 });
+
+test('a year ago: the same weekdays 52 weeks back, the same month last year', async () => {
+  const { yearAgoTakings } = await import('../lib/floatHistory.js');
+  // Mon 26 Oct 2026 -> Mon 27 Oct 2025, through Sun 2 Nov 2025.
+  const days = { '2025-10-27': 100, '2025-11-02': 50, '2025-11-03': 999, '2025-10-26': 999 };
+  assert.deepEqual(yearAgoTakings({ buckets: ['2026-10-26', '2026-11-02'], unit: 'week', days }), { '2026-10-26': 150, '2026-11-02': 999 });
+  assert.deepEqual(yearAgoTakings({ buckets: ['2026-12-28'], unit: 'week', days }), { '2026-12-28': null });
+  const months = [{ month: '2025-10-01', takings: 385052 }];
+  assert.deepEqual(yearAgoTakings({ buckets: ['2026-10-01', '2026-11-01'], unit: 'month', months }), { '2026-10-01': 385052, '2026-11-01': null });
+});

@@ -55,9 +55,6 @@ export default function AccountingOverviewPage() {
           <a href="/accounting/charts" className="button-link">
             📈 Charts
           </a>
-          <a href="/accounting/history" className="button-link">
-            📜 History
-          </a>
           <a href="/shift-tally" className="button-link">
             💰 Shift Tally
           </a>

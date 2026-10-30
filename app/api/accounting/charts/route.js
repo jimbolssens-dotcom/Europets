@@ -2,8 +2,7 @@
 // GET /api/accounting/charts?range=weeks|months -> the figures for the
 // Accounting charts page (app/(admin)/accounting/charts), bucketed by
 // lib/accountingCharts.js: the last 8 weeks by week, or the last 12 months by
-// month, plus the last 12 months of takings and outgoing for the trend chart
-// whichever range is picked, and the client app's login-code requests and
+// month, and the client app's login-code requests and
 // logins (migration 128) with how many clients use it. Takings and outgoing
 // from before the app come from the old system's float sheets (migration 235). Behind the accounting password like the rest of
 // /api/accounting (middleware.js).
@@ -21,9 +20,7 @@ export async function GET(request) {
   const unit = searchParams.get('range') === 'months' ? 'month' : 'week';
   const now = Date.now();
   const buckets = bucketsUpTo(now, unit, unit === 'month' ? 12 : 8);
-  const months = bucketsUpTo(now, 'month', 12);
-  // Fetch from whichever starts earlier: the picked range or the 12-month trend.
-  const startKey = buckets[0] < months[0] ? buckets[0] : months[0];
+  const startKey = buckets[0];
   const start = rangeStartIso(startKey);
   const rangeStart = rangeStartIso(buckets[0]);
 
@@ -126,12 +123,10 @@ export async function GET(request) {
   ]);
   if (codesRes.error) return NextResponse.json({ error: codesRes.error.message }, { status: 500 });
   const app = appLoginStats({ codes: codesRes.data, unit, buckets, staffPhones: (staffPhones || []).map((s) => s.whatsapp_phone) });
-  const trend = buildChartData({ unit: 'month', buckets: months, now, payments: payRes.data, legacyPayments: legacyRes.data, expenses: expRes.data, oldFloat });
 
   return NextResponse.json(
     {
       ...data,
-      trend: { buckets: months, takings: trend.takingsTotal, outgoing: trend.outgoing, oldFloatBuckets: trend.oldFloatBuckets },
       app: { ...app, totals: { ...app.totals, usedEver: usedEver || 0, used30: used30 || 0 } },
     },
     { headers: { 'Cache-Control': 'no-store' } }

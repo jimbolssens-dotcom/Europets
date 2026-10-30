@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 
 export function short(v) {
   const x = Number(v || 0);
+  if (x >= 1000000) return `${(x / 1000000).toFixed(2).replace(/\.?0+$/, '')}M`;
   if (x >= 100000) return `${Math.round(x / 1000)}k`;
   if (x >= 1000) return `${(x / 1000).toFixed(1).replace(/\.0$/, '')}k`;
   return String(Math.round(x));
