@@ -8133,6 +8133,14 @@ form.card.admit-patient-form {
   background: var(--void);
 }
 
+/* Client app home: the one quiet line under the reminders that unfolds
+   the vaccinations further out (lib/clientAppReminders.js). */
+.client-app-more-reminders {
+  display: block;
+  margin: 0.2rem 0 0.6rem;
+  font-size: 0.8rem;
+}
+
 .client-app-admission-alert {
   margin: 1rem 0;
 }

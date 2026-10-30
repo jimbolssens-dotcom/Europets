@@ -2,6 +2,10 @@
 // GET  /api/vaccinations?patient_id=X             -> one patient's vaccination history
 // GET  /api/vaccinations?due=true&within_days=30  -> due/overdue across all patients,
 //                                                      for the reminders dashboard
+// GET  /api/vaccinations?due=true&client_id=X     -> the same for one owner's pets,
+//                                                      in one request (the client app's
+//                                                      home, which used to ask per pet:
+//                                                      150 requests for a rescuer)
 // POST /api/vaccinations                          -> record a vaccination given
 
 import { supabase } from '@/lib/supabaseClient';
@@ -15,6 +19,7 @@ import { getClientSession } from '@/lib/clientAppAuth';
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const patientId = searchParams.get('patient_id');
+  const clientId = searchParams.get('client_id');
   const due = searchParams.get('due');
   const withPatient = due === 'true' || !patientId;
 
@@ -24,12 +29,24 @@ export async function GET(request) {
   // patient reminders query (no patient_id) this same route also serves.
   if (!(await isStaffRequest(request))) {
     const sessionClientId = await getClientSession(request);
+    // Their own pets: one pet (patient_id), or all of them (client_id).
     const { data: owner } = patientId
       ? await supabase.from('patients').select('client_id').eq('id', patientId).single()
-      : { data: null };
+      : { data: clientId ? { client_id: clientId } : null };
     if (!sessionClientId || !owner || sessionClientId !== owner.client_id) {
       return NextResponse.json({ error: 'not authorized' }, { status: 403 });
     }
+  }
+
+  // One owner's pets, for ?client_id= (paged, a rescuer can have hundreds).
+  let ownerPetIds = null;
+  if (clientId && !patientId) {
+    const { data: pets, error: petsError } = await selectAll(() =>
+      supabase.from('patients').select('id').eq('client_id', clientId).order('id')
+    );
+    if (petsError) return NextResponse.json({ error: petsError.message }, { status: 500 });
+    ownerPetIds = (pets || []).map((p) => p.id);
+    if (ownerPetIds.length === 0) return NextResponse.json([]);
   }
 
   // The due list needs patient/client details too, but doesn't embed them
@@ -42,8 +59,9 @@ export async function GET(request) {
   // an embed that's existed since day one) as a second query, and join
   // them here instead.
   // Paged (lib/selectAll.js): a single request stops at 1000 rows.
-  const { data, error } = await selectAll(() => {
+  const runQuery = (petIds) => selectAll(() => {
     let query = supabase.from('vaccinations').select('*, staff(full_name)');
+    if (petIds) query = query.in('patient_id', petIds);
 
     if (patientId) {
       // Scheduled-but-not-given rows (date_given null — a rabies reminder
@@ -65,6 +83,19 @@ export async function GET(request) {
     }
     return query.order('id');
   });
+  let data = [];
+  let error = null;
+  if (ownerPetIds) {
+    // In chunks, so the id list stays well inside a URL.
+    for (let i = 0; i < ownerPetIds.length && !error; i += 150) {
+      const res = await runQuery(ownerPetIds.slice(i, i + 150));
+      if (res.error) error = res.error;
+      else data.push(...res.data);
+    }
+    data.sort((a, b) => String(a.next_due_date).localeCompare(String(b.next_due_date)));
+  } else {
+    ({ data, error } = await runQuery(null));
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

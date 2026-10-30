@@ -18,6 +18,7 @@ import { catNames } from '@/lib/cattery';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
+import { consentRequestStillWanted } from '@/lib/consentRequestRelevance';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -28,7 +29,8 @@ export async function GET(request) {
   }
   // Public now (see middleware.js) — a non-staff caller must be asking
   // about their own requests.
-  if (!(await isStaffRequest(request))) {
+  const isStaff = await isStaffRequest(request);
+  if (!isStaff) {
     const sessionClientId = await getClientSession(request);
     if (sessionClientId !== clientId) {
       return NextResponse.json({ error: 'not authorized' }, { status: 403 });
@@ -36,9 +38,12 @@ export async function GET(request) {
   }
 
   const [{ data: visits }, { data: admissions }, { data: catteryStays }] = await Promise.all([
-    supabase.from('visits').select('id, patients(name)').eq('client_id', clientId),
-    supabase.from('hospitalizations').select('id, patients(name)').eq('client_id', clientId),
-    supabase.from('cattery_bookings').select('id, patients(name), cattery_booking_cats(patients(name))').eq('client_id', clientId),
+    supabase.from('visits').select('id, started_at, patients(name)').eq('client_id', clientId),
+    supabase.from('hospitalizations').select('id, discharged_at, patients(name)').eq('client_id', clientId),
+    supabase
+      .from('cattery_bookings')
+      .select('id, status, updated_at, date_out, patients(name), cattery_booking_cats(patients(name))')
+      .eq('client_id', clientId),
   ]);
 
   const visitIds = (visits || []).map((v) => v.id);
@@ -71,8 +76,17 @@ export async function GET(request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // The client's own app: an unsigned form drops off once its stay or
+  // consult is over (lib/consentRequestRelevance.js). Staff see them all.
+  const stays = {
+    visits: new Map((visits || []).map((v) => [v.id, v])),
+    hospitalizations: new Map((admissions || []).map((h) => [h.id, h])),
+    catteryBookings: new Map((catteryStays || []).map((b) => [b.id, b])),
+  };
+  const rows = isStaff ? data : data.filter((row) => row.status !== 'pending' || consentRequestStillWanted(row, stays));
+
   return NextResponse.json(
-    data.map((row) => ({
+    rows.map((row) => ({
       id: row.id,
       status: row.status,
       form_type: row.form_type,

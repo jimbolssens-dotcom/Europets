@@ -24,6 +24,7 @@ import { money, balanceDue, invoiceLabel } from '@/lib/paymentReminders';
 import { reportPdfHref } from '@/lib/clientAppReports';
 import { formatShortDate } from '@/lib/formatTimestamp';
 import { useClientAppRestore, saveClientAppCopy } from '@/app/_components/useClientAppCache';
+import { splitVaccineReminders } from '@/lib/clientAppReminders';
 
 const APPOINTMENT_TYPE_LABEL = {
   consult: 'Consult',
@@ -65,6 +66,9 @@ export default function ClientAppHomePage() {
   const [client, setClient] = useState(null);
   const [openAdmissions, setOpenAdmissions] = useState([]);
   const [reminders, setReminders] = useState([]);
+  // Vaccinations further out (or long overdue), folded behind one line.
+  const [laterReminders, setLaterReminders] = useState([]);
+  const [showLaterReminders, setShowLaterReminders] = useState(false);
   const [consentRequests, setConsentRequests] = useState([]);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [videoBookingLoading, setVideoBookingLoading] = useState(false);
@@ -98,6 +102,7 @@ export default function ClientAppHomePage() {
     setNextDueVaccine(d.nextDueVaccine || null);
     setNextAppointment(d.nextAppointment || null);
     setReminders(Array.isArray(d.reminders) ? d.reminders : []);
+    setLaterReminders(Array.isArray(d.laterReminders) ? d.laterReminders : []);
     setLoadingDashboard(false);
   });
 
@@ -132,25 +137,24 @@ export default function ClientAppHomePage() {
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
         setLatestInvoice(latestInv || null);
 
-        // Reminders banner: vaccines due (or overdue) across every pet
-        // within the same 30-day "due soon" window dueStatus already
-        // uses, plus the next appointment if it's within a week — the
-        // same underlying data the Vaccinations Due section and
-        // Appointments tab already show, just surfaced here as one
-        // combined "things to act on" list.
+        // Reminders banner: vaccinations due in the next two weeks (or only
+        // just overdue) across every pet, from one request, plus the next
+        // appointment if it's within a week. Anything further out, or long
+        // overdue, goes behind a quiet "more reminders" line
+        // (lib/clientAppReminders.js): an owner with a lot of pets used to
+        // get a wall of them, and one request per pet.
         const petList = Array.isArray(pets) ? pets : [];
-        const dueByPet = await Promise.all(
-          petList.map((pet) =>
-            fetch(`/api/vaccinations?patient_id=${pet.id}&due=true&within_days=30`)
+        const dueRows = petList.length
+          ? await fetch(`/api/vaccinations?client_id=${clientId}&due=true&within_days=30`)
               .then((res) => (res.ok ? res.json() : []))
-              .then((rows) => rows.map((r) => ({ ...r, petName: pet.name, petId: pet.id })))
-          )
-        );
+              .catch(() => [])
+          : [];
         if (cancelled) return;
-        const dueVaccines = dueByPet
-          .flat()
-          .sort((a, b) => new Date(a.next_due_date) - new Date(b.next_due_date));
-        setNextDueVaccine(dueVaccines[0] || null);
+        const { soon, later } = splitVaccineReminders(
+          (Array.isArray(dueRows) ? dueRows : []).map((r) => ({ ...r, petName: r.patients?.name || 'your pet', petId: r.patient_id }))
+        );
+        const dueVaccines = [...soon, ...later.filter((v) => v.next_due_date >= new Date().toISOString().slice(0, 10))];
+        setNextDueVaccine(soon[0] || dueVaccines[0] || null);
 
         const now = Date.now();
         const weekOut = now + 7 * 24 * 60 * 60 * 1000;
@@ -164,7 +168,7 @@ export default function ClientAppHomePage() {
         setNextAppointment(trueNextAppt || null);
         const upcomingAppt = trueNextAppt && new Date(trueNextAppt.start_time).getTime() <= weekOut ? trueNextAppt : null;
 
-        const items = dueVaccines.map((v) => {
+        const vaccineItem = (v) => {
           const status = dueStatus(v.next_due_date);
           return {
             key: `vax-${v.id}`,
@@ -174,7 +178,10 @@ export default function ClientAppHomePage() {
             } for ${v.petName}`,
             href: `/client-app/pets/${v.petId}`,
           };
-        });
+        };
+        const items = soon.map(vaccineItem);
+        const laterItems = later.map(vaccineItem);
+        setLaterReminders(laterItems);
         if (upcomingAppt) {
           items.push({
             key: `appt-${upcomingAppt.id}`,
@@ -192,9 +199,10 @@ export default function ClientAppHomePage() {
           consentRequests: Array.isArray(pendingConsentForms) ? pendingConsentForms : [],
           pets: petList,
           latestInvoice: latestInv || null,
-          nextDueVaccine: dueVaccines[0] || null,
+          nextDueVaccine: soon[0] || dueVaccines[0] || null,
           nextAppointment: trueNextAppt || null,
           reminders: items,
+          laterReminders: laterItems,
         });
       })
       .finally(() => !cancelled && setLoadingDashboard(false));
@@ -579,11 +587,11 @@ export default function ClientAppHomePage() {
           see the .client-app-mobile-only / .client-app-desktop-overview
           rules in globals.css. */}
       <div className="client-app-mobile-only">
-        {!loadingDashboard && reminders.length > 0 && (
+        {!loadingDashboard && (reminders.length > 0 || laterReminders.length > 0) && (
           <>
             <p className="mobile-section-header">Reminders</p>
             <ul className="mobile-list">
-              {reminders.map((item) => (
+              {[...reminders, ...(showLaterReminders ? laterReminders : [])].map((item) => (
                 <li key={item.key}>
                   <a href={item.href} className="mobile-list-item">
                     <span className="mobile-list-title">
@@ -593,6 +601,13 @@ export default function ClientAppHomePage() {
                 </li>
               ))}
             </ul>
+            {laterReminders.length > 0 && (
+              <button type="button" className="mobile-link-btn client-app-more-reminders" onClick={() => setShowLaterReminders((v) => !v)}>
+                {showLaterReminders
+                  ? 'Show fewer reminders'
+                  : `${laterReminders.length} more reminder${laterReminders.length === 1 ? '' : 's'}`}
+              </button>
+            )}
           </>
         )}
 
