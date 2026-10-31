@@ -24,7 +24,7 @@ import SearchSelect from '@/app/_components/SearchSelect';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import InfoHint from '@/app/_components/InfoHint';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
-import { formatDateTime } from '@/lib/formatTimestamp';
+import { formatWhenShort } from '@/lib/formatTimestamp';
 import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 import PhoneTop from '@/app/_components/PhoneTop';
 
@@ -90,7 +90,7 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
         </div>
         <div className="cage-patient">
           {hosp.patients?.name}
-          {hosp.patients?.patient_number ? ` (Patient #${hosp.patients.patient_number})` : ''}
+          {hosp.patients?.patient_number ? <span className="cage-patient-no"> #{hosp.patients.patient_number}</span> : ''}
         </div>
         <div className="cage-patient-species">{hosp.patients?.species}</div>
         {hosp.kind === 'day_procedure' && hosp.scheduled_for && (
@@ -424,7 +424,7 @@ export default function HospitalizationPage() {
   };
 
   return (
-    <div>
+    <div className="hosp-page">
       <div className="page-header">
         <h1>Hospitalization</h1>
         <button type="button" className="button-link phone-hide" onClick={openAdmit}>
@@ -448,11 +448,11 @@ export default function HospitalizationPage() {
         </div>
         <div className="hosp-stat">
           <span className="n">{cages.length}</span>
-          <span className="l">Total cages</span>
+          <span className="l">Total<span className="hosp-long"> cages</span></span>
         </div>
         <div className="hosp-stat hosp-stat-attention">
           <span className="n">{attentionCount}</span>
-          <span className="l">🔔 Need attention</span>
+          <span className="l">🔔<span className="hosp-long"> Need attention</span></span>
         </div>
       </div>
 
@@ -503,7 +503,7 @@ export default function HospitalizationPage() {
         {admitted.length === 0 ? (
           <p>No patients currently admitted.</p>
         ) : (
-          <table>
+          <table className="phone-list">
             <thead>
               <tr>
                 <th>Patient</th>
@@ -511,26 +511,23 @@ export default function HospitalizationPage() {
                 <th>Cage</th>
                 <th>Reason</th>
                 <th>Admitted</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
               {admitted.map((a) => (
-                <tr key={a.id}>
-                  <td>
-                    {a.patients?.name}
-                    {a.patients?.patient_number ? ` (Patient #${a.patients.patient_number})` : ''}
+                // Tap the row to open the stay (no Open button).
+                <tr key={a.id} className="pl-tap" onClick={(e) => { if (!e.target.closest('a, button')) window.location.href = `/hospitalization/${a.id}`; }}>
+                  <td className="pl-main">
+                    <a href={`/hospitalization/${a.id}`}>{a.patients?.name}</a>
+                    {a.patients?.patient_number ? <span className="client-no"> #{a.patients.patient_number}</span> : ''}
                   </td>
-                  <td>
+                  <td className="pl-sub">
                     {a.clients?.full_name}
-                    {a.clients?.client_number ? ` (Client #${a.clients.client_number})` : ''}
+                    {a.clients?.client_number ? <span className="client-no"> #{a.clients.client_number}</span> : ''}
                   </td>
-                  <td>{a.cages?.name || '—'}</td>
-                  <td>{a.reason || '—'}</td>
-                  <td>{formatDateTime(a.admitted_at)}</td>
-                  <td>
-                    <a href={`/hospitalization/${a.id}`} className="button-link button-link-open">Open</a>
-                  </td>
+                  <td className="pl-right">{a.cages?.name || '—'}</td>
+                  <td className={a.reason ? 'pl-sub' : 'pl-hide'}>{a.reason || '—'}</td>
+                  <td className="pl-sub">{formatWhenShort(a.admitted_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -541,30 +538,26 @@ export default function HospitalizationPage() {
         {discharged.length === 0 ? (
           <p>No discharges yet.</p>
         ) : (
-          <table>
+          <table className="phone-list">
             <thead>
               <tr>
                 <th>Patient</th>
                 <th>Owner</th>
                 <th>Discharged</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
               {discharged.map((a) => (
-                <tr key={a.id}>
-                  <td>
-                    {a.patients?.name}
-                    {a.patients?.patient_number ? ` (Patient #${a.patients.patient_number})` : ''}
+                <tr key={a.id} className="pl-tap" onClick={(e) => { if (!e.target.closest('a, button')) window.location.href = `/hospitalization/${a.id}`; }}>
+                  <td className="pl-main">
+                    <a href={`/hospitalization/${a.id}`}>{a.patients?.name}</a>
+                    {a.patients?.patient_number ? <span className="client-no"> #{a.patients.patient_number}</span> : ''}
                   </td>
-                  <td>
+                  <td className="pl-sub">
                     {a.clients?.full_name}
-                    {a.clients?.client_number ? ` (Client #${a.clients.client_number})` : ''}
+                    {a.clients?.client_number ? <span className="client-no"> #{a.clients.client_number}</span> : ''}
                   </td>
-                  <td>{a.discharged_at ? formatDateTime(a.discharged_at) : '—'}</td>
-                  <td>
-                    <a href={`/hospitalization/${a.id}`} className="button-link button-link-open">Open</a>
-                  </td>
+                  <td className="pl-right pl-light">{a.discharged_at ? formatWhenShort(a.discharged_at) : '—'}</td>
                 </tr>
               ))}
             </tbody>

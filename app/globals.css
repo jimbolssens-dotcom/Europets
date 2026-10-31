@@ -14594,3 +14594,93 @@ table.phone-list a.row-link {
     flex: 0 1 auto;
   }
 }
+
+/* Hospitalization page on a phone: the stats on one line, a smaller cage
+   map that fits the screen (same sizes as the mobile app's), the patient
+   number left off the cage tile, and the .phone-list admissions lists. */
+@media (max-width: 700px) {
+  .hosp-page .hosp-long,
+  .hosp-page .cage-patient-no {
+    display: none;
+  }
+  .hosp-page .hosp-stat-strip {
+    gap: 0.9rem;
+    margin: 0.5rem 0;
+    padding: 0.45rem 0.7rem;
+    flex-wrap: nowrap;
+  }
+  .hosp-page .hosp-stat .n {
+    font-size: 1rem;
+  }
+  .hosp-page .hosp-stat .l {
+    font-size: 0.65rem;
+  }
+  .hosp-page .floor-plan-row,
+  .hosp-page .cage-lower-top-row {
+    gap: 0.9rem;
+    margin-bottom: 0.9rem;
+  }
+  .hosp-page .cage-lower-block {
+    gap: 0.6rem;
+  }
+  .hosp-page .cage-cluster {
+    grid-template-columns: repeat(var(--cols), 52px);
+    gap: 0.3rem;
+  }
+  .hosp-page .cage-cluster-flex {
+    gap: 0.3rem;
+  }
+  .hosp-page .cage-tile {
+    min-height: 52px;
+    padding: 0.25rem 0.3rem;
+    gap: 0.05rem;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .hosp-page .cage-name {
+    font-size: 0.62rem;
+  }
+  .hosp-page .cage-patient {
+    font-size: 0.62rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+  .hosp-page .cage-patient-species,
+  .hosp-page .cage-status {
+    font-size: 0.55rem;
+  }
+  .hosp-page .cage-cluster-label {
+    font-size: 0.6rem;
+    white-space: nowrap;
+    margin-bottom: 0.25rem;
+  }
+  .hosp-page .cage-unassign {
+    top: 0.1rem;
+    right: 0.1rem;
+    width: 0.9rem;
+    height: 0.9rem;
+    font-size: 0.6rem;
+  }
+  .hosp-page .cage-tile select {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0 0.1rem;
+    font-size: 0.55rem;
+    height: 1.2rem;
+  }
+}
+@media (max-width: 700px) {
+  /* Single-column groups (LT, Recovery) run across on a phone instead of
+     down, so the map is about half as tall. */
+  .hosp-page .cage-cluster[style^="--cols: 1;"],
+  .hosp-page .cage-cluster[style="--cols:1"] {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 52px;
+  }
+}
+.hosp-page .pl-tap .pl-main a {
+  color: inherit;
+  text-decoration: none;
+}

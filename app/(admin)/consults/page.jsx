@@ -6,6 +6,7 @@
 
 'use client';
 
+import { formatWhenShort } from '@/lib/formatTimestamp';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -15,15 +16,6 @@ import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
 import PhoneTop from '@/app/_components/PhoneTop';
 
 const emptyWalkIn = { client_id: '', patient_id: '', room_id: '', attending_vet_id: '' };
-
-// Just the time for today, the day and time otherwise ("31 Oct, 5:11 pm"),
-// so it fits beside the patient's name on a phone.
-function whenShort(iso) {
-  const d = new Date(iso);
-  const time = d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true });
-  if (d.toDateString() === new Date().toDateString()) return time;
-  return `${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}, ${time}`;
-}
 
 export default function ConsultsPage() {
   return (
@@ -365,7 +357,7 @@ function ConsultsPageInner() {
                 </td>
                 <td className={c.rooms?.name ? 'pl-sub' : 'pl-hide'}>{c.rooms?.name}</td>
                 <td className="pl-sub">{c.staff?.full_name || 'unassigned'}</td>
-                <td className="pl-right pl-light">{c.started_at ? whenShort(c.started_at) : '—'}</td>
+                <td className="pl-right pl-light">{c.started_at ? formatWhenShort(c.started_at) : '—'}</td>
                 <td className="pl-actions">
                   <button type="button" className="row-act" onClick={() => completeConsult(c)}>
                     Complete
@@ -409,7 +401,7 @@ function ConsultsPageInner() {
                     {c.clients?.client_number ? <span className="client-no"> #{c.clients.client_number}</span> : ''}
                   </td>
                   <td className="pl-sub">{c.staff?.full_name || 'unassigned'}</td>
-                  <td className="pl-right pl-light">{hosp?.admitted_at ? whenShort(hosp.admitted_at) : '—'}</td>
+                  <td className="pl-right pl-light">{hosp?.admitted_at ? formatWhenShort(hosp.admitted_at) : '—'}</td>
                   <td className="pl-actions">
                     <a href={`/consults/${c.id}`} className="row-link">Consult</a>
                   </td>
@@ -444,7 +436,7 @@ function ConsultsPageInner() {
                   {c.clients?.full_name}
                   {c.clients?.client_number ? <span className="client-no"> #{c.clients.client_number}</span> : ''}
                 </td>
-                <td className="pl-right pl-light">{c.ended_at ? whenShort(c.ended_at) : '—'}</td>
+                <td className="pl-right pl-light">{c.ended_at ? formatWhenShort(c.ended_at) : '—'}</td>
                 <td className="pl-actions">
                   <button type="button" className="rare-link" onClick={() => deleteConsult(c)}>
                     Delete
