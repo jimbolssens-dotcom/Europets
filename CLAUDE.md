@@ -16,6 +16,13 @@
   WITHOUT `teamId` — passing `team_5sYq4rnyb3ApDF8MlYUJyHJv` returns 403.
   The marketing site is the separate `website` project.
 
+## Merge without asking
+
+Jim (31 Oct): "No need to ask for merging, just merge." Once a change is
+built, tested and checked (screenshots for layout), merge it to the
+production branch straight away and say it's live; don't wait for
+"merge it". Destructive data changes still need his OK first.
+
 ## Look things up without asking
 
 Jim: read-only lookups (SELECT queries, logs, the catalog) never need his
@@ -54,8 +61,8 @@ Let a row wrap only when it genuinely doesn't fit.
   the actions grouped in `.page-header-actions` (right). Both compact
   automatically on phones (see globals.css).
 - Never give a short link or button its own `<p>` or line under a title.
-- Keep mobile minimal. Show Jim a phone-width screenshot (390px) before
-  merging any layout change.
+- Keep mobile minimal. Check every layout change at phone width (390px)
+  and show Jim the screenshot with the result.
 
 ## Squeeze to the top
 
