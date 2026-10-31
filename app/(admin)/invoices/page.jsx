@@ -253,12 +253,18 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
             {summary.clients?.full_name}
             {patientName && <span className="invoice-row-patient"> — {patientName}</span>}
           </span>
-          {invoiceNumberLabel && <span className="invoice-row-inv">{invoiceNumberLabel}</span>}
+          {invoiceNumberLabel && (
+            <span className="invoice-row-inv">
+              {invoiceNumberLabel}
+              {/* phone only: the date shares this line instead of taking its own */}
+              <span className="invoice-row-inv-date"> · {formatShortDate(summary.created_at)}</span>
+            </span>
+          )}
         </span>
         <span className="invoice-row-date">{formatShortDate(summary.created_at)}</span>
-        <span className="invoice-row-total">AED {money(summary.total)}</span>
+        <span className="invoice-row-total"><span className="invoice-row-aed">AED </span>{money(summary.total)}</span>
         <span className={`invoice-row-due${balanceDue === 0 ? ' zero' : ''}`}>
-          AED {money(balanceDue)}
+          <span className="invoice-row-aed">AED </span>{money(balanceDue)}
           <span className="invoice-row-due-label"> due</span>
         </span>
         <span className={`status-pill ${dotClass}`}>{STATUS_LABELS[summary.status] || summary.status}</span>
@@ -279,7 +285,7 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
               </p>
 
               {lineItemEditError && <p className="error">{lineItemEditError}</p>}
-              <table>
+              <table className="invoice-lines">
                 <thead>
                   <tr>
                     <th>Item</th>
@@ -299,9 +305,9 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
                       {group.items.map((li) => {
                         const draft = lineItemDrafts[li.id];
                         return (
-                          <tr key={li.id}>
-                            <td>{li.description}</td>
-                            <td>
+                          <tr key={li.id} className="invoice-line">
+                            <td className="invoice-line-desc">{li.description}</td>
+                            <td className="invoice-line-qty">
                               {editable ? (
                                 <input
                                   type="number"
@@ -319,7 +325,7 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
                                 </>
                               )}
                             </td>
-                            <td>
+                            <td className="invoice-line-times">
                               {editable ? (
                                 <input
                                   type="number"
@@ -336,12 +342,12 @@ function InvoiceRow({ summary, catalog, subcategories, staff, onCatalogChange, o
                                 <>{li.times_given ?? 1}×</>
                               )}
                             </td>
-                            <td>{money(li.unit_price)}</td>
-                            <td>{money(li.line_total)}</td>
+                            <td className="invoice-line-unit">{money(li.unit_price)}</td>
+                            <td className="invoice-line-total">{money(li.line_total)}</td>
                             {editable && (
-                              <td>
-                                <button type="button" onClick={() => removeLineItem(li.id)}>
-                                  Remove
+                              <td className="invoice-line-remove-cell">
+                                <button type="button" className="invoice-line-remove" onClick={() => removeLineItem(li.id)} title="Remove this line" aria-label={`Remove ${li.description}`}>
+                                  ✕
                                 </button>
                               </td>
                             )}
@@ -767,7 +773,7 @@ function InvoicesPageInner() {
         ) : quotes.length === 0 ? (
           <p>No proforma quotes on file.</p>
         ) : (
-          <table>
+          <table className="quote-table">
             <thead>
               <tr>
                 <th>Date</th>
@@ -784,18 +790,27 @@ function InvoicesPageInner() {
                 const subtotal = items.reduce((sum, item) => sum + Number(item.line_total), 0);
                 const total = Math.round(subtotal * 1.05 * 100) / 100;
                 return (
-                  <tr key={q.id}>
-                    <td>{formatShortDate(q.created_at)}</td>
-                    <td>
+                  // Tap a quote to open it; Discard is a small link (rare).
+                  <tr key={q.id} className="quote-row" onClick={() => (window.location.href = `/proforma/${q.id}`)}>
+                    <td className="quote-date">{formatShortDate(q.created_at)}</td>
+                    <td className="quote-client">
                       {q.clients?.full_name}
-                      {q.clients?.client_number ? ` (Client #${q.clients.client_number})` : ''}
+                      {q.clients?.client_number ? <span className="quote-client-no"> #{q.clients.client_number}</span> : ''}
+                      {q.patients?.name ? <span className="quote-pet"> · {q.patients.name}</span> : ''}
                     </td>
-                    <td>{q.patients?.name}</td>
-                    <td>{items.length}</td>
-                    <td>AED {money(total)}</td>
-                    <td>
-                      <a href={`/proforma/${q.id}`} className="button-link button-link-open">Open</a>{' '}
-                      <button type="button" onClick={() => discardQuote(q.id)} disabled={discardingQuoteId === q.id}>
+                    <td className="quote-patient">{q.patients?.name}</td>
+                    <td className="quote-items">{items.length}<span className="quote-items-label"> item{items.length === 1 ? '' : 's'}</span></td>
+                    <td className="quote-total">AED {money(total)}</td>
+                    <td className="quote-actions">
+                      <button
+                        type="button"
+                        className="quote-discard"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          discardQuote(q.id);
+                        }}
+                        disabled={discardingQuoteId === q.id}
+                      >
                         {discardingQuoteId === q.id ? 'Discarding…' : 'Discard'}
                       </button>
                     </td>

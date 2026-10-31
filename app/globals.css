@@ -3841,6 +3841,234 @@ button.secondary:hover {
   font-weight: 400;
 }
 
+/* The date shares the invoice # line on a phone only (desktop has its own
+   Date column). */
+.invoice-row-inv-date {
+  display: none;
+}
+
+/* Rare actions on invoices (removing a line, voiding, discarding a quote)
+   are small grey links, not big pink buttons. */
+button.invoice-line-remove,
+button.invoice-void-link,
+button.quote-discard {
+  width: auto;
+  margin: 0;
+  padding: 0.1rem 0.3rem;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: #aaa;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+button.invoice-void-link,
+button.quote-discard {
+  text-decoration: underline;
+  font-size: 0.75rem;
+}
+button.invoice-void-link {
+  display: block;
+  margin: 0.6rem 0 0 auto;
+}
+button.invoice-line-remove:hover,
+button.invoice-void-link:hover,
+button.quote-discard:hover {
+  background: none;
+  color: #b3261e;
+}
+table.invoice-lines input.qty-input {
+  width: 5rem;
+  min-width: 0;
+}
+.quote-total,
+.invoice-line-total {
+  white-space: nowrap;
+}
+.quote-row {
+  cursor: pointer;
+}
+.quote-row:hover {
+  background: var(--pink-tint);
+}
+.quote-pet,
+.quote-items-label {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  /* Invoice list row: name (up to two lines) and the amount on the
+     right; invoice # and date under the name, status under the amount. */
+  .invoice-row-summary {
+    grid-template-columns: 8px 1fr auto 14px;
+    grid-template-areas:
+      'dot name total chev'
+      'dot name pill chev';
+    column-gap: 0.6rem;
+    row-gap: 0.2rem;
+    padding: 0.55rem 0.7rem;
+  }
+  .invoice-row-summary .status-dot { grid-area: dot; }
+  .invoice-row-summary .invoice-row-name-wrap { grid-area: name; align-self: center; }
+  .invoice-row-summary .invoice-row-due,
+  .invoice-row-summary.is-settled .invoice-row-total { grid-area: total; font-size: 0.9rem; }
+  .invoice-row-summary .status-pill { grid-area: pill; justify-self: end; font-size: 0.68rem; padding: 0.1rem 0.5rem; }
+  .invoice-row-summary .invoice-row-date { display: none; }
+  .invoice-row-summary .invoice-row-chev { width: 14px; height: 14px; }
+  .invoice-row-name {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    font-size: 0.92rem;
+    line-height: 1.25;
+  }
+  .invoice-row-inv-date {
+    display: inline;
+  }
+  .invoice-row-aed {
+    display: none;
+  }
+  .invoice-row-inv {
+    font-size: 0.75rem;
+  }
+
+  /* An opened invoice's lines: name on top, then qty, times given and
+     the line total on one row, with a small ✕ to remove. */
+  .invoice-row-detail {
+    padding: 0 0.7rem 0.8rem;
+  }
+  table.invoice-lines,
+  table.invoice-lines tbody {
+    display: block;
+    width: 100%;
+  }
+  table.invoice-lines thead {
+    display: none;
+  }
+  table.invoice-lines tr.invoice-category-row {
+    display: block;
+  }
+  table.invoice-lines tr.invoice-category-row td {
+    display: block;
+  }
+  table.invoice-lines tr.invoice-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.2rem 0.4rem;
+    padding: 0.4rem 0.25rem;
+    border-bottom: 1px solid #f0efeb;
+  }
+  table.invoice-lines tr.invoice-line td {
+    display: block;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 0.85rem;
+  }
+  table.invoice-lines .invoice-line-desc {
+    flex: 1 1 100%;
+    font-weight: 600;
+  }
+  table.invoice-lines .invoice-line-qty input,
+  table.invoice-lines .invoice-line-times input {
+    width: 3.8rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0.2rem 0.35rem;
+    font-size: 0.85rem;
+  }
+  table.invoice-lines .invoice-line-times input {
+    width: 3rem;
+  }
+  table.invoice-lines .invoice-line-times::before {
+    content: '×';
+    color: #888;
+    margin-right: 0.25rem;
+  }
+  table.invoice-lines .invoice-line-times {
+    display: flex !important;
+    align-items: center;
+  }
+  table.invoice-lines .invoice-line-unit {
+    color: #888;
+    font-size: 0.75rem !important;
+  }
+  table.invoice-lines .invoice-line-unit::before {
+    content: '@ ';
+  }
+  table.invoice-lines .invoice-line-total {
+    margin-left: auto;
+    font-weight: 700;
+  }
+
+  /* Quotes: a compact tappable list, like the invoices. */
+  table.quote-table,
+  table.quote-table tbody {
+    display: block;
+    width: 100%;
+  }
+  table.quote-table thead,
+  table.quote-table tr.quote-row td.quote-patient {
+    display: none;
+  }
+  table.quote-table tr.quote-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.15rem 0.5rem;
+    padding: 0.55rem 0.7rem;
+    margin-bottom: 0.4rem;
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 8px;
+  }
+  table.quote-table tr.quote-row td {
+    display: block;
+    padding: 0;
+    border: none;
+    background: none;
+  }
+  .quote-client {
+    order: 0;
+    flex: 1 1 calc(100% - 7rem);
+    min-width: 0;
+    font-weight: 600;
+    font-size: 0.92rem;
+  }
+  .quote-client-no,
+  .quote-pet {
+    display: inline;
+    font-weight: 400;
+    color: #767171;
+  }
+  .quote-total {
+    order: 1;
+    flex: 0 0 6.5rem;
+    text-align: right;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+  .quote-date,
+  .quote-items {
+    order: 2;
+    font-size: 0.75rem;
+    color: #888;
+  }
+  .quote-items-label {
+    display: inline;
+  }
+  .quote-items::before {
+    content: '·';
+    margin-right: 0.4rem;
+  }
+  .quote-actions {
+    order: 3;
+    margin-left: auto;
+  }
+}
+
 /* Balance summary + payment log + "log a payment" form on an invoice —
    app/_components/InvoicePaymentPanel.jsx, shared by the invoices list
    and the invoice detail page. */

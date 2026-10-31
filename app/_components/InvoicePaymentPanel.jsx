@@ -385,8 +385,9 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
               </button>
             </p>
           ) : (
-            <button type="button" onClick={() => setConfirmingVoid(true)}>
-              Void
+            // Rare, so a small grey link rather than a full button.
+            <button type="button" className="invoice-void-link" onClick={() => setConfirmingVoid(true)}>
+              Void invoice
             </button>
           )}
         </>
