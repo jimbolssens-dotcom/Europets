@@ -3,7 +3,7 @@
 // categories — Products, Tests, Services — each with its own editable list
 // of subcategories (e.g. Tests: X-Ray, Ultrasound, PCR, Blood Test - CBC,
 // ...) that staff can keep extending as the clinic starts offering new
-// ones. Click a row (or its Edit button) to edit an item's name/
+// ones. Tap a row to edit an item's name/
 // subcategory/pricing/price/unit in place.
 
 'use client';
@@ -301,12 +301,17 @@ export default function CatalogPage() {
 
   if (loading) return <p>Loading catalog...</p>;
 
+  // The Save/Cancel column only exists while a row is open for editing:
+  // Jim, tapping a row is how it's edited, and Deactivate/Delete are rare,
+  // so they sit small inside the open row rather than on every line.
+  const editingInTab = tabItems.some((i) => i.id === editingId);
+
   return (
-    <div>
+    <div className="catalog-page">
       <div className="page-header">
         <h1>Goods & Services</h1>
         <div className="page-header-actions">
-          <a href="/dose-guidelines" className="button-link">💊 Dose guidelines</a>
+          <a href="/dose-guidelines" className="button-link">💊 Dose<span className="hide-on-phone"> guidelines</span></a>
         </div>
       </div>
 
@@ -357,7 +362,7 @@ export default function CatalogPage() {
           </div>
 
           <details className="catalog-add-toggle" ref={addDetailsRef}>
-            <summary className="catalog-tab">+ Add {MAIN_CATEGORY_LABELS[activeTab]}</summary>
+            <summary className="catalog-tab">+ Add<span className="hide-on-phone"> {MAIN_CATEGORY_LABELS[activeTab]}</span></summary>
             <div className="catalog-add-dropdown">
               <form className="form-grid" onSubmit={handleSubmit}>
                 <h2>Add {MAIN_CATEGORY_LABELS[activeTab]}</h2>
@@ -515,7 +520,7 @@ export default function CatalogPage() {
             <th>Unit</th>
             {activeTab === 'product' && <th>Admin Methods</th>}
             <th>Status</th>
-            <th className="catalog-actions-cell"></th>
+            {editingInTab && <th className="catalog-actions-cell"></th>}
           </tr>
         </thead>
         <tbody>
@@ -529,13 +534,13 @@ export default function CatalogPage() {
           {tabItems.map((item) =>
             editingId === item.id ? (
               <tr key={item.id} className="catalog-row-editing">
-                <td>
+                <td data-label="Name">
                   <input
                     value={editForm.name}
                     onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                   />
                 </td>
-                <td>
+                <td data-label="Subcategory">
                   <select
                     value={editForm.subcategory_id}
                     onChange={(e) => setEditForm({ ...editForm, subcategory_id: e.target.value })}
@@ -554,7 +559,7 @@ export default function CatalogPage() {
                     ))}
                   </select>
                 </td>
-                <td>
+                <td data-label="Pricing">
                   <select
                     value={editForm.pricing_type}
                     onChange={(e) => setEditForm({ ...editForm, pricing_type: e.target.value })}
@@ -564,7 +569,7 @@ export default function CatalogPage() {
                     <option value="per_unit">Per unit</option>
                   </select>
                 </td>
-                <td>
+                <td data-label="Price">
                   <input
                     type="number"
                     step="0.01"
@@ -572,7 +577,7 @@ export default function CatalogPage() {
                     onChange={(e) => setEditForm({ ...editForm, base_price: e.target.value })}
                   />
                 </td>
-                <td>
+                <td data-label="Buying price">
                   <input
                     type="number"
                     step="0.01"
@@ -581,14 +586,14 @@ export default function CatalogPage() {
                     onChange={(e) => setEditForm({ ...editForm, buying_price: e.target.value })}
                   />
                 </td>
-                <td>
+                <td data-label="Supplier">
                   <input
                     placeholder="supplier"
                     value={editForm.supplier}
                     onChange={(e) => setEditForm({ ...editForm, supplier: e.target.value })}
                   />
                 </td>
-                <td>
+                <td data-label="Unit">
                   <input
                     placeholder="unit"
                     value={editForm.unit}
@@ -596,7 +601,7 @@ export default function CatalogPage() {
                   />
                 </td>
                 {activeTab === 'product' && (
-                  <td onClick={(e) => e.stopPropagation()}>
+                  <td data-label="Admin method" onClick={(e) => e.stopPropagation()}>
                     <select
                       value={editForm.administration_method}
                       onChange={(e) => setEditForm({ ...editForm, administration_method: e.target.value })}
@@ -608,14 +613,22 @@ export default function CatalogPage() {
                     </select>
                   </td>
                 )}
-                <td>{item.active ? 'active' : 'inactive'}</td>
+                <td className="cat-status">{item.active ? 'active' : 'inactive'}</td>
                 <td className="catalog-actions-cell">
                   <button type="button" onClick={() => saveEdit(item.id)} disabled={savingEdit}>
                     {savingEdit ? 'Saving...' : 'Save'}
                   </button>
-                  <button type="button" onClick={cancelEdit} disabled={savingEdit}>
+                  <button type="button" className="secondary" onClick={cancelEdit} disabled={savingEdit}>
                     Cancel
                   </button>
+                  <span className="catalog-rare-actions">
+                    <button type="button" onClick={() => toggleItemActive(item).then(cancelEdit)} disabled={savingEdit}>
+                      {item.active ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button type="button" onClick={() => deleteItem(item)} disabled={savingEdit}>
+                      Delete
+                    </button>
+                  </span>
                   {editError && <p className="error">{editError}</p>}
                 </td>
               </tr>
@@ -632,15 +645,21 @@ export default function CatalogPage() {
                   .join(' ')}
                 onClick={() => startEdit(item)}
               >
-                <td>{item.name}</td>
-                <td>{subcategoryNameFor(item)}</td>
-                <td>{item.pricing_type}</td>
-                <td>{Number(item.base_price).toFixed(2)}</td>
-                <td>{item.buying_price != null ? Number(item.buying_price).toFixed(2) : '—'}</td>
-                <td>{item.supplier || '—'}</td>
-                <td>{item.unit}</td>
+                <td className="cat-name">
+                  {item.name}
+                  {!item.active && <span className="cat-inactive-chip">inactive</span>}
+                </td>
+                <td className="cat-sub">{subcategoryNameFor(item)}</td>
+                <td className="cat-pricing">{item.pricing_type}</td>
+                <td className="cat-price">
+                  {Number(item.base_price).toFixed(2)}
+                  {item.pricing_type === 'per_kg' && <span className="cat-price-per">/kg</span>}
+                </td>
+                <td className="cat-cost">{item.buying_price != null ? Number(item.buying_price).toFixed(2) : '—'}</td>
+                <td className="cat-supplier">{item.supplier || '—'}</td>
+                <td className="cat-unit">{item.unit}</td>
                 {activeTab === 'product' && (
-                  <td onClick={(e) => e.stopPropagation()}>
+                  <td className="cat-method" onClick={(e) => e.stopPropagation()}>
                     <select
                       value={item.administration_method || ''}
                       onChange={(e) => updateAdministrationMethod(item, e.target.value || null)}
@@ -652,36 +671,8 @@ export default function CatalogPage() {
                     </select>
                   </td>
                 )}
-                <td>{item.active ? 'active' : 'inactive'}</td>
-                <td className="catalog-actions-cell">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      startEdit(item);
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleItemActive(item);
-                    }}
-                  >
-                    {item.active ? 'Deactivate' : 'Activate'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteItem(item);
-                    }}
-                  >
-                    Delete
-                  </button>
-                </td>
+                <td className="cat-status">{item.active ? 'active' : 'inactive'}</td>
+                {editingInTab && <td className="catalog-actions-cell" />}
               </tr>
             )
           )}

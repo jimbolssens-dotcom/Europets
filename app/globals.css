@@ -1360,6 +1360,232 @@ td select {
   white-space: nowrap;
 }
 
+/* Catalog (Goods & Services): tapping a row opens it for editing. The rare
+   Deactivate/Delete sit small inside the open row only (Jim: they're
+   hardly ever used from here). */
+.catalog-rare-actions {
+  display: inline-flex;
+  gap: 0.6rem;
+  margin-left: 0.6rem;
+}
+.catalog-rare-actions button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #999;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-decoration: underline;
+}
+.catalog-rare-actions button:hover {
+  color: var(--pink-dark);
+  background: none;
+}
+.cat-inactive-chip {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: #eee;
+  color: #777;
+  font-size: 0.7rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.cat-price-per {
+  display: none;
+}
+/* Desktop has a Status column; the chip is for the phone list. */
+.cat-inactive-chip {
+  display: none;
+}
+
+/* Phone: the catalog table becomes a compact list. Line 1 is the name and
+   price; line 2 is small grey detail (subcategory, unit, how it's given).
+   Cost, supplier and status show once the row is opened. The tabs, search
+   and Add/Subcategories pack onto two rows. */
+@media (max-width: 700px) {
+  .catalog-page .page-header {
+    flex-wrap: nowrap;
+  }
+  .catalog-page .page-header h1 {
+    font-size: 1.45rem;
+    white-space: nowrap;
+  }
+  .catalog-page .page-header .button-link {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+  .catalog-tabs-row {
+    gap: 0;
+  }
+  .catalog-tabs {
+    width: 100%;
+    margin: 0.5rem 0 0;
+    gap: 0.25rem;
+  }
+  .catalog-tabs .catalog-tab {
+    padding: 0.35rem 0.85rem;
+    font-size: 0.9rem;
+  }
+  .catalog-tabs-actions {
+    width: 100%;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.5rem 0 0.25rem;
+  }
+  .catalog-tabs-actions .catalog-search-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+  .catalog-tabs-actions .catalog-search-input {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+  }
+  .catalog-tabs-actions summary.catalog-tab {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    border: 1px solid var(--pink-tint);
+  }
+  .catalog-table-wrap table,
+  .catalog-table-wrap tbody {
+    display: block;
+    width: 100%;
+  }
+  .catalog-table-wrap thead {
+    display: none;
+  }
+  .catalog-table-wrap tr.catalog-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid #f0e6ea;
+  }
+  .catalog-row td {
+    display: block;
+    padding: 0;
+    border: none;
+    background: none;
+  }
+  .catalog-page .hide-on-phone {
+    display: none;
+  }
+  .catalog-row .cat-name {
+    order: 0;
+    flex: 1 1 calc(100% - 6rem);
+    min-width: 0;
+    font-weight: 600;
+    font-size: 0.92rem;
+    line-height: 1.25;
+  }
+  .catalog-row .cat-price {
+    order: 1;
+    flex: 0 0 5.5rem;
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .appointments-row-inactive .cat-inactive-chip {
+    display: inline-block;
+  }
+  .catalog-row .cat-price-per {
+    display: inline;
+    font-weight: 400;
+    color: #888;
+    font-size: 0.75rem;
+  }
+  .catalog-row .cat-sub,
+  .catalog-row .cat-unit,
+  .catalog-row .cat-method {
+    order: 2;
+    font-size: 0.78rem;
+    color: #888;
+    margin-top: 0.1rem;
+  }
+  .catalog-row .cat-unit::before,
+  .catalog-row .cat-method::before {
+    content: '·';
+    margin-right: 0.5rem;
+  }
+  .catalog-row .cat-unit:empty {
+    display: none;
+  }
+  .catalog-row .cat-pricing,
+  .catalog-row .cat-cost,
+  .catalog-row .cat-supplier,
+  .catalog-row .cat-status,
+  .catalog-row .catalog-actions-cell {
+    display: none;
+  }
+  .catalog-row .cat-method select {
+    width: auto;
+    margin: 0;
+    padding: 0;
+    font-size: 0.78rem;
+    color: #888;
+    border: none;
+    field-sizing: content;
+    background: none;
+    min-height: 0;
+    height: auto;
+  }
+  /* The open row: one field per line with a small label. */
+  .catalog-table-wrap tr.catalog-row-editing {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem 0.6rem;
+    padding: 0.6rem;
+    background: var(--pink-tint);
+    border-radius: 10px;
+    margin: 0.25rem 0;
+  }
+  .catalog-row-editing td {
+    display: block;
+    padding: 0;
+    border: none;
+    background: none;
+  }
+  .catalog-row-editing td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.7rem;
+    color: #888;
+    margin-bottom: 0.1rem;
+  }
+  .catalog-row-editing td[data-label='Name'],
+  .catalog-row-editing td[data-label='Subcategory'] {
+    grid-column: 1 / -1;
+  }
+  .catalog-row-editing input,
+  .catalog-row-editing select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .catalog-row-editing .cat-status {
+    display: none;
+  }
+  .catalog-row-editing .catalog-actions-cell {
+    grid-column: 1 / -1;
+    position: static;
+    box-shadow: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .catalog-row-editing .catalog-rare-actions {
+    margin-left: auto;
+  }
+}
+
 /* Generic horizontal-scroll wrapper for any table with enough columns to
    overflow a narrow screen (e.g. the shift tally payment log) — the page
    itself must never scroll sideways, so the table scrolls internally
