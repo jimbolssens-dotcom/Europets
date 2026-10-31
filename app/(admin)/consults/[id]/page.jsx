@@ -1169,6 +1169,8 @@ export default function ConsultDetailPage() {
         <h3>Vitals & Exam</h3>
         <form className="card" onSubmit={saveRecord}>
           {recordError && <p className="error">{recordError}</p>}
+          {/* Weight, temperature and body condition side by side. */}
+          <div className="vitals-row">
           <label>
             Weight (kg)
             <input
@@ -1180,7 +1182,7 @@ export default function ConsultDetailPage() {
             />
           </label>
           <label>
-            Temperature (°C)
+            Temp (°C)
             <input
               type="number"
               step="0.1"
@@ -1193,7 +1195,7 @@ export default function ConsultDetailPage() {
             {tempError && <span className="error">{tempError}</span>}
           </label>
           <label>
-            Body condition score (1–9)
+            Body cond. (1–9)
             <input
               type="number"
               min="1"
@@ -1202,6 +1204,7 @@ export default function ConsultDetailPage() {
               onChange={(e) => setRecord({ ...record, body_condition_score: e.target.value })}
             />
           </label>
+          </div>
           <label>
             <span className="field-label-row">
               Anamnesis (history / owner-reported complaint)
@@ -1729,6 +1732,7 @@ export default function ConsultDetailPage() {
                 </td>
                 <td>
                   <input
+                    placeholder="Instructions"
                     value={draft?.instructions ?? (t.instructions || '')}
                     onChange={(e) =>
                       setTreatItemDrafts({ ...treatItemDrafts, [t.id]: { ...draft, instructions: e.target.value } })

@@ -14929,3 +14929,100 @@ table.phone-list .pl-flag:empty {
     margin: 0.9rem 0 0.3rem;
   }
 }
+
+/* Consult page: weight, temperature and body condition side by side. */
+.vitals-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem 0.75rem;
+}
+.vitals-row > label {
+  min-width: 0;
+  margin: 0;
+}
+.vitals-row input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Delete on a case page (consult, day procedure, stay) is rare: a small
+   grey link in the tab row rather than a red tab. */
+.case-tab.case-tab-danger {
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+  color: #aaa;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-decoration: underline;
+  padding-inline: 0.3rem;
+}
+.case-tab.case-tab-danger:hover {
+  background: none;
+  color: #b71c1c;
+}
+
+@media (max-width: 700px) {
+  /* The owner / room / vet / started line packs onto two short lines. */
+  .patient-header-row2 {
+    gap: 0.2rem 0.8rem;
+    font-size: 0.82rem;
+    margin-top: 0.4rem;
+    padding-top: 0.35rem;
+  }
+  .patient-header-row2 select {
+    max-width: 11rem;
+    font-size: 0.8rem;
+  }
+
+  /* Treatment items on a phone: the item's name on top, then
+     instructions, quantity, how it's given, no-charge and remove. */
+  .treatment-items-table,
+  .treatment-items-table tbody {
+    display: block;
+    width: 100%;
+  }
+  .treatment-items-table thead {
+    display: none;
+  }
+  .treatment-items-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 3.2rem 3.6rem auto auto;
+    align-items: center;
+    gap: 0.25rem 0.35rem;
+    padding: 0.45rem 0.2rem;
+    border-bottom: 1px solid #f0e6ea;
+  }
+  .treatment-items-table tr > td {
+    display: block;
+    width: auto !important;
+    padding: 0 !important;
+    border: none;
+    background: none;
+  }
+  .treatment-items-table td:nth-child(1) {
+    grid-column: 1 / -1;
+    font-weight: 600;
+    font-size: 0.88rem;
+  }
+  .treatment-items-table td[colspan] {
+    grid-column: 1 / -1;
+    font-weight: 400;
+  }
+  .treatment-items-table td:nth-child(5) {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.55rem;
+    color: #999;
+    line-height: 1;
+  }
+  .treatment-items-table td:nth-child(5)::after {
+    content: 'free';
+  }
+  .treatment-items-table td input,
+  .treatment-items-table td select {
+    font-size: 0.82rem;
+  }
+}
