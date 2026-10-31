@@ -6,6 +6,12 @@
 // "Mark Paid" button anymore, so the status can't drift from what was
 // actually collected. A payment's method can be corrected afterwards, even
 // on a paid invoice (✎ Method), and the line then shows what it was.
+//
+// A deposit (Jim: let clients pay ahead, even before the invoice is
+// complete) is a payment with "Keep the extra as credit" ticked: it can be
+// more than the balance, the extra shows as "In credit", and it can be
+// added to an invoice that's already in credit. It never closes the
+// consult or stay; the payment that settles the final bill does.
 
 'use client';
 
@@ -35,6 +41,8 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
   const [paymentMethod, setPaymentMethod] = useState('');
   const [receivedBy, setReceivedBy] = useState('');
   const [note, setNote] = useState('');
+  const [deposit, setDeposit] = useState(false);
+  const [showDepositForm, setShowDepositForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [voiding, setVoiding] = useState(false);
   const [confirmingVoid, setConfirmingVoid] = useState(false);
@@ -50,7 +58,11 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
     Math.round((Number(invoice.total) - Number(invoice.amount_paid || 0)) * 100) / 100
   );
   const payments = invoice.payments || [];
-  const canTakePayment = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
+  const credit = Math.max(0, Math.round((Number(invoice.amount_paid || 0) - Number(invoice.total)) * 100) / 100);
+  const owing = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
+  // Paid up (or in credit): only a deposit can still be added, on request.
+  const canTakePayment = owing || (invoice.status === 'paid' && showDepositForm);
+  const canRemovePayments = owing || credit > 0;
 
   async function submitPayment(amt) {
     if (!amt || !paymentMethod || !receivedBy) return;
@@ -65,6 +77,7 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
         payment_method: paymentMethod,
         received_by: receivedBy,
         note: note.trim() || undefined,
+        deposit: deposit || !owing,
       }),
     });
     const data = await res.json();
@@ -76,6 +89,8 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
       setPaymentMethod('');
       setReceivedBy('');
       setNote('');
+      setDeposit(false);
+      setShowDepositForm(false);
       onChanged();
     }
     setSubmitting(false);
@@ -160,6 +175,17 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
               · Balance due: <strong>AED {money(balanceDue)}</strong>
             </>
           )}
+          {credit > 0 && (
+            <span className="invoice-credit">
+              {' '}
+              · In credit: <strong>AED {money(credit)}</strong>
+            </span>
+          )}
+          {invoice.status === 'paid' && !showDepositForm && (
+            <button type="button" className="invoice-deposit-btn" onClick={() => setShowDepositForm(true)}>
+              + Deposit
+            </button>
+          )}
         </p>
       )}
 
@@ -214,7 +240,7 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
                   ✎ Method
                 </button>
               )}
-              {canTakePayment &&
+              {canRemovePayments &&
                 (confirmingRemovePaymentId === p.id ? (
                   <span className="invoice-payment-remove-confirm">
                     Remove this payment?{' '}
@@ -243,11 +269,17 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
               type="number"
               step="0.01"
               min="0.01"
-              max={balanceDue}
-              placeholder={`Amount (up to AED ${money(balanceDue)})`}
+              max={deposit || !owing ? undefined : balanceDue}
+              placeholder={deposit || !owing ? 'Deposit amount' : `Amount (up to AED ${money(balanceDue)})`}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
+            {owing && (
+              <label className="invoice-deposit-toggle" title="Take more than the balance; the extra stays on this invoice as credit until the bill catches up">
+                <input type="checkbox" checked={deposit} onChange={(e) => setDeposit(e.target.checked)} />
+                Keep the extra as credit (deposit)
+              </label>
+            )}
             <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
               <option value="">Paid via...</option>
               <option value="cash">Cash</option>
@@ -272,20 +304,27 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
             <button type="submit" disabled={submitting || !amount || !paymentMethod || !receivedBy}>
               {submitting ? 'Logging...' : 'Log'}
             </button>
-            <button
-              type="button"
-              onClick={payInFull}
-              disabled={submitting || !paymentMethod || !receivedBy}
-            >
-              {submitting ? 'Logging...' : `Pay in Full (AED ${money(balanceDue)})`}
-            </button>
+            {owing && (
+              <button
+                type="button"
+                onClick={payInFull}
+                disabled={submitting || !paymentMethod || !receivedBy}
+              >
+                {submitting ? 'Logging...' : `Pay in Full (AED ${money(balanceDue)})`}
+              </button>
+            )}
+            {!owing && (
+              <button type="button" className="secondary" onClick={() => setShowDepositForm(false)}>
+                Cancel
+              </button>
+            )}
             {onSendPaymentLink && (
               <button type="button" onClick={onSendPaymentLink}>
                 💳 Payment Link
               </button>
             )}
           </form>
-          {confirmingVoid ? (
+          {!owing ? null : confirmingVoid ? (
             <p className="invoice-void-confirm">
               Void this invoice? This cannot be undone.{' '}
               <button type="button" onClick={voidInvoice} disabled={voiding}>

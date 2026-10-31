@@ -8,6 +8,12 @@
 //
 // received_by is required — every payment must be attributed to the
 // staff member who took it (see migrations/042).
+//
+// deposit: true takes more than the balance, even on an invoice that's
+// only just started (or already in credit): the extra stays on the
+// invoice as credit until the bill catches up. A deposit never closes the
+// consult or stay (recomputeInvoicePayments autoClose); the payment that
+// later settles the final bill does.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -19,6 +25,7 @@ const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'payment_link'];
 export async function POST(request, { params }) {
   const body = await request.json();
   const { amount, payment_method, received_by, note } = body;
+  const deposit = body.deposit === true;
 
   const numericAmount = Number(amount);
   if (!numericAmount || Number.isNaN(numericAmount) || numericAmount <= 0) {
@@ -49,16 +56,16 @@ export async function POST(request, { params }) {
   if (invoice.status === 'void') {
     return NextResponse.json({ error: 'cannot log a payment on a void invoice' }, { status: 400 });
   }
-  if (invoice.status === 'paid') {
+  if (invoice.status === 'paid' && !deposit) {
     return NextResponse.json({ error: 'invoice is already fully paid' }, { status: 400 });
   }
 
   // A little slack for floating-point rounding on the remaining balance,
-  // not an invitation to overpay by any real amount.
+  // not an invitation to overpay by any real amount, unless it's a deposit.
   const remaining = Math.round((Number(invoice.total) - Number(invoice.amount_paid)) * 100) / 100;
-  if (numericAmount > remaining + 0.01) {
+  if (!deposit && numericAmount > remaining + 0.01) {
     return NextResponse.json(
-      { error: `amount exceeds the remaining balance of AED ${remaining.toFixed(2)}` },
+      { error: `amount exceeds the remaining balance of AED ${remaining.toFixed(2)}; tick "Keep the extra as credit" for a deposit` },
       { status: 400 }
     );
   }
@@ -71,7 +78,7 @@ export async function POST(request, { params }) {
         amount: Math.round(numericAmount * 100) / 100,
         payment_method,
         received_by,
-        note: note?.trim() || null,
+        note: note?.trim() || (deposit ? 'Deposit' : null),
       },
     ])
     .select('*, staff(full_name)')
@@ -81,10 +88,9 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  const { data: updatedInvoice, error: recomputeError } = await recomputeInvoicePayments(
-    supabase,
-    params.id
-  );
+  const { data: updatedInvoice, error: recomputeError } = await recomputeInvoicePayments(supabase, params.id, {
+    autoClose: !deposit,
+  });
   if (recomputeError) {
     return NextResponse.json({ error: recomputeError.message }, { status: 500 });
   }

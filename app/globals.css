@@ -13719,3 +13719,27 @@ select.dose-hint-reason {
   border-radius: 6px;
   background: white;
 }
+
+/* Deposits (InvoicePaymentPanel): credit on an invoice paid ahead of the
+   bill, the "+ Deposit" button on a paid invoice, and the tick to take
+   more than the balance. */
+.invoice-credit strong {
+  color: #1b8a4f;
+}
+button.invoice-deposit-btn {
+  width: auto;
+  margin: 0 0 0 0.6rem;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.8rem;
+}
+.invoice-deposit-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+.invoice-deposit-toggle input {
+  width: auto;
+  margin: 0;
+}
