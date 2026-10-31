@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
-import { findSpaceClash, validateBookingInput, notifyCatteryClient, addBookingCats } from '@/lib/catteryServer';
+import { findSpaceClash, validateBookingInput, notifyCatteryClient, addBookingCats, prettyDate } from '@/lib/catteryServer';
 import { createConsentFormRequest } from '@/lib/consentForms';
 import { NextResponse } from 'next/server';
 
@@ -38,10 +38,6 @@ const EDITABLE = [
   'notes',
 ];
 const STATUSES = ['booked', 'checked_in', 'checked_out', 'cancelled'];
-
-function prettyDate(iso) {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-}
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase

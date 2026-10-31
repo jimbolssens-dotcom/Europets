@@ -20,7 +20,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
 import { catteryToday } from '@/lib/cattery';
-import { findSpaceClash, validateBookingInput, expireStaleRequests, addBookingCats } from '@/lib/catteryServer';
+import { findSpaceClash, validateBookingInput, expireStaleRequests, addBookingCats, closeRequestsCoveredBy, notifyCatteryClient, prettyDate } from '@/lib/catteryServer';
 import { createConsentFormRequest } from '@/lib/consentForms';
 import { NextResponse } from 'next/server';
 
@@ -92,7 +92,7 @@ export async function POST(request) {
   const invalid = validateBookingInput(body);
   if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
 
-  const clash = await findSpaceClash({ spaceNumber: Number(body.space_number), dateIn: body.date_in, dateOut: body.date_out });
+  const clash = await findSpaceClash({ spaceNumber: Number(body.space_number), dateIn: body.date_in, dateOut: body.date_out, patientId: body.patient_id });
   if (clash) {
     return NextResponse.json(
       { error: `Space ${body.space_number} is already booked for ${clash.patients?.name || 'another cat'} (${clash.date_in} to ${clash.date_out}).` },
@@ -129,8 +129,19 @@ export async function POST(request) {
     if (added.error) return NextResponse.json({ ...data, error: added.error }, { status: 400 });
   }
 
+  // The client's own request for this cat and these dates is answered by
+  // this booking: close it, so it can't later expire with "not confirmed".
+  const closedRequests = await closeRequestsCoveredBy(data, extraIds).catch(() => 0);
+
   const consent = await createConsentFormRequest({ catteryBookingId: data.id, formType: 'cattery' }).catch((err) => ({
     error: err.message,
   }));
-  return NextResponse.json({ ...data, consent: consent?.error ? { error: consent.error } : { whatsapp: consent.whatsapp } });
+  // Told it's confirmed, as when staff approve a request: a booking made
+  // here used to arrive as just a consent form and an invoice.
+  const { data: cat } = await supabaseAdmin.from('patients').select('name').eq('id', data.patient_id).maybeSingle();
+  await notifyCatteryClient(data, {
+    title: `Cattery stay for ${cat?.name || 'your cat'} confirmed`,
+    body: `Space ${data.space_number}, ${prettyDate(data.date_in)} to ${prettyDate(data.date_out)}. Please sign the cattery consent form we've sent you on WhatsApp.`,
+  });
+  return NextResponse.json({ ...data, closedRequests, consent: consent?.error ? { error: consent.error } : { whatsapp: consent.whatsapp } });
 }
