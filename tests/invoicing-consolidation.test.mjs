@@ -55,6 +55,11 @@ function makeSupabase(db) {
           filters.push((r) => r[col] === val);
           return builder;
         },
+        // Credit transfers (migration 238): none in these tests.
+        or() {
+          filters.push(() => table !== 'invoice_credit_transfers');
+          return builder;
+        },
         single: () => exec().then(({ data, error }) => ({ data: Array.isArray(data) ? data[0] ?? null : data, error })),
         maybeSingle: () => exec().then(({ data, error }) => ({ data: Array.isArray(data) ? data[0] ?? null : data, error })),
         then: (res, rej) => exec().then(res, rej),

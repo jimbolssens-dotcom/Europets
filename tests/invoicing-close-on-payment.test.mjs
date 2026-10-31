@@ -50,6 +50,10 @@ function makeSupabase(db, calls) {
           state.filters[col] = val;
           return builder;
         },
+        // Credit transfers (migration 238) are read with .or(...).
+        or() {
+          return builder;
+        },
         single: () => Promise.resolve(resolve()),
         maybeSingle: () => Promise.resolve(resolve()),
         then: (res, rej) => Promise.resolve(resolve()).then(res, rej),
@@ -65,6 +69,7 @@ function makeSupabase(db, calls) {
         if (table === 'invoice_payments') {
           return { data: db.invoice_payments.filter((p) => p.invoice_id === state.filters.invoice_id), error: null };
         }
+        if (table === 'invoice_credit_transfers') return { data: db.invoice_credit_transfers || [], error: null };
         const row = db[table]?.find((r) => r.id === state.filters.id);
         return { data: row ? { ...row } : null, error: null };
       }
@@ -172,4 +177,46 @@ test('a partial payment never closes the linked consult', async () => {
   assert.equal(data.status, 'partially_paid');
   assert.deepEqual(completedVisits, []);
   assert.equal(db.visits[0].status, 'in_progress');
+});
+
+test('a deposit tipping a just-started invoice into paid does not close the stay', async () => {
+  const dischargedHospitalizations = [];
+  const { recomputeInvoicePayments } = loadInvoicing({
+    runConsultCompletionEffects: async () => {},
+    runHospitalizationDischargeEffects: async (supabase, id) => dischargedHospitalizations.push(id),
+  });
+  const db = {
+    invoices: [{ id: 'inv1', total: 157.5, status: 'unpaid', visit_id: null, hospitalization_id: 'hosp1' }],
+    invoice_payments: [{ invoice_id: 'inv1', amount: 1000, paid_at: '2026-10-31T06:00:00Z' }],
+    hospitalizations: [{ id: 'hosp1', status: 'admitted' }],
+  };
+  const { data } = await recomputeInvoicePayments(makeSupabase(db, []), 'inv1', { autoClose: false });
+  assert.equal(data.status, 'paid');
+  assert.equal(data.amount_paid, 1000);
+  assert.equal(db.hospitalizations[0].status, 'admitted');
+  assert.deepEqual(dischargedHospitalizations, []);
+});
+
+test('credit carried over counts as paid where it went, not where it left, unless that invoice was voided', async () => {
+  const { recomputeInvoicePayments } = loadInvoicing({ runConsultCompletionEffects: async () => {}, runHospitalizationDischargeEffects: async () => {} });
+  const db = {
+    invoices: [{ id: 'next', total: 300, status: 'unpaid', visit_id: null, hospitalization_id: null }],
+    invoice_payments: [{ invoice_id: 'next', amount: 100, paid_at: '2026-11-02T06:00:00Z' }],
+    invoice_credit_transfers: [
+      { from_invoice_id: 'old', to_invoice_id: 'next', amount: 150, to: { status: 'unpaid' } },
+      { from_invoice_id: 'next', to_invoice_id: 'gone', amount: 40, to: { status: 'void' } },
+    ],
+  };
+  const { data } = await recomputeInvoicePayments(makeSupabase(db, []), 'next', { autoClose: false });
+  assert.equal(data.amount_paid, 250); // 100 paid + 150 in; the 40 to a voided invoice doesn't count
+  assert.equal(data.status, 'partially_paid');
+
+  const db2 = {
+    invoices: [{ id: 'old', total: 850, status: 'paid', visit_id: null, hospitalization_id: null }],
+    invoice_payments: [{ invoice_id: 'old', amount: 1000, paid_at: '2026-10-31T06:00:00Z' }],
+    invoice_credit_transfers: [{ from_invoice_id: 'old', to_invoice_id: 'next', amount: 150, to: { status: 'unpaid' } }],
+  };
+  const { data: old } = await recomputeInvoicePayments(makeSupabase(db2, []), 'old', { autoClose: false });
+  assert.equal(old.amount_paid, 850); // 1000 paid - 150 moved on: exactly paid, no credit left
+  assert.equal(old.status, 'paid');
 });

@@ -12,6 +12,10 @@
 // more than the balance, the extra shows as "In credit", and it can be
 // added to an invoice that's already in credit. It never closes the
 // consult or stay; the payment that settles the final bill does.
+//
+// Credit left on a finished case moves to the client's next unpaid invoice
+// (lib/invoiceCreditCarry.js): deposits on their own, any other credit when
+// staff press "Move to next invoice". Moves show in the list both ends.
 
 'use client';
 
@@ -43,6 +47,8 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
   const [note, setNote] = useState('');
   const [deposit, setDeposit] = useState(false);
   const [showDepositForm, setShowDepositForm] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const [moveMessage, setMoveMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [voiding, setVoiding] = useState(false);
   const [confirmingVoid, setConfirmingVoid] = useState(false);
@@ -63,6 +69,27 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
   // Paid up (or in credit): only a deposit can still be added, on request.
   const canTakePayment = owing || (invoice.status === 'paid' && showDepositForm);
   const canRemovePayments = owing || credit > 0;
+  const transfers = invoice.credit_transfers || [];
+
+  async function moveCredit() {
+    setMoving(true);
+    setError(null);
+    setMoveMessage(null);
+    const by = staff.find((s) => s.id === receivedBy)?.full_name || 'Staff';
+    const res = await fetch(`/api/invoices/${invoice.id}/carry-credit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ by }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setMoving(false);
+    if (!res.ok) {
+      setError(data.error || 'Could not move the credit');
+      return;
+    }
+    if (data.message) setMoveMessage(data.message);
+    onChanged();
+  }
 
   async function submitPayment(amt) {
     if (!amt || !paymentMethod || !receivedBy) return;
@@ -181,12 +208,35 @@ export default function InvoicePaymentPanel({ invoice, staff = [], onChanged, on
               · In credit: <strong>AED {money(credit)}</strong>
             </span>
           )}
+          {credit > 0 && (
+            <button type="button" className="invoice-deposit-btn" onClick={moveCredit} disabled={moving} title="Move the credit to this client's unpaid invoices, oldest first">
+              {moving ? 'Moving…' : 'Move to next invoice'}
+            </button>
+          )}
           {invoice.status === 'paid' && !showDepositForm && (
             <button type="button" className="invoice-deposit-btn" onClick={() => setShowDepositForm(true)}>
               + Deposit
             </button>
           )}
         </p>
+      )}
+      {moveMessage && <p className="visit-meta">{moveMessage}</p>}
+      {transfers.length > 0 && (
+        <ul className="invoice-payments-list invoice-credit-transfers">
+          {transfers.map((t) => (
+            <li key={t.id}>
+              <span className="invoice-payment-date">{formatDateTime(t.created_at)}</span>
+              <span className="invoice-payment-amount">
+                {t.direction === 'in' ? '' : '−'}AED {money(t.amount)}
+              </span>
+              <span>
+                {t.direction === 'in' ? 'Credit from ' : 'Credit moved to '}
+                <a href={`/invoices/${t.invoice_id}`}>INV-{String(t.invoice_number || '').padStart(6, '0')}</a>
+              </span>
+              <span className="invoice-payment-by">{t.created_by || ''}</span>
+            </li>
+          ))}
+        </ul>
       )}
 
       {error && !canTakePayment && <p className="error">{error}</p>}

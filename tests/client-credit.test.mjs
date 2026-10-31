@@ -39,3 +39,12 @@ test('the link takes AED 20 to 5,000, the same on the website and in the app', (
     assert.equal(check(5000), null);
   }
 });
+
+test('leftover invoice credit fills the oldest unpaid invoice first, and stops when it runs out', async () => {
+  const { planCreditApplication } = await import('../lib/clientCreditPlan.js');
+  const plan = planCreditApplication(
+    [{ donation_id: 'inv-old', remaining: 300 }],
+    [{ id: 'a', total: 200, amount_paid: 0 }, { id: 'b', total: 500, amount_paid: 100 }]
+  );
+  assert.deepEqual(plan, [{ donation_id: 'inv-old', invoice_id: 'a', amount: 200 }, { donation_id: 'inv-old', invoice_id: 'b', amount: 100 }]);
+});

@@ -7,6 +7,7 @@
 
 import { sendPaymentThankYous } from '@/lib/paymentThankYou';
 import { applyClientCredits } from '@/lib/clientCredit';
+import { carryOverCredit } from '@/lib/invoiceCreditCarry';
 import { applySupporterBonuses } from '@/lib/supporterBonus';
 import { NextResponse } from 'next/server';
 
@@ -22,8 +23,11 @@ export async function GET(request) {
   // thanked this round.
   const bonus = await applySupporterBonuses().catch((err) => ({ error: err.message }));
   const credit = await applyClientCredits().catch((err) => ({ error: err.message }));
+  // Deposit credit left on a finished case moves to the client's next
+  // unpaid invoice (migration 238).
+  const carried = await carryOverCredit().catch((err) => ({ error: err.message }));
   try {
-    return NextResponse.json({ ...(await sendPaymentThankYous()), bonus, credit });
+    return NextResponse.json({ ...(await sendPaymentThankYous()), bonus, credit, carried });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

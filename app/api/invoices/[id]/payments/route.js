@@ -79,6 +79,7 @@ export async function POST(request, { params }) {
         payment_method,
         received_by,
         note: note?.trim() || (deposit ? 'Deposit' : null),
+        is_deposit: deposit,
       },
     ])
     .select('*, staff(full_name)')

@@ -10,6 +10,8 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { recomputeInvoicePayments } from '@/lib/invoicing';
+import { creditTransfersFor } from '@/lib/invoiceCreditCarry';
 
 const VALID_STATUSES = ['void'];
 
@@ -93,8 +95,10 @@ export async function GET(request, { params }) {
     invoice.hospitalizations = hospitalization || null;
   }
   invoice.cattery_bookings = catteryBookings || [];
+  // Credit carried over to or from this invoice (migration 238).
+  const credit_transfers = await creditTransfersFor(params.id);
 
-  return NextResponse.json({ ...invoice, line_items: lineItems, payments, discounts });
+  return NextResponse.json({ ...invoice, line_items: lineItems, payments, discounts, credit_transfers });
 }
 
 export async function PATCH(request, { params }) {
@@ -117,6 +121,11 @@ export async function PATCH(request, { params }) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  // Credit carried over to this invoice goes back where it came from.
+  const { data: carriedIn } = await supabaseAdmin.from('invoice_credit_transfers').select('from_invoice_id').eq('to_invoice_id', params.id);
+  for (const fromId of new Set((carriedIn || []).map((t) => t.from_invoice_id))) {
+    await recomputeInvoicePayments(supabase, fromId, { autoClose: false });
   }
   return NextResponse.json(data);
 }
