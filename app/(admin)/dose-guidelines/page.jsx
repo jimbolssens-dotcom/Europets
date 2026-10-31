@@ -212,7 +212,7 @@ export default function DoseGuidelinesPage() {
 
   async function save(id, values) {
     if (!signer) {
-      setError('Pick who is approving (top right) before saving.');
+      setError('Pick who is approving (next to the search) before saving.');
       return;
     }
     setSaving(true);
@@ -246,12 +246,6 @@ export default function DoseGuidelinesPage() {
       <div className="page-header">
         <h1>💊 Dose guidelines</h1>
         <div className="page-header-actions">
-          <select value={signer} onChange={(e) => pickSigner(e.target.value)} aria-label="Approving as" className="dose-signer">
-            <option value="">Approving as…</option>
-            {vets.map((v) => (
-              <option key={v.id} value={v.full_name}>{v.full_name}</option>
-            ))}
-          </select>
           <a href="/catalog" className="button-link">← Catalog</a>
         </div>
       </div>
@@ -260,6 +254,12 @@ export default function DoseGuidelinesPage() {
       </p>
       <div className="dose-toolbar">
         <input type="search" placeholder="Search medicines" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <select value={signer} onChange={(e) => pickSigner(e.target.value)} aria-label="Approving as" className="dose-signer">
+          <option value="">Approving as…</option>
+          {vets.map((v) => (
+            <option key={v.id} value={v.full_name}>{v.full_name}</option>
+          ))}
+        </select>
         <button type="button" onClick={() => setEditing('new')}>+ Add</button>
       </div>
       {error && <p className="error">{error}</p>}
@@ -286,7 +286,15 @@ export default function DoseGuidelinesPage() {
             editing === g.id ? (
               <GuidelineForm key={g.id} initial={g} medicines={medicines} saving={saving} onSave={(v) => save(g.id, v)} onCancel={() => setEditing(null)} onDelete={() => remove(g)} />
             ) : (
-              <div key={g.id} className="dose-line">
+              // Tap a line to edit it (same as the catalog): no Edit button.
+              <div
+                key={g.id}
+                className="dose-line"
+                role="button"
+                tabIndex={0}
+                onClick={() => setEditing(g.id)}
+                onKeyDown={(e) => (e.key === 'Enter' ? setEditing(g.id) : null)}
+              >
                 <span className="dose-species">{SPECIES_LABELS[g.species]}{g.variant ? ` · ${g.variant}` : ''}</span>
                 <span className="dose-summary">
                   {summary(g)}
@@ -294,9 +302,8 @@ export default function DoseGuidelinesPage() {
                   {g.notes && g.rule !== 'note' && !(g.rule === 'bands' && g.band_step_kg) ? <em> · {g.notes}</em> : null}
                 </span>
                 <span className="dose-approved" title={g.source || ''}>
-                  {g.approved_at ? `✓ ${g.approved_by || 'Approved'}, ${new Date(g.approved_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : 'Not approved'}
+                  {g.approved_at ? `✓ ${new Date(g.approved_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · ${g.approved_by || 'Approved'}` : 'Not approved'}
                 </span>
-                <button type="button" className="secondary dose-edit" onClick={() => setEditing(g.id)}>Edit</button>
               </div>
             )
           )}
