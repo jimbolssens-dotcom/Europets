@@ -907,12 +907,18 @@ export default function MessagesInboxPage() {
                   <th>Client</th>
                   <th>Last message</th>
                   <th>When</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {matched.map((c) => (
-                  <tr key={c.client_id} className={c.pending ? 'cage-update-requested' : ''}>
+                  // Tap a conversation to open it (no Open button).
+                  <tr
+                    key={c.client_id}
+                    className={`inbox-row${c.pending ? ' cage-update-requested' : ''}`}
+                    onClick={(e) => {
+                      if (!e.target.closest('a, button')) window.location.href = `/messages/${c.client_id}`;
+                    }}
+                  >
                     <td>
                       {c.pending && (
                         <button type="button" className="message-bell-off" onClick={() => clearAlarm(c)} title="Switch off this alarm (marks the conversation read)">
@@ -921,9 +927,9 @@ export default function MessagesInboxPage() {
                       )}
                     </td>
                     <td>
-                      <a href={`/clients/${c.client_id}`}>
+                      <a href={`/messages/${c.client_id}`} className="inbox-client">
                         {c.client?.full_name}
-                        {c.client?.client_number ? <span className="inbox-client-number"> (Client #{c.client.client_number})</span> : ''}
+                        {c.client?.client_number ? <span className="inbox-client-number"> #{c.client.client_number}</span> : ''}
                       </a>
                       <span className="visit-meta inbox-channel"> · {c.channel === 'whatsapp' ? 'WhatsApp' : 'App'}</span>
                       {c.assigned_staff_name && <span className="visit-meta"> · 👤 {c.assigned_staff_name}</span>}
@@ -933,11 +939,6 @@ export default function MessagesInboxPage() {
                       {preview(c.last_message)}
                     </td>
                     <td title={formatWhen(c.last_message_at)}>{formatWhenShort(c.last_message_at)}</td>
-                    <td>
-                      <a href={`/messages/${c.client_id}`} className="button-link button-link-open">
-                        Open
-                      </a>
-                    </td>
                   </tr>
                 ))}
               </tbody>
