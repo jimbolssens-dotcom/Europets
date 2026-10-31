@@ -14474,3 +14474,64 @@ button.client-edit-link:hover {
     overflow: visible;
   }
 }
+
+/* Patient page: name, ✏️ Edit and ⚠️ on the title line. */
+.patient-page .consult-header-row h1 {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.patient-page .patient-edit-link {
+  align-self: center;
+  flex: none;
+}
+.vaccination-history .pl-act {
+  width: 1%;
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .patient-page .consult-header-row {
+    gap: 0.4rem;
+  }
+  /* The case links oval has up to five buttons here: let the row and
+     the oval wrap (the client page keeps them on one line). */
+  .patient-page > .action-row {
+    flex-wrap: wrap;
+  }
+  .patient-page > .action-row .cross-record-links {
+    flex-wrap: wrap;
+    border-radius: 18px;
+    margin-left: 0;
+  }
+  /* Patient facts: two to a row (label over value), owner and notes full
+     width, instead of ten rows down the page. */
+  .patient-page .patient-facts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .patient-page .patient-fact {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.85rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .patient-page .patient-fact-wide {
+    grid-column: 1 / -1;
+  }
+  .patient-page .patient-fact-label {
+    font-size: 0.65rem;
+  }
+  table.phone-list .pl-act {
+    order: 1;
+    flex: none;
+  }
+  table.phone-list .pl-main .visit-meta {
+    display: inline;
+    font-weight: 400;
+    font-size: 0.75rem;
+    margin-left: 0.35rem;
+  }
+}

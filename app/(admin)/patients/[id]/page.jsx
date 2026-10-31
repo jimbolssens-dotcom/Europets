@@ -385,19 +385,23 @@ export default function PatientDetailPage() {
   if (!patient || patient.error) return <p>Patient not found.</p>;
 
   return (
-    <div>
-      <p>
-        <a href="/clients">&larr; Clients</a>
-      </p>
+    <div className="client-page patient-page">
       <div className="consult-header-row">
         <h1>
+          {/* Back to the owner, on the title line instead of a line of its own. */}
+          <a href={`/clients/${patient.client_id}`} className="client-back" title="Back to the owner" aria-label="Back to the owner">&larr;</a>{' '}
           {patient.profile_photo_url && (
             <img src={patient.profile_photo_url} alt="" className="patient-header-avatar" />
           )}
-          {patient.name} <span>(Patient #{patient.patient_number})</span>
+          {patient.name} <span className="client-no">#{patient.patient_number}</span>
           {patient.deceased && <span className="error"> · Deceased</span>}
           {patient.rehomed && <span className="error"> · Rehomed</span>}
         </h1>
+        {!editing && (
+          <button type="button" className="client-edit-link patient-edit-link" onClick={startEdit}>
+            ✏️ Edit
+          </button>
+        )}
         {/* Just the ⚠️ (and a count) while closed; the full title shows
             once it's open, which it is by default when there are notes. */}
         <details className="patient-alerts-panel patient-alerts-panel-icon" open={patientAlerts.alerts.length > 0}>
@@ -615,10 +619,10 @@ export default function PatientDetailPage() {
             </form>
           ) : (
             <div className="patient-facts">
-              <div className="patient-fact">
+              <div className="patient-fact patient-fact-wide">
                 <span className="patient-fact-label">Owner</span>
                 <a href={`/clients/${patient.clients?.id}`}>
-                  {patient.clients?.full_name} (Client #{patient.clients?.client_number})
+                  {patient.clients?.full_name} <span className="client-no">#{patient.clients?.client_number}</span>
                 </a>
               </div>
               <div className="patient-fact">
@@ -653,18 +657,11 @@ export default function PatientDetailPage() {
                 <span className="patient-fact-label">Microchip implanted</span>
                 <span>{patient.microchip_implanted_at || '—'}</span>
               </div>
-              <div className="patient-fact">
+              <div className="patient-fact patient-fact-wide">
                 <span className="patient-fact-label">Notes</span>
                 <span>{patient.notes || '—'}</span>
               </div>
             </div>
-          )}
-          {!editing && (
-            <p>
-              <button type="button" onClick={startEdit}>
-                Edit
-              </button>
-            </p>
           )}
           <h2>Weight History</h2>
           <WeightHistoryChart data={weightHistory} />
@@ -681,13 +678,12 @@ export default function PatientDetailPage() {
       {quotes.length > 0 && (
         <>
           <h2>Quotes</h2>
-          <table>
+          <table className="phone-list">
             <thead>
               <tr>
                 <th>Date</th>
                 <th>Items</th>
                 <th>Estimated Total</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -696,13 +692,16 @@ export default function PatientDetailPage() {
                 const subtotal = items.reduce((sum, item) => sum + Number(item.line_total), 0);
                 const total = Math.round(subtotal * 1.05 * 100) / 100;
                 return (
-                  <tr key={q.id}>
-                    <td>{formatShortDate(q.created_at)}</td>
-                    <td>{items.length}</td>
-                    <td>AED {total.toFixed(2)}</td>
-                    <td>
-                      <a href={`/proforma/${q.id}`} className="button-link button-link-open">Open</a>
+                  // Tap a quote to open it.
+                  <tr key={q.id} className="pl-tap" onClick={() => (window.location.href = `/proforma/${q.id}`)}>
+                    <td className="pl-main">
+                      <a href={`/proforma/${q.id}`}>{formatShortDate(q.created_at)}</a>
                     </td>
+                    <td className="pl-sub">
+                      {items.length}
+                      <span className="pl-phone-only"> item{items.length === 1 ? '' : 's'}</span>
+                    </td>
+                    <td className="pl-right">AED {total.toFixed(2)}</td>
                   </tr>
                 );
               })}
