@@ -569,13 +569,14 @@ export default function ClientDetailPage() {
   }
 
   return (
-    <div>
-      <p>
-        <a href="/clients">&larr; Clients</a>
-      </p>
-      <h1>
-        {client.full_name} <span>(Client #{client.client_number})</span>
-      </h1>
+    <div className="client-page">
+      {/* Back arrow, name and client # on one line (no line of their own). */}
+      <div className="client-title">
+        <a href="/clients" className="client-back" title="Back to Clients" aria-label="Back to Clients">&larr;</a>
+        <h1>
+          {client.full_name} <span className="client-no">#{client.client_number}</span>
+        </h1>
+      </div>
       {/* Same layout as the patient page: Book, the More menu right next
           to it, then the case links (Consult / Invoice) in the pink oval.
           Chat stays out on the row since it's used all day. */}
@@ -600,7 +601,7 @@ export default function ClientDetailPage() {
             page, hence the spelled-out label rather than reusing their
             "💬 WhatsApp" wording for something that behaves differently. */}
         <a href={`/messages/${client.id}`} className="button-link" title="Open this client's message thread — the clinic's own WhatsApp number and app chat, unified">
-          💬 Chat
+          💬<span className="client-long-label"> Chat</span>
         </a>
         <CrossRecordLinks>
           <a href={`/consults?client_id=${client.id}`} className="button-link">
@@ -725,8 +726,8 @@ export default function ClientDetailPage() {
             <option value="yes">📸 Social: yes</option>
             <option value="no">📸 Social: no</option>
           </select>{' '}
-          <button type="button" onClick={startEdit}>
-            Edit
+          <button type="button" className="client-edit-link" onClick={startEdit}>
+            ✏️ Edit
           </button>
         </p>
       )}
@@ -970,7 +971,7 @@ export default function ClientDetailPage() {
         {outstandingInvoices.length > 0 ? (
           <>
             <div className="financial-overview-table-wrap">
-            <table className="financial-overview-table">
+            <table className="financial-overview-table phone-list">
               <thead>
                 <tr>
                   <th>Invoice</th>
@@ -987,17 +988,18 @@ export default function ClientDetailPage() {
                   const reminded = reminderLog.find((r) => r.invoice_id === inv.id);
                   return (
                     <tr key={inv.id}>
-                      <td>
+                      <td className="pl-main">
                         <a href={`/invoices/${inv.id}`}>{invoiceLabel(inv)}</a>
+                        {patient ? <span className="pl-phone-only"> · {patient.name}</span> : null}
                       </td>
-                      <td>{dayMonth(inv.created_at)}</td>
-                      <td>{patient ? patient.name : '—'}</td>
-                      <td>
+                      <td className="pl-sub">{dayMonth(inv.created_at)}</td>
+                      <td className="pl-hide">{patient ? patient.name : '—'}</td>
+                      <td className="pl-right">
                         AED {money(balanceDue(inv))}
                         {inv.status === 'partially_paid' && <span className="visit-meta"> part paid</span>}
                       </td>
-                      <td>{ageLabel(inv.created_at)}</td>
-                      <td>{reminded ? `🔔 ${stageShort(reminded.stage)}, ${dayMonth(reminded.sent_at)}` : '—'}</td>
+                      <td className="pl-sub">{ageLabel(inv.created_at)}</td>
+                      <td className={reminded ? 'pl-sub' : 'pl-hide'}>{reminded ? `🔔 ${stageShort(reminded.stage)}, ${dayMonth(reminded.sent_at)}` : '—'}</td>
                     </tr>
                   );
                 })}
@@ -1015,8 +1017,13 @@ export default function ClientDetailPage() {
         )}
       </div>
 
-      <h2>Patients</h2>
-      <table>
+      <div className="page-header client-patients-head">
+        <h2>Patients</h2>
+        <div className="page-header-actions">
+          <a href={`/add?client_id=${client.id}`} className="client-add-pet">+ Add patient</a>
+        </div>
+      </div>
+      <table className="phone-list">
         <thead>
           <tr>
             <th>Patient #</th>
@@ -1028,9 +1035,9 @@ export default function ClientDetailPage() {
         </thead>
         <tbody>
           {patients.map((p) => (
-            <tr key={p.id}>
-              <td>{p.patient_number}</td>
-              <td>
+            <tr key={p.id} className="pl-tap" onClick={(e) => { if (!e.target.closest('a')) window.location.href = `/patients/${p.id}`; }}>
+              <td className="pl-sub pl-num">{p.patient_number}</td>
+              <td className="pl-main">
                 <a
                   href={`/patients/${p.id}`}
                   style={p.deceased || p.rehomed ? { textDecoration: 'line-through' } : undefined}
@@ -1038,9 +1045,9 @@ export default function ClientDetailPage() {
                   {p.name}
                 </a>
               </td>
-              <td>{p.species}</td>
-              <td>{p.breed}</td>
-              <td>{p.current_weight_kg}</td>
+              <td className="pl-sub">{p.species}</td>
+              <td className="pl-sub">{p.breed}</td>
+              <td className="pl-right pl-kg">{p.current_weight_kg}</td>
             </tr>
           ))}
           {patients.length === 0 && (
@@ -1050,9 +1057,6 @@ export default function ClientDetailPage() {
           )}
         </tbody>
       </table>
-      <p>
-        <a href={`/add?client_id=${client.id}`}>Add a patient for this client &rarr;</a>
-      </p>
 
       <PatientHistoryPanel clientId={client.id} showHospitalizations={false} title="Consult & Invoice History" />
     </div>

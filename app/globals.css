@@ -14283,3 +14283,194 @@ button.invoice-deposit-btn {
   width: auto;
   margin: 0;
 }
+
+/* Client page header: back arrow, name and client # on one line. */
+.client-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+.client-title h1 {
+  margin: 0.4rem 0 0;
+}
+.client-back {
+  text-decoration: none;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+.client-no {
+  font-size: 0.6em;
+  font-weight: 600;
+  color: #999;
+}
+button.client-edit-link {
+  width: auto;
+  margin: 0 0 0 0.3rem;
+  padding: 0.1rem 0.3rem;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: #999;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: underline;
+}
+button.client-edit-link:hover {
+  background: none;
+  color: var(--pink-dark);
+}
+.client-patients-head {
+  margin-top: 1.2rem;
+}
+.client-patients-head h2 {
+  margin: 0;
+}
+.client-add-pet {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* .phone-list: a table that turns into a compact two-line list on a
+   phone (Jim: side by side, not one field per row). Cells say where they
+   go: pl-main (bold, left), pl-right (right of it), pl-sub (small grey
+   second line), pl-hide (phone: not shown). */
+.pl-tap {
+  cursor: pointer;
+}
+.pl-tap:hover {
+  background: var(--pink-tint);
+}
+.pl-phone-only {
+  display: none;
+}
+@media (max-width: 700px) {
+  .pl-desktop-only {
+    display: none;
+  }
+  .pl-phone-only {
+    display: inline;
+    font-weight: 400;
+    color: #767171;
+  }
+  table.phone-list,
+  table.phone-list tbody {
+    display: block;
+    width: 100%;
+  }
+  table.phone-list thead {
+    display: none;
+  }
+  table.phone-list tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.5rem;
+    row-gap: 0.1rem;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid #f0e6ea;
+    background: white;
+  }
+  table.phone-list tr td {
+    display: block;
+    padding: 0;
+    border: none;
+    background: none;
+    white-space: normal;
+  }
+  table.phone-list td[colspan] {
+    flex: 1 1 100%;
+  }
+  table.phone-list .pl-main {
+    order: 0;
+    flex: 1 1 calc(100% - 8rem);
+    min-width: 0;
+    font-weight: 600;
+    font-size: 0.92rem;
+  }
+  table.phone-list .pl-right {
+    order: 1;
+    flex: 0 0 auto;
+    max-width: 11rem;
+    white-space: nowrap;
+    margin-left: auto;
+    text-align: right;
+    font-weight: 700;
+    font-size: 0.88rem;
+  }
+  table.phone-list .pl-right.pl-light {
+    font-weight: 400;
+    color: #767171;
+    font-size: 0.8rem;
+  }
+  table.phone-list .pl-sub {
+    order: 2;
+    font-size: 0.75rem;
+    color: #888;
+  }
+  table.phone-list .pl-sub:empty,
+  table.phone-list .pl-hide {
+    display: none;
+  }
+  table.phone-list .pl-sub ~ .pl-sub::before {
+    content: '· ';
+  }
+  /* Line break after the name and the right-hand value. */
+  table.phone-list tr::after {
+    content: '';
+    order: 1;
+    flex-basis: 100%;
+    height: 0;
+  }
+  table.phone-list .pl-num::before {
+    content: '#';
+  }
+  table.phone-list .pl-kg:not(:empty)::after {
+    content: ' kg';
+    font-weight: 400;
+    color: #888;
+  }
+  table.phone-list .pl-right .visit-meta {
+    font-size: 0.7rem;
+    font-weight: 400;
+  }
+
+  /* Client page on a phone: a smaller title, and Book / More / Chat and
+     the Consult / Invoice oval on one row. */
+  .client-title h1 {
+    font-size: 1.3rem;
+    line-height: 1.2;
+  }
+  .client-page > .action-row .cross-record-links {
+    flex-wrap: nowrap;
+    padding: 0.15rem;
+    gap: 0.2rem;
+  }
+  .client-page > .action-row {
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+    margin: 0.5rem 0;
+  }
+  .client-page > .action-row a.button-link,
+  .client-page > .action-row .cross-record-links a.button-link,
+  .client-page > .action-row > details.action-menu > summary.case-tab {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+  .client-page > p {
+    font-size: 0.85rem;
+  }
+  .client-page .client-long-label {
+    display: none;
+  }
+  .client-page .financial-overview-total-label {
+    white-space: nowrap;
+  }
+  .client-page .financial-overview-total-amount {
+    font-size: 1.3rem;
+    white-space: nowrap;
+  }
+  .client-page .financial-overview-table-wrap {
+    overflow: visible;
+  }
+}

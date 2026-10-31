@@ -72,7 +72,7 @@ function QuickSearchResults({ q }) {
           {results.clients.length === 0 ? (
             <p>No matching clients.</p>
           ) : (
-            <table>
+            <table className="phone-list">
               <thead>
                 <tr>
                   <th>Client #</th>
@@ -83,13 +83,13 @@ function QuickSearchResults({ q }) {
               </thead>
               <tbody>
                 {results.clients.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.client_number}</td>
-                    <td>
+                  <tr key={c.id} className="pl-tap" onClick={(e) => { if (!e.target.closest('a')) window.location.href = `/clients/${c.id}`; }}>
+                    <td className="pl-sub pl-num">{c.client_number}</td>
+                    <td className="pl-main">
                       <a href={`/clients/${c.id}`}>{c.full_name}</a>
                     </td>
-                    <td>{c.phone}</td>
-                    <td>{c.email}</td>
+                    <td className="pl-right pl-light">{c.phone}</td>
+                    <td className="pl-sub">{c.email}</td>
                   </tr>
                 ))}
               </tbody>
@@ -100,7 +100,7 @@ function QuickSearchResults({ q }) {
           {results.patients.length === 0 ? (
             <p>No matching patients.</p>
           ) : (
-            <table>
+            <table className="phone-list">
               <thead>
                 <tr>
                   <th>Patient #</th>
@@ -113,9 +113,9 @@ function QuickSearchResults({ q }) {
               </thead>
               <tbody>
                 {results.patients.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.patient_number}</td>
-                    <td>
+                  <tr key={p.id} className="pl-tap" onClick={(e) => { if (!e.target.closest('a')) window.location.href = `/patients/${p.id}`; }}>
+                    <td className="pl-sub pl-num">{p.patient_number}</td>
+                    <td className="pl-main">
                       <a
                         href={`/patients/${p.id}`}
                         style={p.deceased || p.rehomed ? { textDecoration: 'line-through' } : undefined}
@@ -123,10 +123,10 @@ function QuickSearchResults({ q }) {
                         {p.name}
                       </a>
                     </td>
-                    <td>{p.species}</td>
-                    <td>{p.breed}</td>
-                    <td>{p.microchip_number}</td>
-                    <td>
+                    <td className="pl-right pl-light">{p.species}</td>
+                    <td className="pl-sub">{p.breed}</td>
+                    <td className="pl-sub">{p.microchip_number}</td>
+                    <td className="pl-sub">
                       <a href={`/clients/${p.clients?.id}`}>{p.clients?.full_name}</a>
                     </td>
                   </tr>
