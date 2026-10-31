@@ -88,7 +88,7 @@ export default function SettingsPage() {
   if (loading) return <p>Loading settings...</p>;
 
   return (
-    <div>
+    <div className="settings-page">
       <div className="page-header">
         <h1>Clinic Settings</h1>
         <div className="page-header-actions">
@@ -100,7 +100,7 @@ export default function SettingsPage() {
         Rooms &amp; Staff{' '}
         <InfoHint>Managed occasionally, not day to day — tucked in here instead of the main nav.</InfoHint>
       </h2>
-      <div className="home-links">
+      <div className="home-links settings-links">
         <a href="/rooms">Rooms</a>
         <a href="/staff">Staff</a>
         <a href="/staff/roster">Staff Roster</a>
@@ -111,7 +111,7 @@ export default function SettingsPage() {
         More{' '}
         <InfoHint>Used less often than the main nav pages — tucked in here to keep that bar readable.</InfoHint>
       </h2>
-      <div className="home-links">
+      <div className="home-links settings-links">
         <a href="/reviews">Reviews</a>
         <a href="/catalog">Catalog</a>
         <a href="/policies">Policies</a>
@@ -147,6 +147,7 @@ export default function SettingsPage() {
           Address
           <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
         </label>
+<div className="settings-row">
         <label>
           Phone (landline)
           <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
@@ -155,6 +156,7 @@ export default function SettingsPage() {
           Phone 2 (landline)
           <input value={form.phone2} onChange={(e) => setForm({ ...form, phone2: e.target.value })} />
         </label>
+        </div>
         <label>
           Email
           <input
@@ -171,8 +173,9 @@ export default function SettingsPage() {
             that method — see the Catalog page to mark which methods each medication supports.
           </InfoHint>
         </h3>
+<div className="settings-row settings-row-3">
         <label>
-          Dispensing fee (AED)
+          Dispensing (AED)
           <input
             type="number"
             step="0.01"
@@ -182,7 +185,7 @@ export default function SettingsPage() {
           />
         </label>
         <label>
-          Subcutaneous (SC) injection fee (AED)
+          SC injection (AED)
           <input
             type="number"
             step="0.01"
@@ -192,7 +195,7 @@ export default function SettingsPage() {
           />
         </label>
         <label>
-          Intramuscular (IM) injection fee (AED)
+          IM injection (AED)
           <input
             type="number"
             step="0.01"
@@ -201,6 +204,7 @@ export default function SettingsPage() {
             onChange={(e) => setForm({ ...form, im_injection_fee: e.target.value })}
           />
         </label>
+        </div>
 
         <h3>
           Post-Op Care Baselines{' '}
@@ -214,7 +218,7 @@ export default function SettingsPage() {
         <label>
           Surgical baseline
           <textarea
-            rows={6}
+            rows={3}
             placeholder="e.g. Keep the incision dry and covered for 10 days. Restrict activity — leash walks only, no running or jumping. Use the e-collar at all times unless supervised..."
             value={form.surgical_postop_baseline}
             onChange={(e) => setForm({ ...form, surgical_postop_baseline: e.target.value })}
@@ -223,7 +227,7 @@ export default function SettingsPage() {
         <label>
           Dental baseline
           <textarea
-            rows={6}
+            rows={3}
             placeholder="e.g. Soft food only for 3-5 days. No hard chews or toys for 2 weeks. Watch for excessive drooling, bleeding, or reluctance to eat and call us if it persists..."
             value={form.dental_postop_baseline}
             onChange={(e) => setForm({ ...form, dental_postop_baseline: e.target.value })}
@@ -231,7 +235,7 @@ export default function SettingsPage() {
         </label>
 
         <h3>
-          Client Self-Booking Hours{' '}
+          Client Self-Booking Hours <span className="visit-meta">(surgery = spay, castration, dental)</span>{' '}
           <InfoHint>
             The windows a client can request a slot in on the booking portal — a slot only shows
             up within these hours, and only with a doctor the roster flags in for that kind (Staff
@@ -240,8 +244,9 @@ export default function SettingsPage() {
             says.
           </InfoHint>
         </h3>
+<div className="settings-row">
         <label>
-          Morning window start
+          Morning start
           <input
             type="time"
             value={form.booking_morning_start}
@@ -249,15 +254,17 @@ export default function SettingsPage() {
           />
         </label>
         <label>
-          Morning window end
+          Morning end
           <input
             type="time"
             value={form.booking_morning_end}
             onChange={(e) => setForm({ ...form, booking_morning_end: e.target.value })}
           />
         </label>
+        </div>
+<div className="settings-row">
         <label>
-          Afternoon window start
+          Afternoon start
           <input
             type="time"
             value={form.booking_afternoon_start}
@@ -265,15 +272,17 @@ export default function SettingsPage() {
           />
         </label>
         <label>
-          Afternoon window end
+          Afternoon end
           <input
             type="time"
             value={form.booking_afternoon_end}
             onChange={(e) => setForm({ ...form, booking_afternoon_end: e.target.value })}
           />
         </label>
+        </div>
+<div className="settings-row">
         <label>
-          Surgery window start (spay/castration/dental){' '}
+          Surgery start{' '}
           <InfoHint>
             No surgery-type slot is ever offered before this time, even if the morning window
             above starts earlier.
@@ -285,7 +294,7 @@ export default function SettingsPage() {
           />
         </label>
         <label>
-          Surgery window end (spay/castration/dental){' '}
+          Surgery end{' '}
           <InfoHint>
             Every surgery-type slot must finish by this time — anesthesia/recovery needs the rest
             of the day clear.
@@ -296,6 +305,7 @@ export default function SettingsPage() {
             onChange={(e) => setForm({ ...form, booking_surgery_end: e.target.value })}
           />
         </label>
+        </div>
 
         <h3>
           Client App Appearance{' '}

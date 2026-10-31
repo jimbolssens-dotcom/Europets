@@ -14873,3 +14873,59 @@ table.phone-list .pl-flag:empty {
   color: #767171;
   font-size: 0.85rem;
 }
+
+/* Settings: the page links as small chips in a row (not big tiles), and
+   short fields side by side (the two phones, the three fees, each booking
+   window's start and end). */
+.settings-page .settings-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.settings-page .settings-links a {
+  flex: none;
+  min-height: 0;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--pink-tint);
+  border-top: 1px solid var(--pink-tint);
+  border-radius: 999px;
+  background: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+.settings-page .settings-links a:hover {
+  background: var(--pink-tint);
+}
+.settings-page h2 {
+  font-size: 1.15rem;
+  margin: 1rem 0 0.4rem;
+}
+.settings-page .settings-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 0.75rem;
+}
+.settings-page .settings-row-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.settings-page .settings-row > label {
+  min-width: 0;
+  margin: 0;
+}
+.settings-page .settings-row input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+@media (max-width: 700px) {
+  .settings-page .card label {
+    font-size: 0.8rem;
+  }
+  .settings-page .card h3 {
+    font-size: 1rem;
+    margin: 0.9rem 0 0.3rem;
+  }
+}
