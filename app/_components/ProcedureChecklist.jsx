@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from 'react';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import DoseHint, { useDoseGuidelines, doseReasonNote } from '@/app/_components/DoseHint';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
 import { checklistItemAction } from '@/lib/checklistItemAction';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
@@ -40,7 +41,7 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function ProcedureChecklist({ hospitalizationId, admittedAt, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport, onHasVaccineItem }) {
+export default function ProcedureChecklist({ hospitalizationId, admittedAt, staff = [], catalog, subcategories, onCatalogItemCreated, onOpenReport, onHasVaccineItem, species, weightKg }) {
   const [planItems, setPlanItems] = useState([]);
   const [loggedNotes, setLoggedNotes] = useState([]);
   const [authorId, setAuthorId] = useState('');
@@ -52,6 +53,9 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
   const [catalogGoodsServiceId, setCatalogGoodsServiceId] = useState('');
   const [catalogInstructions, setCatalogInstructions] = useState('');
   const [catalogQuantity, setCatalogQuantity] = useState('1');
+  // Guideline doses (Dose guidelines page), as on the hospital plan.
+  const doseGuidelines = useDoseGuidelines();
+  const [doseStatus, setDoseStatus] = useState({ needsReason: false, reason: '' });
   const [showCustomAdd, setShowCustomAdd] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
   const [customIsSurgical, setCustomIsSurgical] = useState(false);
@@ -390,10 +394,14 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
     if (!catalogGoodsServiceId) return;
     const item = catalog.find((c) => c.id === catalogGoodsServiceId);
     if (!item) return;
+    if (doseStatus.needsReason && !doseStatus.reason) {
+      setError('This dose is well outside the guideline: pick a reason under it, or change the amount.');
+      return;
+    }
     await addPlanItem({
       label: item.name,
       goods_service_id: item.id,
-      instructions: catalogInstructions.trim() || null,
+      instructions: [catalogInstructions.trim(), doseReasonNote(doseStatus.reason)].filter(Boolean).join(' ') || null,
       quantity: catalogQuantity,
     });
     setCatalogGoodsServiceId('');
@@ -730,6 +738,15 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
               onChange={(e) => setCatalogQuantity(e.target.value)}
             />
           </div>
+          <DoseHint
+            guidelines={doseGuidelines}
+            goodsServiceId={catalogGoodsServiceId}
+            species={species}
+            weightKg={weightKg}
+            amount={catalogQuantity}
+            onStatus={setDoseStatus}
+            onProposed={(amount) => amount != null && setCatalogQuantity(String(amount))}
+          />
           <button type="button" onClick={addCatalogTask} disabled={!catalogGoodsServiceId}>
             Add to Checklist
           </button>

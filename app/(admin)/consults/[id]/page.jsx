@@ -39,6 +39,7 @@ import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
 import { fetchJsonPrefetched } from '@/lib/prefetchData';
 import { loadReferenceList } from '@/lib/viewCache';
 import { temperatureError, TEMP_MIN_C, TEMP_MAX_C } from '@/lib/bodyTemperature';
+import DoseHint, { useDoseGuidelines, doseInstructionText, doseReasonNote } from '@/app/_components/DoseHint';
 
 // Diagnostics predating migration 023 have a free-text type instead of a
 // catalog link — kept only to label those old rows.
@@ -109,6 +110,11 @@ export default function ConsultDetailPage() {
 
   const [treatmentItems, setTreatmentItems] = useState([]);
   const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1', billable: true });
+  // Guideline doses (Dose guidelines page): picking a medicine fills in its
+  // dose from the weight; well outside the range needs a reason.
+  const doseGuidelines = useDoseGuidelines();
+  const [doseStatus, setDoseStatus] = useState({ needsReason: false, reason: '' });
+  const [doseError, setDoseError] = useState(null);
   const [treatCategory, setTreatCategory] = useState('product');
   const [microchipModalOpen, setMicrochipModalOpen] = useState(false);
   const [treatItemDrafts, setTreatItemDrafts] = useState({}); // item id -> { quantity, instructions } while typing, before it's saved on blur
@@ -592,10 +598,12 @@ export default function ConsultDetailPage() {
   }
 
   async function postTreatmentItem() {
+    const note = doseReasonNote(doseStatus.reason);
+    const instructions = [treatForm.instructions.trim(), note].filter(Boolean).join(' ');
     const res = await fetch('/api/treatment-items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: id, ...treatForm }),
+      body: JSON.stringify({ visit_id: id, ...treatForm, instructions }),
     });
     if (!res.ok) {
       const data = await res.json();
@@ -606,6 +614,11 @@ export default function ConsultDetailPage() {
   async function addTreatmentItem(e) {
     e.preventDefault();
     if (!treatForm.goods_service_id) return;
+    if (doseStatus.needsReason && !doseStatus.reason) {
+      setDoseError('This dose is well outside the guideline: pick a reason under it, or change the amount.');
+      return;
+    }
+    setDoseError(null);
 
     const selected = catalog.find((c) => c.id === treatForm.goods_service_id);
     if (isMicrochipProduct(selected?.name)) {
@@ -1643,6 +1656,29 @@ export default function ConsultDetailPage() {
             value={treatForm.quantity}
             onChange={(e) => setTreatForm({ ...treatForm, quantity: e.target.value })}
           />
+          {(() => {
+            // Dispensed (a course to take home): the amount is the whole
+            // course, so the dose per time goes into the instructions.
+            const picked = catalog.find((c) => c.id === treatForm.goods_service_id);
+            const mode = picked?.administration_method === 'dispense' ? 'instructions' : 'amount';
+            return (
+              <DoseHint
+                guidelines={doseGuidelines}
+                goodsServiceId={treatForm.goods_service_id}
+                species={consult.patients?.species}
+                weightKg={record?.weight_kg || consult.weight_kg || consult.patients?.current_weight_kg}
+                amount={treatForm.quantity}
+                mode={mode}
+                onStatus={setDoseStatus}
+                onProposed={(amount, g) => {
+                  if (amount == null) return;
+                  if (mode === 'amount') setTreatForm((f) => ({ ...f, quantity: String(amount) }));
+                  else setTreatForm((f) => (f.instructions.trim() ? f : { ...f, instructions: doseInstructionText(amount, g) }));
+                }}
+              />
+            );
+          })()}
+          {doseError && <p className="error">{doseError}</p>}
           <label className="treat-item-billable-toggle">
             <input
               type="checkbox"

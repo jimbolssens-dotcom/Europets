@@ -22,6 +22,7 @@
 
 import { useEffect, useState } from 'react';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import DoseHint, { useDoseGuidelines, doseInstructionText, doseReasonNote } from '@/app/_components/DoseHint';
 import VoiceToTextButton from '@/app/_components/VoiceToTextButton';
 import { ADMINISTRATION_METHOD_LABELS, ADMINISTRATION_METHOD_CODES } from '@/lib/administrationMethods';
 import { subcategoryName } from '@/lib/catalogGrouping';
@@ -31,11 +32,14 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, subcategories, onCatalogItemCreated }) {
+export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, subcategories, onCatalogItemCreated, species, weightKg }) {
   const [treatmentItems, setTreatmentItems] = useState([]);
   const [treatForm, setTreatForm] = useState({ goods_service_id: '', instructions: '', quantity: '1', billable: true });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  // Guideline doses (Dose guidelines page), as on the consult.
+  const doseGuidelines = useDoseGuidelines();
+  const [doseStatus, setDoseStatus] = useState({ needsReason: false, reason: '' });
   const [treatItemDrafts, setTreatItemDrafts] = useState({}); // item id -> { quantity, instructions } while typing, before it's saved on blur
 
   function loadTreatmentItems() {
@@ -70,6 +74,10 @@ export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, 
   async function addTreatmentItem(e) {
     e.preventDefault();
     if (!treatForm.goods_service_id) return;
+    if (doseStatus.needsReason && !doseStatus.reason) {
+      setError('This dose is well outside the guideline: pick a reason under it, or change the amount.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     const res = await fetch(`/api/hospitalizations/${hospitalizationId}/notes`, {
@@ -79,7 +87,7 @@ export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, 
         note_date: todayISODate(),
         treatment_items: [{
           goods_service_id: treatForm.goods_service_id,
-          instructions: treatForm.instructions,
+          instructions: [treatForm.instructions.trim(), doseReasonNote(doseStatus.reason)].filter(Boolean).join(' '),
           quantity: treatForm.quantity,
           billable: treatForm.billable,
         }],
@@ -189,6 +197,28 @@ export default function DayProcedureTreatmentPlan({ hospitalizationId, catalog, 
           value={treatForm.quantity}
           onChange={(e) => setTreatForm({ ...treatForm, quantity: e.target.value })}
         />
+        {(() => {
+          // Dispensed (a course to take home): the dose per time goes into
+          // the instructions, the amount stays the course.
+          const picked = catalog.find((c) => c.id === treatForm.goods_service_id);
+          const mode = picked?.administration_method === 'dispense' ? 'instructions' : 'amount';
+          return (
+            <DoseHint
+              guidelines={doseGuidelines}
+              goodsServiceId={treatForm.goods_service_id}
+              species={species}
+              weightKg={weightKg}
+              amount={treatForm.quantity}
+              mode={mode}
+              onStatus={setDoseStatus}
+              onProposed={(amount, g) => {
+                if (amount == null) return;
+                if (mode === 'amount') setTreatForm((f) => ({ ...f, quantity: String(amount) }));
+                else setTreatForm((f) => (f.instructions.trim() ? f : { ...f, instructions: doseInstructionText(amount, g) }));
+              }}
+            />
+          );
+        })()}
         <label className="treat-item-billable-toggle">
           <input
             type="checkbox"

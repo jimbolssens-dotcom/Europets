@@ -1293,6 +1293,8 @@ export default function HospitalizationDetailPage() {
                 onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
                 onOpenReport={openReportFromChecklist}
                 onHasVaccineItem={setHasVaccineOnChecklist}
+                species={admission.patients?.species}
+                weightKg={admission.patients?.current_weight_kg}
               />
             </div>
 
@@ -1338,6 +1340,8 @@ export default function HospitalizationDetailPage() {
                 catalog={catalog}
                 subcategories={subcategories}
                 onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
+                species={admission.patients?.species}
+                weightKg={admission.patients?.current_weight_kg}
               />
               {/* Same live, editable running-invoice preview the admission
                   view shows in its own sidebar — a day procedure gets its
@@ -1466,6 +1470,7 @@ export default function HospitalizationDetailPage() {
         onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
         onOpenReport={openReportFromChecklist}
         onFileWeightKg={admission.patients?.current_weight_kg}
+        species={admission.patients?.species}
       />
       <div className="split">
       <div className="split-main">

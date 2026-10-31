@@ -40,6 +40,7 @@
 import { useEffect, useRef, useState } from 'react';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
+import DoseHint, { useDoseGuidelines, doseReasonNote } from '@/app/_components/DoseHint';
 import TempDial from '@/app/_components/TempDial';
 import WeightDial from '@/app/_components/WeightDial';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
@@ -70,6 +71,7 @@ export default function DayTreatmentPlan({
   onCatalogItemCreated,
   onOpenReport,
   onFileWeightKg,
+  species,
 }) {
   const [planItems, setPlanItems] = useState([]);
   // Everything already given (and billed) during the consult this
@@ -106,6 +108,10 @@ export default function DayTreatmentPlan({
   const [catalogInstructions, setCatalogInstructions] = useState('');
   const [catalogFrequency, setCatalogFrequency] = useState('once_daily');
   const [catalogQuantity, setCatalogQuantity] = useState('1');
+  // Guideline doses (Dose guidelines page): the quantity per tap is the
+  // dose, filled in from the weight; well outside the range needs a reason.
+  const doseGuidelines = useDoseGuidelines();
+  const [doseStatus, setDoseStatus] = useState({ needsReason: false, reason: '' });
   const [catalogBillOnce, setCatalogBillOnce] = useState(false);
   const [showCustomAdd, setShowCustomAdd] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
@@ -649,10 +655,14 @@ export default function DayTreatmentPlan({
     if (!catalogGoodsServiceId) return;
     const item = catalog.find((c) => c.id === catalogGoodsServiceId);
     if (!item) return;
+    if (doseStatus.needsReason && !doseStatus.reason) {
+      setError('This dose is well outside the guideline: pick a reason under it, or change the amount.');
+      return;
+    }
     await addPlanItem({
       label: item.name,
       goods_service_id: item.id,
-      instructions: catalogInstructions.trim() || null,
+      instructions: [catalogInstructions.trim(), doseReasonNote(doseStatus.reason)].filter(Boolean).join(' ') || null,
       frequency: catalogFrequency,
       quantity: catalogQuantity,
       bill_once: catalogBillOnce,
@@ -1082,6 +1092,15 @@ export default function DayTreatmentPlan({
               onChange={(e) => setCatalogQuantity(e.target.value)}
             />
           </div>
+          <DoseHint
+            guidelines={doseGuidelines}
+            goodsServiceId={catalogGoodsServiceId}
+            species={species}
+            weightKg={onFileWeightKg}
+            amount={catalogQuantity}
+            onStatus={setDoseStatus}
+            onProposed={(amount) => amount != null && setCatalogQuantity(String(amount))}
+          />
           <ScheduleControl
             name="catalog-schedule"
             frequency={catalogFrequency}

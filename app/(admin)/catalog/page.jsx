@@ -303,7 +303,12 @@ export default function CatalogPage() {
 
   return (
     <div>
-      <h1>Goods & Services</h1>
+      <div className="page-header">
+        <h1>Goods & Services</h1>
+        <div className="page-header-actions">
+          <a href="/dose-guidelines" className="button-link">💊 Dose guidelines</a>
+        </div>
+      </div>
 
       <div className="catalog-tabs-row">
         <div className="catalog-tabs">

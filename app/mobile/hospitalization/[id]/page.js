@@ -236,6 +236,7 @@ export default function MobileHospitalizationPage() {
             subcategories={subcategories}
             onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
             onFileWeightKg={admission.patients?.current_weight_kg}
+        species={admission.patients?.species}
           />
 
           <h2 className="mobile-section-header">Add Worksheet Entry</h2>
