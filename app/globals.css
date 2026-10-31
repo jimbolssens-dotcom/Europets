@@ -666,6 +666,12 @@ button:disabled {
   padding: 0.75rem 2rem 2rem;
   max-width: 1440px;
   margin: 0 auto;
+  /* Always the full width (up to 1440px) instead of shrinking to fit
+     what's on the page: otherwise a page first draws narrow while it
+     loads ("Loading..."), then jumps wide once its data arrives, and a
+     page with a narrow form (Settings) sat squeezed in the middle. */
+  box-sizing: border-box;
+  width: 100%;
 }
 
 /* The Messenger thread page (app/(admin)/messages/[id]) is a full-page
@@ -15090,4 +15096,8 @@ button.worksheet-item-remove:hover {
 .worksheet-entry-items li button.worksheet-item-remove:hover {
   color: #b3261e;
   background: none;
+}
+/* Settings form: wider on a computer now the page uses the full width. */
+.settings-page form.card {
+  max-width: 900px;
 }
