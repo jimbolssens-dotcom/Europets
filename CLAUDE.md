@@ -16,6 +16,13 @@
   WITHOUT `teamId` — passing `team_5sYq4rnyb3ApDF8MlYUJyHJv` returns 403.
   The marketing site is the separate `website` project.
 
+## Look things up without asking
+
+Jim: read-only lookups (SELECT queries, logs, the catalog) never need his
+OK, so run them straight away. Only ask before changing something:
+deleting or rewriting data, or anything destructive (see below). Never
+ask him to run a lookup query himself.
+
 ## Every new migration: paste the SQL, then run it yourself
 
 There's no automatic migration runner, but Claude is authorised to apply
