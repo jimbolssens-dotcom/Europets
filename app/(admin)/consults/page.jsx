@@ -12,10 +12,18 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 import SearchSelect from '@/app/_components/SearchSelect';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
-import { formatDateTime } from '@/lib/formatTimestamp';
 import PhoneTop from '@/app/_components/PhoneTop';
 
 const emptyWalkIn = { client_id: '', patient_id: '', room_id: '', attending_vet_id: '' };
+
+// Just the time for today, the day and time otherwise ("31 Oct, 5:11 pm"),
+// so it fits beside the patient's name on a phone.
+function whenShort(iso) {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true });
+  if (d.toDateString() === new Date().toDateString()) return time;
+  return `${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}, ${time}`;
+}
 
 export default function ConsultsPage() {
   return (
@@ -332,7 +340,7 @@ function ConsultsPageInner() {
       {active.length === 0 ? (
         <p>No active consults right now.</p>
       ) : (
-        <table>
+        <table className="phone-list">
           <thead>
             <tr>
               <th>Patient</th>
@@ -345,24 +353,24 @@ function ConsultsPageInner() {
           </thead>
           <tbody>
             {active.map((c) => (
-              <tr key={c.id}>
-                <td>
-                  {c.patients?.name}
-                  {c.patients?.patient_number ? ` (Patient #${c.patients.patient_number})` : ''}
+              // Tap the row to open the consult; Delete is a small link (rare).
+              <tr key={c.id} className="pl-tap" onClick={(e) => { if (!e.target.closest('a, button')) window.location.href = `/consults/${c.id}`; }}>
+                <td className="pl-main">
+                  <a href={`/consults/${c.id}`}>{c.patients?.name}</a>
+                  {c.patients?.patient_number ? <span className="client-no"> #{c.patients.patient_number}</span> : ''}
                 </td>
-                <td>
+                <td className="pl-sub">
                   {c.clients?.full_name}
-                  {c.clients?.client_number ? ` (Client #${c.clients.client_number})` : ''}
+                  {c.clients?.client_number ? <span className="client-no"> #{c.clients.client_number}</span> : ''}
                 </td>
-                <td>{c.rooms?.name}</td>
-                <td>{c.staff?.full_name || 'unassigned'}</td>
-                <td>{c.started_at ? formatDateTime(c.started_at) : '—'}</td>
-                <td>
-                  <a href={`/consults/${c.id}`} className="button-link button-link-open">Open</a>
-                  <button type="button" onClick={() => completeConsult(c)}>
+                <td className={c.rooms?.name ? 'pl-sub' : 'pl-hide'}>{c.rooms?.name}</td>
+                <td className="pl-sub">{c.staff?.full_name || 'unassigned'}</td>
+                <td className="pl-right pl-light">{c.started_at ? whenShort(c.started_at) : '—'}</td>
+                <td className="pl-actions">
+                  <button type="button" className="row-act" onClick={() => completeConsult(c)}>
                     Complete
                   </button>
-                  <button type="button" onClick={() => deleteConsult(c)}>
+                  <button type="button" className="rare-link" onClick={() => deleteConsult(c)}>
                     Delete
                   </button>
                 </td>
@@ -376,7 +384,7 @@ function ConsultsPageInner() {
       {hospitalized.length === 0 ? (
         <p>No hospitalized patients right now.</p>
       ) : (
-        <table>
+        <table className="phone-list">
           <thead>
             <tr>
               <th>Patient</th>
@@ -390,26 +398,20 @@ function ConsultsPageInner() {
             {hospitalized.map((c) => {
               const hosp = c.hospitalizations?.find((h) => h.status === 'admitted');
               return (
-                <tr key={c.id}>
-                  <td>
-                    {c.patients?.name}
-                    {c.patients?.patient_number ? ` (Patient #${c.patients.patient_number})` : ''}
+                // Tap the row for the hospital stay; the consult is a small link.
+                <tr key={c.id} className="pl-tap" onClick={(e) => { if (!e.target.closest('a, button')) window.location.href = hosp ? `/hospitalization/${hosp.id}` : `/consults/${c.id}`; }}>
+                  <td className="pl-main">
+                    <a href={hosp ? `/hospitalization/${hosp.id}` : `/consults/${c.id}`}>{c.patients?.name}</a>
+                    {c.patients?.patient_number ? <span className="client-no"> #{c.patients.patient_number}</span> : ''}
                   </td>
-                  <td>
+                  <td className="pl-sub">
                     {c.clients?.full_name}
-                    {c.clients?.client_number ? ` (Client #${c.clients.client_number})` : ''}
+                    {c.clients?.client_number ? <span className="client-no"> #{c.clients.client_number}</span> : ''}
                   </td>
-                  <td>{c.staff?.full_name || 'unassigned'}</td>
-                  <td>{hosp?.admitted_at ? formatDateTime(hosp.admitted_at) : '—'}</td>
-                  <td className="table-link-group">
-                    {hosp && (
-                      <a href={`/hospitalization/${hosp.id}`} className="button-link">
-                        Hospital
-                      </a>
-                    )}
-                    <a href={`/consults/${c.id}`} className="button-link">
-                      Consult
-                    </a>
+                  <td className="pl-sub">{c.staff?.full_name || 'unassigned'}</td>
+                  <td className="pl-right pl-light">{hosp?.admitted_at ? whenShort(hosp.admitted_at) : '—'}</td>
+                  <td className="pl-actions">
+                    <a href={`/consults/${c.id}`} className="row-link">Consult</a>
                   </td>
                 </tr>
               );
@@ -422,7 +424,7 @@ function ConsultsPageInner() {
       {completed.length === 0 ? (
         <p>No completed consults yet.</p>
       ) : (
-        <table>
+        <table className="phone-list">
           <thead>
             <tr>
               <th>Patient</th>
@@ -433,19 +435,18 @@ function ConsultsPageInner() {
           </thead>
           <tbody>
             {completed.map((c) => (
-              <tr key={c.id}>
-                <td>
-                  {c.patients?.name}
-                  {c.patients?.patient_number ? ` (Patient #${c.patients.patient_number})` : ''}
+              <tr key={c.id} className="pl-tap" onClick={(e) => { if (!e.target.closest('a, button')) window.location.href = `/consults/${c.id}`; }}>
+                <td className="pl-main">
+                  <a href={`/consults/${c.id}`}>{c.patients?.name}</a>
+                  {c.patients?.patient_number ? <span className="client-no"> #{c.patients.patient_number}</span> : ''}
                 </td>
-                <td>
+                <td className="pl-sub">
                   {c.clients?.full_name}
-                  {c.clients?.client_number ? ` (Client #${c.clients.client_number})` : ''}
+                  {c.clients?.client_number ? <span className="client-no"> #{c.clients.client_number}</span> : ''}
                 </td>
-                <td>{c.ended_at ? formatDateTime(c.ended_at) : '—'}</td>
-                <td>
-                  <a href={`/consults/${c.id}`} className="button-link button-link-open">Open</a>
-                  <button type="button" onClick={() => deleteConsult(c)}>
+                <td className="pl-right pl-light">{c.ended_at ? whenShort(c.ended_at) : '—'}</td>
+                <td className="pl-actions">
+                  <button type="button" className="rare-link" onClick={() => deleteConsult(c)}>
                     Delete
                   </button>
                 </td>
