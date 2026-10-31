@@ -14711,3 +14711,105 @@ table.phone-list .pl-flag:empty {
     font-size: 1.05rem;
   }
 }
+
+/* Cattery planner page on a phone: the weight alarm, the requests and the
+   legend a size smaller, a narrower Space column so more days show, and a
+   tighter booking form. */
+@media (max-width: 700px) {
+  .cattery-page .cattery-long {
+    display: none;
+  }
+  .cattery-page .cattery-overdue-banner {
+    font-size: 0.85rem;
+    padding: 0.45rem 0.65rem;
+  }
+  .cattery-page .cattery-requests {
+    padding: 0.45rem 0.65rem;
+  }
+  .cattery-page .cattery-requests h2 {
+    font-size: 0.88rem;
+  }
+  .cattery-page .cattery-request {
+    gap: 0.15rem 0.5rem;
+    font-size: 0.85rem;
+  }
+  .cattery-page .cattery-request .visit-meta {
+    font-size: 0.78rem;
+  }
+  .cattery-page button.cattery-review-btn {
+    width: auto;
+    margin: 0;
+    padding: 0.25rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  .cattery-page .cattery-legend {
+    gap: 0.25rem 0.7rem;
+    font-size: 0.72rem;
+    margin-bottom: 0.4rem;
+  }
+  .cattery-page .cattery-swatch {
+    width: 14px;
+    height: 9px;
+    margin-right: 3px;
+  }
+  .cattery-page .cattery-planner {
+    grid-template-columns: 56px repeat(28, 38px) !important;
+  }
+  .cattery-page .cp-rowhead {
+    padding-left: 0.35rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.02em;
+  }
+  .cattery-page .cp-cell {
+    height: 40px;
+  }
+  .cattery-page .cp-dayhead {
+    height: 38px;
+  }
+  .cattery-page h2 {
+    font-size: 1.15rem;
+  }
+  .cattery-page .cattery-form {
+    gap: 0.5rem;
+    padding: 0.7rem;
+  }
+  .cattery-page .cattery-form label,
+  .cattery-page .cattery-form .cattery-field {
+    font-size: 0.82rem;
+    gap: 0.15rem;
+  }
+  .cattery-page .cattery-form-row {
+    gap: 0.5rem;
+  }
+  .cattery-page .cattery-form-row > label {
+    min-width: 0;
+    flex: 1 1 40%;
+  }
+  .cattery-page .cattery-form label.cattery-check {
+    flex: 1 1 100%;
+    gap: 0.3rem;
+  }
+  .cattery-page .cattery-form label.cattery-check input[type='checkbox'] {
+    width: auto;
+    margin: 0;
+  }
+  .cattery-page .cattery-check input[type='text'] {
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+}
+@media (max-width: 700px) {
+  .cattery-page .cattery-request > strong {
+    flex: none;
+  }
+  .cattery-page .cattery-request > .visit-meta {
+    display: inline;
+    flex: 1 1 12rem;
+  }
+  .cattery-page .cattery-planner-head {
+    margin-bottom: 0.4rem;
+  }
+  .cattery-page .cattery-planner-head > strong {
+    font-size: 0.95rem;
+  }
+}

@@ -246,7 +246,7 @@ function CatteryPageInner() {
               </span>
               <span className="cattery-request-expiry">{hoursLeft(b.request_expires_at)}</span>
               <span className="spacer" />
-              <button type="button" onClick={() => setReviewing(b)}>Review</button>
+              <button type="button" className="cattery-review-btn" onClick={() => setReviewing(b)}>Review</button>
             </div>
           ))}
         </div>
@@ -254,8 +254,8 @@ function CatteryPageInner() {
 
       <div className="cattery-legend">
         <span><i className="cattery-swatch checked" />Checked in</span>
-        <span><i className="cattery-swatch booked" />Booked (confirmed)</span>
-        <span><i className="cattery-swatch pending" />Requested by client, waiting for approval</span>
+        <span><i className="cattery-swatch booked" />Booked<span className="cattery-long"> (confirmed)</span></span>
+        <span><i className="cattery-swatch pending" />Requested<span className="cattery-long"> by client, waiting for approval</span></span>
         <span><i className="cattery-swatch out" />Checked out</span>
       </div>
       {loading && bookings.length === 0 ? (
@@ -263,7 +263,7 @@ function CatteryPageInner() {
       ) : (
         <CatteryPlanner start={start} days={PLANNER_DAYS} today={today} bookings={bookings} onOpen={openBooking} onPickRange={pickRange} />
       )}
-      <p className="visit-meta">Tap a bar to open that booking or review a request. Drag across free days in a space (or tap a free day) to start a new booking there.</p>
+      <p className="visit-meta phone-hide">Tap a bar to open that booking or review a request. Drag across free days in a space (or tap a free day) to start a new booking there.</p>
 
       <h2>New cattery booking</h2>
       <form className="cattery-form" onSubmit={createBooking} ref={formRef}>
