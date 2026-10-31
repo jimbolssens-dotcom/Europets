@@ -304,7 +304,7 @@ export default function StockPage() {
   const notCounted = (items || []).filter((i) => !i.started).length;
 
   return (
-    <div>
+    <div className="stock-page">
       <div className="page-header">
         <h1>📦 Stock</h1>
         <div className="page-header-actions">

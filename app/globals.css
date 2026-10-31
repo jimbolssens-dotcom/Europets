@@ -13838,8 +13838,13 @@ button.social-primary { border-radius: 999px; font-weight: 700; }
   white-space: pre-line;
 }
 
-/* Stock: Remove reads as a quieter, red action. */
+/* Stock: Remove is rare, so a small grey link (red on hover), like the
+   other pages' rare actions. */
 .stock-meta .stock-remove {
+  color: #aaa;
+  font-weight: 500;
+}
+.stock-meta .stock-remove:hover {
   color: #b42318;
 }
 .stock-add .stock-form {
@@ -14811,5 +14816,40 @@ table.phone-list .pl-flag:empty {
   }
   .cattery-page .cattery-planner-head > strong {
     font-size: 0.95rem;
+  }
+}
+
+/* Stock on a phone: smaller names and buttons so each item is two short
+   lines, and the "to count" hint smaller. */
+@media (max-width: 700px) {
+  .stock-page .stock-item {
+    padding: 0.4rem 0.55rem;
+  }
+  .stock-page .stock-name {
+    font-size: 0.9rem;
+  }
+  .stock-page .stock-on-hand {
+    font-size: 1rem;
+  }
+  .stock-page .stock-actions button {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.78rem;
+  }
+  .stock-page .stock-chip {
+    font-size: 0.68rem;
+    padding: 0.05rem 0.4rem;
+  }
+  .stock-page .stock-meta,
+  .stock-page .stock-meta .social-link-button {
+    font-size: 0.72rem;
+  }
+  .stock-page > .visit-meta {
+    font-size: 0.78rem;
+    margin: 0.3rem 0;
+  }
+  .stock-page .page-header-actions select {
+    min-width: 0;
+    max-width: 10rem;
+    font-size: 0.8rem;
   }
 }
