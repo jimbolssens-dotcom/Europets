@@ -15026,3 +15026,68 @@ table.phone-list .pl-flag:empty {
     font-size: 0.82rem;
   }
 }
+
+/* Hospital stay worksheet: Edit, Photo and File on one small line under
+   each entry, a small ✕ to remove a medication, and Delete entry as a
+   small link (all rare next to reading the entries). */
+.worksheet-entry-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+}
+.worksheet-entry-tools .attachments {
+  display: contents;
+}
+.worksheet-entry-tools .attachment-list {
+  flex-basis: 100%;
+  order: 2;
+}
+.worksheet-entry-tools .attachment-actions {
+  display: inline-flex;
+  gap: 0.35rem;
+  margin: 0;
+}
+.worksheet-entry-tools .attachment-actions button,
+.worksheet-entry-tools .attachment-actions label,
+.worksheet-entry-tools .attachment-actions .button-link {
+  width: auto;
+  margin: 0;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.75rem;
+  background: white;
+  color: var(--pink-dark);
+  border: 1px solid var(--pink-tint);
+  box-shadow: none;
+}
+.worksheet-entry-tools .reason-edit-btn {
+  margin: 0;
+}
+button.worksheet-item-remove {
+  width: auto;
+  margin: 0 0 0 auto;
+  padding: 0 0.3rem;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: #aaa;
+  font-size: 0.8rem;
+}
+button.worksheet-item-remove:hover {
+  background: none;
+  color: #b3261e;
+}
+.worksheet-entry-edit-actions button.rare-link {
+  margin-left: auto;
+}
+.worksheet-entry-items li button.worksheet-item-remove {
+  border: none;
+  background: none;
+  color: #aaa;
+  padding: 0 0.3rem;
+}
+.worksheet-entry-items li button.worksheet-item-remove:hover {
+  color: #b3261e;
+  background: none;
+}

@@ -387,7 +387,7 @@ export default function PreInvoiceOverview({
           </span>
         )}
       </h3>
-      <p className="visit-meta">
+      <p className="visit-meta phone-hide">
         Every billable item logged on this stay — kept in sync automatically. Adjust the quantity or
         remove anything below; changes save immediately, no separate step needed.
         {recordHref && (

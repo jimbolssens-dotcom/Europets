@@ -1800,7 +1800,7 @@ export default function HospitalizationDetailPage() {
                     <button type="button" disabled={savingEditNote || deletingNote} onClick={cancelEditNote}>
                       Cancel
                     </button>
-                    <button type="button" disabled={savingEditNote || deletingNote} onClick={() => deleteNote(n.id)}>
+                    <button type="button" className="rare-link" disabled={savingEditNote || deletingNote} onClick={() => deleteNote(n.id)}>
                       {deletingNote ? 'Deleting…' : 'Delete entry'}
                     </button>
                   </div>
@@ -1842,17 +1842,20 @@ export default function HospitalizationDetailPage() {
                           {t.goods_services?.name}
                           {t.quantity > 1 ? ` ×${t.quantity}` : ''}
                           {t.instructions && ` — ${t.instructions}`}
-                          <button type="button" onClick={() => deleteTreatmentItem(t.id)}>
-                            Remove
+                          <button type="button" className="worksheet-item-remove" onClick={() => deleteTreatmentItem(t.id)} title="Remove this medication" aria-label={`Remove ${t.goods_services?.name || 'medication'}`}>
+                            ✕
                           </button>
                         </li>
                       ))}
                     </ul>
                   )}
-                  <button type="button" className="reason-edit-btn" onClick={() => startEditNote(n)}>
-                    Edit
-                  </button>
-                  <AttachmentSection entityType="hospitalization_note" entityId={n.id} />
+                  {/* Edit, Photo and File on one small line under the entry. */}
+                  <div className="worksheet-entry-tools">
+                    <button type="button" className="reason-edit-btn" onClick={() => startEditNote(n)}>
+                      ✏️ Edit
+                    </button>
+                    <AttachmentSection entityType="hospitalization_note" entityId={n.id} />
+                  </div>
                 </>
               )}
             </div>
