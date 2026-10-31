@@ -22,7 +22,7 @@ import { dayProcedureDate, isBookedAhead, shortDayLabel } from '@/lib/dayProcedu
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
-import { formatShortDate, formatDateTime } from '@/lib/formatTimestamp';
+import { formatShortDate, formatWhenShort } from '@/lib/formatTimestamp';
 import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 
 function todayISODate() {
@@ -126,7 +126,7 @@ export default function DayProceduresPage() {
   const visibleHistory = historyQuery ? filteredHistory : filteredHistory.slice(0, HISTORY_DEFAULT_LIMIT);
 
   return (
-    <div>
+    <div className="day-proc-page">
       <div className="page-header">
         <h1>📋 Day Procedures</h1>
       </div>
@@ -140,11 +140,11 @@ export default function DayProceduresPage() {
       {carriedOver.length > 0 && (
         <>
           <h2>⚠️ Still Open From an Earlier Day</h2>
-          <p className="visit-meta">
+          <p className="visit-meta phone-hide">
             Never discharged — likely just missed at pickup. Open and discharge it (or catch it up
             and discharge it) to clear this.
           </p>
-          <table>
+          <table className="phone-list">
             <thead>
               <tr>
                 <th></th>
@@ -161,24 +161,23 @@ export default function DayProceduresPage() {
                 const attention = [...yellow, ...red];
                 const alarmClass = cageAlarmClass(hospitalizationAlarmLevel(d));
                 return (
-                  <tr key={d.id} className={alarmClass}>
-                    <td title={attention.length > 0 ? attention.join(' • ') : undefined}>
+                  <tr key={d.id} className={`pl-tap ${alarmClass}`} onClick={(e) => { if (!e.target.closest('a, button')) window.location.href = `/hospitalization/${d.id}`; }}>
+                    <td className="pl-flag" title={attention.length > 0 ? attention.join(' • ') : undefined}>
                       {red.length > 0 && '🩺'}
                       {yellow.length > 0 && '🔔'}
                     </td>
-                    <td>
-                      {d.patients?.name}
-                      {d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}
+                    <td className="pl-main">
+                      <a href={`/hospitalization/${d.id}`}>{d.patients?.name}</a>
+                      {d.patients?.patient_number ? <span className="client-no"> #{d.patients.patient_number}</span> : ''}
                     </td>
-                    <td>
+                    <td className="pl-sub">
                       {d.clients?.full_name}
-                      {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
+                      {d.clients?.client_number ? <span className="client-no"> #{d.clients.client_number}</span> : ''}
                     </td>
-                    <td>{d.reason || '—'}</td>
-                    <td>{formatShortDate(d.admitted_at)}</td>
-                    <td>
-                      <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>{' '}
-                      <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
+                    <td className={d.reason ? 'pl-sub' : 'pl-hide'}>{d.reason || '—'}</td>
+                    <td className="pl-right pl-light">{formatShortDate(d.admitted_at)}</td>
+                    <td className="pl-actions">
+                      <button type="button" className="rare-link" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
                         {deletingId === d.id ? 'Deleting…' : 'Delete'}
                       </button>
                     </td>
@@ -193,7 +192,7 @@ export default function DayProceduresPage() {
       {bookedAhead.length > 0 && (
         <>
           <h2>🌙 Booked Ahead</h2>
-          <table>
+          <table className="phone-list">
             <thead>
               <tr>
                 <th>Patient</th>
@@ -201,19 +200,18 @@ export default function DayProceduresPage() {
                 <th>Reason</th>
                 <th>Procedure</th>
                 <th>Cage</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
               {bookedAhead.map((d) => (
-                <tr key={d.id}>
-                  <td>
-                    {d.patients?.name}
-                    {d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}
+                <tr key={d.id} className="pl-tap" onClick={(e) => { if (!e.target.closest('a, button')) window.location.href = `/hospitalization/${d.id}`; }}>
+                  <td className="pl-main">
+                    <a href={`/hospitalization/${d.id}`}>{d.patients?.name}</a>
+                    {d.patients?.patient_number ? <span className="client-no"> #{d.patients.patient_number}</span> : ''}
                   </td>
-                  <td>{d.clients?.full_name}</td>
-                  <td>{d.reason || '—'}</td>
-                  <td>
+                  <td className="pl-sub">{d.clients?.full_name}</td>
+                  <td className={d.reason ? 'pl-sub' : 'pl-hide'}>{d.reason || '—'}</td>
+                  <td className="pl-sub">
                     {shortDayLabel(d.scheduled_for)}{' '}
                     {d.appointment_id ? (
                       <span className="booked-ahead-chip ok">📅 In calendar</span>
@@ -226,10 +224,7 @@ export default function DayProceduresPage() {
                       </a>
                     )}
                   </td>
-                  <td>{d.cages?.name || '—'}</td>
-                  <td>
-                    <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>
-                  </td>
+                  <td className="pl-right">{d.cages?.name || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -241,7 +236,7 @@ export default function DayProceduresPage() {
       {inProgress.length === 0 ? (
         <p>No day procedures in progress.</p>
       ) : (
-        <table>
+        <table className="phone-list">
           <thead>
             <tr>
               <th></th>
@@ -258,24 +253,23 @@ export default function DayProceduresPage() {
               const attention = [...yellow, ...red];
               const alarmClass = cageAlarmClass(hospitalizationAlarmLevel(d));
               return (
-                <tr key={d.id} className={alarmClass}>
-                  <td title={attention.length > 0 ? attention.join(' • ') : undefined}>
+                <tr key={d.id} className={`pl-tap ${alarmClass}`} onClick={(e) => { if (!e.target.closest('a, button')) window.location.href = `/hospitalization/${d.id}`; }}>
+                  <td className="pl-flag" title={attention.length > 0 ? attention.join(' • ') : undefined}>
                     {red.length > 0 && '🩺'}
                     {yellow.length > 0 && '🔔'}
                   </td>
-                  <td>
-                    {d.patients?.name}
-                    {d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}
+                  <td className="pl-main">
+                    <a href={`/hospitalization/${d.id}`}>{d.patients?.name}</a>
+                    {d.patients?.patient_number ? <span className="client-no"> #{d.patients.patient_number}</span> : ''}
                   </td>
-                  <td>
+                  <td className="pl-sub">
                     {d.clients?.full_name}
-                    {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
+                    {d.clients?.client_number ? <span className="client-no"> #{d.clients.client_number}</span> : ''}
                   </td>
-                  <td>{d.reason || '—'}</td>
-                  <td>{formatDateTime(d.admitted_at)}</td>
-                  <td>
-                    <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>{' '}
-                    <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
+                  <td className={d.reason ? 'pl-sub' : 'pl-hide'}>{d.reason || '—'}</td>
+                  <td className="pl-right pl-light">{formatWhenShort(d.admitted_at)}</td>
+                  <td className="pl-actions">
+                    <button type="button" className="rare-link" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
                       {deletingId === d.id ? 'Deleting…' : 'Delete'}
                     </button>
                   </td>
@@ -290,7 +284,7 @@ export default function DayProceduresPage() {
       {completed.length === 0 ? (
         <p>No day procedures completed today yet.</p>
       ) : (
-        <table>
+        <table className="phone-list">
           <thead>
             <tr>
               <th>Patient</th>
@@ -301,19 +295,18 @@ export default function DayProceduresPage() {
           </thead>
           <tbody>
             {completed.map((d) => (
-              <tr key={d.id}>
-                <td>
-                  {d.patients?.name}
-                  {d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}
+              <tr key={d.id} className="pl-tap" onClick={(e) => { if (!e.target.closest('a, button')) window.location.href = `/hospitalization/${d.id}`; }}>
+                <td className="pl-main">
+                  <a href={`/hospitalization/${d.id}`}>{d.patients?.name}</a>
+                  {d.patients?.patient_number ? <span className="client-no"> #{d.patients.patient_number}</span> : ''}
                 </td>
-                <td>
+                <td className="pl-sub">
                   {d.clients?.full_name}
-                  {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
+                  {d.clients?.client_number ? <span className="client-no"> #{d.clients.client_number}</span> : ''}
                 </td>
-                <td>{d.discharged_at ? formatDateTime(d.discharged_at) : '—'}</td>
-                <td>
-                  <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>{' '}
-                  <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
+                <td className="pl-right pl-light">{d.discharged_at ? formatWhenShort(d.discharged_at) : '—'}</td>
+                <td className="pl-actions">
+                  <button type="button" className="rare-link" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
                     {deletingId === d.id ? 'Deleting…' : 'Delete'}
                   </button>
                 </td>
@@ -327,7 +320,7 @@ export default function DayProceduresPage() {
         <summary>
           <h2 style={{ display: 'inline' }}>📖 Past Day Procedures ({pastDayProcedures.length})</h2>
         </summary>
-        <p className="visit-meta">
+        <p className="visit-meta phone-hide">
           Every day procedure completed before today — search by patient or owner to trace one back, no
           matter how long ago it was.
         </p>
@@ -343,7 +336,7 @@ export default function DayProceduresPage() {
           <p>No past day procedures match &quot;{historySearch}&quot;.</p>
         ) : (
           <>
-            <table>
+            <table className="phone-list">
               <thead>
                 <tr>
                   <th>Patient</th>
@@ -355,20 +348,19 @@ export default function DayProceduresPage() {
               </thead>
               <tbody>
                 {visibleHistory.map((d) => (
-                  <tr key={d.id}>
-                    <td>
-                      {d.patients?.name}
-                      {d.patients?.patient_number ? ` (Patient #${d.patients.patient_number})` : ''}
+                  <tr key={d.id} className="pl-tap" onClick={(e) => { if (!e.target.closest('a, button')) window.location.href = `/hospitalization/${d.id}`; }}>
+                    <td className="pl-main">
+                      <a href={`/hospitalization/${d.id}`}>{d.patients?.name}</a>
+                      {d.patients?.patient_number ? <span className="client-no"> #{d.patients.patient_number}</span> : ''}
                     </td>
-                    <td>
+                    <td className="pl-sub">
                       {d.clients?.full_name}
-                      {d.clients?.client_number ? ` (Client #${d.clients.client_number})` : ''}
+                      {d.clients?.client_number ? <span className="client-no"> #{d.clients.client_number}</span> : ''}
                     </td>
-                    <td>{formatShortDate(d.admitted_at)}</td>
-                    <td>{d.discharged_at ? formatDateTime(d.discharged_at) : '—'}</td>
-                    <td>
-                      <a href={`/hospitalization/${d.id}`} className="button-link button-link-open">Open</a>{' '}
-                      <button type="button" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
+                    <td className="pl-sub"><span className="pl-phone-only">Started </span>{formatShortDate(d.admitted_at)}</td>
+                    <td className="pl-right pl-light">{d.discharged_at ? formatWhenShort(d.discharged_at) : '—'}</td>
+                    <td className="pl-actions">
+                      <button type="button" className="rare-link" onClick={() => deleteDayProcedure(d)} disabled={deletingId === d.id}>
                         {deletingId === d.id ? 'Deleting…' : 'Delete'}
                       </button>
                     </td>
