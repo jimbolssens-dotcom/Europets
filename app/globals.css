@@ -15101,3 +15101,349 @@ button.worksheet-item-remove:hover {
 .settings-page form.card {
   max-width: 900px;
 }
+
+/* ---- Homepage: the kindness garden (app/_components/KindnessHome.jsx) ---- */
+.kind-home {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  padding: 1.6rem 1.6rem 1.8rem;
+  margin-top: 0.5rem;
+  min-height: calc(100vh - 170px);
+  box-sizing: border-box;
+  --kind-sky: linear-gradient(160deg, #ffe9f2 0%, #fff6e0 55%, #eaf7ff 100%);
+  background: var(--kind-sky);
+}
+.kind-sky-morning { --kind-sky: linear-gradient(160deg, #fff1d6 0%, #ffe3ef 50%, #e6f6ff 100%); }
+.kind-sky-afternoon { --kind-sky: linear-gradient(160deg, #e3f4ff 0%, #fff4dc 55%, #ffe6f1 100%); }
+.kind-sky-evening { --kind-sky: linear-gradient(160deg, #ffd9c7 0%, #f7d6f2 55%, #dcdcff 100%); }
+.kind-sky-night { --kind-sky: linear-gradient(160deg, #d9d6ff 0%, #f2dcf5 55%, #ffe8f0 100%); }
+
+.kind-float span {
+  position: absolute;
+  bottom: -2rem;
+  font-size: 1.4rem;
+  opacity: 0;
+  animation: kind-drift linear infinite;
+  pointer-events: none;
+}
+@keyframes kind-drift {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.55; }
+  90% { opacity: 0.4; }
+  100% { transform: translateY(-110vh) rotate(40deg); opacity: 0; }
+}
+
+.kind-hero {
+  position: relative;
+  text-align: center;
+  margin-bottom: 1.2rem;
+}
+.kind-mascots {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  font-size: 3.2rem;
+  line-height: 1;
+}
+.kind-mascot {
+  display: inline-block;
+  animation: kind-bob 2.6s ease-in-out infinite;
+}
+.kind-mascot-cat {
+  animation-delay: 1.3s;
+}
+@keyframes kind-bob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-10px) rotate(4deg); }
+}
+.kind-greeting {
+  margin: 0.4rem 0 0.2rem;
+  font-size: 2.2rem;
+}
+.kind-greeting-emoji {
+  display: inline-block;
+  animation: kind-wave 3s ease-in-out infinite;
+}
+@keyframes kind-wave {
+  0%, 60%, 100% { transform: rotate(0); }
+  70% { transform: rotate(14deg); }
+  80% { transform: rotate(-8deg); }
+  90% { transform: rotate(10deg); }
+}
+.kind-sub {
+  margin: 0;
+  color: #6d5b66;
+}
+
+.kind-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 1rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.kind-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(4px);
+  border-radius: 18px;
+  padding: 1rem 1.2rem;
+  box-shadow: 0 6px 22px rgba(180, 60, 110, 0.1);
+}
+.kind-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pink-dark);
+  margin-bottom: 0.35rem;
+}
+.kind-mission-text {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.kind-mission-emoji {
+  font-size: 1.6rem;
+  vertical-align: -3px;
+}
+
+.kind-smile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.kind-smile-btn {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  font-size: 1.2rem;
+  font-weight: 800;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff4f9a, #ff8a5c);
+  color: white;
+  box-shadow: 0 8px 18px rgba(255, 79, 154, 0.35);
+  transition: transform 0.12s ease;
+  overflow: visible;
+}
+.kind-smile-btn:hover {
+  transform: translateY(-2px) scale(1.01);
+}
+.kind-smile-btn:active {
+  transform: scale(0.97);
+}
+.kind-smile-face {
+  display: inline-block;
+  animation: kind-bob 2s ease-in-out infinite;
+}
+.kind-smile-fields {
+  display: flex;
+  gap: 0.4rem;
+}
+.kind-smile-fields input {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  border-radius: 999px;
+  border: 1px solid #f3cfe0;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.85rem;
+}
+.kind-smile-fields input.kind-name {
+  flex: 0 1 11rem;
+}
+.kind-thanks {
+  margin: 0.5rem 0 0;
+  text-align: center;
+  font-weight: 700;
+  color: var(--pink-dark);
+  animation: kind-pop 0.4s ease;
+}
+@keyframes kind-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.kind-burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  pointer-events: none;
+}
+.kind-burst span {
+  position: absolute;
+  font-size: 1.4rem;
+  animation: kind-fly 1.2s ease-out forwards;
+  opacity: 0;
+}
+@keyframes kind-fly {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--x)), -150px) rotate(var(--rot)) scale(1.1); opacity: 0; }
+}
+
+.kind-garden {
+  grid-column: 1 / -1;
+  position: relative;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+.kind-garden-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.kind-garden-count {
+  font-size: 0.9rem;
+  color: #6d5b66;
+}
+.kind-garden-count b {
+  color: var(--pink-dark);
+  font-size: 1.1rem;
+}
+.kind-garden-bed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.15rem 0.35rem;
+  min-height: 3.2rem;
+  padding: 0.4rem 0 0.2rem;
+}
+.kind-flower {
+  font-size: 1.9rem;
+  line-height: 1;
+  display: inline-block;
+  transform-origin: bottom center;
+  animation: kind-sprout 0.6s ease-out both, kind-sway 4s ease-in-out 0.6s infinite;
+  cursor: default;
+}
+.kind-flower:nth-child(3n) { animation-delay: 0s, 1.2s; }
+.kind-flower:nth-child(3n + 1) { animation-delay: 0s, 2.1s; }
+@keyframes kind-sprout {
+  0% { transform: scale(0) translateY(10px); }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+@keyframes kind-sway {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+.kind-garden-empty {
+  color: #8a7a83;
+  font-size: 0.95rem;
+  align-self: center;
+}
+.kind-grass {
+  height: 14px;
+  margin: 0 -1.2rem;
+  background: linear-gradient(180deg, #8fd694, #5fbf6c);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+}
+
+.kind-notes ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.kind-notes li {
+  font-size: 0.92rem;
+}
+.kind-note-meta {
+  color: #9a8a93;
+  font-size: 0.78rem;
+}
+.kind-quote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-style: italic;
+  font-size: 1.05rem;
+  color: #6d5b66;
+}
+.kind-quote-text {
+  animation: kind-pop 0.6s ease;
+}
+.kind-notes + .kind-quote,
+.kind-garden + .kind-quote {
+  grid-column: auto;
+}
+.kind-garden + .kind-quote {
+  grid-column: 1 / -1;
+}
+
+/* Phone: one screen. No drifting, a smaller hero, everything in one
+   column, the mission and the button first. */
+@media (max-width: 700px) {
+  .kind-home {
+    margin: 0.3rem -0.4rem 0;
+    padding: 0.9rem 0.8rem 1rem;
+    border-radius: 16px;
+    min-height: 0;
+  }
+  .kind-float {
+    display: none;
+  }
+  .kind-hero {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: left;
+    margin-bottom: 0.7rem;
+  }
+  .kind-mascots {
+    font-size: 2rem;
+    gap: 0.1rem;
+  }
+  .kind-greeting {
+    font-size: 1.3rem;
+    margin: 0;
+  }
+  .kind-sub {
+    display: none;
+  }
+  .kind-grid {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+  .kind-card {
+    padding: 0.75rem 0.85rem;
+    border-radius: 14px;
+  }
+  .kind-mission-text {
+    font-size: 1.02rem;
+  }
+  .kind-smile-btn {
+    font-size: 1.05rem;
+    padding: 0.75rem;
+  }
+  .kind-smile-fields input.kind-name {
+    flex-basis: 7.5rem;
+  }
+  .kind-flower {
+    font-size: 1.5rem;
+  }
+  .kind-notes,
+  .kind-quote {
+    display: none;
+  }
+  .kind-grass {
+    margin: 0 -0.85rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kind-float,
+  .kind-mascot,
+  .kind-flower,
+  .kind-greeting-emoji,
+  .kind-smile-face {
+    animation: none !important;
+  }
+}

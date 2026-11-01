@@ -1,19 +1,7 @@
+// The staff homepage: a little kindness garden instead of a second copy of
+// the top menu's links (see app/_components/KindnessHome.jsx).
+import KindnessHome from '@/app/_components/KindnessHome';
+
 export default function HomePage() {
-  return (
-    <div>
-      <p className="tagline">Kind, caring, and compassionate veterinary care</p>
-      <h1>Europets Clinic</h1>
-      <p>Manage clients, patients, appointments, consults, hospitalization, and invoicing.</p>
-      <div className="home-links">
-        <a href="/clients">Clients</a>
-        <a href="/appointments">Appointments</a>
-        <a href="/consults">Consults</a>
-        <a href="/hospitalization">Hospitalization</a>
-        <a href="/vaccinations">Vaccinations</a>
-        <a href="/invoices">Invoices</a>
-        <a href="/catalog">Catalog</a>
-        <a href="/settings">⚙️ Settings</a>
-      </div>
-    </div>
-  );
+  return <KindnessHome />;
 }
