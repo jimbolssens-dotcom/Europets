@@ -39,6 +39,8 @@ const STATUS_LABELS = {
   void: 'void',
 };
 
+const INVOICE_STATUS_PILL = { unpaid: 'unpaid', partially_paid: 'partial', paid: 'paid', void: 'void' };
+
 export default function InvoiceDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -497,36 +499,32 @@ export default function InvoiceDetailPage() {
   const medicationLineItems = invoice.line_items.filter((li) => li.administration_method === 'dispense');
 
   return (
-    <div>
-      <p>
-        <a href="/invoices">&larr; All invoices</a>
-      </p>
-      <h1>
-        Invoice {invoice.invoice_number ? `#INV-${String(invoice.invoice_number).padStart(6, '0')}` : ''} —{' '}
+    <div className="invoice-page">
+      {/* Title line: back arrow, invoice number, status; then one line with
+          the owner, pet, contact and dates (was five stacked lines). */}
+      <div className="invoice-title">
+        <a href="/invoices" className="client-back" title="All invoices" aria-label="All invoices">&larr;</a>
+        <h1>
+          Invoice {invoice.invoice_number ? `INV-${String(invoice.invoice_number).padStart(6, '0')}` : ''}
+        </h1>
+        <span className={`status-pill ${INVOICE_STATUS_PILL[invoice.status] || 'unpaid'}`}>{STATUS_LABELS[invoice.status] || invoice.status}</span>
+      </div>
+      <p className="invoice-meta">
         {invoice.clients?.id ? <a href={`/clients/${invoice.clients.id}`}>{invoice.clients?.full_name}</a> : invoice.clients?.full_name}
-        {patientName ? (
+        {invoice.clients?.client_number ? <span className="client-no"> #{invoice.clients.client_number}</span> : null}
+        {patientName && (
           <>
-            {' — '}
+            {' · '}
             {patient?.id ? <a href={`/patients/${patient.id}`}>{patientName}</a> : patientName}
-          </>
-        ) : ''}{' '}
-        <span>({STATUS_LABELS[invoice.status] || invoice.status})</span>
-      </h1>
-      <p className="visit-meta">
-        {invoice.clients?.id && (
-          <>
-            <a href={`/clients/${invoice.clients.id}`}>Client #{invoice.clients.client_number}</a>
-            {patient?.id && ' · '}
+            {patient?.patient_number ? <span className="client-no"> #{patient.patient_number}</span> : null}
           </>
         )}
-        {patient?.id && <a href={`/patients/${patient.id}`}>Patient #{patient.patient_number}</a>}
-      </p>
-      <p className="visit-meta">
-        {invoice.clients?.phone} · {invoice.clients?.email}
-      </p>
-      <p className="visit-meta">
-        Created: {formatShortDate(invoice.created_at)}
-        {invoice.paid_at && ` · Paid: ${formatShortDate(invoice.paid_at)}`}
+        {invoice.clients?.phone && <span className="invoice-meta-soft"> · {invoice.clients.phone}</span>}
+        {invoice.clients?.email && <span className="invoice-meta-soft invoice-meta-email"> · {invoice.clients.email}</span>}
+        <span className="invoice-meta-soft">
+          {' · '}Created {formatShortDate(invoice.created_at)}
+          {invoice.paid_at && ` · Paid ${formatShortDate(invoice.paid_at)}`}
+        </span>
       </p>
       <div className="action-row">
         <button type="button" onClick={downloadTaxInvoice}>
@@ -623,7 +621,7 @@ export default function InvoiceDetailPage() {
       {paymentLinkError && <p className={paymentLinkError.startsWith('✅') || paymentLinkError.startsWith('Opened') ? 'visit-meta' : 'error'}>{paymentLinkError}</p>}
       {lineItemEditError && <p className="error">{lineItemEditError}</p>}
 
-      <table>
+      <table className="invoice-lines invoice-lines-full">
         <thead>
           <tr>
             <th>Item</th>
@@ -652,9 +650,9 @@ export default function InvoiceDetailPage() {
                   {group.items.map((li) => {
                     const draft = lineItemDrafts[li.id];
                     return (
-                      <tr key={li.id}>
-                        <td>{li.description}</td>
-                        <td>
+                      <tr key={li.id} className="invoice-line">
+                        <td className="invoice-line-desc">{li.description}</td>
+                        <td className="invoice-line-qty">
                           {editable ? (
                             <input
                               type="number"
@@ -672,7 +670,7 @@ export default function InvoiceDetailPage() {
                             </>
                           )}
                         </td>
-                        <td>
+                        <td className="invoice-line-times">
                           {editable ? (
                             <input
                               type="number"
@@ -689,7 +687,7 @@ export default function InvoiceDetailPage() {
                             <>{li.times_given ?? 1}×</>
                           )}
                         </td>
-                        <td>
+                        <td className="invoice-line-method">
                           {editable ? (
                             <select
                               value={li.administration_method || ''}
@@ -708,7 +706,7 @@ export default function InvoiceDetailPage() {
                             '—'
                           )}
                         </td>
-                        <td>
+                        <td className="invoice-line-instr">
                           {editable ? (
                             <input
                               placeholder="Instructions"
@@ -722,12 +720,12 @@ export default function InvoiceDetailPage() {
                             li.instructions || '—'
                           )}
                         </td>
-                        <td>{money(li.unit_price)}</td>
-                        <td>{money(li.line_total)}</td>
+                        <td className="invoice-line-unit">{money(li.unit_price)}</td>
+                        <td className="invoice-line-total">{money(li.line_total)}</td>
                         {editable && (
-                          <td>
-                            <button type="button" onClick={() => removeLineItem(li.id)}>
-                              Remove
+                          <td className="invoice-line-remove-cell">
+                            <button type="button" className="invoice-line-remove" onClick={() => removeLineItem(li.id)} title="Remove this line" aria-label={`Remove ${li.description}`}>
+                              ✕
                             </button>
                           </td>
                         )}

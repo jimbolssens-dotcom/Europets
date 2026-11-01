@@ -15447,3 +15447,79 @@ button.worksheet-item-remove:hover {
     animation: none !important;
   }
 }
+
+/* Single invoice page (app/(admin)/invoices/[id]): number and status on
+   the title line, owner / pet / contact / dates on one line under it. */
+.invoice-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.invoice-title h1 {
+  margin: 0.4rem 0 0;
+}
+.invoice-meta {
+  margin: 0.2rem 0 0.4rem;
+  font-size: 0.92rem;
+}
+.invoice-meta-soft {
+  color: #767171;
+}
+@media (max-width: 700px) {
+  .invoice-title h1 {
+    font-size: 1.3rem;
+  }
+  .invoice-meta {
+    font-size: 0.8rem;
+  }
+  .invoice-meta-email {
+    display: none;
+  }
+  .invoice-page > .action-row {
+    gap: 0.3rem;
+  }
+  .invoice-page > .action-row > button {
+    padding: 0.3rem 0.65rem;
+    font-size: 0.8rem;
+  }
+  /* The full invoice's lines: same phone layout as the invoices list, plus
+     how it's given and the instructions on their own line. */
+  table.invoice-lines-full .invoice-line-method select {
+    width: 5.5rem;
+    margin: 0;
+    padding: 0.15rem 0.2rem;
+    font-size: 0.8rem;
+  }
+  table.invoice-lines-full .invoice-line-instr {
+    order: 5;
+    flex: 1 1 100% !important;
+  }
+  table.invoice-lines-full .invoice-line-instr input {
+    width: 100%;
+    margin: 0;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.8rem;
+    box-sizing: border-box;
+  }
+  table.invoice-lines-full .invoice-line-remove-cell {
+    order: 4;
+  }
+  table.invoice-lines-full tr.invoice-section-row,
+  table.invoice-lines-full tr.invoice-section-row td {
+    display: block;
+  }
+}
+@media (max-width: 700px) {
+  table.invoice-lines-full tr.invoice-line .invoice-line-desc {
+    order: 0;
+    flex: 1 1 calc(100% - 2rem);
+  }
+  table.invoice-lines-full tr.invoice-line .invoice-line-remove-cell {
+    order: 0;
+    flex: none;
+  }
+  table.invoice-lines-full tr.invoice-line > td:not(.invoice-line-desc):not(.invoice-line-remove-cell):not(.invoice-line-instr) {
+    order: 1;
+  }
+}
