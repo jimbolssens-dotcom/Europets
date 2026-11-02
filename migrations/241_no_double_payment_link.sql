@@ -1,4 +1,4 @@
--- Migration 241: a payment-link payment can't be recorded twice
+-- Migration 241: a payment-link payment can't be recorded twice (run and verified 2 Nov 2026)
 --
 -- Jim (2 Nov): INV-000591 and INV-000984 each showed their Nomod payment
 -- twice (Nomod received it once), and the thank-you messages told the
