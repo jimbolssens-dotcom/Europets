@@ -244,7 +244,9 @@ export async function POST(request) {
     if (nightsBetween(today, scheduled_for) > 14) {
       return NextResponse.json({ error: 'That is more than two weeks away; book an appointment instead' }, { status: 400 });
     }
-    if (!cage_id) return NextResponse.json({ error: 'Pick the cage the patient stays in overnight' }, { status: 400 });
+    // Booked off an open stay, the patient is already in its own cage (and
+    // charged for the stay), so no cage to pick and no Overnight charge.
+    if (!cage_id && !originating_hospitalization_id) return NextResponse.json({ error: 'Pick the cage the patient stays in overnight' }, { status: 400 });
   }
 
   // A stale consult page should open its existing admission, not book it again.
@@ -424,7 +426,7 @@ export async function POST(request) {
     await seedVitalsFromVisit(data.id, originating_visit_id);
   }
 
-  if (scheduled_for) {
+  if (scheduled_for && !body.originating_hospitalization_id) {
     await addOvernightCharge(data, nightsBetween(today, scheduled_for), scheduled_for);
   }
 

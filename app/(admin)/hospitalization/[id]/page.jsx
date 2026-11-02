@@ -9,7 +9,7 @@
 
 'use client';
 
-import { shortDayLabel } from '@/lib/dayProcedureSchedule';
+import { shortDayLabel, addDaysISO, dubaiDateISO } from '@/lib/dayProcedureSchedule';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -109,6 +109,11 @@ export default function HospitalizationDetailPage() {
   const [linkedDayProcedures, setLinkedDayProcedures] = useState([]);
   const [bookingDayProcedure, setBookingDayProcedure] = useState(false);
   const [bookDayProcedureError, setBookDayProcedureError] = useState(null);
+  // "Book Day Procedure": today (starts it now) or a later day (the pet
+  // stays in its own cage, then the calendar opens to book the vet/time).
+  const [dayProcAhead, setDayProcAhead] = useState(false);
+  const [dayProcDate, setDayProcDate] = useState(() => addDaysISO(dubaiDateISO(), 1));
+  const [dayProcReason, setDayProcReason] = useState('');
   const [moveToHospitalError, setMoveToHospitalError] = useState(null);
   const reportsSectionRef = useRef(null);
   const [pendingChecklistAction, setPendingChecklistAction] = useState(null);
@@ -797,17 +802,37 @@ export default function HospitalizationDetailPage() {
   // Spins off a genuine day-procedure hospitalization for a patient who's
   // still admitted (see migration 090) — the admission stays open, and
   // staff land straight on the new day procedure to start its checklist.
-  async function bookDayProcedure() {
+  async function bookDayProcedure(e) {
+    e?.preventDefault();
     setBookingDayProcedure(true);
     setBookDayProcedureError(null);
     try {
       const res = await fetch('/api/hospitalizations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ originating_hospitalization_id: id, kind: 'day_procedure' }),
+        body: JSON.stringify({
+          originating_hospitalization_id: id,
+          kind: 'day_procedure',
+          reason: dayProcReason || null,
+          ...(dayProcAhead ? { scheduled_for: dayProcDate } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not book a day procedure.');
+      if (dayProcAhead) {
+        // Booked for a later day: the calendar opens on that date with a
+        // surgery booking filled in, same as booking ahead from a consult.
+        const params = new URLSearchParams({
+          client_id: admission.client_id,
+          patient_id: admission.patient_id,
+          type: 'surgery',
+          date: dayProcDate,
+          reason: dayProcReason || '',
+          day_procedure_id: data.id,
+        });
+        router.push(`/appointments?${params}`);
+        return;
+      }
       router.push(`/hospitalization/${data.id}`);
     } catch (error) {
       setBookDayProcedureError(error.message);
@@ -1428,10 +1453,30 @@ export default function HospitalizationDetailPage() {
               Day Procedure
             </a>
           ) : (
-            <button type="button" className="button-link" onClick={bookDayProcedure} disabled={bookingDayProcedure}
-              title="Book a same-day procedure (surgery, dental, etc.) for this patient without discharging the admission">
-              {bookingDayProcedure ? 'Booking…' : 'Book Day Procedure'}
-            </button>
+            <details className="consult-action-toggle">
+              <summary className="button-link" title="Book a procedure (surgery, dental, etc.) for this patient without discharging the admission">
+                Book Day Procedure
+              </summary>
+              <form className="consult-action-dropdown day-procedure-start" onSubmit={bookDayProcedure}>
+                <div className="day-procedure-start-row">
+                  <input placeholder="Reason" value={dayProcReason} onChange={(e) => setDayProcReason(e.target.value)} />
+                  <span className="day-procedure-when" role="group" aria-label="When">
+                    <button type="button" className={dayProcAhead ? '' : 'on'} onClick={() => setDayProcAhead(false)}>Today</button>
+                    <button type="button" className={dayProcAhead ? 'on' : ''} onClick={() => setDayProcAhead(true)}>Tomorrow</button>
+                  </span>
+                </div>
+                {dayProcAhead && (
+                  <label className="day-procedure-start-date">
+                    Procedure on
+                    <input type="date" value={dayProcDate} min={addDaysISO(dubaiDateISO(), 1)} onChange={(e) => setDayProcDate(e.target.value)} required />
+                    <small>Stays in its own cage</small>
+                  </label>
+                )}
+                <button type="submit" disabled={bookingDayProcedure}>
+                  {dayProcAhead ? (bookingDayProcedure ? 'Booking…' : 'Book & pick the time →') : bookingDayProcedure ? 'Starting…' : 'Start Day Procedure'}
+                </button>
+              </form>
+            </details>
           )}
           {bookDayProcedureError && <span className="error" role="alert">{bookDayProcedureError}</span>}
         </CrossRecordLinks>
