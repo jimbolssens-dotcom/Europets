@@ -15523,3 +15523,28 @@ button.worksheet-item-remove:hover {
     order: 1;
   }
 }
+
+/* On a phone the case-link dropdowns (Day Procedure: today / tomorrow,
+   Hospitalization: admit) opened from their own button's right edge,
+   which on a phone sits near the left: the panel ran off the left of the
+   screen, hiding the reason box and the cage picker, so "Book & pick the
+   time" could never be pressed. Now they open under the whole oval, the
+   full width of the screen. */
+@media (max-width: 700px) {
+  .cross-record-links {
+    position: relative;
+  }
+  .cross-record-links .consult-action-toggle {
+    position: static;
+  }
+  .cross-record-links .consult-action-dropdown {
+    left: 0;
+    right: 0;
+    min-width: 0;
+    max-width: none;
+    box-sizing: border-box;
+  }
+  .cross-record-links .day-procedure-start {
+    max-width: none;
+  }
+}
