@@ -29,6 +29,7 @@
 
 import { useEffect, useId, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 import { hospitalizationAlarmLevel, combineAlarmLevels } from '@/lib/hospitalizationAttention';
 
 export function useHospitalizationUpdatePending({ kind = 'admission' } = {}) {
@@ -49,18 +50,18 @@ export function useHospitalizationUpdatePending({ kind = 'admission' } = {}) {
         })
         .catch(() => {});
 
-    checkPending();
-    const timer = window.setInterval(checkPending, 60 * 1000);
+    // Paced: every 2 min open, 15 min closed, none while hidden (lib/pacedRefresh.js).
+    const paced = startPacedRefresh(checkPending);
 
     const channel = supabase
       .channel(`hospitalization-update-attention-${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, checkPending)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, checkPending)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, paced.trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, paced.trigger)
       .subscribe();
 
     return () => {
       active = false;
-      window.clearInterval(timer);
+      paced.stop();
       supabase.removeChannel(channel);
     };
   }, [id, kind]);

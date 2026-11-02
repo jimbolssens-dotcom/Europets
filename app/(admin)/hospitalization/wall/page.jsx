@@ -5,6 +5,7 @@ import Link from 'next/link';
 import WallFloorPlan from './WallFloorPlan';
 import WallCageTile from './WallCageTile';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 import styles from './page.module.css';
 import { uaeDate } from '@/lib/wallPlanItems';
 
@@ -84,7 +85,7 @@ export default function HospitalizationWallPage() {
 
   async function loadWall() {
     try {
-      const [cagesRes, admissionsRes] = await Promise.all([fetch('/api/cages'), fetch('/api/hospitalizations')]);
+      const [cagesRes, admissionsRes] = await Promise.all([fetch('/api/cages'), fetch('/api/hospitalizations?status=admitted')]);
       const cagesData = await cagesRes.json();
       const admissionsData = await admissionsRes.json();
       if (!cagesRes.ok || !admissionsRes.ok) throw new Error('Failed to load hospitalization wall display');
@@ -93,22 +94,19 @@ export default function HospitalizationWallPage() {
       const occupied = admitted.filter((a) => a.cage_id);
       const today = todayISODate();
 
-      const detailEntries = await Promise.all(
-        occupied.map(async (hosp) => {
-          const [planRes, notesRes] = await Promise.all([
-            fetch(`/api/hospitalizations/${hosp.id}/plan-items`),
-            fetch(`/api/hospitalizations/${hosp.id}/notes`),
-          ]);
-          const [planItems, notes] = await Promise.all([planRes.json(), notesRes.json()]);
-          if (!planRes.ok || !notesRes.ok || !Array.isArray(planItems) || !Array.isArray(notes)) {
-            return [hosp.id, { error: true }];
-          }
-          const todayNotes = (Array.isArray(notes) ? notes : []).filter(
-            (n) => n.note_date === today && n.plan_item_ids?.length > 0
-          );
-          return [hosp.id, { planItems: Array.isArray(planItems) ? planItems : [], todayNotes }];
-        })
-      );
+      // One request for every patient on the wall, today's notes only
+      // (app/api/hospitalizations/wall-details).
+      let detailEntries = [];
+      if (occupied.length > 0) {
+        const detailsRes = await fetch(
+          `/api/hospitalizations/wall-details?date=${today}&ids=${occupied.map((h) => h.id).join(',')}`
+        );
+        const details = await detailsRes.json().catch(() => null);
+        detailEntries = occupied.map((h) => [
+          h.id,
+          detailsRes.ok && details?.[h.id] ? details[h.id] : { error: true },
+        ]);
+      }
 
       setCages(Array.isArray(cagesData) ? cagesData : []);
       setAdmissions(admitted);
@@ -122,17 +120,17 @@ export default function HospitalizationWallPage() {
   }
 
   useEffect(() => {
-    loadWall();
-    const timer = window.setInterval(loadWall, 30 * 1000);
+    // Paced: every 2 min open, 15 min closed, none while hidden (lib/pacedRefresh.js).
+    const paced = startPacedRefresh(loadWall);
     const channel = supabase
       .channel('hospitalization-wall-display')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, loadWall)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_plan_items' }, loadWall)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, loadWall)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, paced.trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_plan_items' }, paced.trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, paced.trigger)
       .subscribe();
 
     return () => {
-      window.clearInterval(timer);
+      paced.stop();
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -18,6 +18,7 @@ import { shortDayLabel } from '@/lib/dayProcedureSchedule';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 import CageFloorPlan from '@/app/_components/CageFloorPlan';
 import CagePicker from '@/app/_components/CagePicker';
 import SearchSelect from '@/app/_components/SearchSelect';
@@ -186,7 +187,6 @@ export default function HospitalizationPage() {
   });
 
   useEffect(() => {
-    loadAdmissions();
     fetch('/api/cages')
       .then((res) => res.json())
       .then((cagesData) => {
@@ -202,14 +202,15 @@ export default function HospitalizationPage() {
     // The timer is needed because a deadline can pass without any database
     // row changing. Realtime changes make alarms clear immediately after a
     // worksheet entry is saved, or change when a patient moves/discharges.
-    const timer = window.setInterval(loadAdmissions, 60 * 1000);
+    // Paced: every 2 min open, 15 min closed, none while hidden (lib/pacedRefresh.js).
+    const paced = startPacedRefresh(loadAdmissions);
     const channel = supabase
       .channel('hospitalizations-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, loadAdmissions)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, loadAdmissions)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, paced.trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, paced.trigger)
       .subscribe();
     return () => {
-      window.clearInterval(timer);
+      paced.stop();
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

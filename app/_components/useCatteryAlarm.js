@@ -11,6 +11,7 @@
 
 import { useEffect, useId, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 import { weightOverdue } from '@/lib/cattery';
 
 export function useCatteryAlarm() {
@@ -32,16 +33,16 @@ export function useCatteryAlarm() {
         })
         .catch(() => {});
 
-    check();
-    const timer = window.setInterval(check, 60 * 1000);
+    // Paced: every 2 min open, 15 min closed, none while hidden (lib/pacedRefresh.js).
+    const paced = startPacedRefresh(check);
     const channel = supabase
       .channel(`cattery-alarm-${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cattery_bookings' }, check)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cattery_daily_logs' }, check)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cattery_bookings' }, paced.trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cattery_daily_logs' }, paced.trigger)
       .subscribe();
     return () => {
       active = false;
-      window.clearInterval(timer);
+      paced.stop();
       supabase.removeChannel(channel);
     };
   }, [id]);

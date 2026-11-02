@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 
 export function useClientMessagesPending() {
   const [pendingCount, setPendingCount] = useState(0);
@@ -19,15 +20,15 @@ export function useClientMessagesPending() {
         .then((res) => res.json())
         .then((data) => setPendingCount(Array.isArray(data) ? data.filter((c) => c.pending).length : 0));
 
-    load();
-    const timer = window.setInterval(load, 60 * 1000);
+    // Paced: every 2 min open, 15 min closed, none while hidden (lib/pacedRefresh.js).
+    const paced = startPacedRefresh(load);
     const channel = supabase
       .channel('mobile-client-messages-pending')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'client_messages' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'client_message_thread_state' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'client_messages' }, paced.trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'client_message_thread_state' }, paced.trigger)
       .subscribe();
     return () => {
-      window.clearInterval(timer);
+      paced.stop();
       supabase.removeChannel(channel);
     };
   }, []);

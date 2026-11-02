@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DayProcedureWallCard from './DayProcedureWallCard';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 import styles from './page.module.css';
 
 function todayISODate() {
@@ -86,20 +87,19 @@ export default function DayProcedureWallPage() {
       // day; it's still reachable from the patient's own history.
       const list = (Array.isArray(data) ? data : []).filter((dp) => dp.admitted_at?.slice(0, 10) === today);
 
-      const detailEntries = await Promise.all(
-        list.map(async (dp) => {
-          const [planRes, notesRes] = await Promise.all([
-            fetch(`/api/hospitalizations/${dp.id}/plan-items`),
-            fetch(`/api/hospitalizations/${dp.id}/notes`),
-          ]);
-          const [planItems, notes] = await Promise.all([planRes.json(), notesRes.json()]);
-          if (!planRes.ok || !notesRes.ok || !Array.isArray(planItems) || !Array.isArray(notes)) {
-            return [dp.id, { error: true }];
-          }
-          const todayNotes = notes.filter((n) => n.note_date === today && n.plan_item_ids?.length > 0);
-          return [dp.id, { planItems, todayNotes }];
-        })
-      );
+      // One request for every patient on the wall, today's notes only
+      // (app/api/hospitalizations/wall-details).
+      let detailEntries = [];
+      if (list.length > 0) {
+        const detailsRes = await fetch(
+          `/api/hospitalizations/wall-details?date=${today}&ids=${list.map((h) => h.id).join(',')}`
+        );
+        const details = await detailsRes.json().catch(() => null);
+        detailEntries = list.map((h) => [
+          h.id,
+          detailsRes.ok && details?.[h.id] ? details[h.id] : { error: true },
+        ]);
+      }
 
       setDayProcedures(list);
       setDetailsById(Object.fromEntries(detailEntries));
@@ -149,17 +149,17 @@ export default function DayProcedureWallPage() {
   }
 
   useEffect(() => {
-    loadWall();
-    const timer = window.setInterval(loadWall, 30 * 1000);
+    // Paced: every 2 min open, 15 min closed, none while hidden (lib/pacedRefresh.js).
+    const paced = startPacedRefresh(loadWall);
     const channel = supabase
       .channel('day-procedure-wall-display')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, loadWall)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_plan_items' }, loadWall)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, loadWall)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, paced.trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_plan_items' }, paced.trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, paced.trigger)
       .subscribe();
 
     return () => {
-      window.clearInterval(timer);
+      paced.stop();
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
