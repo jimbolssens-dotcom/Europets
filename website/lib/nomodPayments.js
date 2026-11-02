@@ -165,7 +165,7 @@ async function logCheck(paymentLinkId, nomodLinkId, { remoteStatus = null, paylo
 // `link` needs just { id, amount } — the nomod_payment_links row, however
 // the caller found it (a status check here, or a webhook payload elsewhere).
 export async function recordNomodPayment(link, invoiceId) {
-  await markLinkPaid(link.id);
+  if (!(await claimLink(link.id))) return;
   await applyPaymentToInvoice(invoiceId, link.amount);
 }
 
@@ -180,7 +180,7 @@ export async function recordNomodPayment(link, invoiceId) {
 // left unapplied rather than guessed at; staff will see the mismatch on
 // the client's financial overview.
 export async function recordNomodOwnerPayment(link, clientId) {
-  await markLinkPaid(link.id);
+  if (!(await claimLink(link.id))) return;
 
   const { data: invoices } = await supabaseServer
     .from('invoices')
@@ -202,11 +202,21 @@ export async function recordNomodOwnerPayment(link, clientId) {
   }
 }
 
-async function markLinkPaid(linkId) {
-  await supabaseServerAdmin
+// Claims the link (pending to paid) in one step, and says whether this call
+// got it. Two checks of the Settle Your Bill page at the same moment both
+// saw the link pending and paid at Nomod, and both logged the payment
+// (INV-000591 and INV-000984 on 1 Nov, 0.2 to 0.8 seconds apart; the
+// clients' thank-yous then showed double). Now only the call that moves it
+// from pending logs anything; the other stops here. (The clinic database
+// also skips a second identical payment-link payment, migration 241.)
+async function claimLink(linkId) {
+  const { data } = await supabaseServerAdmin
     .from('nomod_payment_links')
     .update({ status: 'paid', paid_at: new Date().toISOString() })
-    .eq('id', linkId);
+    .eq('id', linkId)
+    .neq('status', 'paid')
+    .select('id');
+  return Boolean(data?.length);
 }
 
 async function applyPaymentToInvoice(invoiceId, amount) {
