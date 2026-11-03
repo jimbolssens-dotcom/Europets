@@ -14264,6 +14264,13 @@ button.invoice-deposit-btn {
   font-weight: 600;
   color: #999;
 }
+/* On the invoice's owner/patient line the numbers read at the same size
+   as the names next to them (Jim, 3 Nov: "written really small"). */
+.invoice-meta .client-no {
+  font-size: 1em;
+  font-weight: 500;
+  color: #888;
+}
 button.client-edit-link {
   width: auto;
   margin: 0 0 0 0.3rem;
