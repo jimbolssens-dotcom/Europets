@@ -17,7 +17,11 @@
     },
     {
       "path": "/api/whatsapp/nudge-sweep",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/5 4-14 * * *"
+    },
+    {
+      "path": "/api/whatsapp/nudge-sweep",
+      "schedule": "*/15 0-3,15-23 * * *"
     },
     {
       "path": "/api/appointments/send-due-reminders",
@@ -25,7 +29,7 @@
     },
     {
       "path": "/api/attachments/compress-sweep",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/10 4-14 * * *"
     },
     {
       "path": "/api/invoices/send-due-reminders",
@@ -33,11 +37,15 @@
     },
     {
       "path": "/api/payments/thank-you-sweep",
-      "schedule": "5,15,25,35,45,55 * * * *"
+      "schedule": "5,15,25,35,45,55 4-17 * * *"
     },
     {
       "path": "/api/social-posts/publish-sweep",
-      "schedule": "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+      "schedule": "2,7,12,17,22,27,32,37,42,47,52,57 4-14 * * *"
+    },
+    {
+      "path": "/api/social-posts/publish-sweep",
+      "schedule": "2,32 0-3,15-23 * * *"
     },
     {
       "path": "/api/social-plan/weekly",
