@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 import { byGroup } from './CageFloorPlan';
 
 function dotTitle(cage, hosp) {
@@ -46,12 +47,16 @@ export default function MiniCageStrip({ currentHospitalizationId }) {
     });
 
   useEffect(() => {
-    load();
+    // Live updates merged, none while the tab is hidden (lib/pacedRefresh.js).
+    const paced = startPacedRefresh(load, { poll: false });
     const channel = supabase
       .channel('mini-cage-strip')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, paced.trigger)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    return () => {
+      paced.stop();
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

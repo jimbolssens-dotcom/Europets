@@ -24,6 +24,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 import { groupLineItemsBySection } from '@/lib/catalogGrouping';
 
 function money(n) {
@@ -197,12 +198,20 @@ export default function PreInvoiceOverview({
   // migrations/019), so this listens unfiltered rather than joining; a
   // clinic this size generates far too little edit traffic for that to
   // matter.
+  //
+  // Merged and paused while the tab is hidden (lib/pacedRefresh.js): each
+  // re-sync writes to the invoice, and this fired for every treatment item
+  // saved anywhere in the clinic, from every open stay page.
   useEffect(() => {
+    const paced = startPacedRefresh(() => syncAndLoad(), { poll: false, initial: false });
     const channel = supabase
       .channel(`pre-invoice-treatment-items-${hospitalizationId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'treatment_items' }, () => syncAndLoad())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'treatment_items' }, paced.trigger)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    return () => {
+      paced.stop();
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hospitalizationId]);
 

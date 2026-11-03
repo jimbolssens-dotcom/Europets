@@ -11,6 +11,7 @@
 import { dubaiDateISO, isBookedAhead, shortDayLabel } from '@/lib/dayProcedureSchedule';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 import { useRestoredView, writeViewCache } from '@/lib/viewCache';
@@ -37,12 +38,16 @@ export default function MobileDayProceduresPage() {
   });
 
   useEffect(() => {
-    load();
+    // Live updates merged, none while the tab is hidden (lib/pacedRefresh.js).
+    const paced = startPacedRefresh(load, { poll: false });
     const channel = supabase
       .channel('mobile-day-procedures')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, paced.trigger)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    return () => {
+      paced.stop();
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

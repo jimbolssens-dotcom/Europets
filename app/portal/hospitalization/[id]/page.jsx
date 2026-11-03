@@ -93,7 +93,9 @@ export default function HospitalizationPortalPage() {
       loadReports();
       loadTests();
     };
-    return pollWhileVisible(loadAll, 15000);
+    // Every minute while the owner has it open (was every 15 s: five
+    // requests each time, for as long as a phone sat on this page).
+    return pollWhileVisible(loadAll, 60000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 

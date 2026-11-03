@@ -8,9 +8,10 @@
 'use client';
 
 import { websiteUrl as clinicWebsiteUrl } from '@/lib/websiteUrl';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 import { useVaccinations } from '@/app/_components/useVaccinations';
 import VaccinationForm from '@/app/_components/VaccinationForm';
 import HealthCertificatePanel from '@/app/_components/HealthCertificatePanel';
@@ -45,6 +46,9 @@ export default function PatientDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const [patient, setPatient] = useState(null);
+  // Read by the live-update handlers below, which are set up once per page.
+  const patientClientIdRef = useRef(null);
+  patientClientIdRef.current = patient?.client_id || null;
   const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState([]);
   // The export health certificate form (migration 231).
@@ -117,6 +121,14 @@ export default function PatientDetailPage() {
       .then((res) => res.json())
       .then((data) => setStaff(Array.isArray(data) ? data : []));
 
+    const statusPaced = startPacedRefresh(loadStatusOverview, { poll: false, initial: false });
+    const vitalsPaced = startPacedRefresh(
+      () => {
+        loadWeightHistory();
+        loadTemperatureHistory();
+      },
+      { poll: false, initial: false }
+    );
     const channel = supabase
       .channel(`patient-${id}`)
       .on(
@@ -143,13 +155,21 @@ export default function PatientDetailPage() {
         { event: '*', schema: 'public', table: 'hospitalizations', filter: `patient_id=eq.${id}` },
         () => loadStatusOverview()
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => loadStatusOverview())
-      // hospitalization_notes isn't filterable by patient_id directly (only
-      // hospitalization_id) — same loose-filter tradeoff as invoices above,
-      // re-checking on any change rather than trying to filter server-side.
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, () => {
-        loadWeightHistory();
-        loadTemperatureHistory();
+      // Only this owner's invoices (the row carries client_id), merged and
+      // paused while the tab is hidden (lib/pacedRefresh.js). This used to
+      // re-check on every invoice change in the clinic.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, (payload) => {
+        const row = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+        const clientId = patientClientIdRef.current;
+        if (!clientId || !row?.client_id || row.client_id === clientId) statusPaced.trigger();
+      })
+      // hospitalization_notes isn't filterable by patient_id; only a note
+      // carrying a weight or temperature can change the charts, so task
+      // ticks and text notes from other patients no longer reload them
+      // (they did, for every note saved anywhere: ~200,000 queries a day).
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, (payload) => {
+        const row = payload.new && Object.keys(payload.new).length ? payload.new : payload.old;
+        if (payload.eventType === 'DELETE' || (row && (row.weight_kg != null || row.temperature_c != null))) vitalsPaced.trigger();
       })
       .on(
         'postgres_changes',
@@ -159,6 +179,8 @@ export default function PatientDetailPage() {
       .subscribe();
 
     return () => {
+      statusPaced.stop();
+      vitalsPaced.stop();
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

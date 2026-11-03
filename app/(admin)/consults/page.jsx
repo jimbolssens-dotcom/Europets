@@ -10,6 +10,7 @@ import { formatWhenShort } from '@/lib/formatTimestamp';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 import SearchSelect from '@/app/_components/SearchSelect';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
@@ -91,14 +92,15 @@ function ConsultsPageInner() {
       }
     });
 
+    // Live updates merged, none while the tab is hidden (lib/pacedRefresh.js).
+    const paced = startPacedRefresh(() => loadConsults(), { poll: false, initial: false });
     const channel = supabase
       .channel('consults-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'visits' }, () =>
-        loadConsults()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'visits' }, paced.trigger)
       .subscribe();
 
     return () => {
+      paced.stop();
       supabase.removeChannel(channel);
     };
   }, []);

@@ -21,6 +21,7 @@
 import { dayProcedureDate, isBookedAhead, shortDayLabel } from '@/lib/dayProcedureSchedule';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmClass } from '@/lib/hospitalizationAttention';
 import { formatShortDate, formatWhenShort } from '@/lib/formatTimestamp';
 import { useRestoredView, writeViewCache } from '@/lib/viewCache';
@@ -75,12 +76,16 @@ export default function DayProceduresPage() {
   }
 
   useEffect(() => {
-    load();
+    // Live updates merged, none while the tab is hidden (lib/pacedRefresh.js).
+    const paced = startPacedRefresh(load, { poll: false });
     const channel = supabase
       .channel('day-procedures-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, paced.trigger)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    return () => {
+      paced.stop();
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   if (loading) return <p>Loading day procedures...</p>;

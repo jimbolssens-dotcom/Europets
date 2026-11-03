@@ -114,3 +114,20 @@ test('a failing load does not stop the refreshes', () => {
   f.advance(4 * 60 * 1000);
   assert.equal(n, 3);
 });
+
+test('poll: false only reacts to live updates, merged, and waits while hidden', () => {
+  const f = fakeEnv(OPEN);
+  let n = 0;
+  const p = startPacedRefresh(() => { n++; }, { poll: false, initial: false }, f.env);
+  f.advance(60 * 60 * 1000);
+  assert.equal(n, 0);
+  p.trigger(); p.trigger();
+  f.advance(3000);
+  assert.equal(n, 1);
+  f.setHidden(true);
+  p.trigger();
+  f.advance(3000);
+  assert.equal(n, 1);
+  f.setHidden(false);
+  assert.equal(n, 2);
+});

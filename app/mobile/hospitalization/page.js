@@ -20,6 +20,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 import { byGroup } from '@/app/_components/CageFloorPlan';
 import { useMobileStaff } from '@/app/_components/useMobileStaff';
 import { useCleanerLanguage } from '@/app/_components/useCleanerLanguage';
@@ -187,14 +188,15 @@ export default function MobileHospitalizationListPage() {
 
     // Poll as well as listening to realtime changes because crossing noon
     // or 18:00 can create an overdue reminder without a database write.
-    const timer = window.setInterval(loadAdmitted, 60 * 1000);
+    // Paced: every 2 min open, 15 min closed, none while hidden (lib/pacedRefresh.js).
+    const paced = startPacedRefresh(loadAdmitted, { initial: false });
     const channel = supabase
       .channel('mobile-cage-layout')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, loadAdmitted)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, loadAdmitted)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalizations' }, paced.trigger)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitalization_notes' }, paced.trigger)
       .subscribe();
     return () => {
-      window.clearInterval(timer);
+      paced.stop();
       supabase.removeChannel(channel);
     };
   }, []);

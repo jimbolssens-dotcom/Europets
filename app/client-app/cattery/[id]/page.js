@@ -53,7 +53,7 @@ export default function ClientAppCatteryStayPage() {
         .then((data) => setBooking((prev) => keepIfSame(prev, data && !data.error ? data : null)))
         .finally(() => setLoading(false));
     load();
-    return pollWhileVisible(load, 30000);
+    return pollWhileVisible(load, 60000);
   }, [id, ready, clientId]);
 
   if (!ready || !clientId) return null;

@@ -17,6 +17,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { FLOWERS, KINDNESS_QUOTES, greetingFor, missionFor } from '@/lib/kindness';
+import { startPacedRefresh } from '@/lib/pacedRefresh';
 
 const NAME_KEY = 'europets_smile_name';
 
@@ -83,11 +84,12 @@ export default function KindnessHome() {
     setQuoteIndex(Math.floor(Math.random() * KINDNESS_QUOTES.length));
     const clock = setInterval(() => setNow(new Date()), 60000);
     const quotes = setInterval(() => setQuoteIndex((i) => (i + 1) % KINDNESS_QUOTES.length), 9000);
-    const refresh = setInterval(load, 60000);
+    // The garden: every 2 min open, 15 min closed, none while hidden.
+    const refresh = startPacedRefresh(load, { initial: false });
     return () => {
       clearInterval(clock);
       clearInterval(quotes);
-      clearInterval(refresh);
+      refresh.stop();
     };
   }, []);
 

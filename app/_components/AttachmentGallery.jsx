@@ -33,7 +33,8 @@ export default function AttachmentGallery({ entityType, entityId, emptyText, dow
 
   useEffect(() => {
     load();
-    if (isOwnerFacingPage()) return pollWhileVisible(load, 30000);
+    // Owners' pages: photos don't arrive every few seconds (was 30 s).
+    if (isOwnerFacingPage()) return pollWhileVisible(load, 2 * 60 * 1000);
     const channel = supabase
       .channel(`attachment-gallery-${entityType}-${entityId}`)
       .on(
