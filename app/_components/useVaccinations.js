@@ -177,6 +177,10 @@ export function useVaccinations(patientId, species, invoiceContext = {}, default
   }, [patientId]);
 
   useEffect(() => {
+    // The stay and consult pages pass the patient id only once their own
+    // record has loaded; asking before that requested patient "undefined"
+    // (~130 failed requests a day) and loaded everything twice.
+    if (!patientId) return undefined;
     loadVaccinations();
     fetch('/api/vaccine-protocols?active=true')
       .then((res) => res.json())
