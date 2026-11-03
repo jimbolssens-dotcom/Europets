@@ -217,3 +217,31 @@ test('an unbillable item is never invoiced', async () => {
   assert.equal(addedCount, 0);
   assert.equal(db.invoice_line_items.length, 0);
 });
+
+// INV-000996 (3 Nov): a consult billed and paid, then the pet admitted from
+// that consult instead of going home. The paid amount is a deposit towards
+// the stay, so the stay's charges must still land on the shared invoice.
+function paidConsultThenAdmitted(stayStatus) {
+  const db = makeDb();
+  db.invoices = [{ id: 'inv1', total: 50, status: 'paid', amount_paid: 50, visit_id: 'v1', hospitalization_id: 'h1' }];
+  db.invoice_payments = [{ id: 'p1', invoice_id: 'inv1', amount: 50, is_deposit: true }];
+  db.visits = [{ id: 'v1', status: 'complete' }];
+  db.hospitalizations = [{ id: 'h1', status: stayStatus }];
+  return db;
+}
+
+test('a paid invoice still takes charges while its hospital stay is running', async () => {
+  const { syncInvoiceTreatmentItems } = loadInvoicing();
+  const db = paidConsultThenAdmitted('admitted');
+  const result = await syncInvoiceTreatmentItems(makeSupabase(db), 'inv1', [hospItem('t1')]);
+  assert.equal(result.blockedCount, undefined);
+  assert.equal(db.invoice_line_items.length, 1);
+});
+
+test('a paid invoice stays locked once the stay is discharged', async () => {
+  const { syncInvoiceTreatmentItems } = loadInvoicing();
+  const db = paidConsultThenAdmitted('discharged');
+  const result = await syncInvoiceTreatmentItems(makeSupabase(db), 'inv1', [hospItem('t1')]);
+  assert.equal(result.blockedCount, 1);
+  assert.equal(db.invoice_line_items.length, 0);
+});
