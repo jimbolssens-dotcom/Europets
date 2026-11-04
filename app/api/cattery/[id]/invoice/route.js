@@ -18,11 +18,15 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { recomputeInvoiceTotals } from '@/lib/invoicing';
 import { bookingDays, rangesOverlap } from '@/lib/cattery';
 import { NextResponse } from 'next/server';
+import { isBirdSpecies } from '@/lib/birdSpecies';
 
 export const dynamic = 'force-dynamic';
 
 const FIRST_CAT = 'Boarding - Cattery';
 const EXTRA_CAT = 'Boarding - Cattery (2nd)';
+// Birds board at their own rate (AED 50 a night, Jim 4 Nov), whichever
+// place they take on the bill.
+const BIRD = 'Boarding - Cattery (Bird)';
 const NOT_STAYING = ['cancelled', 'declined', 'expired', 'requested'];
 
 // date_in and date_out are both days in the cattery, so a 5 to 13 Nov
@@ -38,7 +42,7 @@ function shortDate(iso) {
 async function loadBooking(id) {
   const { data } = await supabase
     .from('cattery_bookings')
-    .select('id, client_id, patient_id, date_in, date_out, status, invoice_id, patients(name), cattery_booking_cats(patient_id, patients(name))')
+    .select('id, client_id, patient_id, date_in, date_out, status, invoice_id, patients(name, species), cattery_booking_cats(patient_id, patients(name, species))')
     .eq('id', id)
     .single();
   return data;
@@ -94,7 +98,7 @@ export async function POST(request, { params }) {
   // The owner's other cats staying over the same dates, not billed yet.
   const { data: siblings } = await supabase
     .from('cattery_bookings')
-    .select('id, date_in, date_out, status, invoice_id, patient_id, patients(name)')
+    .select('id, date_in, date_out, status, invoice_id, patient_id, patients(name, species)')
     .eq('client_id', booking.client_id)
     .is('invoice_id', null)
     .neq('id', booking.id);
@@ -114,9 +118,10 @@ export async function POST(request, { params }) {
   const { data: items } = await supabase
     .from('goods_services')
     .select('id, name, base_price')
-    .in('name', [FIRST_CAT, EXTRA_CAT]);
+    .in('name', [FIRST_CAT, EXTRA_CAT, BIRD]);
   const first = (items || []).find((i) => i.name === FIRST_CAT);
   const extra = (items || []).find((i) => i.name === EXTRA_CAT) || first;
+  const bird = (items || []).find((i) => i.name === BIRD);
   if (!first) return NextResponse.json({ error: `"${FIRST_CAT}" is missing from the price list` }, { status: 500 });
 
   const { data: invoice, error: invoiceError } = await supabaseAdmin
@@ -127,7 +132,7 @@ export async function POST(request, { params }) {
   if (invoiceError) return NextResponse.json({ error: invoiceError.message }, { status: 500 });
 
   const lines = together.map((b, i) => {
-    const item = i === 0 ? first : extra;
+    const item = bird && isBirdSpecies(b.patients?.species) ? bird : i === 0 ? first : extra;
     const qty = nights(b);
     const unit_price = Number(item.base_price);
     return {
