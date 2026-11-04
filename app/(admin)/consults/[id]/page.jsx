@@ -1759,7 +1759,9 @@ export default function ConsultDetailPage() {
                   {t.goods_services?.name}
                   {subcategoryName(subcategories, t.goods_services?.subcategory_id) &&
                     ` (${subcategoryName(subcategories, t.goods_services?.subcategory_id)})`}
-                  {t.administration_method === 'dispense' && (
+                  {/* Only once there are instructions to put on the label
+                      (typed, dictated or from the dose guide). */}
+                  {t.administration_method === 'dispense' && (draft?.instructions ?? t.instructions ?? '').trim() && (
                     <button
                       type="button"
                       className="treatment-label-print"
