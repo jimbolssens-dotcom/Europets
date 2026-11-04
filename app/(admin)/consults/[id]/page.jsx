@@ -34,6 +34,7 @@ import { isSmallPet } from '@/lib/smallPet';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import PatientHeader, { PatientMeta, PatientTrend } from '@/app/_components/PatientHeader';
 import { openWhatsApp } from '@/lib/whatsapp';
+import { printPdfUrl } from '@/lib/printPdf';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { fetchPatientActiveRecords } from '@/lib/patientActiveRecords';
 import { fetchJsonPrefetched } from '@/lib/prefetchData';
@@ -722,6 +723,35 @@ export default function ConsultDetailPage() {
       return;
     }
     saveTreatmentItemField(item.id, { instructions: value });
+  }
+
+  // A dispensed medication's label, printed straight from the consult
+  // (same label as the invoice page's Dispensing Labels). An instructions
+  // edit still in the box is saved first so the label matches the screen.
+  const [printingLabelFor, setPrintingLabelFor] = useState(null);
+  async function printTreatmentLabel(item) {
+    setTreatItemError(null);
+    setPrintingLabelFor(item.id);
+    try {
+      const draft = treatItemDrafts[item.id]?.instructions;
+      if (draft !== undefined && draft !== (item.instructions || '')) {
+        const res = await fetch(`/api/treatment-items/${item.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ instructions: draft }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || 'Failed to save the instructions');
+        }
+        loadTreatmentItems();
+      }
+      printPdfUrl(`/api/visits/${id}/dispensing-labels-pdf?item_ids=${item.id}&t=${Date.now()}`);
+    } catch (err) {
+      setTreatItemError(err.message);
+    } finally {
+      setPrintingLabelFor(null);
+    }
   }
 
   function changeTreatmentItemMethod(item, value) {
@@ -1729,6 +1759,18 @@ export default function ConsultDetailPage() {
                   {t.goods_services?.name}
                   {subcategoryName(subcategories, t.goods_services?.subcategory_id) &&
                     ` (${subcategoryName(subcategories, t.goods_services?.subcategory_id)})`}
+                  {t.administration_method === 'dispense' && (
+                    <button
+                      type="button"
+                      className="treatment-label-print"
+                      onClick={() => printTreatmentLabel(t)}
+                      disabled={printingLabelFor === t.id}
+                      title="Print the dispensing label"
+                      aria-label={`Print the dispensing label for ${t.goods_services?.name || 'this medication'}`}
+                    >
+                      🖨️
+                    </button>
+                  )}
                 </td>
                 <td>
                   <input
