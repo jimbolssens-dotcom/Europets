@@ -10,6 +10,7 @@
 
 import { NextResponse } from 'next/server';
 import { normalizePhoneDigits, findClientsByPhone, generateOtpCode, storeOtpCode } from '@/lib/clientAppAuth';
+import { isPlausiblePhoneDigits } from '@/lib/clientPhoneDigits';
 import { sendWhatsAppOtp, isWhatsAppConfigured } from '@/lib/metaWhatsapp';
 import { checkRateLimit, recordFailedAttempt, getClientKey } from '@/lib/loginRateLimit';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -49,7 +50,7 @@ async function emailCode(emails, code) {
 export async function POST(request) {
   const body = await request.json().catch(() => ({}));
   const phoneDigits = normalizePhoneDigits(body.phone);
-  if (phoneDigits.length < 12) {
+  if (!isPlausiblePhoneDigits(phoneDigits)) {
     return NextResponse.json({ error: 'Enter a valid phone number.' }, { status: 400 });
   }
 

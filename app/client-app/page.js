@@ -19,7 +19,7 @@ import HexIcon from '@/app/_components/HexIcon';
 import HexfieldCanvas from '@/app/_components/HexfieldCanvas';
 import EcgLine from '@/app/_components/EcgLine';
 import { dueStatus, formatDate } from '@/lib/vaccinationDueStatus';
-import { normalizePhoneDigits } from '@/lib/clientPhoneDigits';
+import { normalizePhoneDigits, isPlausiblePhoneDigits } from '@/lib/clientPhoneDigits';
 import { money, balanceDue, invoiceLabel } from '@/lib/paymentReminders';
 import { reportPdfHref } from '@/lib/clientAppReports';
 import { formatShortDate } from '@/lib/formatTimestamp';
@@ -276,7 +276,7 @@ export default function ClientAppHomePage() {
   async function handlePhoneSubmit(e, channel = 'whatsapp') {
     e?.preventDefault();
     const digits = normalizePhoneDigits(phoneInput);
-    if (digits.length < 12) {
+    if (!isPlausiblePhoneDigits(digits)) {
       setError('Enter a valid phone number.');
       return;
     }
@@ -286,7 +286,8 @@ export default function ClientAppHomePage() {
       const res = await fetch('/api/client-app/auth/request-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: digits, channel }),
+        // With its "+", so the server reads a foreign number the same way.
+        body: JSON.stringify({ phone: `+${digits}`, channel }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Something went wrong.');
@@ -312,7 +313,7 @@ export default function ClientAppHomePage() {
       const res = await fetch('/api/client-app/auth/verify-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phoneDigits, code: codeInput.trim() }),
+        body: JSON.stringify({ phone: `+${phoneDigits}`, code: codeInput.trim() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Invalid code.');

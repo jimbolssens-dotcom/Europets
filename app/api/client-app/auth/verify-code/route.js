@@ -15,6 +15,7 @@ import {
   SESSION_TTL_MS,
 } from '@/lib/clientAppAuth';
 import { checkRateLimit, recordFailedAttempt, clearAttempts, getClientKey } from '@/lib/loginRateLimit';
+import { isPlausiblePhoneDigits } from '@/lib/clientPhoneDigits';
 
 const REASON_MESSAGE = {
   wrong: 'That code is incorrect.',
@@ -26,7 +27,7 @@ export async function POST(request) {
   const body = await request.json().catch(() => ({}));
   const phoneDigits = normalizePhoneDigits(body.phone);
   const code = String(body.code || '').trim();
-  if (phoneDigits.length < 12 || !code) {
+  if (!isPlausiblePhoneDigits(phoneDigits) || !code) {
     return NextResponse.json({ error: 'Enter the code you received.' }, { status: 400 });
   }
 

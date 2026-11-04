@@ -11,6 +11,7 @@ function load({ emails = [], whatsappFails = false } = {}) {
   const deps = {
     NextResponse: { json: (body, init = {}) => ({ body, status: init.status || 200 }) },
     normalizePhoneDigits: (p) => String(p).replace(/\D/g, ''),
+    isPlausiblePhoneDigits: (d) => d.length >= 9,
     findClientsByPhone: async () => [{ id: 'c1' }],
     generateOtpCode: () => '123456',
     storeOtpCode: async () => {},
