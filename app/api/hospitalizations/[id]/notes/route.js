@@ -16,6 +16,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { recordWorksheetTests } from '@/lib/worksheetTests';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { mirrorVitalsToLinkedHospitalizations } from '@/lib/hospitalizationVitalsSync';
@@ -223,6 +224,8 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: itemsError.message }, { status: 500 });
     }
     insertedItems = items;
+    // A test logged here also becomes one of the stay's tests (Reports).
+    await recordWorksheetTests(supabaseAdmin, { hospitalizationId: params.id, items, noteText: note.notes });
   }
 
   return NextResponse.json({ ...note, treatment_items: insertedItems }, { status: 201 });

@@ -38,6 +38,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
+import { recordWorksheetTests } from '@/lib/worksheetTests';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { checkTreatmentNoteCoverage } from '@/lib/anthropicClient';
 import { resolvePlanItemBillable } from '@/lib/planItemBilling';
@@ -137,6 +138,19 @@ export async function POST(request) {
 
   if (visit_id) {
     await syncTreatmentPlanNotes(visit_id, data.goods_services?.name, data.instructions);
+  }
+
+  // A test added to a worksheet entry also becomes one of the stay's tests
+  // (Reports), with the entry's text as its result.
+  if (hospitalization_note_id && data.goods_services?.main_category === 'test') {
+    const { data: note } = await supabase
+      .from('hospitalization_notes')
+      .select('hospitalization_id, notes')
+      .eq('id', hospitalization_note_id)
+      .maybeSingle();
+    if (note?.hospitalization_id) {
+      await recordWorksheetTests(supabaseAdmin, { hospitalizationId: note.hospitalization_id, items: [data], noteText: note.notes });
+    }
   }
 
   return NextResponse.json(data, { status: 201 });
