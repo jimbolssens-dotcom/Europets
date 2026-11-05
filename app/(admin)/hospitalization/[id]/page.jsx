@@ -29,6 +29,8 @@ import { printPdfUrl } from '@/lib/printPdf';
 import { appOrigin } from '@/lib/appOrigin';
 import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
+import { FeedingMicro, FEEDING_CHANGED, useStayFeeding } from '@/app/_components/FoodIntake';
+import { feedingFood, APPETITE_LABELS } from '@/lib/feeding';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import ProcedureChecklist from '@/app/_components/ProcedureChecklist';
 import DayProcedureTreatmentPlan from '@/app/_components/DayProcedureTreatmentPlan';
@@ -177,6 +179,8 @@ export default function HospitalizationDetailPage() {
   const [noteAddCategory, setNoteAddCategory] = useState('product');
   const [pendingItemCategory, setPendingItemCategory] = useState('product');
   const [reportsOpen, setReportsOpen] = useState(false);
+  // Food intake for the header's 🍽️ micro-graph (FoodIntake.jsx).
+  const feedingData = useStayFeeding(id);
 
   // Opened at #report-surgical / #report-dental (the Follow-ups page's
   // report links): open Reports and scroll to that report once it's loaded.
@@ -302,7 +306,11 @@ export default function HospitalizationDetailPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hospitalization_notes', filter: `hospitalization_id=eq.${id}` },
-        loadNotes
+        () => {
+          loadNotes();
+          // A feed logged on another device: the feeding graphs reload too.
+          window.dispatchEvent(new CustomEvent(FEEDING_CHANGED, { detail: id }));
+        }
       )
       .on(
         'postgres_changes',
@@ -1156,6 +1164,7 @@ export default function HospitalizationDetailPage() {
               <PatientTrend icon="🌡️" value={latestTemperature} unit="°C" readings={stayTemperatureHistory.length}>
                 <TemperatureHistoryChart data={stayTemperatureHistory} mini />
               </PatientTrend>
+              <FeedingMicro data={feedingData} />
               <MiniCageStrip currentHospitalizationId={id} />
               {admission.kind === 'day_procedure' && admission.scheduled_for && admission.status === 'admitted' && (
                 <span className="cage-overnight-tag" title="Booked ahead from a consult: overnight in the cage, procedure on this day">
@@ -1853,9 +1862,15 @@ export default function HospitalizationDetailPage() {
               ) : (
                 <>
                   <p>
+                    {n.feed_kind === 'forced' && (
+                      <>
+                        💉 <strong>Force-fed:</strong> {n.feed_ml} ml {feedingFood(n.feed_food)?.name || ''} ({Math.round(n.feed_kcal)} kcal){' '}
+                      </>
+                    )}
                     {n.appetite && (
                       <>
-                        <strong>Appetite:</strong> {n.appetite}{' '}
+                        {n.feed_kind === 'forced' ? '· ' : ''}
+                        <strong>{n.feed_kind === 'self' ? '🍽️ Ate by itself:' : 'Appetite:'}</strong> {n.feed_kind === 'self' ? APPETITE_LABELS[n.appetite] : n.appetite}{' '}
                       </>
                     )}
                     {n.weight_kg != null && (

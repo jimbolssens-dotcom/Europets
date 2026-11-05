@@ -15573,3 +15573,231 @@ button.treatment-label-print {
 }
 button.treatment-label-print:hover { opacity: 1; }
 button.treatment-label-print:disabled { opacity: 0.3; cursor: default; }
+
+/* Feeding tile (app/_components/FeedingPanel.jsx) next to Temperature and
+   Weight, and the food intake graphs (FoodIntake.jsx). Pink = force-fed,
+   blue = ate by itself. */
+.day-plan-vitals-tile.feeding-tile {
+  flex: 2 1 300px;
+  max-width: none;
+}
+.feeding-tile.done {
+  border-color: var(--pink-tint);
+  background: var(--pink-tint);
+}
+.feeding-meter {
+  display: block;
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: #ffffffb3;
+  overflow: hidden;
+  margin: 0.15rem 0;
+}
+.feeding-meter i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #d6336c;
+  border-radius: 4px;
+}
+.feeding-buttons,
+.feeding-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+}
+.feeding-form {
+  margin-top: 0.4rem;
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+.feeding-kind {
+  display: flex;
+  border: 1px solid #e6dde2;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+.feeding-kind button {
+  flex: 1;
+  width: auto;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: #fff;
+  color: #5c5560;
+  font-weight: 600;
+  padding: 0.35rem 0.4rem;
+  box-shadow: none;
+}
+.feeding-kind button.on.forced {
+  background: #d6336c;
+  color: #fff;
+}
+.feeding-kind button.on.self {
+  background: #2f6fd6;
+  color: #fff;
+}
+.feeding-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+.feeding-chips button {
+  width: auto;
+  margin: 0;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #e6dde2;
+  border-radius: 999px;
+  background: #fff;
+  color: #1d1b20;
+  font-size: 0.85rem;
+  box-shadow: none;
+}
+.feeding-chips button.on {
+  border-color: #d6336c;
+  background: #fbe3ec;
+  font-weight: 700;
+}
+.feeding-chips input {
+  width: 5rem;
+}
+select.feeding-food {
+  margin-top: 0.4rem;
+  width: 100%;
+}
+.feeding-note,
+.feeding-target {
+  font-size: 0.8rem;
+  color: #6b6670;
+  margin: 0.35rem 0 0;
+}
+.feeding-target input {
+  width: 5.5rem;
+}
+.feeding-appetite {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+.feeding-appetite button {
+  width: auto;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.4rem 0.2rem;
+  border: 1px solid #e6dde2;
+  border-radius: 10px;
+  background: #fff;
+  color: #1d1b20;
+  font-size: 0.85rem;
+  box-shadow: none;
+}
+.feeding-appetite button span {
+  font-size: 1.3rem;
+}
+.feeding-appetite button.on {
+  border-color: #2f6fd6;
+  background: #e8effc;
+  font-weight: 700;
+}
+.food-intake {
+  margin-top: 0.5rem;
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+.portal-card .food-intake {
+  padding: 0.6rem 0.7rem 0.4rem;
+}
+.food-intake-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.food-intake-periods {
+  display: inline-flex;
+  border: 1px solid #e6dde2;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.3rem;
+}
+.food-intake-periods button {
+  width: auto;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: #fff;
+  color: #6b6670;
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.7rem;
+  box-shadow: none;
+}
+.food-intake-periods button.on {
+  background: var(--pink);
+  color: #fff;
+}
+.food-intake-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+  font-size: 0.78rem;
+  color: #6b6670;
+  margin-bottom: 0.2rem;
+}
+.food-intake-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 0.3rem;
+  vertical-align: -1px;
+}
+.food-intake-hint {
+  font-size: 0.75rem;
+  color: #6b6670;
+  margin: 0.2rem 0 0;
+}
+.food-intake-feeds {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  font-size: 0.8rem;
+}
+.food-intake-feeds li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.2rem 0;
+  border-top: 1px solid #f1ebee;
+}
+.food-intake-feeds .food-intake-feeds-head {
+  font-weight: 600;
+  border-top: none;
+}
+.food-intake-feeds .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+@media (max-width: 700px) {
+  .day-plan-vitals-tile.feeding-tile {
+    flex-basis: 100%;
+  }
+}
+.feeding-graph-row {
+  flex: 1 1 100%;
+  max-width: 760px;
+}
+.feeding-graph-row .food-intake {
+  margin-top: 0;
+  border: 1px solid #f1e3ea;
+}

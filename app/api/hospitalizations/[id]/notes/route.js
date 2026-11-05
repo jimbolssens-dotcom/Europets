@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { recordWorksheetTests } from '@/lib/worksheetTests';
+import { forceFeedKcal } from '@/lib/feeding';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { mirrorVitalsToLinkedHospitalizations } from '@/lib/hospitalizationVitalsSync';
@@ -82,7 +83,30 @@ export async function POST(request, { params }) {
     plan_item_id,
     plan_item_ids,
     has_photos,
+    feed_kind,
+    feed_ml,
+    feed_food,
   } = body;
+
+  // A feed from the Feeding tile (lib/feeding.js, migration 244): a force
+  // feed's kcal is worked out here from the food and millilitres, never
+  // trusted from the page.
+  let feed = { feed_kind: null, feed_ml: null, feed_food: null, feed_kcal: null };
+  if (feed_kind === 'forced') {
+    const kcal = forceFeedKcal(feed_ml, feed_food);
+    if (kcal == null) return NextResponse.json({ error: 'Choose the food and how many ml went in.' }, { status: 400 });
+    feed = { feed_kind: 'forced', feed_ml: Number(feed_ml), feed_food, feed_kcal: kcal };
+  } else if (feed_kind === 'self') {
+    if (!['good', 'reduced', 'none'].includes(appetite)) {
+      return NextResponse.json({ error: 'Choose how it ate.' }, { status: 400 });
+    }
+    feed = { ...feed, feed_kind: 'self' };
+  } else if (feed_kind) {
+    return NextResponse.json({ error: 'Unknown feed type.' }, { status: 400 });
+  }
+  // A syringe feed is also the check-in's "force-feeding done", so the
+  // owner's summary mentions it the same way.
+  const forceFeedingDone = force_feeding_done || (feed.feed_kind === 'forced' ? 'done' : null);
 
   // An entry with nothing in it (no text, no readings, no check-in fields,
   // no plan task, nothing given) used to be saved anyway, e.g. tapping
@@ -92,7 +116,7 @@ export async function POST(request, { params }) {
   // this call, so they send has_photos: true.
   const filled = (v) => v !== undefined && v !== null && String(v).trim() !== '';
   const hasContent =
-    [appetite, condition, temperature_c, weight_kg, notes, stool, urine, vomit, drinking, mood, temperature_feel, medication_given, force_feeding_done, plan_item_id].some(filled) ||
+    [appetite, condition, temperature_c, weight_kg, notes, stool, urine, vomit, drinking, mood, temperature_feel, medication_given, forceFeedingDone, plan_item_id, feed.feed_kind].some(filled) ||
     (Array.isArray(plan_item_ids) && plan_item_ids.length > 0) ||
     (Array.isArray(treatment_items) && treatment_items.length > 0) ||
     has_photos === true;
@@ -103,7 +127,7 @@ export async function POST(request, { params }) {
   const tempError = temperatureError(temperature_c);
   if (tempError) return NextResponse.json({ error: tempError }, { status: 400 });
 
-  const checkinFields = { stool, urine, vomit, drinking, mood, temperature_feel, medication_given, force_feeding_done, appetite, temperature_c };
+  const checkinFields = { stool, urine, vomit, drinking, mood, temperature_feel, medication_given, force_feeding_done: forceFeedingDone, appetite, temperature_c };
   let clientSummary = null;
   if (hasCheckinData(checkinFields)) {
     const { data: hosp } = await supabase
@@ -135,7 +159,8 @@ export async function POST(request, { params }) {
         mood: mood || null,
         temperature_feel: temperature_feel || null,
         medication_given: medication_given || null,
-        force_feeding_done: force_feeding_done || null,
+        force_feeding_done: forceFeedingDone || null,
+        ...feed,
         // Set when this entry was logged by tapping a Day Treatment Plan
         // button (see DayTreatmentPlan.jsx) rather than typed by hand —
         // lets the plan compute each task's "done today" count/time.

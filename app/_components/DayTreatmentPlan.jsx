@@ -37,6 +37,7 @@
 
 'use client';
 
+import FeedingPanel from './FeedingPanel';
 import { useEffect, useRef, useState } from 'react';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
@@ -834,7 +835,9 @@ export default function DayTreatmentPlan({
         </div>
       )}
 
-      {vitalsItems.length > 0 && (
+      {/* Temperature and Weight from the plan, then the Feeding tile
+          (FeedingPanel.jsx), which every stay has. */}
+      {(
         <div className="day-plan-vitals">
           {vitalsItems.map((item) => {
             const done = doneToday(item.id);
@@ -917,6 +920,7 @@ export default function DayTreatmentPlan({
               </div>
             );
           })}
+          <FeedingPanel hospitalizationId={hospitalizationId} authorId={authorId} />
         </div>
       )}
 

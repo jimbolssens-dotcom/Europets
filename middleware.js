@@ -135,6 +135,7 @@ const HOSPITALIZATION_READ_PATTERNS = [
   /^\/api\/hospitalizations\/[^/]+\/messages$/,
   /^\/api\/hospitalizations\/[^/]+\/reports$/,
   /^\/api\/hospitalizations\/[^/]+\/tests$/,
+  /^\/api\/hospitalizations\/[^/]+\/feeding$/, // the owner's "Eating" card (GET only; PATCH stays staff-only)
 ];
 
 // Same GET-only carve-out as hospitalizations above, for the video-consult

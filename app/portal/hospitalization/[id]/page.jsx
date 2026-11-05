@@ -20,6 +20,7 @@ import { pollWhileVisible, keepIfSame } from '@/lib/pollWhileVisible';
 import AttachmentGallery from '@/app/_components/AttachmentGallery';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import TemperatureHistoryChart from '@/app/_components/TemperatureHistoryChart';
+import { OwnerEatingCard, FEEDING_CHANGED } from '@/app/_components/FoodIntake';
 import { formatTime, formatDateTime, formatDayHeader, groupNotesByDate } from '@/lib/formatTimestamp';
 import { hasCheckinData, buildEmpathicCheckinText } from '@/lib/hospitalizationCheckin';
 import { isDailyChargeOnlyNote } from '@/lib/dailyChargeNote';
@@ -87,6 +88,8 @@ export default function HospitalizationPortalPage() {
     loadTests();
 
     const loadAll = () => {
+      // The Eating card (FoodIntake.jsx) reloads with the rest.
+      window.dispatchEvent(new CustomEvent(FEEDING_CHANGED, { detail: id }));
       loadAdmission();
       loadNotes();
       loadMessages();
@@ -210,6 +213,8 @@ export default function HospitalizationPortalPage() {
           )}
         </div>
       )}
+
+      <OwnerEatingCard hospitalizationId={id} petName={admission.patients?.name} />
 
       <div className="portal-card">
         <h2>Photos</h2>
