@@ -43,7 +43,15 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: 'attachment not found' }, { status: 404 });
   }
 
-  await supabaseAdmin.storage.from('consult-files').remove([attachment.file_path]);
+  // The same stored file can be linked to more than one record (a worksheet
+  // photo also shown on the test it was for, lib/worksheetTests.js): only
+  // delete the file once this is its last link.
+  const { count: otherLinks } = await supabaseAdmin
+    .from('attachments')
+    .select('id', { count: 'exact', head: true })
+    .eq('file_path', attachment.file_path)
+    .neq('id', params.id);
+  if (!otherLinks) await supabaseAdmin.storage.from('consult-files').remove([attachment.file_path]);
 
   const { error } = await supabaseAdmin.from('attachments').delete().eq('id', params.id);
   if (error) {

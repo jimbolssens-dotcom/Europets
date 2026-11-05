@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { caseFamily } from '@/lib/caseFamily';
+import { copyNotePhotosToTests } from '@/lib/worksheetTests';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -73,5 +74,8 @@ export async function POST(request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  // A photo on a worksheet entry that logged a test also goes on that test
+  // (Reports), see lib/worksheetTests.js.
+  if (entity_type === 'hospitalization_note') await copyNotePhotosToTests(supabaseAdmin, entity_id);
   return NextResponse.json(data, { status: 201 });
 }

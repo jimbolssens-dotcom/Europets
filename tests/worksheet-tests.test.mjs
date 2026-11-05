@@ -39,3 +39,12 @@ test('records the test once, never twice for the same worksheet line', async () 
   await recordWorksheetTests(again, { hospitalizationId: 'h1', items: [combo], noteText: resultText });
   assert.equal(again.inserted.length, 0);
 });
+
+import { testPhotoRows } from '../lib/worksheetTests.js';
+
+test('the entry photo (the test strip) is linked to the test too, once', () => {
+  const photo = { file_path: 'hospitalization_note/n1/strip.jpg', file_name: 'strip.jpg', content_type: 'image/jpeg' };
+  const rows = testPhotoRows([photo], [{ id: 'd1' }], []);
+  assert.deepEqual(rows, [{ entity_type: 'diagnostic', entity_id: 'd1', file_path: photo.file_path, file_name: 'strip.jpg', content_type: 'image/jpeg', uploaded_by: null }]);
+  assert.deepEqual(testPhotoRows([photo], [{ id: 'd1' }], [{ entity_id: 'd1', file_path: photo.file_path }]), []);
+});
