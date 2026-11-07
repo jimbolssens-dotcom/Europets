@@ -160,7 +160,7 @@ export default function ClientDetailPage() {
       clientId: id,
       kind: 'link',
       phone: client.phone,
-      fallbackMessage: `Hi ${client.full_name}, here is your secure link to settle your balance of AED ${money(totalOutstanding)} with Europets Clinic: ${payAllUrl()}\n\nYour full statement: ${statementUrl}\n\nIf you have any questions about the bill, just reply to this message. Thank you!`,
+      fallbackMessage: `Hi ${client.full_name}, here is your secure link to settle your balance of AED ${money(totalOutstanding)} with Europets Clinic: ${payAllUrl()}\n\nYour open invoices in full: ${openInvoicesUrl()}\nYour full statement: ${statementUrl}\n\nIf you have any questions about the bill, just reply to this message. Thank you!`,
     });
     setOutstandingSending(null);
     setPaymentLinkError(result.note);
@@ -173,7 +173,7 @@ export default function ClientDetailPage() {
     setOutstandingSending('email');
     const statementUrl = `${appOrigin()}/api/clients/${id}/statement-pdf`;
     const lines = outstandingInvoices.map((inv) => `${invoiceLabel(inv)}: AED ${money(balanceDue(inv))}`).join('\n');
-    const text = `Hi ${client.full_name},\n\nWe hope you and your pet are doing well! Here is an overview of your open balance with Europets Clinic, a total of AED ${money(totalOutstanding)}:\n\n${lines}\n\nYou can settle everything securely online here: ${payAllUrl()}\nYour full statement of account: ${statementUrl}\n\nIf you have any questions about the bill, just reply to this email and we will be happy to help.\n\nWarm regards,\nThe Europets Clinic team`;
+    const text = `Hi ${client.full_name},\n\nWe hope you and your pet are doing well! Here is an overview of your open balance with Europets Clinic, a total of AED ${money(totalOutstanding)}:\n\n${lines}\n\nYou can settle everything securely online here: ${payAllUrl()}\nAll your open invoices in full (one PDF): ${openInvoicesUrl()}\nYour full statement of account: ${statementUrl}\n\nIf you have any questions about the bill, just reply to this email and we will be happy to help.\n\nWarm regards,\nThe Europets Clinic team`;
     try {
       const res = await fetch(`/api/clients/${id}/send-email`, {
         method: 'POST',
@@ -331,6 +331,22 @@ export default function ClientDetailPage() {
   // Cache-busting param, on top of the route's own no-store headers, so a
   // browser/download manager can never reuse a previous download of this
   // same statement after another payment or invoice has landed.
+  // Every open invoice in full, one PDF (app/api/clients/[id]/open-invoices-pdf).
+  function openInvoicesUrl() {
+    return `${appOrigin()}/api/clients/${id}/open-invoices-pdf`;
+  }
+
+  // Opens the clinic's WhatsApp with the invoices ready to send: the free
+  // text the approved payment template can't carry. Staff can tap the link
+  // to check the PDF before sending.
+  function sendOpenInvoicesWhatsApp() {
+    const count = outstandingInvoices.length;
+    openWhatsApp(
+      client.phone,
+      `Hi ${client.full_name}, here are your ${count} open invoice${count === 1 ? '' : 's'} with Europets Clinic, each in full (one PDF): ${openInvoicesUrl()}\n\nThe total still open is AED ${money(totalOutstanding)}. You can settle everything securely here: ${payAllUrl()}\n\nIf you have any questions about a bill, just reply to this message. Thank you!`
+    );
+  }
+
   function downloadStatement() {
     window.open(`/api/clients/${id}/statement-pdf?t=${Date.now()}`, '_blank');
   }
@@ -908,6 +924,12 @@ export default function ClientDetailPage() {
           ) : (
             <button type="button" onClick={sendStatementViaEmail} disabled={!client.email || statementEmailSending}>
               {statementEmailSending ? 'Sending...' : statementEmailSent ? '✅ Sent' : '✉️ Email statement'}
+            </button>
+          )}
+          {totalOutstanding > 0 && (
+            <button type="button" className="secondary" onClick={sendOpenInvoicesWhatsApp} disabled={!client.phone}
+              title="Every open invoice in full, as one PDF, sent from your WhatsApp">
+              🧾 <span className="fo-long">Send all </span>Invoices
             </button>
           )}
           <button type="button" className="secondary" onClick={downloadStatement}>

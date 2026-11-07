@@ -11550,9 +11550,10 @@ form.card.admit-patient-form {
     align-items: flex-start;
   }
 
-  /* Phones: the three buttons side by side, with short labels. */
+  /* Phones: short labels, buttons side by side; five don't fit one line,
+     so the row wraps instead of running off the screen. */
   .financial-overview-actions {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 0.35rem;
   }
 

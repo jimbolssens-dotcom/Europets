@@ -5,6 +5,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { buildTaxInvoicePdf } from '@/lib/taxInvoicePdf';
+import { loadTaxInvoiceInputs } from '@/lib/taxInvoiceInputs';
 import { NextResponse } from 'next/server';
 
 // Route Handlers are cached per-URL by default in the App Router unless
@@ -13,51 +14,12 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
-  const { data: invoice, error } = await supabase
-    .from('invoices')
-    .select('*, clients(client_number, full_name, phone, email, address, trn, client_app_last_seen_at)')
-    .eq('id', params.id)
-    .single();
-
-  if (error || !invoice) {
-    return NextResponse.json({ error: 'invoice not found' }, { status: 404 });
+  const inputs = await loadTaxInvoiceInputs(supabase, params.id);
+  if (inputs.error) {
+    return NextResponse.json({ error: inputs.error }, { status: 404 });
   }
-
-  // Two separate queries rather than one nested visits(...)/hospitalizations(...)
-  // embed off invoices — see app/api/invoices/[id]/route.js for why.
-  let patient = null;
-  if (invoice.visit_id) {
-    const { data: visit } = await supabase
-      .from('visits')
-      .select('patients(patient_number, name, species, microchip_number)')
-      .eq('id', invoice.visit_id)
-      .single();
-    patient = visit?.patients || null;
-  } else if (invoice.hospitalization_id) {
-    const { data: hospitalization } = await supabase
-      .from('hospitalizations')
-      .select('patients(patient_number, name, species, microchip_number)')
-      .eq('id', invoice.hospitalization_id)
-      .single();
-    patient = hospitalization?.patients || null;
-  }
-
-  const [{ data: lineItems }, { data: clinic }] = await Promise.all([
-    supabase
-      .from('invoice_line_items')
-      .select('*, goods_services(main_category)')
-      .eq('invoice_id', params.id)
-      .order('id'),
-    supabase.from('clinic_settings').select('*').eq('id', true).single(),
-  ]);
-
-  const pdfBytes = await buildTaxInvoicePdf({
-    invoice,
-    lineItems: lineItems || [],
-    clinic,
-    client: invoice.clients,
-    patient,
-  });
+  const { invoice } = inputs;
+  const pdfBytes = await buildTaxInvoicePdf(inputs);
 
   return new NextResponse(Buffer.from(pdfBytes), {
     headers: {
