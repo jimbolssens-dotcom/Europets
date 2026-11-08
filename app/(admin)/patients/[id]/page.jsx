@@ -7,6 +7,7 @@
 
 'use client';
 
+import DewormingChip from '@/app/_components/DewormingChip';
 import { websiteUrl as clinicWebsiteUrl } from '@/lib/websiteUrl';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -678,6 +679,10 @@ export default function PatientDetailPage() {
               <div className="patient-fact">
                 <span className="patient-fact-label">Microchip implanted</span>
                 <span>{patient.microchip_implanted_at || '—'}</span>
+              </div>
+              <div className="patient-fact">
+                <span className="patient-fact-label">Deworming</span>
+                <span><DewormingChip patientId={patient.id} /></span>
               </div>
               <div className="patient-fact patient-fact-wide">
                 <span className="patient-fact-label">Notes</span>

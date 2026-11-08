@@ -3,7 +3,8 @@
 // vaccination reminder pass (see lib/vaccinationReminders.js's
 // evaluateAndSendDueVaccinationReminders) — sends a WhatsApp reminder for
 // every vaccination due in EXACTLY 7 days, with no staff review or button
-// click involved at all.
+// click involved at all. The deworming reminders (lib/dewormingReminders.js,
+// 3 days before each due date) go out in the same pass.
 //
 // Triggered once a day by Vercel Cron (see vercel.json), which signs its
 // own requests with a Bearer token matching the CRON_SECRET project env
@@ -12,6 +13,7 @@
 // until then this route just 401s harmlessly on schedule.
 
 import { evaluateAndSendDueVaccinationReminders } from '@/lib/vaccinationReminders';
+import { evaluateAndSendDueDewormingReminders } from '@/lib/dewormingReminders';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -22,7 +24,15 @@ export async function GET(request) {
 
   try {
     const summary = await evaluateAndSendDueVaccinationReminders();
-    return NextResponse.json(summary);
+    // The deworming reminders (lib/dewormingReminders.js) run in the same
+    // morning pass; a failure there never hides the vaccination result.
+    let deworming;
+    try {
+      deworming = await evaluateAndSendDueDewormingReminders();
+    } catch (err) {
+      deworming = { error: err.message };
+    }
+    return NextResponse.json({ ...summary, deworming });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

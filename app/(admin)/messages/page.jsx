@@ -356,6 +356,8 @@ export default function MessagesInboxPage() {
   const [procedureReminderTemplateResult, setProcedureReminderTemplateResult] = useState(null); // { ok: boolean, message: string } | null
   const [submittingVaccinationTemplate, setSubmittingVaccinationTemplate] = useState(false);
   const [vaccinationTemplateResult, setVaccinationTemplateResult] = useState(null); // { ok: boolean, message: string } | null
+  const [submittingDewormingTemplate, setSubmittingDewormingTemplate] = useState(false);
+  const [dewormingTemplateResult, setDewormingTemplateResult] = useState(null);
   const [submittingPaymentTemplates, setSubmittingPaymentTemplates] = useState(false);
   const [paymentTemplatesResult, setPaymentTemplatesResult] = useState(null); // { ok, message } | null
   const [templateStatuses, setTemplateStatuses] = useState({}); // { [purpose]: 'APPROVED' | 'PENDING' | 'REJECTED' | null }
@@ -662,6 +664,21 @@ export default function MessagesInboxPage() {
     setSubmittingPaymentTemplates(false);
   }
 
+  async function submitDewormingTemplate() {
+    setSubmittingDewormingTemplate(true);
+    setDewormingTemplateResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/create-deworming-template', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setDewormingTemplateResult({ ok: true, message: 'Submitted. Meta usually approves within a day.' });
+      loadTemplateStatuses();
+    } catch (err) {
+      setDewormingTemplateResult({ ok: false, message: err.message });
+    }
+    setSubmittingDewormingTemplate(false);
+  }
+
   async function submitVaccinationTemplate() {
     setSubmittingVaccinationTemplate(true);
     setVaccinationTemplateResult(null);
@@ -849,6 +866,7 @@ export default function MessagesInboxPage() {
             { key: 'appointmentReminder', label: 'Appointment reminder', onSubmit: submitAppointmentReminderTemplate, submitting: submittingAppointmentReminderTemplate, result: appointmentReminderTemplateResult },
             { key: 'procedureReminder', label: 'Dental/surgery reminder', onSubmit: submitProcedureReminderTemplate, submitting: submittingProcedureReminderTemplate, result: procedureReminderTemplateResult },
             { key: 'vaccinationReminder', label: 'Vaccination reminder v3', onSubmit: submitVaccinationTemplate, submitting: submittingVaccinationTemplate, result: vaccinationTemplateResult },
+            { key: 'dewormingReminder', label: 'Deworming reminder', onSubmit: submitDewormingTemplate, submitting: submittingDewormingTemplate, result: dewormingTemplateResult },
             { key: 'paymentReminderGentle', label: 'Payment reminder: gentle (2 weeks)', onSubmit: submitPaymentTemplates, submitting: submittingPaymentTemplates, result: paymentTemplatesResult },
             { key: 'paymentReminderSecond', label: 'Payment reminder: second (1 month)', onSubmit: submitPaymentTemplates, submitting: submittingPaymentTemplates, result: paymentTemplatesResult },
             { key: 'paymentReminderFinal', label: 'Payment reminder: final (2 months)', onSubmit: submitPaymentTemplates, submitting: submittingPaymentTemplates, result: paymentTemplatesResult },

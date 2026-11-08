@@ -32,6 +32,7 @@ import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import SmallPetConsentTab from '@/app/_components/SmallPetConsentTab';
 import { isSmallPet } from '@/lib/smallPet';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
+import DewormingChip from '@/app/_components/DewormingChip';
 import PatientHeader, { PatientMeta, PatientTrend } from '@/app/_components/PatientHeader';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { printPdfUrl } from '@/lib/printPdf';
@@ -974,6 +975,7 @@ export default function ConsultDetailPage() {
           if (ageRequest?.thenComplete) finishCompleteConsult();
         }}
         chips={
+          <>
           <PatientTrend
             icon="⚖️"
             value={consult.weight_kg || consult.patients?.current_weight_kg || null}
@@ -982,6 +984,8 @@ export default function ConsultDetailPage() {
           >
             <WeightHistoryChart data={weightHistory} mini />
           </PatientTrend>
+          <DewormingChip patientId={consult.patients?.id} />
+          </>
         }
       >
         <PatientMeta label="Owner">

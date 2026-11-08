@@ -15802,3 +15802,76 @@ select.feeding-food {
   margin-top: 0;
   border: 1px solid #f1e3ea;
 }
+
+/* Deworming reminder chip (app/_components/DewormingChip.jsx). */
+.deworm-wrap {
+  position: relative;
+  display: inline-flex;
+}
+button.patient-chip.deworm-chip {
+  border: 1px dashed #c9c4bb;
+  background: #fff;
+  color: #777;
+  box-shadow: none;
+  min-height: 0;
+  cursor: pointer;
+  font-weight: 500;
+}
+button.patient-chip.deworm-chip.on {
+  border: 1px solid #b7d9b0;
+  background: #eef7ec;
+  color: #2c6b23;
+}
+.deworm-panel {
+  position: fixed;
+  z-index: 60;
+  width: 270px;
+  background: #fff;
+  border: 1px solid #e5e1da;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #333;
+}
+.deworm-title {
+  font-weight: 700;
+}
+.deworm-seg {
+  display: flex;
+  gap: 0.3rem;
+}
+.deworm-seg button {
+  flex: 1;
+  white-space: nowrap;
+  padding: 0.3rem 0.2rem;
+  font-size: 0.8rem;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  background: #faf9f7;
+  color: #444;
+  box-shadow: none;
+  min-height: 0;
+}
+.deworm-seg button.on {
+  background: #2c6b23;
+  border-color: #2c6b23;
+  color: #fff;
+}
+.deworm-last {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+.deworm-last input {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.3rem;
+}
+.deworm-note {
+  color: #666;
+  font-size: 0.78rem;
+}
