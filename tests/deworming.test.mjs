@@ -26,3 +26,13 @@ test('a reminder goes out once, 3 days before the due date', () => {
   assert.equal(dewormingReminderDue({ ...base, today: '2026-11-07' }), null);
   assert.equal(dewormingReminderDue({ ...base, remindedFor: '2026-11-11', today: '2026-11-08' }), null);
 });
+
+test('a reminder turned off (0) never comes due', () => {
+  assert.equal(nextDewormingDue({ intervalMonths: 0, lastDate: '2026-11-10', today: '2026-11-10' }), null);
+  assert.equal(dewormingReminderDue({ intervalMonths: 0, lastDate: '2026-08-13', today: '2026-11-10' }), null);
+});
+
+test('the automatic 6-month reminder from a deworming logged today', () => {
+  assert.equal(nextDewormingDue({ intervalMonths: 6, lastDate: '2026-11-10', today: '2026-11-10' }), '2027-05-10');
+  assert.equal(dewormingReminderDue({ intervalMonths: 6, lastDate: '2026-11-10', today: '2027-05-07' }), '2027-05-10');
+});

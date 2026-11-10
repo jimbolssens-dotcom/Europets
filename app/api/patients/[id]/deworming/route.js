@@ -2,9 +2,11 @@
 // GET   -> this patient's deworming reminder: { intervalMonths (3 | 6 |
 //          null), lastDate, lastDateSource ('set' | 'invoice'), nextDue,
 //          remindedFor }
-// PATCH { interval_months, last_date } -> turn it on (3 or 6), off (null)
-//          or change the last deworming date. Turning it on with no
-//          deworming known counts from today. See lib/deworming.js.
+// PATCH { interval_months, last_date } -> turn it on (3 or 6), off (null
+//          or 0, stored as 0 so a later deworming doesn't switch it back
+//          on), or change the last deworming date. Turning it on with no
+//          deworming known counts from today. Logging a dewormer switches
+//          it on at 6 months by itself (migration 246). See lib/deworming.js.
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { dubaiLocalDateString } from '@/lib/dubaiTime';
@@ -46,8 +48,8 @@ export async function PATCH(request, { params }) {
   const body = await request.json().catch(() => ({}));
   const update = {};
   if ('interval_months' in body) {
-    const v = body.interval_months == null ? null : Number(body.interval_months);
-    if (v !== null && !DEWORM_INTERVALS.includes(v)) {
+    const v = body.interval_months == null ? 0 : Number(body.interval_months);
+    if (v !== 0 && !DEWORM_INTERVALS.includes(v)) {
       return NextResponse.json({ error: 'Choose every 3 or 6 months' }, { status: 400 });
     }
     update.deworm_interval_months = v;

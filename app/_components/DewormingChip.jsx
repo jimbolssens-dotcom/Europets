@@ -3,7 +3,9 @@
 // header and the patient file: off, or a reminder every 3 or 6 months with
 // the next due date. Tapping it opens a little panel to switch it and set
 // the last deworming. The reminder itself goes out automatically 3 days
-// before the due date (lib/dewormingReminders.js).
+// before the due date (lib/dewormingReminders.js). Logging a dewormer
+// turns it on at 6 months by itself, unless it was set to 3 months or
+// turned off here (migration 246).
 
 'use client';
 
@@ -107,7 +109,10 @@ export default function DewormingChip({ patientId }) {
               onChange={(e) => e.target.value && save({ last_date: e.target.value })}
             />
           </label>
-          {data.lastDateSource === 'invoice' && <div className="deworm-note">From the last dewormer charged.</div>}
+          {data.lastDateSource === 'invoice' && <div className="deworm-note">From the last dewormer logged.</div>}
+          {data.intervalMonths == null && (
+            <div className="deworm-note">Switches on at 6 months by itself when a dewormer is logged.</div>
+          )}
           {on && (
             <div className="deworm-note">
               Next due <b>{long(data.nextDue)}</b>. WhatsApp reminder 3 days before.
