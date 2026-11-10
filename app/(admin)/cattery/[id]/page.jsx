@@ -16,6 +16,7 @@
 // been recorded, the same rule that lights the Cattery nav alarm
 // (see lib/cattery.js's weightOverdue).
 
+import { confirmWeight } from '@/lib/weightCheck';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -425,7 +426,23 @@ export default function CatteryBookingPage() {
                       type="number" step="0.01" min="0" inputMode="decimal"
                       defaultValue={log.weight_kg ?? ''}
                       key={`w-${key}-${log.weight_kg ?? ''}`}
-                      onBlur={(e) => e.target.value !== String(log.weight_kg ?? '') && save('weight_kg', e.target.value)}
+                      onBlur={(e) => {
+                        if (e.target.value === String(log.weight_kg ?? '')) return;
+                        // More than 10% off this cat's nearest other weigh-in
+                        // (else its weight on file): double check (lib/weightCheck.js).
+                        if (e.target.value !== '') {
+                          const others = Object.values(logs)
+                            .filter((l) => logPatientId(l, booking) === cat.id && l.log_date !== date && l.weight_kg != null && l.weight_kg !== '')
+                            .sort((a, b) => (a.log_date < b.log_date ? -1 : 1));
+                          const before = others.filter((l) => l.log_date < date);
+                          const lastWeight = (before.length ? before[before.length - 1] : others[0])?.weight_kg ?? cat.current_weight_kg;
+                          if (!confirmWeight(e.target.value, lastWeight)) {
+                            e.target.value = log.weight_kg ?? '';
+                            return;
+                          }
+                        }
+                        save('weight_kg', e.target.value);
+                      }}
                       className={saving('weight_kg') ? 'saving' : ''}
                       aria-label={label('Weight')}
                     />

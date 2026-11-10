@@ -12,6 +12,7 @@
 
 'use client';
 
+import { confirmWeight } from '@/lib/weightCheck';
 import { useEffect, useRef, useState } from 'react';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import CatalogPicker from '@/app/_components/CatalogPicker';
@@ -308,6 +309,11 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
     if (item.kind !== 'vitals_weight' && temperatureError(value)) {
       setError(temperatureError(value));
       return;
+    }
+    // More than 10% off the last weight: double check (lib/weightCheck.js).
+    if (item.kind === 'vitals_weight') {
+      const lastWeight = doneEntries(item.id).slice(-1)[0]?.weight_kg ?? weightKg;
+      if (!confirmWeight(value, lastWeight)) return;
     }
     setError(null);
     setLoggingIds((prev) => new Set(prev).add(item.id));
