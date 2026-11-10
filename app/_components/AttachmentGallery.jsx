@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { supabase, isOwnerFacingPage } from '@/lib/supabaseClient';
 import { pollWhileVisible, keepIfSame } from '@/lib/pollWhileVisible';
 import { attachmentUrl } from '@/lib/attachments';
+import { useSharedAttachments } from './NoteAttachments';
 
 function isImage(attachment) {
   return (
@@ -24,7 +25,11 @@ function downloadUrl(a) {
 }
 
 export default function AttachmentGallery({ entityType, entityId, emptyText, downloadable = false }) {
-  const [attachments, setAttachments] = useState([]);
+  const [ownList, setAttachments] = useState([]);
+  // Inside a NoteAttachmentsProvider: the page's one shared list, no request
+  // or connection of our own.
+  const shared = useSharedAttachments(entityType, entityId);
+  const attachments = shared ? shared.list : ownList;
 
   const load = () =>
     fetch(`/api/attachments?entity_type=${entityType}&entity_id=${entityId}`)
@@ -32,6 +37,7 @@ export default function AttachmentGallery({ entityType, entityId, emptyText, dow
       .then((data) => setAttachments((prev) => keepIfSame(prev, Array.isArray(data) ? data : [])));
 
   useEffect(() => {
+    if (shared) return undefined;
     load();
     // Owners' pages: photos don't arrive every few seconds (was 30 s).
     if (isOwnerFacingPage()) return pollWhileVisible(load, 2 * 60 * 1000);
@@ -45,7 +51,7 @@ export default function AttachmentGallery({ entityType, entityId, emptyText, dow
       .subscribe();
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityType, entityId]);
+  }, [entityType, entityId, !!shared]);
 
   if (attachments.length === 0) {
     return emptyText ? <p className="visit-meta">{emptyText}</p> : null;

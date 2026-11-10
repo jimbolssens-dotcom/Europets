@@ -33,6 +33,7 @@ import { FeedingMicro, FEEDING_CHANGED, useStayFeeding } from '@/app/_components
 import { feedingFood, APPETITE_LABELS } from '@/lib/feeding';
 import { confirmWeight } from '@/lib/weightCheck';
 import HomeCareCard from '@/app/_components/HomeCareCard';
+import { NoteAttachmentsProvider } from '@/app/_components/NoteAttachments';
 import { OwnerLogsChip } from '@/app/_components/OwnerLogs';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import ProcedureChecklist from '@/app/_components/ProcedureChecklist';
@@ -1123,6 +1124,7 @@ export default function HospitalizationDetailPage() {
       : { label: '🏥 Discharged', tone: 'done' };
 
   return (
+    <NoteAttachmentsProvider entityType="hospitalization_note" ids={notes.map((n) => n.id)}>
     <div>
       <div className="page-header">
         <PatientHeader
@@ -2104,5 +2106,6 @@ export default function HospitalizationDetailPage() {
 
       <PdfPreviewModal url={previewPdfUrl} onClose={() => setPreviewPdfUrl(null)} />
     </div>
+    </NoteAttachmentsProvider>
   );
 }

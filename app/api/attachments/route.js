@@ -4,6 +4,9 @@
 //      the whole linked case's photos (lib/caseFamily.js), so a photo taken
 //      on any of them shows on all of them and on the client's live updates
 //      page. Each row keeps its own entity_type/entity_id.
+// GET  /api/attachments?entity_type=X&entity_ids=a,b,c -> the same for many
+//      entities at once (every worksheet entry of a stay): one request
+//      instead of one per entry (app/_components/NoteAttachments.jsx).
 // POST /api/attachments                            -> record a file already uploaded to Storage
 
 import { supabase } from '@/lib/supabaseClient';
@@ -16,6 +19,27 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const entityType = searchParams.get('entity_type');
   const entityId = searchParams.get('entity_id');
+  const entityIds = searchParams.get('entity_ids');
+
+  if (entityType && entityIds != null && entityType !== 'visit' && entityType !== 'hospitalization') {
+    const ids = [...new Set(entityIds.split(',').filter(Boolean))];
+    if (ids.length > 400 || !ids.every((x) => /^[0-9a-f-]{36}$/i.test(x))) {
+      return NextResponse.json({ error: 'entity_ids must be up to 400 ids' }, { status: 400 });
+    }
+    if (!ids.length) return NextResponse.json([]);
+    const rows = [];
+    for (let i = 0; i < ids.length; i += 100) {
+      const { data, error } = await supabase
+        .from('attachments')
+        .select('*, staff(full_name)')
+        .eq('entity_type', entityType)
+        .in('entity_id', ids.slice(i, i + 100))
+        .order('created_at', { ascending: true });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      rows.push(...(data || []));
+    }
+    return NextResponse.json(rows);
+  }
 
   if (!entityType || !entityId) {
     return NextResponse.json(

@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { uploadAttachment, attachmentUrl } from '@/lib/attachments';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { useSharedAttachments } from './NoteAttachments';
 
 function isImage(attachment) {
   return (
@@ -34,14 +35,18 @@ export default function AttachmentSection({
   onAttachmentsChange,
   moveTargets,
 }) {
-  const [attachments, setAttachments] = useState([]);
+  const [ownList, setAttachments] = useState([]);
+  // Inside a NoteAttachmentsProvider: the page's one shared list, no request
+  // or connection of our own (app/_components/NoteAttachments.jsx).
+  const shared = useSharedAttachments(entityType, entityId);
+  const attachments = shared ? shared.list : ownList;
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const cameraInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const load = () =>
-    fetch(`/api/attachments?entity_type=${entityType}&entity_id=${entityId}`)
+    shared ? shared.reload() : fetch(`/api/attachments?entity_type=${entityType}&entity_id=${entityId}`)
       .then((res) => res.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
@@ -54,6 +59,7 @@ export default function AttachmentSection({
       });
 
   useEffect(() => {
+    if (shared) return undefined;
     load();
     // refreshKey is optional — bump it from a parent that deletes an
     // attachment on this entity from outside this component (e.g. once a
@@ -85,7 +91,14 @@ export default function AttachmentSection({
       .subscribe();
     return () => supabase.removeChannel(channel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityType, entityId, refreshKey]);
+  }, [entityType, entityId, refreshKey, !!shared]);
+
+  // The shared list's count for a caller that wants it.
+  const sharedCount = shared ? shared.list.length : null;
+  useEffect(() => {
+    if (sharedCount != null && onAttachmentsChange) onAttachmentsChange(sharedCount);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedCount]);
 
   async function handleFileChange(e) {
     const file = e.target.files[0];

@@ -13,6 +13,7 @@
 
 'use client';
 
+import { NoteAttachmentsProvider } from '@/app/_components/NoteAttachments';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -150,6 +151,7 @@ export default function HospitalizationPortalPage() {
     return <div className="client-app"><p className="portal-loading">We couldn&apos;t find that page.</p></div>;
 
   return (
+    <NoteAttachmentsProvider entityType="hospitalization_note" ids={notes.map((n) => n.id)}>
     <div className="client-app">
     <div className="portal-page">
       {fromApp && (
@@ -306,5 +308,6 @@ export default function HospitalizationPortalPage() {
       <p className="portal-footer">This page updates automatically — no need to refresh.</p>
     </div>
     </div>
+    </NoteAttachmentsProvider>
   );
 }
