@@ -8,6 +8,7 @@
 'use client';
 
 import DewormingChip from '@/app/_components/DewormingChip';
+import { OwnerLogsSection } from '@/app/_components/OwnerLogs';
 import { websiteUrl as clinicWebsiteUrl } from '@/lib/websiteUrl';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -690,6 +691,7 @@ export default function PatientDetailPage() {
               </div>
             </div>
           )}
+          <OwnerLogsSection patientId={patient.id} />
           <h2>Weight History</h2>
           <WeightHistoryChart data={weightHistory} />
 

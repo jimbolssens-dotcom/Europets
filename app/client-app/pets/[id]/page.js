@@ -14,6 +14,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import HexIcon from '@/app/_components/HexIcon';
+import ClientHomeCare from '@/app/_components/ClientHomeCare';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { reportPdfHref, reportText, reportKindIcon } from '@/lib/clientAppReports';
 import { dueStatus, formatDate } from '@/lib/vaccinationDueStatus';
@@ -284,6 +285,9 @@ export default function ClientAppPetHistoryPage() {
           </a>
         </div>
       )}
+
+      {/* What the vet asked to do at home, and what the owner logs back. */}
+      <ClientHomeCare pet={pet} />
 
       <p className="mobile-section-header">Vaccinations Due</p>
       {vaccinationsDue.length === 0 ? (

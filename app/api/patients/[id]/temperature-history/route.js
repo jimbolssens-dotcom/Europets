@@ -9,6 +9,7 @@
 // onto the same x-position and look like a single reading).
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
@@ -36,9 +37,18 @@ export async function GET(request, { params }) {
     notes = data || [];
   }
 
+  // What the owner logged at home in the client app (migration 247),
+  // marked so the chart can tell them apart.
+  const { data: ownerLogs } = await supabaseAdmin
+    .from('home_care_logs')
+    .select('value, given_at')
+    .eq('patient_id', params.id)
+    .eq('kind', 'temperature');
+
   const points = [
     ...(visits || []).map((v) => ({ date: v.started_at, temperature_c: v.temperature_c })),
     ...notes.map((n) => ({ date: n.created_at, temperature_c: n.temperature_c })),
+    ...(ownerLogs || []).map((l) => ({ date: l.given_at, temperature_c: Number(l.value), source: 'owner' })),
   ].sort((a, b) => new Date(a.date) - new Date(b.date));
 
   return NextResponse.json(points);

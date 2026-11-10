@@ -11,6 +11,7 @@
 // (cattery_daily_logs, dated midday Dubai on their log_date) count too.
 
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
@@ -46,10 +47,19 @@ export async function GET(request, { params }) {
     .not('weight_kg', 'is', null);
   if (catteryError) return NextResponse.json({ error: catteryError.message }, { status: 500 });
 
+  // What the owner logged at home in the client app (migration 247),
+  // marked so the chart can tell them apart.
+  const { data: ownerLogs } = await supabaseAdmin
+    .from('home_care_logs')
+    .select('value, given_at')
+    .eq('patient_id', params.id)
+    .eq('kind', 'weight');
+
   const points = [
     ...(visits || []).map((v) => ({ date: v.started_at, weight_kg: v.weight_kg })),
     ...notes.map((n) => ({ date: n.created_at, weight_kg: n.weight_kg })),
     ...(catteryLogs || []).map((l) => ({ date: `${l.log_date}T12:00:00+04:00`, weight_kg: l.weight_kg })),
+    ...(ownerLogs || []).map((l) => ({ date: l.given_at, weight_kg: Number(l.value), source: 'owner' })),
   ].sort((a, b) => new Date(a.date) - new Date(b.date));
 
   return NextResponse.json(points);

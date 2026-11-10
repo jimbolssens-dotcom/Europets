@@ -15875,3 +15875,798 @@ button.patient-chip.deworm-chip.on {
   color: #666;
   font-size: 0.78rem;
 }
+
+/* Home care card (app/_components/HomeCareCard.jsx). */
+.hc-card {
+  background: #fff;
+  border: 1px solid #ece8e2;
+  border-radius: 14px;
+  padding: 0.8rem 1rem;
+  margin: 1rem 0;
+}
+.hc-card-closed {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 1rem;
+}
+.hc-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.hc-title {
+  font-weight: 800;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+.hc-status {
+  font-size: 0.78rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #fff4d6;
+  color: #8a5a00;
+  font-weight: 600;
+}
+.hc-status-saved {
+  background: #eef7ec;
+  color: #2c6b23;
+}
+.hc-template {
+  margin-left: auto;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+}
+.hc-cols {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 1.2rem;
+}
+.hc-sec {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--pink-dark);
+  font-weight: 700;
+  margin: 0.8rem 0 0.35rem;
+}
+.hc-hint {
+  font-size: 0.8rem;
+  color: #777;
+  margin: 0.2rem 0;
+}
+.hc-med {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.35rem 0;
+  border-top: 1px solid #f4f1ec;
+}
+.hc-med:first-of-type {
+  border-top: 0;
+}
+.hc-med-text {
+  flex: 1 1 240px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.hc-med-text input {
+  padding: 0.25rem 0.4rem;
+  font-size: 0.88rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+}
+.hc-med-text input:hover,
+.hc-med-text input:focus {
+  border-color: #ddd;
+  background: #fff;
+}
+.hc-med-name {
+  font-weight: 700;
+}
+.hc-med-when {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.hc-seg {
+  display: inline-flex;
+  gap: 0.2rem;
+}
+.hc-seg button,
+.hc-chip,
+.owner-logs-filters button {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid #e3ded6;
+  background: #f6f4f0;
+  color: #444;
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: none;
+  min-height: 0;
+  cursor: pointer;
+}
+.hc-seg button.on,
+.hc-chip.on,
+.owner-logs-filters button.on {
+  background: #2c6b23;
+  border-color: #2c6b23;
+  color: #fff;
+}
+.hc-chip-watch.on {
+  background: #b42318;
+  border-color: #b42318;
+}
+.hc-chip-add {
+  background: #fff;
+  border-style: dashed;
+  color: #666;
+}
+.hc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+}
+.hc-days {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #666;
+}
+.hc-days input {
+  width: 3.4rem;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.85rem;
+}
+.hc-x {
+  border: 0;
+  background: none;
+  color: #999;
+  font-size: 1.1rem;
+  padding: 0 0.3rem;
+  box-shadow: none;
+  min-height: 0;
+}
+.hc-own {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+  align-items: center;
+}
+.hc-own input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.5rem;
+}
+.hc-own select {
+  font-size: 0.8rem;
+}
+.hc-link {
+  border: 0;
+  background: none;
+  color: var(--pink-dark);
+  text-decoration: underline;
+  font-size: 0.85rem;
+  padding: 0;
+  box-shadow: none;
+  min-height: 0;
+  cursor: pointer;
+}
+.hc-next {
+  font-size: 0.9rem;
+  margin: 0.2rem 0;
+}
+.hc-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-top: 0.8rem;
+}
+@media (max-width: 760px) {
+  .hc-cols {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .hc-card {
+    padding: 0.7rem 0.75rem;
+  }
+}
+
+/* Owner logs (app/_components/OwnerLogs.jsx). */
+a.patient-chip.owner-logs-chip {
+  background: #e3eefb;
+  color: #1d4f8a;
+  text-decoration: none;
+}
+.owner-logs {
+  background: #fff;
+  border: 1px solid #ece8e2;
+  border-radius: 14px;
+  padding: 0.7rem 1rem;
+  margin: 1rem 0;
+}
+.owner-logs-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.3rem;
+}
+.owner-logs-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.owner-logs-sub {
+  font-size: 0.8rem;
+  color: #777;
+}
+.owner-logs-filters {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+.owner-log {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.35rem 0 0.35rem 0.6rem;
+  border-left: 3px solid #6aa7e0;
+  margin-top: 0.3rem;
+  font-size: 0.9rem;
+}
+.owner-log-when {
+  color: #777;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.owner-log-missed {
+  background: #fff4d6;
+  color: #8a5a00;
+  border-radius: 999px;
+  padding: 0 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: 0.3rem;
+}
+.owner-log-note {
+  color: #555;
+}
+.owner-logs-empty {
+  color: #777;
+  font-size: 0.85rem;
+}
+
+/* Client app: home care (app/_components/ClientHomeCare.jsx,
+   HomeCareLogSheet.jsx, app/client-app/pets). */
+.chc-card {
+  background: var(--carbon);
+  color: var(--chalk);
+  border: 2px solid var(--magenta);
+  border-radius: 16px;
+  padding: 0.75rem 0.9rem;
+  margin: 0.9rem 0 0.6rem;
+}
+.chc-today {
+  border-width: 1px;
+  border-color: var(--hair-hot);
+}
+.chc-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.chc-title {
+  font-weight: 800;
+  font-size: 1.02rem;
+}
+.chc-day {
+  background: var(--hair-hot);
+  color: var(--blush);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.chc-sec {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--hot);
+  font-weight: 700;
+  margin: 0.7rem 0 0.25rem;
+}
+.chc-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--hair);
+  font-size: 0.93rem;
+}
+.chc-sec + .chc-row {
+  border-top: 0;
+}
+.chc-row-text {
+  flex: 1;
+  min-width: 0;
+}
+.chc-small {
+  font-size: 0.8rem;
+  color: var(--ash);
+}
+.chc-ticks {
+  display: flex;
+  gap: 0.35rem;
+  flex: none;
+}
+button.chc-tick {
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 9px;
+  border: 2px solid var(--ash-dim);
+  background: transparent;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  box-shadow: none;
+}
+button.chc-tick.done {
+  background: #2c6b23;
+  border-color: #2c6b23;
+}
+.chc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.chc-chip {
+  background: var(--carbon-hi);
+  border: 1px solid var(--hair);
+  color: var(--chalk);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.83rem;
+}
+.chc-watch {
+  color: #f2665a;
+  font-weight: 600;
+  font-size: 0.88rem;
+  margin: 0.1rem 0;
+}
+.chc-next {
+  margin: 0.6rem 0 0.1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--hair);
+  font-size: 0.92rem;
+}
+.chc-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.4rem 0 0.2rem;
+}
+button.chc-log-btn {
+  flex: 1;
+}
+.chc-logs {
+  background: var(--carbon);
+  color: var(--chalk);
+  border: 1px solid var(--hair-hot);
+  border-radius: 14px;
+  padding: 0.2rem 0.8rem;
+}
+.chc-log {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--hair);
+  font-size: 0.9rem;
+}
+.chc-log:first-child {
+  border-top: 0;
+}
+.chc-log-text {
+  flex: 1;
+  min-width: 0;
+}
+button.chc-x {
+  border: 0;
+  background: none;
+  color: var(--ash);
+  font-size: 1.1rem;
+  padding: 0 0.2rem;
+  min-height: 0;
+  box-shadow: none;
+}
+button.chc-today-pet {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--hair);
+  border-radius: 0;
+  padding: 0.45rem 0;
+  color: inherit;
+  font-weight: 400;
+  box-shadow: none;
+  min-height: 0;
+}
+.chc-today-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--hair-hot);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.chc-today-text {
+  flex: 1;
+  min-width: 0;
+}
+.chc-today-lines {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chc-left {
+  background: #fff4d6;
+  color: #8a5a00;
+  border-radius: 999px;
+  padding: 0.12rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.chc-left.done {
+  background: #eef7ec;
+  color: #2c6b23;
+}
+.client-app-pets-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.client-app-pets-head h1 {
+  margin: 0;
+}
+.client-app-pets-count {
+  background: var(--carbon-hi);
+  border: 1px solid var(--hair-hot);
+  color: var(--chalk);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.85rem;
+}
+button.client-app-pets-log {
+  margin-left: auto;
+  width: auto;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.88rem;
+}
+.client-app-pets-search {
+  width: 100%;
+  margin-top: 0.7rem;
+}
+.client-app-pets-filters {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+.client-app-pets-filters button {
+  width: auto;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: var(--carbon-hi);
+  color: var(--chalk);
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-height: 0;
+  box-shadow: none;
+  border: 0;
+}
+.client-app-pets-filters button.on {
+  background: #2c6b23;
+  color: #fff;
+}
+
+/* The log sheet. */
+.hcl-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.hcl-sheet {
+  background: var(--carbon);
+  color: var(--chalk);
+  border-top: 1px solid var(--hair-hot);
+  width: 100%;
+  max-width: 520px;
+  max-height: 92vh;
+  overflow-y: auto;
+  border-radius: 18px 18px 0 0;
+  padding: 0.6rem 1rem calc(1rem + env(safe-area-inset-bottom));
+}
+.hcl-grab {
+  width: 40px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--ash-dim);
+  margin: 0 auto 0.5rem;
+}
+.hcl-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+button.hcl-close {
+  width: auto;
+  border: 0;
+  background: none;
+  color: var(--ash);
+  font-size: 1.4rem;
+  padding: 0 0.3rem;
+  min-height: 0;
+  box-shadow: none;
+}
+.hcl-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+button.hcl-tile {
+  background: var(--carbon-hi);
+  border: 1px solid var(--hair-hot);
+  border-radius: 12px;
+  padding: 0.5rem 0.15rem;
+  color: var(--chalk);
+  font-size: 0.74rem;
+  font-weight: 600;
+  min-height: 0;
+  box-shadow: none;
+  line-height: 1.2;
+}
+button.hcl-tile span {
+  display: block;
+  font-size: 1.35rem;
+  margin-bottom: 0.1rem;
+}
+button.hcl-tile.on {
+  border: 2px solid var(--magenta);
+  background: var(--hair-hot);
+}
+.hcl-fields {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.hcl-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  border: 1px solid var(--hair-hot);
+  border-radius: 10px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.9rem;
+}
+.hcl-field input,
+.hcl-field textarea {
+  border: 0;
+  text-align: right;
+  font-size: 0.95rem;
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  color: var(--chalk);
+  padding: 0.2rem 0;
+}
+.hcl-field-note {
+  align-items: flex-start;
+}
+.hcl-field textarea {
+  text-align: left;
+  resize: vertical;
+}
+.hcl-unit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.hcl-unit input {
+  width: 5rem;
+  font-weight: 700;
+}
+.hcl-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.hcl-suggest button {
+  width: auto;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--carbon-hi);
+  border: 1px solid var(--hair-hot);
+  color: var(--chalk);
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-height: 0;
+  box-shadow: none;
+}
+.hcl-suggest button.on {
+  background: #2c6b23;
+  color: #fff;
+}
+.hcl-photo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.hcl-pets {
+  margin-top: 0.7rem;
+  border-top: 1px solid var(--hair);
+  padding-top: 0.5rem;
+}
+.hcl-pets-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+button.hcl-link {
+  width: auto;
+  border: 0;
+  background: none;
+  color: var(--hot);
+  text-decoration: underline;
+  padding: 0;
+  font-size: 0.88rem;
+  min-height: 0;
+  box-shadow: none;
+}
+.hcl-search {
+  width: 100%;
+  margin-top: 0.4rem;
+}
+.hcl-petlist {
+  max-height: 38vh;
+  overflow-y: auto;
+  margin-top: 0.3rem;
+}
+button.hcl-pet {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--hair);
+  border-radius: 0;
+  padding: 0.4rem 0;
+  color: inherit;
+  font-weight: 400;
+  text-align: left;
+  min-height: 0;
+  box-shadow: none;
+}
+.hcl-tick {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 2px solid var(--ash-dim);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  flex: none;
+}
+.hcl-tick.on {
+  background: #2c6b23;
+  border-color: #2c6b23;
+}
+.hcl-pet-name {
+  font-weight: 600;
+}
+.hcl-pet-hint {
+  margin-left: auto;
+  color: #5fbf52;
+}
+.hcl-small {
+  font-size: 0.8rem;
+  color: var(--ash);
+}
+button.hcl-save {
+  width: 100%;
+  margin-top: 0.7rem;
+}
+.hcl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  background: var(--magenta);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+  border: 0;
+  width: auto;
+  min-height: 0;
+}
+.hcl-btn-ghost {
+  background: transparent;
+  color: var(--chalk);
+  border: 1px solid var(--ash-dim);
+}
+.hcl-warning {
+  background: var(--carbon);
+  color: var(--chalk);
+  border-radius: 16px;
+  border-top: 5px solid #b42318;
+  margin: auto 16px;
+  padding: 1rem 1.1rem 0.8rem;
+  max-width: 420px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+.hcl-warning-title {
+  font-weight: 800;
+  color: #f2665a;
+  font-size: 1.05rem;
+}
+.hcl-warning p {
+  font-size: 0.92rem;
+  margin: 0.45rem 0;
+}
+.hcl-warning-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0.2rem;
+}
+.hcl-warning-actions > * {
+  flex: 1;
+}
+@media (max-width: 760px) {
+  .hc-head {
+    flex-wrap: nowrap;
+  }
+  .hc-template {
+    width: auto;
+    max-width: 7.2rem;
+    font-size: 0.78rem;
+    padding: 0.2rem 0.3rem;
+  }
+  .hc-status {
+    white-space: nowrap;
+  }
+}

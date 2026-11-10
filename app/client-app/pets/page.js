@@ -13,6 +13,7 @@ import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import HexIcon from '@/app/_components/HexIcon';
 import { catteryToday } from '@/lib/cattery';
 import { useClientAppRestore, saveClientAppCopy } from '@/app/_components/useClientAppCache';
+import HomeCareLogSheet from '@/app/_components/HomeCareLogSheet';
 
 // Next.js App Router doesn't reliably restore scroll position on
 // router.back() the way plain browser back-navigation does (a known App
@@ -36,6 +37,12 @@ export default function ClientAppPetsPage() {
   const [openAdmissionByPatientId, setOpenAdmissionByPatientId] = useState({});
   const [catteryBookings, setCatteryBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Home care running today, per pet (app/api/client-app/home-care), and
+  // the search / filter for owners with many pets.
+  const [care, setCare] = useState([]);
+  const [search, setSearch] = useState('');
+  const [onlyCare, setOnlyCare] = useState(false);
+  const [logSheet, setLogSheet] = useState(false);
 
   useEffect(() => {
     if (ready && !clientId) router.replace('/client-app');
@@ -52,6 +59,7 @@ export default function ClientAppPetsPage() {
       fetch(`/api/cattery?client_id=${clientId}`).then((res) => (res.ok ? res.json() : [])),
     ]).then(([petsData, admissions, cattery]) => {
       if (cancelled) return;
+      loadCare();
       setCatteryBookings(Array.isArray(cattery) ? cattery : []);
       setPets(Array.isArray(petsData) ? petsData : []);
       const byPatient = {};
@@ -70,6 +78,13 @@ export default function ClientAppPetsPage() {
       cancelled = true;
     };
   }, [ready, clientId]);
+
+  function loadCare() {
+    fetch('/api/client-app/home-care')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d) => setCare(Array.isArray(d?.pets) ? d.pets : []))
+      .catch(() => {});
+  }
 
   // This client's last copy, shown at once while the fresh one loads
   // (useClientAppCache.js).
@@ -109,6 +124,15 @@ export default function ClientAppPetsPage() {
   // reachable, just moved into its own section further down instead of
   // mixed in above.
   const activePets = pets.filter((pet) => !pet.deceased && !pet.rehomed);
+  const careById = Object.fromEntries(care.map((c) => [c.id, c]));
+  const query = search.trim().toLowerCase();
+  const shownPets = activePets.filter(
+    (pet) =>
+      (!onlyCare || careById[pet.id]) &&
+      (!query || pet.name?.toLowerCase().includes(query) || String(pet.patient_number || '').includes(query))
+  );
+  const manyPets = activePets.length > 8;
+  const dosesLeftToday = care.reduce((n, c) => n + c.dosesLeft, 0);
   const pastPets = pets.filter((pet) => pet.deceased || pet.rehomed);
 
   // A cat's current or next cattery stay (anything not yet checked out and
@@ -187,7 +211,58 @@ export default function ClientAppPetsPage() {
 
   return (
     <div className="mobile-page client-app-pets-page">
-      <h1>My Pets</h1>
+      <div className="client-app-pets-head">
+        <h1>My Pets</h1>
+        {activePets.length > 8 && <span className="client-app-pets-count">{activePets.length}</span>}
+        {activePets.length > 0 && (
+          <button type="button" className="client-app-pets-log" onClick={() => setLogSheet(true)}>
+            + Log{activePets.length > 1 ? ' for several' : ''}
+          </button>
+        )}
+      </div>
+
+      {care.length > 0 && (
+        <div className="chc-card chc-today">
+          <div className="chc-head">
+            <span className="chc-title">Today</span>
+            <span className="chc-day">{dosesLeftToday > 0 ? `${dosesLeftToday} left to do` : 'all done ✓'}</span>
+          </div>
+          {care.map((c) => (
+            <button type="button" key={c.id} className="chc-today-pet" onClick={() => openPet(c.id)}>
+              {c.profile_photo_url ? <img src={c.profile_photo_url} alt="" className="chc-today-avatar" /> : <span className="chc-today-avatar">🐾</span>}
+              <span className="chc-today-text">
+                <b>{c.name}</b>{c.patient_number ? <span className="chc-small"> #{c.patient_number}</span> : null}
+                <span className="chc-small chc-today-lines">{c.todayLines.join(' · ') || 'Keep doing'}</span>
+              </span>
+              <span className={`chc-left${c.dosesLeft === 0 ? ' done' : ''}`}>{c.dosesLeft === 0 ? '✓ done' : `${c.dosesLeft} left`}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {manyPets && (
+        <>
+          <input className="client-app-pets-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 Search by name or number" />
+          {care.length > 0 && (
+            <div className="client-app-pets-filters">
+              <button type="button" className={onlyCare ? 'on' : ''} onClick={() => setOnlyCare(true)}>On home care ({care.length})</button>
+              <button type="button" className={!onlyCare ? 'on' : ''} onClick={() => setOnlyCare(false)}>All</button>
+            </div>
+          )}
+        </>
+      )}
+
+      {logSheet && (
+        <HomeCareLogSheet
+          pets={[...activePets]
+            .sort((a, b) => (careById[b.id] ? 1 : 0) - (careById[a.id] ? 1 : 0) || a.name.localeCompare(b.name))
+            .map((p) => ({ id: p.id, name: p.name, patient_number: p.patient_number, hint: careById[p.id] ? 'on home care' : null }))}
+          selected={activePets.length === 1 ? [activePets[0].id] : []}
+          pickMany={activePets.length > 1}
+          onClose={() => setLogSheet(false)}
+          onSaved={loadCare}
+        />
+      )}
       {loading ? (
         <p className="mobile-subtitle">Loading...</p>
       ) : pets.length === 0 ? (
@@ -197,7 +272,13 @@ export default function ClientAppPetsPage() {
           {activePets.length === 0 ? (
             <p className="mobile-subtitle">No pets on file yet.</p>
           ) : (
-            <ul className="mobile-list">{activePets.map(renderPetCard)}</ul>
+            <>
+              <ul className="mobile-list">{(manyPets ? shownPets.slice(0, query ? 200 : 60) : activePets).map(renderPetCard)}</ul>
+              {manyPets && shownPets.length === 0 && <p className="mobile-subtitle">No pet with that name.</p>}
+              {manyPets && !query && shownPets.length > 60 && (
+                <p className="mobile-subtitle">Showing 60 of {shownPets.length}. Search to find the others.</p>
+              )}
+            </>
           )}
           {pastPets.length > 0 && (
             <details>

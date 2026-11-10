@@ -31,6 +31,8 @@ import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import { FeedingMicro, FEEDING_CHANGED, useStayFeeding } from '@/app/_components/FoodIntake';
 import { feedingFood, APPETITE_LABELS } from '@/lib/feeding';
+import HomeCareCard from '@/app/_components/HomeCareCard';
+import { OwnerLogsChip } from '@/app/_components/OwnerLogs';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import ProcedureChecklist from '@/app/_components/ProcedureChecklist';
 import DayProcedureTreatmentPlan from '@/app/_components/DayProcedureTreatmentPlan';
@@ -1165,6 +1167,7 @@ export default function HospitalizationDetailPage() {
                 <TemperatureHistoryChart data={stayTemperatureHistory} mini />
               </PatientTrend>
               <FeedingMicro data={feedingData} />
+              <OwnerLogsChip patientId={admission.patient_id} before={admission.admitted_at} />
               <MiniCageStrip currentHospitalizationId={id} />
               {admission.kind === 'day_procedure' && admission.scheduled_for && admission.status === 'admitted' && (
                 <span className="cage-overnight-tag" title="Booked ahead from a consult: overnight in the cage, procedure on this day">
@@ -1526,6 +1529,8 @@ export default function HospitalizationDetailPage() {
         onFileWeightKg={admission.patients?.current_weight_kg}
         species={admission.patients?.species}
       />
+      {/* What the owner does at home once the pet goes home (client app). */}
+      <HomeCareCard hospitalizationId={id} />
       <div className="split">
       <div className="split-main">
       <h2>Day-to-day Worksheet</h2>

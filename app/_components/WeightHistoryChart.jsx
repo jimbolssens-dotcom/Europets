@@ -18,7 +18,7 @@ export default function WeightHistoryChart({ data, mini = false, unit = 'kg' }) 
     () =>
       (data || [])
         .filter((d) => d.weight_kg != null)
-        .map((d) => ({ date: new Date(d.date), weight: Number(d.weight_kg) }))
+        .map((d) => ({ date: new Date(d.date), weight: Number(d.weight_kg), owner: d.source === 'owner' }))
         .sort((a, b) => a.date - b.date),
     [data]
   );
@@ -113,7 +113,7 @@ export default function WeightHistoryChart({ data, mini = false, unit = 'kg' }) 
           <strong>
             {hovered.weight} {unit}
           </strong>
-          <span>{formatShortDate(hovered.date)}</span>
+          <span>{formatShortDate(hovered.date)}{hovered.owner ? ' · by the owner' : ''}</span>
         </div>
       )}
     </div>

@@ -36,7 +36,7 @@ export default function TemperatureHistoryChart({ data, mini = false, unit = '°
     () =>
       (data || [])
         .filter((d) => d.temperature_c != null)
-        .map((d) => ({ date: new Date(d.date), temp: Number(d.temperature_c) }))
+        .map((d) => ({ date: new Date(d.date), temp: Number(d.temperature_c), owner: d.source === 'owner' }))
         .sort((a, b) => a.date - b.date),
     [data]
   );
@@ -148,7 +148,7 @@ export default function TemperatureHistoryChart({ data, mini = false, unit = '°
           <strong style={{ color: zoneColor(hovered.temp) }}>
             {hovered.temp} {unit}
           </strong>
-          <span>{formatShortDate(hovered.date)}</span>
+          <span>{formatShortDate(hovered.date)}{hovered.owner ? ' · by the owner' : ''}</span>
         </div>
       )}
     </div>

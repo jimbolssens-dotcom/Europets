@@ -33,6 +33,8 @@ import SmallPetConsentTab from '@/app/_components/SmallPetConsentTab';
 import { isSmallPet } from '@/lib/smallPet';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import DewormingChip from '@/app/_components/DewormingChip';
+import HomeCareCard from '@/app/_components/HomeCareCard';
+import { OwnerLogsChip } from '@/app/_components/OwnerLogs';
 import PatientHeader, { PatientMeta, PatientTrend } from '@/app/_components/PatientHeader';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { printPdfUrl } from '@/lib/printPdf';
@@ -985,6 +987,7 @@ export default function ConsultDetailPage() {
             <WeightHistoryChart data={weightHistory} mini />
           </PatientTrend>
           <DewormingChip patientId={consult.patients?.id} />
+          <OwnerLogsChip patientId={consult.patients?.id} before={consult.started_at || consult.created_at} />
           </>
         }
       >
@@ -1839,6 +1842,9 @@ export default function ConsultDetailPage() {
         </div>
         </div>
 
+        {/* What the owner does at home (client app): filled in from the
+            dispensed medicines above, plus chips and templates. */}
+        <HomeCareCard visitId={id} reloadKey={treatmentItems.filter((t) => t.administration_method === 'dispense').map((t) => `${t.id}:${t.instructions || ''}`).join(',')} />
       </div>
 
       {/* Vaccinations — split out of the old Treatment tab into its own,
