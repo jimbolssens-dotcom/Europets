@@ -1,7 +1,8 @@
 // app/_components/ClientPetDetails.jsx
 // The owner's own microchip number and date of birth for a pet, in the
 // client app (Jim, 10 Nov): two small chips under the pet's name; tapping
-// one opens a short form. Saved with PATCH /api/patients/:id, checked by
+// one opens a short form. Owners can also change what the clinic entered
+// (the ✏️ on a filled chip). Saved with PATCH /api/patients/:id, checked by
 // lib/ownerPetDetails.js (a birth date from the owner is no longer marked
 // estimated).
 
@@ -55,16 +56,16 @@ export default function ClientPetDetails({ pet, onSaved }) {
     <div className="cpd">
       <div className="cpd-chips">
         <button type="button" className={`cpd-chip${pet.microchip_number ? '' : ' cpd-chip-add'}`} onClick={() => open('chip')}>
-          🔖 {pet.microchip_number ? <>Chip {pet.microchip_number}</> : '+ Add microchip'}
+          🔖 {pet.microchip_number ? <>Chip {pet.microchip_number} <span className="cpd-edit" aria-label="edit">✏️</span></> : '+ Add microchip'}
         </button>
         <button type="button" className={`cpd-chip${pet.date_of_birth ? '' : ' cpd-chip-add'}`} onClick={() => open('dob')}>
-          🎂 {pet.date_of_birth ? <>Born {longDate(pet.date_of_birth)}{pet.date_of_birth_estimated ? ' (estimated)' : ''}</> : '+ Add date of birth'}
+          🎂 {pet.date_of_birth ? <>Born {longDate(pet.date_of_birth)}{pet.date_of_birth_estimated ? ' (estimated)' : ''} <span className="cpd-edit" aria-label="edit">✏️</span></> : '+ Add date of birth'}
         </button>
       </div>
       {editing && (
         <form className="cpd-form" onSubmit={save}>
           <label>
-            {editing === 'chip' ? 'Microchip number' : 'Date of birth'}
+            {editing === 'chip' ? (pet.microchip_number ? 'Change the microchip number' : 'Microchip number') : pet.date_of_birth ? 'Change the date of birth' : 'Date of birth'}
             {editing === 'chip' ? (
               <input value={value} onChange={(e) => setValue(e.target.value)} inputMode="numeric" autoComplete="off" placeholder="15 numbers, e.g. 784098100123456" maxLength={24} autoFocus />
             ) : (

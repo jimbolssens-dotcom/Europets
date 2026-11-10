@@ -16733,3 +16733,8 @@ button.cpd-cancel {
   color: var(--chalk);
   border: 1px solid var(--ash-dim);
 }
+.cpd-edit {
+  font-size: 0.78rem;
+  margin-left: 0.15rem;
+  opacity: 0.85;
+}
