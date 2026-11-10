@@ -211,30 +211,23 @@ export default function ClientAppHomePage() {
     };
   }, [ready, clientId, logout]);
 
-  // Desktop overview only (see .client-app-desktop-overview) — needs
-  // `pets` from the effect above first, so it's a separate effect rather
-  // than folded into the Promise.all up there.
+  // Desktop overview only (see .client-app-desktop-overview): the latest
+  // reports across all pets, in one request (app/api/client-app/reports),
+  // not one per pet: an owner with hundreds of pets waited about 10
+  // seconds for those.
   useEffect(() => {
-    if (!ready || !clientId || pets.length === 0) return;
+    if (!ready || !clientId) return;
     let cancelled = false;
-    Promise.all(
-      pets.map((pet) =>
-        fetch(`/api/patients/${pet.id}/report-overview`)
-          .then((res) => (res.ok ? res.json() : []))
-          .then((rows) => rows.map((r) => ({ ...r, petName: pet.name })))
-      )
-    ).then((byPet) => {
-      if (cancelled) return;
-      const merged = byPet
-        .flat()
-        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-        .slice(0, 4);
-      setRecentReports(merged);
-    });
+    fetch('/api/client-app/reports?limit=4')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((rows) => {
+        if (!cancelled && Array.isArray(rows)) setRecentReports(rows);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [ready, clientId, pets]);
+  }, [ready, clientId]);
 
   useEffect(() => {
     if (!ready || !clientId) return;

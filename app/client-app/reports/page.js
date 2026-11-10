@@ -30,19 +30,13 @@ export default function ClientAppReportsPage() {
   useEffect(() => {
     if (!ready || !clientId) return;
     let cancelled = false;
-    fetch(`/api/patients?client_id=${clientId}`)
+    // Every pet's reports in one request (app/api/client-app/reports),
+    // not one per pet.
+    fetch('/api/client-app/reports')
       .then((res) => (res.ok ? res.json() : []))
-      .then(async (pets) => {
-        const petList = Array.isArray(pets) ? pets : [];
-        const byPet = await Promise.all(
-          petList.map((pet) =>
-            fetch(`/api/patients/${pet.id}/report-overview`)
-              .then((res) => (res.ok ? res.json() : []))
-              .then((rows) => rows.map((r) => ({ ...r, petName: pet.name })))
-          )
-        );
+      .then((rows) => {
         if (cancelled) return;
-        const merged = byPet.flat().sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+        const merged = Array.isArray(rows) ? rows : [];
         setReports(merged);
         setLoading(false);
         saveClientAppCopy(clientId, 'reports', merged);
