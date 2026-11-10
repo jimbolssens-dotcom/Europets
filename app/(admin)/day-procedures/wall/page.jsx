@@ -5,10 +5,12 @@ import Link from 'next/link';
 import DayProcedureWallCard from './DayProcedureWallCard';
 import { supabase } from '@/lib/supabaseClient';
 import { startPacedRefresh } from '@/lib/pacedRefresh';
+import { dayProcedureDate, dubaiDateISO } from '@/lib/dayProcedureSchedule';
 import styles from './page.module.css';
 
+// Today in the UAE (a UTC date would still be yesterday until 4:00).
 function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
+  return dubaiDateISO();
 }
 
 // Same key ProcedureChecklist/DayTreatmentPlan use to remember "who's
@@ -84,8 +86,11 @@ export default function DayProcedureWallPage() {
       const today = todayISODate();
       // Day procedures are day-by-day — one left open overnight (never
       // completed) shouldn't linger on the live wall display into the next
-      // day; it's still reachable from the patient's own history.
-      const list = (Array.isArray(data) ? data : []).filter((dp) => dp.admitted_at?.slice(0, 10) === today);
+      // day; it's still reachable from the patient's own history. One booked
+      // the day before (admitted to wait overnight, migration 193) belongs
+      // to its procedure day, so it shows on that day, not the day it came
+      // in (Jim, 10 Nov: a castration booked the evening before was missing).
+      const list = (Array.isArray(data) ? data : []).filter((dp) => dayProcedureDate(dp) === today);
 
       // One request for every patient on the wall, today's notes only
       // (app/api/hospitalizations/wall-details).

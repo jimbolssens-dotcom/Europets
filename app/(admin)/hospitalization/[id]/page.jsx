@@ -9,7 +9,7 @@
 
 'use client';
 
-import { shortDayLabel, addDaysISO, dubaiDateISO } from '@/lib/dayProcedureSchedule';
+import { shortDayLabel, addDaysISO, dubaiDateISO, dayProcedureDate } from '@/lib/dayProcedureSchedule';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -1452,9 +1452,9 @@ export default function HospitalizationDetailPage() {
               from an earlier day in this stay is done, not "active" right
               now, so it isn't shown here (find it via the Day Procedures
               list instead). */}
-          {linkedDayProcedures.find((dp) => dp.admitted_at?.slice(0, 10) === todayISODate()) ? (
+          {linkedDayProcedures.find((dp) => dayProcedureDate(dp) === dubaiDateISO()) ? (
             <a className="button-link button-link-day-procedure"
-              href={`/hospitalization/${linkedDayProcedures.find((dp) => dp.admitted_at?.slice(0, 10) === todayISODate()).id}`}>
+              href={`/hospitalization/${linkedDayProcedures.find((dp) => dayProcedureDate(dp) === dubaiDateISO()).id}`}>
               Day Procedure
             </a>
           ) : patientActive.dayProcedure ? (

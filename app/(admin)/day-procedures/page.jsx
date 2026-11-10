@@ -18,7 +18,7 @@
 
 'use client';
 
-import { dayProcedureDate, isBookedAhead, shortDayLabel } from '@/lib/dayProcedureSchedule';
+import { dayProcedureDate, dubaiDateISO, isBookedAhead, shortDayLabel } from '@/lib/dayProcedureSchedule';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { startPacedRefresh } from '@/lib/pacedRefresh';
@@ -26,8 +26,9 @@ import { hospitalizationAttentionReasons, hospitalizationAlarmLevel, cageAlarmCl
 import { formatShortDate, formatWhenShort } from '@/lib/formatTimestamp';
 import { useRestoredView, writeViewCache } from '@/lib/viewCache';
 
+// Today in the UAE (a UTC date would still be yesterday until 4:00).
 function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
+  return dubaiDateISO();
 }
 
 export default function DayProceduresPage() {
