@@ -68,6 +68,7 @@ const CONSULT_TABS = [
   { id: 'exam', label: '🩺 Exam, Diagnostics & Treatment' },
   { id: 'vaccinations', label: '💉 Vaccinations' },
   { id: 'reports', label: '📑 Reports' },
+  { id: 'homecare', label: '🏠 Home care' },
 ];
 
 // "Sun 11 Oct, 5:13 pm" for the header's second row.
@@ -1852,9 +1853,6 @@ export default function ConsultDetailPage() {
         </div>
         </div>
 
-        {/* What the owner does at home (client app): filled in from the
-            dispensed medicines above, plus chips and templates. */}
-        <HomeCareCard visitId={id} reloadKey={treatmentItems.filter((t) => t.administration_method === 'dispense').map((t) => `${t.id}:${t.instructions || ''}`).join(',')} />
       </div>
 
       {/* Vaccinations — split out of the old Treatment tab into its own,
@@ -1872,6 +1870,13 @@ export default function ConsultDetailPage() {
         )}
         <VaccinationForm {...vac} species={consult.patients?.species} staff={staff} />
       </div>
+
+      {/* What the owner does at home (client app): only when this tab is
+          opened. Filled in from the dispensed medicines, plus chips and
+          templates. */}
+      {activeTab === 'homecare' && (
+        <HomeCareCard visitId={id} defaultOpen reloadKey={treatmentItems.filter((t) => t.administration_method === 'dispense').map((t) => `${t.id}:${t.instructions || ''}`).join(',')} />
+      )}
 
       <div hidden={activeTab !== 'reports'}>
         <PatientReportOverview patientId={consult.patient_id} title="Earlier reports for this patient" />

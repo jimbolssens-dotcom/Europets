@@ -21,10 +21,11 @@ function whenLabel(ts) {
   return new Date(ts).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' });
 }
 
-export default function HomeCareCard({ visitId = null, hospitalizationId = null, reloadKey = 0 }) {
+// defaultOpen: shown straight away (opened from the Home care tab).
+export default function HomeCareCard({ visitId = null, hospitalizationId = null, reloadKey = 0, defaultOpen = false }) {
   const [data, setData] = useState(null);
   const [items, setItems] = useState([]);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [ownText, setOwnText] = useState('');

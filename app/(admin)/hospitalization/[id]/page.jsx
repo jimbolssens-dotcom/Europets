@@ -182,6 +182,9 @@ export default function HospitalizationDetailPage() {
   const [noteAddCategory, setNoteAddCategory] = useState('product');
   const [pendingItemCategory, setPendingItemCategory] = useState('product');
   const [reportsOpen, setReportsOpen] = useState(false);
+  // 🏠 Home care for the owner (HomeCareCard): a small tab next to Reports,
+  // opened only when wanted.
+  const [homeCareOpen, setHomeCareOpen] = useState(false);
   // Food intake for the header's 🍽️ micro-graph (FoodIntake.jsx).
   const feedingData = useStayFeeding(id);
 
@@ -1279,6 +1282,9 @@ export default function HospitalizationDetailPage() {
               {patientHistorySection}
               {consentTab}
               {photosTab}
+              <button type="button" className={`case-tab${homeCareOpen ? ' case-tab-on' : ''}`} onClick={() => setHomeCareOpen((v) => !v)}>
+                🏠 Home care
+              </button>
             </div>
             <div className="case-bar-actions" role="group" aria-label="Day procedure actions">
             {admission.status === 'admitted' && (
@@ -1324,6 +1330,11 @@ export default function HospitalizationDetailPage() {
           </div>
           {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
           {moveToHospitalError && <p className="error" role="alert">{moveToHospitalError}</p>}
+          {homeCareOpen && (
+            <section className="case-files-open" aria-label="Home care">
+              <HomeCareCard hospitalizationId={id} defaultOpen />
+            </section>
+          )}
 
           {/* Three columns side by side on desktop, same .workbench grid
               (and the same h3-above-a-pink-topped-card title styling) as
@@ -1415,6 +1426,9 @@ export default function HospitalizationDetailPage() {
           {photosTab}
           <button type="button" className={`case-tab${reportsOpen ? ' case-tab-on' : ''}`} onClick={() => setReportsOpen((v) => !v)}>
             📑 Reports
+          </button>
+          <button type="button" className={`case-tab${homeCareOpen ? ' case-tab-on' : ''}`} onClick={() => setHomeCareOpen((v) => !v)}>
+            🏠 Home care
           </button>
           <details className="case-tab-menu" name="case-tabs">
             <summary className="case-tab">📤 Share ▾</summary>
@@ -1508,6 +1522,11 @@ export default function HospitalizationDetailPage() {
       </div>
       {invoiceError && <p className="error" role="alert">{invoiceError}</p>}
 
+      {homeCareOpen && (
+        <section className="case-files-open" aria-label="Home care">
+          <HomeCareCard hospitalizationId={id} defaultOpen />
+        </section>
+      )}
       {reportsOpen && (
         <section className="case-files-open" aria-label="Reports">
           {signedConsentFormsList}
@@ -1541,8 +1560,6 @@ export default function HospitalizationDetailPage() {
         onFileWeightKg={admission.patients?.current_weight_kg}
         species={admission.patients?.species}
       />
-      {/* What the owner does at home once the pet goes home (client app). */}
-      <HomeCareCard hospitalizationId={id} />
       <div className="split">
       <div className="split-main">
       <h2>Day-to-day Worksheet</h2>
