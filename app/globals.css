@@ -16670,3 +16670,66 @@ button.hcl-save {
     white-space: nowrap;
   }
 }
+
+/* Client app: the owner's microchip and birth date (ClientPetDetails.jsx). */
+.cpd {
+  margin: 0.2rem 0 0.7rem;
+}
+.cpd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+button.cpd-chip {
+  width: auto;
+  min-height: 0;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: var(--carbon-hi);
+  border: 1px solid var(--hair-hot);
+  color: var(--chalk);
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: none;
+}
+button.cpd-chip-add {
+  border-style: dashed;
+  color: var(--ash);
+}
+.cpd-form {
+  margin-top: 0.5rem;
+  background: var(--carbon);
+  color: var(--chalk);
+  border: 1px solid var(--hair-hot);
+  border-radius: 14px;
+  padding: 0.7rem 0.8rem;
+}
+.cpd-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--ash);
+}
+.cpd-form input {
+  font-size: 1rem;
+}
+.cpd-hint {
+  font-size: 0.8rem;
+  color: var(--ash);
+  margin: 0.4rem 0 0;
+}
+.cpd-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.cpd-actions button {
+  width: auto;
+  padding: 0.4rem 1rem;
+}
+button.cpd-cancel {
+  background: transparent;
+  color: var(--chalk);
+  border: 1px solid var(--ash-dim);
+}

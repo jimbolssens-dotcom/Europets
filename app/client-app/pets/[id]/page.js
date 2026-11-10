@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import HexIcon from '@/app/_components/HexIcon';
 import ClientHomeCare from '@/app/_components/ClientHomeCare';
+import ClientPetDetails from '@/app/_components/ClientPetDetails';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import { reportPdfHref, reportText, reportKindIcon } from '@/lib/clientAppReports';
 import { dueStatus, formatDate } from '@/lib/vaccinationDueStatus';
@@ -271,6 +272,11 @@ export default function ClientAppPetHistoryPage() {
         </div>
       </div>
       {photoError && <p className="client-app-login-error">{photoError}</p>}
+      {/* The owner's own microchip number and date of birth. */}
+      <ClientPetDetails
+        pet={pet}
+        onSaved={(changed) => setPet((prev) => ({ ...prev, ...changed }))}
+      />
 
       <button type="button" onClick={startBooking} disabled={bookingLoading}>
         {bookingLoading ? 'Opening booking form...' : `📅 Book an Appointment for ${pet.name}`}

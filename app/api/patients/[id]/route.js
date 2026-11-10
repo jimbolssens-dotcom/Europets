@@ -3,6 +3,7 @@
 // PATCH  /api/patients/:id  -> edit a patient (including marking deceased)
 // DELETE /api/patients/:id  -> remove a patient (blocked if it has appointments/visits)
 
+import { ownerPetUpdate } from '@/lib/ownerPetDetails';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
@@ -34,7 +35,10 @@ const EDITABLE_FIELDS = [
 // owner marking their own pet as RIP or rehomed (see
 // app/client-app/pets/[id]/page.js) — the same flags staff can already
 // set, reused rather than a separate owner-facing status.
-const CLIENT_EDITABLE_FIELDS = ['profile_photo_url', 'deceased', 'rehomed'];
+// microchip_number / date_of_birth: the owner's own entry (Jim, 10 Nov),
+// checked by lib/ownerPetDetails.js; a birth date from the owner clears
+// date_of_birth_estimated.
+const CLIENT_EDITABLE_FIELDS = ['profile_photo_url', 'deceased', 'rehomed', 'microchip_number', 'date_of_birth'];
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
@@ -73,8 +77,14 @@ export async function PATCH(request, { params }) {
 
   const update = {};
   const allowedFields = staff ? EDITABLE_FIELDS : CLIENT_EDITABLE_FIELDS;
+  if (!staff) {
+    const owner = ownerPetUpdate(body);
+    if (owner.error) return NextResponse.json({ error: owner.error }, { status: 400 });
+    Object.assign(update, owner.update);
+  }
   for (const field of allowedFields) {
     if (body[field] === undefined) continue;
+    if (!staff && (field === 'microchip_number' || field === 'date_of_birth')) continue;
     // microchip_number is `text unique` — a plain "not provided" NULL lets
     // any number of patients go unchipped, but an empty string is a real
     // value, so two blanked-out patients would collide on '' and get
