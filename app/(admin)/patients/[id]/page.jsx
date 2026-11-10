@@ -8,6 +8,7 @@
 'use client';
 
 import DewormingChip from '@/app/_components/DewormingChip';
+import { confirmWeight } from '@/lib/weightCheck';
 import { websiteUrl as clinicWebsiteUrl } from '@/lib/websiteUrl';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -368,6 +369,10 @@ export default function PatientDetailPage() {
 
   async function saveEdit(e) {
     e.preventDefault();
+    // A weight more than 10% off the one on file: double check (lib/weightCheck.js).
+    if (editForm.current_weight_kg !== '' && Number(editForm.current_weight_kg) !== Number(patient.current_weight_kg) && !confirmWeight(editForm.current_weight_kg, patient.current_weight_kg)) {
+      return;
+    }
     setSavingEdit(true);
     setEditError(null);
     const res = await fetch(`/api/patients/${id}`, {

@@ -37,6 +37,7 @@
 
 'use client';
 
+import { confirmWeight } from '@/lib/weightCheck';
 import FeedingPanel from './FeedingPanel';
 import { useEffect, useRef, useState } from 'react';
 import AudioRecorder from '@/app/_components/AudioRecorder';
@@ -464,6 +465,12 @@ export default function DayTreatmentPlan({
     if (item.kind !== 'vitals_weight' && temperatureError(value)) {
       setError(temperatureError(value));
       return;
+    }
+    // More than 10% off the last weight (this stay's, else the one on
+    // file): double check before saving (lib/weightCheck.js).
+    if (item.kind === 'vitals_weight') {
+      const lastWeight = doneEver(item.id).slice(-1)[0]?.weight_kg ?? onFileWeightKg;
+      if (!confirmWeight(value, lastWeight)) return;
     }
     setError(null);
     setLoggingIds((prev) => new Set(prev).add(item.id));

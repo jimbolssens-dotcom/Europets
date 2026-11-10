@@ -33,6 +33,7 @@ import SmallPetConsentTab from '@/app/_components/SmallPetConsentTab';
 import { isSmallPet } from '@/lib/smallPet';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import DewormingChip from '@/app/_components/DewormingChip';
+import { confirmWeight } from '@/lib/weightCheck';
 import PatientHeader, { PatientMeta, PatientTrend } from '@/app/_components/PatientHeader';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { printPdfUrl } from '@/lib/printPdf';
@@ -411,6 +412,15 @@ export default function ConsultDetailPage() {
       return;
     }
     if (field === 'temperature_c') setTempError(null);
+    // A weight more than 10% off the last one: double check, and put the
+    // last one back if it was a typo (lib/weightCheck.js).
+    if (field === 'weight_kg' && rawValue !== '') {
+      const lastWeight = lastServerRecordRef.current?.weight_kg || consult?.patients?.current_weight_kg;
+      if (Number(rawValue) !== Number(lastWeight) && !confirmWeight(rawValue, lastWeight)) {
+        setRecord((r) => ({ ...r, weight_kg: lastWeight ?? '' }));
+        return;
+      }
+    }
     const value = rawValue === '' ? null : Number(rawValue);
     const res = await fetch(`/api/visits/${id}`, {
       method: 'PATCH',

@@ -31,6 +31,7 @@ import PdfPreviewModal from '@/app/_components/PdfPreviewModal';
 import InfoHint from '@/app/_components/InfoHint';
 import { FeedingMicro, FEEDING_CHANGED, useStayFeeding } from '@/app/_components/FoodIntake';
 import { feedingFood, APPETITE_LABELS } from '@/lib/feeding';
+import { confirmWeight } from '@/lib/weightCheck';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import ProcedureChecklist from '@/app/_components/ProcedureChecklist';
 import DayProcedureTreatmentPlan from '@/app/_components/DayProcedureTreatmentPlan';
@@ -561,6 +562,17 @@ export default function HospitalizationDetailPage() {
     if (tempProblem) {
       setEditNoteError(tempProblem);
       return;
+    }
+    // A changed weight more than 10% off the stay's other latest weight
+    // (else the one on file): double check (lib/weightCheck.js).
+    const original = notes.find((n) => n.id === noteId);
+    const newWeight = editNoteForm?.weight_kg;
+    if (newWeight !== '' && newWeight != null && Number(newWeight) !== Number(original?.weight_kg)) {
+      const others = notes
+        .filter((n) => n.id !== noteId && n.weight_kg != null)
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      const lastWeight = others.length ? others[others.length - 1].weight_kg : admission?.patients?.current_weight_kg;
+      if (!confirmWeight(newWeight, lastWeight)) return;
     }
     setEditNoteError(null);
     setSavingEditNote(true);
