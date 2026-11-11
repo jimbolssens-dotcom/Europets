@@ -5,7 +5,7 @@
 // Synchronous (unlike the full-recording flow) since these clips are short
 // — no Storage, no DB row, nothing persisted; it's a one-shot dictation aid.
 
-import { uploadAudio, submitTranscription, pollTranscript } from '@/lib/assemblyai';
+import { uploadAudio, submitTranscription, pollTranscript, isDomainRejection } from '@/lib/assemblyai';
 import { summarizeField } from '@/lib/anthropicClient';
 import { NextResponse } from 'next/server';
 
@@ -39,7 +39,12 @@ export async function POST(request) {
     const buffer = Buffer.from(await audio.arrayBuffer());
     const uploadUrl = await uploadAudio(buffer);
     const job = await submitTranscription({ audioUrl: uploadUrl });
-    const finished = await pollTranscript(job.id);
+    let finished = await pollTranscript(job.id);
+    // Veterinary Mode turned down once the job ran: once more without it.
+    if (finished.status === 'error' && finished.domain && isDomainRejection(finished.error)) {
+      const again = await submitTranscription({ audioUrl: uploadUrl, domain: null });
+      finished = await pollTranscript(again.id);
+    }
 
     if (finished.status === 'error') {
       return NextResponse.json({ error: finished.error || 'Transcription failed' }, { status: 502 });
