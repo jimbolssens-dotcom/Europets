@@ -50,6 +50,24 @@ Write migrations to be safe to re-run (`if not exists`, `drop ... if
 exists`). Ask before running anything destructive (dropping tables or
 columns, deleting or rewriting data).
 
+**When the Supabase connector hangs:** its `execute_sql` /
+`apply_migration` stop for a confirmation on anything with `delete` or
+`drop` (most migrations too), and that prompt never reaches Jim in the
+app: it times out after 60 s. Sessions on the `europets` environment have
+`SUPABASE_ACCESS_TOKEN` (a personal access token limited to this project,
+added 11 Nov) and `api.supabase.com` allowed, so run that SQL directly
+instead of asking Jim to paste it in the SQL Editor:
+
+```bash
+curl -sS -X POST "https://api.supabase.com/v1/projects/bqypjwnnusyrrqktcrlc/database/query" \
+  -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+  --data @body.json   # {"query": "..."} built with python/jq, never by hand-quoting
+```
+
+Never print the token. The same rules apply: paste the SQL in the reply,
+and ask Jim first before anything destructive. If the variable is missing
+or the token has expired (401), say so and fall back to the SQL Editor.
+
 ## Side by side, not stacked (especially on mobile)
 
 Wherever there's room, put things next to each other instead of stacking
