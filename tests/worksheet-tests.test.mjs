@@ -48,3 +48,15 @@ test('the entry photo (the test strip) is linked to the test too, once', () => {
   assert.deepEqual(rows, [{ entity_type: 'diagnostic', entity_id: 'd1', file_path: photo.file_path, file_name: 'strip.jpg', content_type: 'image/jpeg', uploaded_by: null }]);
   assert.deepEqual(testPhotoRows([photo], [{ id: 'd1' }], [{ entity_id: 'd1', file_path: photo.file_path }]), []);
 });
+
+// 3 Nov: a general update that mentioned the PCR became its "result".
+test('a general update that only mentions the test is not taken as its result', async () => {
+  const { looksLikeTestResult } = await import('../lib/worksheetTests.js');
+  const update = 'Still unwell with a high fever and not eating\nShe is still not eating today. She was given a small dose of meloxicam for her fever, and a respiratory PCR test was run to check for a respiratory infection. The team will keep a close eye on her.';
+  const [row] = testRowsForWorksheetItems([{ id: 't9', goods_service_id: 'g9', goods_services: { main_category: 'test' } }], { hospitalizationId: 'h1', noteText: update });
+  assert.equal(row.result, null);
+  assert.equal(looksLikeTestResult('It came back positive for coronavirus and negative for Giardia and parvo'), true);
+  assert.equal(looksLikeTestResult('FeLV/FIV: neg / neg'), true);
+  assert.equal(looksLikeTestResult('Glucose 7.2 mmol/L'), true);
+  assert.equal(looksLikeTestResult('Eating normally, bright and alert'), false);
+});
