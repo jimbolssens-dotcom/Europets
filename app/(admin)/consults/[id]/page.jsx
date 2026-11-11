@@ -34,6 +34,7 @@ import { isSmallPet } from '@/lib/smallPet';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import DewormingChip from '@/app/_components/DewormingChip';
 import { confirmWeight } from '@/lib/weightCheck';
+import { mergeRecordFields } from '@/lib/mergeRecordFields';
 import HomeCareCard from '@/app/_components/HomeCareCard';
 import { OwnerLogsChip } from '@/app/_components/OwnerLogs';
 import PatientHeader, { PatientMeta, PatientTrend } from '@/app/_components/PatientHeader';
@@ -229,14 +230,10 @@ export default function ConsultDetailPage() {
         // instead of the PREVIOUS snapshot would make every field look
         // "changed" and this would never take an update.
         const previousServerRecord = lastServerRecordRef.current;
-        setRecord((prev) => {
-          if (!prev || !previousServerRecord) return serverRecord;
-          const merged = { ...serverRecord };
-          for (const field of Object.keys(serverRecord)) {
-            if (prev[field] !== previousServerRecord[field]) merged[field] = prev[field];
-          }
-          return merged;
-        });
+        // A field being edited here keeps the edit, plus anything the
+        // server ADDED to it meanwhile (a recording's plan), so Save never
+        // writes over it (lib/mergeRecordFields.js).
+        setRecord((prev) => mergeRecordFields(prev, previousServerRecord, serverRecord));
         lastServerRecordRef.current = serverRecord;
         setLoading(false);
       });
