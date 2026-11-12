@@ -52,3 +52,29 @@ test('the urgent line is said once per wait, and never while staff are in the th
   ];
   assert.equal(urgentNoticeAllowed(staffHere, Date.parse(at('2026-11-01T10:05:10'))), false);
 });
+
+// 282f4eee, 10 Nov 09:51: a pet not eating got a notice; the client's next
+// detail about the same illness 30 seconds later got a second.
+test('no second notice seconds after one that already answered the pet being unwell', () => {
+  const rows = [
+    row('client', '2026-11-10T09:51:10', 'There is one of my babies refuse to eat'),
+    row('client', '2026-11-10T09:51:20', 'Can I send him'),
+    row('ai', '2026-11-10T09:52:00', "I'm sorry one of your babies isn't eating. I've passed this to the team so they can arrange for him to be seen.", { is_notice: true }),
+    row('client', '2026-11-10T09:52:20', 'I think he has flu'),
+  ];
+  assert.equal(urgentNoticeAllowed(rows, Date.parse(at('2026-11-10T09:52:30'))), false);
+  // Later on, getting worse is answered again.
+  const later = [...rows, row('client', '2026-11-10T10:30:00', 'Now he is vomiting')];
+  assert.equal(urgentNoticeAllowed(later, Date.parse(at('2026-11-10T10:30:10'))), true);
+});
+
+// 321a91f3, 10 Nov 14:38: a notice about an infection, then the client's
+// follow-up a minute later got a second.
+test('no second notice a minute after one about the same infection', () => {
+  const rows = [
+    row('client', '2026-11-10T14:37:30', 'Can I buy that medicine from you, for the mouth infection'),
+    row('ai', '2026-11-10T14:38:00', "Hi, I've passed your request for the mouth infection medicine to the team so they can check which medicine.", { is_notice: true }),
+    row('client', '2026-11-10T14:38:20', 'Because I got different cats here with such problems'),
+  ];
+  assert.equal(urgentNoticeAllowed(rows, Date.parse(at('2026-11-10T14:38:30'))), false);
+});
