@@ -10,6 +10,7 @@
 import DewormingChip from '@/app/_components/DewormingChip';
 import { OwnerLogsSection } from '@/app/_components/OwnerLogs';
 import { confirmWeight } from '@/lib/weightCheck';
+import PrescriptionPanel from '@/app/_components/PrescriptionPanel';
 import { websiteUrl as clinicWebsiteUrl } from '@/lib/websiteUrl';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -56,6 +57,7 @@ export default function PatientDetailPage() {
   const [staff, setStaff] = useState([]);
   // The export health certificate form (migration 231).
   const [certOpen, setCertOpen] = useState(false);
+  const [rxOpen, setRxOpen] = useState(false);
   const [savingDentalChart, setSavingDentalChart] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
@@ -445,6 +447,7 @@ export default function PatientDetailPage() {
 
       <PreviousOwners patientId={patient.id} />
       {certOpen && <HealthCertificatePanel patientId={patient.id} staff={staff} onClose={() => setCertOpen(false)} />}
+      {rxOpen && <PrescriptionPanel patient={patient} staff={staff} onClose={() => setRxOpen(false)} />}
       {videoConsultError && <p className="error">{videoConsultError}</p>}
       {reviewLinkError && <p className="error">{reviewLinkError}</p>}
 
@@ -473,6 +476,9 @@ export default function PatientDetailPage() {
           </button>
           <button type="button" onClick={() => setCertOpen(true)} title="An export health certificate for travel, from this pet's records">
             📄 Health certificate
+          </button>
+          <button type="button" onClick={() => setRxOpen(true)} title="A prescription to buy medicine at an outside pharmacy, sent as a PDF">
+            💊 Prescription
           </button>
           <ActionMenu.Group label="Other" />
           <a href={`/cattery?patient_id=${patient.id}`} title="Book this cat into one of the 7 cattery spaces">

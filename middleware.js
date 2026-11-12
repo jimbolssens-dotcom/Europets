@@ -72,6 +72,7 @@ const PUBLIC_PATTERNS = [
   /^\/api\/hospitalizations\/[^/]+\/summary-pdf$/,
   /^\/api\/clients\/[^/]+\/statement-pdf$/,
   /^\/api\/clients\/[^/]+\/open-invoices-pdf$/, // every open invoice in full, sent with the statement
+  /^\/api\/prescriptions\/[^/]+\/pdf$/, // a prescription sent to the owner for an outside pharmacy (random uuid id)
   /^\/api\/proforma-invoices\/[^/]+\/quote-pdf$/,
   // The client-app UI itself, plus its login flow (request/verify code,
   // pick an account, log out, check the session) — see app/client-app/
