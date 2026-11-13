@@ -27,6 +27,7 @@ const emptyForm = {
   booking_surgery_start: '10:30',
   booking_surgery_end: '13:00',
   client_app_theme: 'dark',
+  prescribing_vet_id: '',
 };
 
 export default function SettingsPage() {
@@ -35,6 +36,14 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
+
+  const [vets, setVets] = useState([]);
+  useEffect(() => {
+    fetch('/api/staff?role=vet')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => Array.isArray(d) && setVets(d.filter((v) => v.active !== false)))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch('/api/clinic-settings')
@@ -59,6 +68,7 @@ export default function SettingsPage() {
           booking_surgery_start: (data.booking_surgery_start || '10:30').slice(0, 5),
           booking_surgery_end: (data.booking_surgery_end || '13:00').slice(0, 5),
           client_app_theme: data.client_app_theme || 'dark',
+          prescribing_vet_id: data.prescribing_vet_id || '',
         });
         setLoading(false);
       });
@@ -164,6 +174,15 @@ export default function SettingsPage() {
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
+        </label>
+        <label>
+          Prescriptions in the name of
+          <select value={form.prescribing_vet_id} onChange={(e) => setForm({ ...form, prescribing_vet_id: e.target.value })}>
+            <option value="">The vet chosen on each prescription</option>
+            {vets.map((v) => (
+              <option key={v.id} value={v.id}>{v.full_name}</option>
+            ))}
+          </select>
         </label>
 
         <h3>

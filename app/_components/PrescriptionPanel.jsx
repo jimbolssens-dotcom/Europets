@@ -35,6 +35,15 @@ export default function PrescriptionPanel({ patient, staff = [], onClose }) {
   const [error, setError] = useState(null);
   const [status, setStatus] = useState({}); // id -> message after sending
   const [justSaved, setJustSaved] = useState(null);
+  // Every prescription in one vet's name (migration 252), set in Settings.
+  const [fixedVetId, setFixedVetId] = useState(null);
+  useEffect(() => {
+    fetch('/api/clinic-settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.prescribing_vet_id && setFixedVetId(d.prescribing_vet_id))
+      .catch(() => {});
+  }, []);
+  const fixedVet = fixedVetId ? staff.find((s) => s.id === fixedVetId) : null;
 
   const load = () =>
     fetch(`/api/patients/${patient.id}/prescriptions`)
@@ -63,18 +72,18 @@ export default function PrescriptionPanel({ patient, staff = [], onClose }) {
 
   async function save() {
     setError(null);
-    if (!vetId) return setError('Choose the prescribing vet');
+    if (!vetId && !fixedVetId) return setError('Choose the prescribing vet');
     setSaving(true);
     try {
       const res = await fetch(`/api/patients/${patient.id}/prescriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vet_id: vetId, items, notes }),
+        body: JSON.stringify({ vet_id: fixedVetId || vetId, items, notes }),
       });
       const out = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(out.error || 'Could not save the prescription');
       try {
-        localStorage.setItem('rx_vet_id', vetId);
+        if (!fixedVetId) localStorage.setItem('rx_vet_id', vetId);
       } catch {}
       setItems([{ ...EMPTY }]);
       setNotes('');
@@ -138,15 +147,19 @@ export default function PrescriptionPanel({ patient, staff = [], onClose }) {
       </div>
       <p className="visit-meta">For {patient.name}, to buy at an outside pharmacy. Saved, numbered and listed below.</p>
 
-      <label className="rx-vet">
-        Prescribing vet
-        <select value={vetId} onChange={(e) => setVetId(e.target.value)}>
-          <option value="">Choose…</option>
-          {vets.map((v) => (
-            <option key={v.id} value={v.id}>{v.full_name}</option>
-          ))}
-        </select>
-      </label>
+      {fixedVetId ? (
+        <p className="rx-vet visit-meta">Prescribed by <b>{fixedVet?.full_name || 'the clinic vet'}</b> (set in Settings)</p>
+      ) : (
+        <label className="rx-vet">
+          Prescribing vet
+          <select value={vetId} onChange={(e) => setVetId(e.target.value)}>
+            <option value="">Choose…</option>
+            {vets.map((v) => (
+              <option key={v.id} value={v.id}>{v.full_name}</option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <datalist id="rx-med-names">
         {medNames.map((n) => (

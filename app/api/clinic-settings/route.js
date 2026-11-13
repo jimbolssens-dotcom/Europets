@@ -9,7 +9,7 @@
 //                                 booking_morning_start, booking_morning_end,
 //                                 booking_afternoon_start, booking_afternoon_end,
 //                                 booking_surgery_start, booking_surgery_end,
-//                                 client_app_theme)
+//                                 client_app_theme, prescribing_vet_id)
 //
 // Singleton row (id is always `true`) — there's only ever one clinic. Both
 // handlers create the row on the fly if it's missing (e.g. the migration's
@@ -62,6 +62,7 @@ export async function PATCH(request) {
     booking_surgery_start,
     booking_surgery_end,
     client_app_theme,
+    prescribing_vet_id,
   } = body;
 
   const update = { id: true, updated_at: new Date().toISOString() };
@@ -87,6 +88,15 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "client_app_theme must be 'dark' or 'light'" }, { status: 400 });
     }
     update.client_app_theme = client_app_theme;
+  }
+
+  // Every prescription in this vet's name (migration 252); empty = pick per prescription.
+  if (prescribing_vet_id !== undefined) {
+    if (prescribing_vet_id) {
+      const { data: v } = await supabaseAdmin.from('staff').select('role').eq('id', prescribing_vet_id).maybeSingle();
+      if (v?.role !== 'vet') return NextResponse.json({ error: 'Prescriptions can only be in a vet\'s name' }, { status: 400 });
+    }
+    update.prescribing_vet_id = prescribing_vet_id || null;
   }
 
   const { data, error } = await supabaseAdmin
