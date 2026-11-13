@@ -6,6 +6,7 @@
 
 'use client';
 
+import SignatureUpload from '@/app/_components/SignatureUpload';
 import { useEffect, useState } from 'react';
 import { dubaiLocalDateString } from '@/lib/dubaiTime';
 import { STAFF_ROLES, ROLE_NAMES, nextInternName } from '@/lib/staffRoles';
@@ -310,10 +311,16 @@ export default function StaffPage() {
                   {(editForm.role === 'vet' || editForm.licence_number) && (
                     <input
                       className="staff-licence-input"
-                      placeholder="Licence no. (on health certificates)"
+                      placeholder="Licence no. (certificates, prescriptions)"
                       value={editForm.licence_number}
                       onChange={(e) => setEditForm({ ...editForm, licence_number: e.target.value })}
                     />
+                  )}
+                  {editForm.role === 'vet' && (
+                    <div className="sig-uploads">
+                      <SignatureUpload staffId={s.id} kind="signature" label="✍️ Signature" />
+                      <SignatureUpload staffId={s.id} kind="stamp" label="🔖 Stamp" />
+                    </div>
                   )}
                 </td>
                 <td>

@@ -16827,3 +16827,9 @@ button.rx-x {
 .rx-panel textarea {
   font-family: inherit;
 }
+
+/* Signature and stamp uploads on the Staff page (migration 251). */
+.sig-uploads { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; }
+.sig-upload { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+.sig-label { color: var(--text-muted, #666); white-space: nowrap; }
+.sig-preview { height: 30px; max-width: 110px; object-fit: contain; background: #fff; border: 1px solid #e5e5e5; border-radius: 4px; padding: 1px 3px; }

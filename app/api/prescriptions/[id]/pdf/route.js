@@ -6,6 +6,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { buildPrescriptionPdf } from '@/lib/prescriptionPdf';
 import { rxNumber } from '@/lib/prescriptions';
+import { loadSignaturePng, signatureKey } from '@/lib/signatureImages';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,14 @@ export async function GET(request, { params }) {
     rx.vet_id ? supabaseAdmin.from('staff').select('full_name, licence_number').eq('id', rx.vet_id).maybeSingle() : { data: null },
     supabaseAdmin.from('clinic_settings').select('legal_name, address, phone, phone2, email').eq('id', true).maybeSingle(),
   ]);
-  const bytes = await buildPrescriptionPdf({ rx, patient, client, vet, clinic });
+  // The vet's signature and stamp, when uploaded (migration 251).
+  const [signaturePng, stampPng] = rx.vet_id
+    ? await Promise.all([
+        loadSignaturePng(supabaseAdmin, signatureKey(rx.vet_id, 'signature')),
+        loadSignaturePng(supabaseAdmin, signatureKey(rx.vet_id, 'stamp')),
+      ])
+    : [null, null];
+  const bytes = await buildPrescriptionPdf({ rx, patient, client, vet, clinic, signaturePng, stampPng });
   return new NextResponse(Buffer.from(bytes), {
     headers: {
       'Content-Type': 'application/pdf',
