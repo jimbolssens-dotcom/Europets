@@ -16,6 +16,7 @@
 
 'use client';
 
+import ChatAvatar from '@/app/_components/ChatAvatar';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import ClientOrPatientSearch from '@/app/_components/ClientOrPatientSearch';
@@ -946,6 +947,7 @@ export default function MessagesInboxPage() {
                     </td>
                     <td>
                       <a href={`/messages/${c.client_id}`} className="inbox-client">
+                        <ChatAvatar clientName={c.client?.full_name} pets={c.pets} size={28} />
                         {c.client?.full_name}
                         {c.client?.client_number ? <span className="inbox-client-number"> #{c.client.client_number}</span> : ''}
                       </a>

@@ -16833,3 +16833,37 @@ button.rx-x {
 .sig-upload { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }
 .sig-label { color: var(--text-muted, #666); white-space: nowrap; }
 .sig-preview { height: 30px; max-width: 110px; object-fit: contain; background: #fff; border: 1px solid #e5e5e5; border-radius: 4px; padding: 1px 3px; }
+
+/* The picture beside a conversation in Messages: the client's pet photos,
+   else the pet's species, else initials (app/_components/ChatAvatar.jsx). */
+.chat-avatar {
+  --av: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--av);
+  height: var(--av);
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+  font-size: calc(var(--av) * 0.42);
+  font-weight: 700;
+  line-height: 1;
+  overflow: hidden;
+}
+.chat-avatar-icon { font-size: calc(var(--av) * 0.58); }
+.chat-avatar-photos { position: relative; overflow: visible; }
+.chat-avatar-photos img {
+  width: var(--av);
+  height: var(--av);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+  box-sizing: border-box;
+  background: #eee;
+}
+.chat-avatar-photos.two img { width: calc(var(--av) * 0.78); height: calc(var(--av) * 0.78); position: absolute; }
+.chat-avatar-photos.two img:first-child { left: 0; top: 0; z-index: 1; }
+.chat-avatar-photos.two img:last-child { right: 0; bottom: 0; }
+a.thread-client { display: inline-flex; align-items: center; }

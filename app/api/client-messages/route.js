@@ -25,6 +25,7 @@
 
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { selectAll } from '@/lib/selectAll';
+import { avatarPets } from '@/lib/chatAvatar';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -61,6 +62,17 @@ export async function GET() {
       .in('id', clientIds.slice(i, i + 200));
     for (const c of clients || []) clientsById[c.id] = c;
   }
+  // Each client's pets, for the picture beside the conversation
+  // (lib/chatAvatar.js): WhatsApp never shares profile pictures.
+  const petsByClient = {};
+  for (let i = 0; i < clientIds.length; i += 200) {
+    const { data: pets } = await supabaseAdmin
+      .from('patients')
+      .select('client_id, name, species, profile_photo_url, deceased, rehomed')
+      .in('client_id', clientIds.slice(i, i + 200))
+      .or('deceased.is.null,deceased.eq.false');
+    for (const p of pets || []) (petsByClient[p.client_id] ||= []).push(p);
+  }
   const data = (latest || [])
     .map((r) => ({ ...r, clients: r.client_id ? clientsById[r.client_id] || null : null }))
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
@@ -81,6 +93,7 @@ export async function GET() {
         thread_key: threadKey,
         client_id: row.client_id,
         client: row.clients,
+        pets: row.client_id ? avatarPets(petsByClient[row.client_id]) : [],
         phone: row.phone,
         channel: row.channel,
         // A photo with no caption has an empty body — fall back to a

@@ -12,6 +12,7 @@
 
 'use client';
 
+import ChatAvatar from '@/app/_components/ChatAvatar';
 import DictateButton from '@/app/_components/DictateButton';
 import ShareToTeamButton from '@/app/_components/ShareToTeamButton';
 import { messageAssignees, assigneeLabel } from '@/lib/messageAssignees';
@@ -35,6 +36,7 @@ export default function ClientMessageThreadPage() {
   const { id } = useParams();
   const router = useRouter();
   const [client, setClient] = useState(null);
+  const [pets, setPets] = useState([]); // for the picture by the name (lib/chatAvatar.js)
   const [staff, setStaff] = useState([]);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,9 +99,11 @@ export default function ClientMessageThreadPage() {
       fetch(`/api/clients/${id}`).then((res) => (res.ok ? res.json() : null)).catch(() => null),
       fetch('/api/staff').then((res) => res.json()).catch(() => null),
       loadMessages(),
-    ]).then(([clientData, staffData]) => {
+      fetch(`/api/patients?client_id=${id}`).then((res) => (res.ok ? res.json() : [])).catch(() => []),
+    ]).then(([clientData, staffData, , petData]) => {
       if (cancelled) return;
       setClient(clientData);
+      if (Array.isArray(petData)) setPets(petData);
       if (Array.isArray(staffData)) {
         setStaff(staffData);
         writeViewCache(STAFF_CACHE_KEY, staffData);
@@ -363,7 +367,8 @@ export default function ClientMessageThreadPage() {
         <h1>
           {/* A blank line of the same height while a first visit loads. */}
           {client ? (
-            <a href={`/clients/${id}`}>
+            <a href={`/clients/${id}`} className="thread-client">
+              <ChatAvatar clientName={client.full_name} pets={pets} size={34} />
               {client.full_name}
               {client.client_number ? ` (Client #${client.client_number})` : ''}
             </a>
