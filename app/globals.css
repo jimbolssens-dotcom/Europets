@@ -16897,3 +16897,28 @@ a.thread-client { display: inline-flex; align-items: center; }
 .day-plan-course-options { display: flex; flex-wrap: wrap; gap: 4px; border: none; border-radius: 0; overflow: visible; }
 .day-plan-course-options .day-plan-segment { border: 1px solid var(--pink); border-radius: 999px; padding: 0.3rem 0.65rem; }
 .day-plan-course-options .day-plan-segment:last-child { border-right: 1px solid var(--pink); }
+
+/* 🏠 Goes home on a consult medicine line (migration 254): a small chip
+   after the name, grey (given here) or green (goes home). */
+button.goes-home-chip {
+  width: auto;
+  margin: 0 0 0 6px;
+  padding: 1px 7px;
+  border: 1.5px solid #d6d6d6;
+  border-radius: 999px;
+  background: #fff;
+  color: #999;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+  box-shadow: none;
+  cursor: pointer;
+  vertical-align: baseline;
+  white-space: nowrap;
+  filter: grayscale(1);
+}
+button.goes-home-chip.on { border-color: #3f8f5f; background: #eaf6ee; color: #2f7550; filter: none; }
+
+/* "Usually goes home" in the Catalog's method cell. */
+button.catalog-home-toggle { width: auto; margin: 4px 0 0; padding: 1px 8px; border: 1.5px solid #d6d6d6; border-radius: 999px; background: #fff; color: #999; font-size: 0.72rem; font-weight: 700; box-shadow: none; white-space: nowrap; filter: grayscale(1); }
+button.catalog-home-toggle.on { border-color: #3f8f5f; background: #eaf6ee; color: #2f7550; filter: none; }

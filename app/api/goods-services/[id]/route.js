@@ -41,6 +41,8 @@ export async function PATCH(request, { params }) {
     }
     update.administration_method = body.administration_method || null;
   }
+  // "Usually goes home" (migration 254): new lines of it start as 🏠.
+  if (body.usually_goes_home !== undefined) update.usually_goes_home = !!body.usually_goes_home;
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });

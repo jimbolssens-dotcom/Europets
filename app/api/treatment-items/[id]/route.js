@@ -49,6 +49,9 @@ export async function PATCH(request, { params }) {
     }
     update.administration_method = body.administration_method || null;
   }
+  // The 🏠 chip (migration 254): true/false is staff's choice, null hands
+  // it back to the automatic rule (lib/goesHome.js).
+  if (body.goes_home !== undefined) update.goes_home = body.goes_home === null ? null : !!body.goes_home;
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'no editable fields provided' }, { status: 400 });
@@ -58,7 +61,7 @@ export async function PATCH(request, { params }) {
     .from('treatment_items')
     .update(update)
     .eq('id', params.id)
-    .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price)')
+    .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price, usually_goes_home)')
     .single();
 
   if (error) {

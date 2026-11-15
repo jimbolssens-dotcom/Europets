@@ -5,6 +5,7 @@
 
 'use client';
 
+import { itemGoesHome } from '@/lib/goesHome';
 import DayProcedureStartForm from '@/app/_components/DayProcedureStartForm';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -693,6 +694,21 @@ export default function ConsultDetailPage() {
   // Quantity/instructions/administration_method are all correctable
   // straight from the list — same on-blur-commit pattern as the invoice
   // page's own line-item editing.
+  // The 🏠 chip (migration 254): saved on its own, so instructions still
+  // being typed on that line aren't thrown away.
+  async function setGoesHome(itemId, value) {
+    const res = await fetch(`/api/treatment-items/${itemId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goes_home: value }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setTreatItemError(data.error || 'Failed to save changes');
+    }
+    loadTreatmentItems();
+  }
+
   async function saveTreatmentItemField(itemId, patch) {
     const res = await fetch(`/api/treatment-items/${itemId}`, {
       method: 'PATCH',
@@ -1774,9 +1790,26 @@ export default function ConsultDetailPage() {
                   {t.goods_services?.name}
                   {subcategoryName(subcategories, t.goods_services?.subcategory_id) &&
                     ` (${subcategoryName(subcategories, t.goods_services?.subcategory_id)})`}
+                  {/* 🏠 Goes home (migration 254, lib/goesHome.js): a label
+                      to print and a line in Home care, apart from the
+                      dispensing fee. Tap to switch. */}
+                  {t.goods_services?.main_category === 'product' && (() => {
+                    const home = itemGoesHome({ ...t, instructions: draft?.instructions ?? t.instructions });
+                    return (
+                      <button
+                        type="button"
+                        className={`goes-home-chip${home ? ' on' : ''}`}
+                        onClick={() => setGoesHome(t.id, !home)}
+                        title={home ? 'Goes home: label to print, in Home care. Tap if it was given here.' : 'Given here. Tap if it goes home.'}
+                        aria-pressed={home}
+                      >
+                        🏠{home ? ' Goes home' : ''}
+                      </button>
+                    );
+                  })()}
                   {/* Only once there are instructions to put on the label
                       (typed, dictated or from the dose guide). */}
-                  {t.administration_method === 'dispense' && (draft?.instructions ?? t.instructions ?? '').trim() && (
+                  {itemGoesHome({ ...t, instructions: draft?.instructions ?? t.instructions }) && (draft?.instructions ?? t.instructions ?? '').trim() && (
                     <button
                       type="button"
                       className="treatment-label-print"
@@ -1872,7 +1905,7 @@ export default function ConsultDetailPage() {
           opened. Filled in from the dispensed medicines, plus chips and
           templates. */}
       {activeTab === 'homecare' && (
-        <HomeCareCard visitId={id} defaultOpen reloadKey={treatmentItems.filter((t) => t.administration_method === 'dispense').map((t) => `${t.id}:${t.instructions || ''}`).join(',')} />
+        <HomeCareCard visitId={id} defaultOpen reloadKey={treatmentItems.filter((t) => itemGoesHome(t)).map((t) => `${t.id}:${t.instructions || ''}`).join(',')} />
       )}
 
       <div hidden={activeTab !== 'reports'}>

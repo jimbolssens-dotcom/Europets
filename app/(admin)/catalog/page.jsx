@@ -155,6 +155,16 @@ export default function CatalogPage() {
     loadItems();
   }
 
+  // "Usually goes home" (migration 254): saved straight away, like the method.
+  async function updateUsuallyGoesHome(item, value) {
+    await fetch(`/api/goods-services/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usually_goes_home: value }),
+    });
+    loadItems();
+  }
+
   async function toggleItemActive(item) {
     setDeleteError(null);
     const res = await fetch(`/api/goods-services/${item.id}`, {
@@ -669,6 +679,19 @@ export default function CatalogPage() {
                       <option value="sc">Subcutaneous (SC)</option>
                       <option value="im">Intramuscular (IM)</option>
                     </select>
+                    {/* Migration 254: goes home without the dispensing fee
+                        (a dispensed one always does). */}
+                    {item.administration_method !== 'dispense' && (
+                      <button
+                        type="button"
+                        className={`catalog-home-toggle${item.usually_goes_home ? ' on' : ''}`}
+                        onClick={() => updateUsuallyGoesHome(item, !item.usually_goes_home)}
+                        title="Usually goes home: label to print and in Home care, without the dispensing fee"
+                        aria-pressed={!!item.usually_goes_home}
+                      >
+                        🏠 {item.usually_goes_home ? 'Usually goes home' : 'Given here'}
+                      </button>
+                    )}
                   </td>
                 )}
                 <td className="cat-status">{item.active ? 'active' : 'inactive'}</td>

@@ -7,6 +7,7 @@
 //                             the total, so status can't drift from what
 //                             was actually collected.
 
+import { lineGoesHome } from '@/lib/goesHome';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
@@ -98,7 +99,24 @@ export async function GET(request, { params }) {
   // Credit carried over to or from this invoice (migration 238).
   const credit_transfers = await creditTransfersFor(params.id);
 
-  return NextResponse.json({ ...invoice, line_items: lineItems, payments, discounts, credit_transfers });
+  // Which lines go home (a label to print), apart from the dispensing fee
+  // (migration 254, lib/goesHome.js): dispensed, or made from a treatment
+  // item that goes home.
+  const sourceIds = [...new Set((lineItems || []).flatMap((li) => li.source_treatment_item_ids || []))];
+  const sourceById = {};
+  for (let i = 0; i < sourceIds.length; i += 200) {
+    const { data: rows } = await supabase
+      .from('treatment_items')
+      .select('id, instructions, administration_method, goes_home, hospitalization_note_id, goods_services(usually_goes_home)')
+      .in('id', sourceIds.slice(i, i + 200));
+    for (const r of rows || []) sourceById[r.id] = r;
+  }
+  const lines = (lineItems || []).map((li) => ({
+    ...li,
+    goes_home: lineGoesHome(li, (li.source_treatment_item_ids || []).map((id) => sourceById[id]).filter(Boolean)),
+  }));
+
+  return NextResponse.json({ ...invoice, line_items: lines, payments, discounts, credit_transfers });
 }
 
 export async function PATCH(request, { params }) {

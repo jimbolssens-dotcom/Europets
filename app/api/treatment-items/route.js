@@ -57,7 +57,7 @@ export async function GET(request) {
 
   let query = supabase
     .from('treatment_items')
-    .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price)')
+    .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price, usually_goes_home)')
     .order('created_at', { ascending: true });
   query = visitId ? query.eq('visit_id', visitId) : query.eq('hospitalization_note_id', hospitalizationNoteId);
 
@@ -129,7 +129,7 @@ export async function POST(request) {
         billable: resolvedBillable,
       },
     ])
-    .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price)')
+    .select('*, goods_services(name, main_category, subcategory_id, pricing_type, unit, base_price, usually_goes_home)')
     .single();
 
   if (error) {

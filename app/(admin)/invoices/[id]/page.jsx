@@ -493,10 +493,11 @@ export default function InvoiceDetailPage() {
   const invoiceSections = groupLineItemsBySection(invoice.line_items);
   const editable = invoice.status === 'unpaid' || invoice.status === 'partially_paid';
   const columnCount = editable ? 8 : 7;
-  // Only the medications actually dispensed to go home get a printable
-  // label — an SC/IM injection given in-clinic (or a non-medication
-  // product) has nothing to print.
-  const medicationLineItems = invoice.line_items.filter((li) => li.administration_method === 'dispense');
+  // Only medicines that go home get a printable label: dispensed, or marked
+  // 🏠 (migration 254, worked out by the invoice API with lib/goesHome.js).
+  // An injection given in the clinic, or a non-medication product, has
+  // nothing to print.
+  const medicationLineItems = invoice.line_items.filter((li) => li.goes_home || li.administration_method === 'dispense');
 
   return (
     <div className="invoice-page">
