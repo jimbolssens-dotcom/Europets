@@ -7,11 +7,14 @@
 //        bill_once (see migration 127) marks a catalog-linked task that
 //        should only ever charge the invoice once for the whole stay no
 //        matter how many times it's logged — see lib/planItemBilling.js.
+//        course_days (migration 253): how long a daily medicine runs, for
+//        its dose bar; empty = open-ended.
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
+import { cleanCourseDays } from '@/lib/doseCourse';
 
 export async function GET(request, { params }) {
   const { data, error } = await supabase
@@ -30,7 +33,7 @@ const VALID_FREQUENCIES = ['once_daily', 'twice_daily', 'one_time'];
 
 export async function POST(request, { params }) {
   const body = await request.json();
-  const { label, goods_service_id, instructions, is_surgical, frequency, quantity, bill_once } = body;
+  const { label, goods_service_id, instructions, is_surgical, frequency, quantity, bill_once, course_days } = body;
 
   if (!label) {
     return NextResponse.json({ error: 'label is required' }, { status: 400 });
@@ -41,6 +44,10 @@ export async function POST(request, { params }) {
   if (quantity !== undefined && !(Number(quantity) > 0)) {
     return NextResponse.json({ error: 'quantity must be a positive number' }, { status: 400 });
   }
+
+  // Course length for the dose bar (migration 253); empty = open-ended.
+  const course = cleanCourseDays(course_days);
+  if (course.error) return NextResponse.json({ error: course.error }, { status: 400 });
 
   let resolvedMethod = null;
   if (goods_service_id) {
@@ -65,6 +72,7 @@ export async function POST(request, { params }) {
         frequency: frequency || 'once_daily',
         quantity: quantity ? Number(quantity) : 1,
         bill_once: !!bill_once,
+        course_days: course.value,
       },
     ])
     .select('*, goods_services(name)')

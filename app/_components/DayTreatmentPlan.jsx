@@ -51,6 +51,7 @@ import { dubaiDayBoundaries } from '@/lib/dubaiTime';
 import { supabase } from '@/lib/supabaseClient';
 import { temperatureError } from '@/lib/bodyTemperature';
 import { uaeDate } from '@/lib/wallPlanItems';
+import { COURSE_PRESETS, densityFor, doseCourse } from '@/lib/doseCourse';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 const QUICK_TASKS = ['Cage Cleaned', 'Water Changed', 'Food Given', 'Patient Checked', 'Walked / Exercised'];
@@ -109,6 +110,7 @@ export default function DayTreatmentPlan({
   const [catalogGoodsServiceId, setCatalogGoodsServiceId] = useState('');
   const [catalogInstructions, setCatalogInstructions] = useState('');
   const [catalogFrequency, setCatalogFrequency] = useState('once_daily');
+  const [catalogCourse, setCatalogCourse] = useState(null); // course length (migration 253); null = open
   const [catalogQuantity, setCatalogQuantity] = useState('1');
   // Guideline doses (Dose guidelines page): the quantity per tap is the
   // dose, filled in from the weight; well outside the range needs a reason.
@@ -118,6 +120,7 @@ export default function DayTreatmentPlan({
   const [showCustomAdd, setShowCustomAdd] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
   const [customFrequency, setCustomFrequency] = useState('once_daily');
+  const [customCourse, setCustomCourse] = useState(null);
   const [error, setError] = useState(null);
   const [editingItemId, setEditingItemId] = useState(null);
   const [editGoodsServiceId, setEditGoodsServiceId] = useState('');
@@ -125,6 +128,7 @@ export default function DayTreatmentPlan({
   const [editFrequency, setEditFrequency] = useState('once_daily');
   const [editQuantity, setEditQuantity] = useState('1');
   const [editBillOnce, setEditBillOnce] = useState(false);
+  const [editCourse, setEditCourse] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);
@@ -200,6 +204,21 @@ export default function DayTreatmentPlan({
     return planNotes
       .filter((n) => n.plan_item_ids?.includes(planItemId))
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  }
+
+  // The dose bar's data (lib/doseCourse.js): doses logged per UAE day since
+  // the task went on the plan.
+  function courseFor(item) {
+    if (item.frequency !== 'once_daily' && item.frequency !== 'twice_daily') return null;
+    const countsByDate = {};
+    for (const n of doneEver(item.id)) countsByDate[n.note_date] = (countsByDate[n.note_date] || 0) + 1;
+    return doseCourse({
+      frequency: item.frequency,
+      startDate: uaeDate(new Date(item.created_at)),
+      today,
+      courseDays: item.course_days ?? null,
+      countsByDate,
+    });
   }
 
   function taskLine(item) {
@@ -640,9 +659,10 @@ export default function DayTreatmentPlan({
 
   async function addCustomTask() {
     if (!customLabel.trim()) return;
-    await addPlanItem({ label: customLabel.trim(), frequency: customFrequency });
+    await addPlanItem({ label: customLabel.trim(), frequency: customFrequency, course_days: customFrequency === 'one_time' ? null : customCourse });
     setCustomLabel('');
     setCustomFrequency('once_daily');
+    setCustomCourse(null);
     setShowCustomAdd(false);
   }
 
@@ -674,7 +694,9 @@ export default function DayTreatmentPlan({
       frequency: catalogFrequency,
       quantity: catalogQuantity,
       bill_once: catalogBillOnce,
+      course_days: catalogFrequency === 'one_time' ? null : catalogCourse,
     });
+    setCatalogCourse(null);
     // A plan item that's a lab test is also ordered as a diagnostic the
     // moment it lands on the plan (not just once its "Enter Test Result"
     // button below is first clicked) — same find-or-create as
@@ -748,6 +770,7 @@ export default function DayTreatmentPlan({
     setEditFrequency(item.frequency || 'once_daily');
     setEditQuantity(String(item.quantity ?? 1));
     setEditBillOnce(!!item.bill_once);
+    setEditCourse(item.course_days ?? null);
   }
 
   function cancelEditItem() {
@@ -770,6 +793,7 @@ export default function DayTreatmentPlan({
         frequency: editFrequency,
         quantity: editQuantity,
         bill_once: editBillOnce,
+        course_days: editFrequency === 'one_time' ? null : editCourse,
       }),
     });
     setEditSaving(false);
@@ -940,6 +964,7 @@ export default function DayTreatmentPlan({
           const last = done[done.length - 1];
           const isTest = checklistItemAction(item, catalog, subcategories) === 'test';
           const freqStatus = taskFrequencyStatus(item, done);
+          const course = courseFor(item);
           return (
             <div key={item.id} className={`day-plan-task${done.length ? ' done' : ''}${freqStatus.overdue ? ' overdue' : ''}`}>
               <button
@@ -970,6 +995,7 @@ export default function DayTreatmentPlan({
                       : 'Not done yet today'}
                 </span>
                 {freqStatus.label && <span className="day-plan-task-warning">⚠ {freqStatus.label}</span>}
+                {course && <DoseBar course={course} />}
               </button>
               {isTest && onOpenReport && (
                 <button
@@ -1022,6 +1048,8 @@ export default function DayTreatmentPlan({
                     name={`edit-schedule-${item.id}`}
                     frequency={editFrequency}
                     onFrequencyChange={setEditFrequency}
+                    course={editCourse}
+                    onCourseChange={setEditCourse}
                     billOnce={editBillOnce}
                     onBillOnceChange={setEditBillOnce}
                     showBillOnce={!!editGoodsServiceId}
@@ -1116,6 +1144,8 @@ export default function DayTreatmentPlan({
             name="catalog-schedule"
             frequency={catalogFrequency}
             onFrequencyChange={setCatalogFrequency}
+            course={catalogCourse}
+            onCourseChange={setCatalogCourse}
             billOnce={catalogBillOnce}
             onBillOnceChange={setCatalogBillOnce}
             showBillOnce
@@ -1133,7 +1163,7 @@ export default function DayTreatmentPlan({
             value={customLabel}
             onChange={(e) => setCustomLabel(e.target.value)}
           />
-          <ScheduleControl name="custom-schedule" frequency={customFrequency} onFrequencyChange={setCustomFrequency} />
+          <ScheduleControl name="custom-schedule" frequency={customFrequency} onFrequencyChange={setCustomFrequency} course={customCourse} onCourseChange={setCustomCourse} />
           <button type="button" onClick={addCustomTask} disabled={!customLabel.trim()}>
             Add
           </button>
@@ -1194,6 +1224,8 @@ export default function DayTreatmentPlan({
                         name={`edit-schedule-${item.id}`}
                         frequency={editFrequency}
                         onFrequencyChange={setEditFrequency}
+                        course={editCourse}
+                        onCourseChange={setEditCourse}
                         billOnce={editBillOnce}
                         onBillOnceChange={setEditBillOnce}
                         showBillOnce={!!editGoodsServiceId}
@@ -1233,13 +1265,33 @@ const FREQUENCY_OPTIONS = [
   { value: 'one_time', label: 'One-time only' },
 ];
 
+// One block per day, one stripe per dose (two for twice daily): given,
+// missed, due today, still to come. Long stays draw thinner (densityFor)
+// so 40 days still fit the tile.
+function DoseBar({ course }) {
+  return (
+    <span className={`dose-course${course.over ? ' over' : ''}`}>
+      <span className={`dose-bar dose-bar-${densityFor(course.total)}`} aria-hidden="true">
+        {course.days.map((d) => (
+          <span key={d.date} className="dose-day">
+            {d.doses.map((state, k) => (
+              <i key={k} className={`dose dose-${state}`} />
+            ))}
+          </span>
+        ))}
+      </span>
+      <span className="dose-course-label">{course.label}</span>
+    </span>
+  );
+}
+
 // Shared by the catalog-add, custom-add and edit forms: the three
 // frequency choices (migration 105) as a connected segmented control, plus
 // — for a catalog-linked item — the "Charge once" toggle (migration 127,
 // see lib/planItemBilling.js) grouped in the same panel so both read as one
 // "how this task bills and schedules" decision instead of two disconnected
 // controls.
-function ScheduleControl({ name, frequency, onFrequencyChange, billOnce, onBillOnceChange, showBillOnce = false }) {
+function ScheduleControl({ name, frequency, onFrequencyChange, course = null, onCourseChange, billOnce, onBillOnceChange, showBillOnce = false }) {
   return (
     <div className="day-plan-schedule">
       <div className="day-plan-schedule-heading">Schedule</div>
@@ -1257,6 +1309,26 @@ function ScheduleControl({ name, frequency, onFrequencyChange, billOnce, onBillO
           </button>
         ))}
       </div>
+      {onCourseChange && frequency !== 'one_time' && (
+        // How many days the course runs, for the dose bar (migration 253).
+        <div className="day-plan-course">
+          <span className="day-plan-schedule-heading">Course</span>
+          <div className="day-plan-segmented day-plan-course-options" role="radiogroup" aria-label={`${name} course length`}>
+            {[null, ...new Set([...COURSE_PRESETS, ...(course && !COURSE_PRESETS.includes(course) ? [course] : [])])].map((d) => (
+              <button
+                key={d ?? 'open'}
+                type="button"
+                role="radio"
+                aria-checked={course === d}
+                className={`day-plan-segment${course === d ? ' active' : ''}`}
+                onClick={() => onCourseChange(d)}
+              >
+                {d ? `${d} d` : 'open'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {showBillOnce && (
         <>
           <div className="day-plan-schedule-divider" />

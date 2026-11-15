@@ -9,6 +9,7 @@
 //        (hospitalization_notes.plan_item_id) are kept, just unlinked
 //        (on delete set null — see migrations/076).
 
+import { cleanCourseDays } from '@/lib/doseCourse';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
@@ -18,7 +19,7 @@ const VALID_FREQUENCIES = ['once_daily', 'twice_daily', 'one_time'];
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
-  const { label, goods_service_id, instructions, is_surgical, frequency, quantity, bill_once } = body;
+  const { label, goods_service_id, instructions, is_surgical, frequency, quantity, bill_once, course_days } = body;
 
   if (!label) {
     return NextResponse.json({ error: 'label is required' }, { status: 400 });
@@ -66,6 +67,12 @@ export async function PATCH(request, { params }) {
   if (frequency !== undefined) update.frequency = frequency;
   if (quantity !== undefined) update.quantity = Number(quantity);
   if (bill_once !== undefined) update.bill_once = !!bill_once;
+  // Course length for the dose bar (migration 253); empty = open-ended.
+  if (course_days !== undefined) {
+    const course = cleanCourseDays(course_days);
+    if (course.error) return NextResponse.json({ error: course.error }, { status: 400 });
+    update.course_days = course.value;
+  }
 
   const { data, error } = await supabaseAdmin
     .from('hospitalization_plan_items')

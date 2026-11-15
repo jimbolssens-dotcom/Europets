@@ -16867,3 +16867,33 @@ button.rx-x {
 .chat-avatar-photos.two img:first-child { left: 0; top: 0; z-index: 1; }
 .chat-avatar-photos.two img:last-child { right: 0; bottom: 0; }
 a.thread-client { display: inline-flex; align-items: center; }
+
+/* Dose bar on a daily task of the hospital Day Treatment Plan (migration
+   253, lib/doseCourse.js): one block per day, one stripe per dose. The
+   blocks share the tile's width, so a long stay just draws them thinner. */
+.dose-course { display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 2px; }
+.dose-bar { display: flex; flex: 1; min-width: 0; gap: 2px; }
+.dose-day { flex: 1 1 0; min-width: 0; max-width: 22px; display: flex; flex-direction: column; gap: 2px; }
+.dose { display: block; height: 6px; border-radius: 2px; background: #e9e9e9; }
+.dose-given { background: #3f8f5f; }
+.dose-missed { background: #f3c9c9; }
+.dose-due { background: #fff; box-shadow: inset 0 0 0 1.5px #3f8f5f; }
+.dose-future { background: #efefef; opacity: 0.6; }
+.dose-bar-dense { gap: 1px; }
+.dose-bar-dense .dose { border-radius: 1px; }
+.dose-bar-dense .dose-due { box-shadow: inset 0 0 0 1px #3f8f5f; }
+/* 31+ days: no gaps; every other day a shade darker so days stay countable. */
+.dose-bar-tight { gap: 0; }
+.dose-bar-tight .dose-day { max-width: none; gap: 1px; }
+.dose-bar-tight .dose { border-radius: 0; }
+.dose-bar-tight .dose-day:nth-child(even) .dose-given { background: #2f7550; }
+.dose-bar-tight .dose-day:nth-child(even) .dose-missed { background: #e9b3b3; }
+.dose-bar-tight .dose-due { box-shadow: none; background: #a9d4b8; }
+.dose-course-label { font-size: 0.7rem; font-weight: 700; color: #3f8f5f; white-space: nowrap; }
+.dose-course.over .dose-course-label { color: #b5791f; }
+
+/* Course length chips under Schedule (wrap on a phone). */
+.day-plan-course { display: flex; flex-direction: column; gap: 0.35rem; }
+.day-plan-course-options { display: flex; flex-wrap: wrap; gap: 4px; border: none; border-radius: 0; overflow: visible; }
+.day-plan-course-options .day-plan-segment { border: 1px solid var(--pink); border-radius: 999px; padding: 0.3rem 0.65rem; }
+.day-plan-course-options .day-plan-segment:last-child { border-right: 1px solid var(--pink); }
