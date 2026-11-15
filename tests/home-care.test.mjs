@@ -108,3 +108,22 @@ test('log lines read plainly', () => {
   assert.equal(logLine({ kind: 'deworm', product: 'Vermis-EX' }), '🪱 Vermis-EX (dewormed)');
   assert.equal(logLine({ kind: 'weight', value: 4.1 }), '⚖️ 4.1 kg');
 });
+
+// Hospital stays log every oral dose as its own dispensed item (Jim, 15 Nov).
+import { medsFromTreatmentItems as medsOnce, missingMeds as missingOnce } from '../lib/homeCare.js';
+
+test('a medicine logged many times is suggested once, with its newest instructions', () => {
+  const doses = Array.from({ length: 8 }, (_, i) => ({ id: `t${i}`, administration_method: 'dispense', goods_services: { name: 'Doxycare 40mg (Doxycycline) ^' }, instructions: i === 7 ? '' : i < 3 ? '1 tablet once daily' : '1 tablet twice daily for 10 days' }));
+  doses.push({ id: 'm1', administration_method: 'dispense', goods_services: { name: 'Meloxivet Gotas 0.5 mg/ml (Oral drops)' }, instructions: '' });
+  const meds = medsOnce(doses);
+  assert.deepEqual(meds.map((m) => m.name), ['Doxycare 40mg (Doxycycline)', 'Meloxivet Gotas 0.5 mg/ml (Oral drops)']);
+  assert.equal(meds[0].dose, '1 tablet twice daily for 10 days');
+  assert.equal(meds[0].times_per_day, 2);
+  assert.equal(meds[0].days, 10);
+});
+
+test('a medicine already on the plan, even under an old per-dose key, is not offered again', () => {
+  const suggested = medsOnce([{ id: 't9', administration_method: 'dispense', goods_services: { name: 'Doxycare 40mg (Doxycycline)' } }]);
+  assert.equal(missingOnce([{ key: 'm_old-dose-id', kind: 'med', name: 'Doxycare 40mg (Doxycycline)' }], suggested).length, 0);
+  assert.equal(missingOnce([], suggested).length, 1);
+});

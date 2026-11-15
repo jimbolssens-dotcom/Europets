@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   HOME_CARE_TASKS, HOME_CARE_WATCH, HOME_CARE_TEMPLATES, MAX_TIMES_PER_DAY,
-  applyTemplate, newKey, taskItem, watchItem, planLastDay,
+  applyTemplate, newKey, taskItem, watchItem, planLastDay, missingMeds as missingMedsFor,
 } from '@/lib/homeCare';
 
 function shortDate(iso) {
@@ -58,7 +58,7 @@ export default function HomeCareCard({ visitId = null, hospitalizationId = null,
   const saved = data?.plan || null;
   const dirty = useMemo(() => JSON.stringify(items) !== JSON.stringify(saved ? saved.items : []), [items, saved]);
   // Dispensed medicines not on the list yet (added to the consult after it was saved).
-  const missingMeds = (data?.suggestedMeds || []).filter((m) => !items.some((i) => i.key === m.key));
+  const missingMeds = missingMedsFor(items, data?.suggestedMeds);
 
   if (!data) return null;
 
