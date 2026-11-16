@@ -16937,3 +16937,11 @@ button.catalog-home-toggle.on { border-color: #3f8f5f; background: #eaf6ee; colo
   .day-plan-schedule .day-plan-segmented:not(.day-plan-course-options) { display: flex; border: none; border-radius: 0; gap: 4px; overflow: visible; }
   .day-plan-schedule .day-plan-segmented:not(.day-plan-course-options) .day-plan-segment { border: 1px solid var(--pink); border-radius: 999px; padding: 0.35rem 0.7rem; }
 }
+
+/* For: Owner | Vet on a scan report's share buttons (ReportShareActions). */
+.share-version { display: inline-flex; align-items: center; gap: 2px; margin-right: 4px; }
+.share-version-label { font-size: 0.75rem; color: #888; margin-right: 2px; }
+.share-version button { width: auto; margin: 0; padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 700; border: 1px solid var(--pink); background: #fff; color: var(--pink-dark); box-shadow: none; }
+.share-version button:first-of-type { border-radius: 999px 0 0 999px; }
+.share-version button:last-of-type { border-radius: 0 999px 999px 0; border-left: none; }
+.share-version button.on { background: var(--pink); color: #fff; }

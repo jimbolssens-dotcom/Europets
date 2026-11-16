@@ -12,12 +12,20 @@ import { useState } from 'react';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { appOrigin } from '@/lib/appOrigin';
 
-export default function ReportShareActions({ apiBase, reportId, client, patient, reportLabel, pdfPath = 'report-pdf' }) {
+// versions: a scan report with both a client summary and a clinical report
+// (ultrasound, X-ray, gastroscopy). A For: Owner | Vet switch picks which
+// one the buttons download and send; the clinical one is for another
+// clinic, so its WhatsApp opens without a preset number (Jim, 16 Nov).
+export default function ReportShareActions({ apiBase, reportId, client, patient, reportLabel, pdfPath = 'report-pdf', versions = false }) {
   const [emailState, setEmailState] = useState('idle'); // 'idle' | 'sending' | 'sent' | 'error'
   const [emailError, setEmailError] = useState(null);
+  const [audience, setAudience] = useState('client'); // 'client' | 'clinical'
+  const clinical = versions && audience === 'clinical';
+  const query = clinical ? '?version=clinical' : '';
+  const label = clinical ? `clinical ${reportLabel}` : reportLabel;
 
   function reportPdfUrl() {
-    return `${appOrigin()}${apiBase}/${reportId}/${pdfPath}`;
+    return `${appOrigin()}${apiBase}/${reportId}/${pdfPath}${query}`;
   }
 
   function clientLabel() {
@@ -29,6 +37,11 @@ export default function ReportShareActions({ apiBase, reportId, client, patient,
   }
 
   function shareViaWhatsApp() {
+    if (clinical) {
+      // For another clinic: choose the chat in WhatsApp.
+      window.location.href = `whatsapp://send?text=${encodeURIComponent(`Clinical ${reportLabel} for ${patientLabel()} from Europets Clinic: ${reportPdfUrl()}`)}`;
+      return;
+    }
     const message = `Hi ${clientLabel()}, here is the ${reportLabel} for ${patientLabel()}: ${reportPdfUrl()}`;
     openWhatsApp(client?.phone, message);
   }
@@ -37,8 +50,8 @@ export default function ReportShareActions({ apiBase, reportId, client, patient,
     if (!client?.id) return;
     setEmailState('sending');
     setEmailError(null);
-    const subject = `${patientLabel()} — ${reportLabel}`;
-    const text = `Hi ${clientLabel()},\n\nHere is the ${reportLabel} for ${patientLabel()}: ${reportPdfUrl()}\n\nPlease don't hesitate to reach out if you have any questions.`;
+    const subject = `${patientLabel()} — ${label}`;
+    const text = `Hi ${clientLabel()},\n\nHere is the ${label} for ${patientLabel()}: ${reportPdfUrl()}\n\nPlease don't hesitate to reach out if you have any questions.`;
     try {
       const res = await fetch(`/api/clients/${client.id}/send-email`, {
         method: 'POST',
@@ -56,10 +69,22 @@ export default function ReportShareActions({ apiBase, reportId, client, patient,
 
   return (
     <div className="share-actions">
-      <a className="share-btn" href={`${apiBase}/${reportId}/${pdfPath}`} target="_blank" rel="noreferrer">
+      {versions && (
+        <span className="share-version" role="radiogroup" aria-label="Which report">
+          <span className="share-version-label">For:</span>
+          {[['client', 'Owner'], ['clinical', 'Vet']].map(([v, text]) => (
+            <button key={v} type="button" role="radio" aria-checked={audience === v} className={audience === v ? 'on' : ''}
+              title={v === 'clinical' ? 'The clinical report, e.g. for another clinic' : "The owner's summary"}
+              onClick={() => { setAudience(v); setEmailState('idle'); }}>
+              {text}
+            </button>
+          ))}
+        </span>
+      )}
+      <a className="share-btn" href={`${apiBase}/${reportId}/${pdfPath}${query}`} target="_blank" rel="noreferrer">
         📄 Download
       </a>
-      <button type="button" className="share-btn" onClick={shareViaWhatsApp} disabled={!client?.phone}>
+      <button type="button" className="share-btn" onClick={shareViaWhatsApp} disabled={!clinical && !client?.phone}>
         💬 WhatsApp
       </button>
       <button type="button" className="share-btn" onClick={shareViaEmail} disabled={!client?.email || emailState === 'sending'}>

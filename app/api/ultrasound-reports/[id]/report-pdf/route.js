@@ -17,6 +17,9 @@ export const maxDuration = 60;
 const MAX_PHOTOS = 12;
 
 export async function GET(request, { params }) {
+  // ?version=clinical: the clinical report (ai_summary), to send to
+  // another clinic; otherwise the owner's summary as before (Jim, 16 Nov).
+  const clinical = new URL(request.url).searchParams.get('version') === 'clinical';
   const { data: report, error } = await supabase
     .from('ultrasound_reports')
     .select('ai_summary, client_summary, performed_at, visit_id, hospitalization_id, staff(full_name)')
@@ -60,13 +63,13 @@ export async function GET(request, { params }) {
 
   const pdfBytes = await buildProcedureReportPdf({
     procedureType: 'ultrasound',
-    procedureTitle: 'Ultrasound Report',
+    procedureTitle: clinical ? 'Ultrasound Report (clinical)' : 'Ultrasound Report',
     patient,
     client,
     clinic,
     performedAt: report.performed_at,
     staffName: report.staff?.full_name,
-    sections: [{ text: report.client_summary || report.ai_summary }],
+    sections: [{ text: clinical ? report.ai_summary || report.client_summary : report.client_summary || report.ai_summary }],
     photos,
   });
 

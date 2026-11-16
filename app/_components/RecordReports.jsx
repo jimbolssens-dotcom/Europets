@@ -140,7 +140,8 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
           title={group.hasClientSummary ? 'Clinical Report' : 'Client Report'} />}
         {group.hasClientSummary && report.client_summary && <ClientReportEditor reportId={report.id} apiBase={group.apiBase}
           savedReport={report.client_summary} onSaved={group.reload} field="client_summary" title="Client Summary" />}
-        <ReportShareActions reportId={report.id} apiBase={group.apiBase} client={record.clients} patient={record.patients} reportLabel={group.label.toLowerCase()} />
+        <ReportShareActions reportId={report.id} apiBase={group.apiBase} client={record.clients} patient={record.patients} reportLabel={group.label.toLowerCase()}
+          versions={!!(group.hasClientSummary && report.client_summary && report.ai_summary)} />
         <AudioRecorder entityType={group.entityType} entityId={report.id} onRefresh={group.reload} />
         <AttachmentSection entityType={group.entityType} entityId={report.id}
           onAttachmentsChange={(count) => setHasAttachment((prev) => ({ ...prev, [report.id]: count }))} />
