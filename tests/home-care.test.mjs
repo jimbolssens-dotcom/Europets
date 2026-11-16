@@ -155,3 +155,16 @@ test('the home care line gets the worked-out days, and follows a change of times
   // Kept through saving, so it still follows later changes.
   assert.equal(cleanDays([med])[0].supply, 10);
 });
+
+// The card keeps up with a medicine edited after it opened (Jim, 16 Nov).
+import { refreshSuggestedMeds } from '../lib/homeCare.js';
+
+test('an untouched suggested line takes the new suggestion; an edited one stays', () => {
+  const g = { name: 'Cladaxxa 400mg/100mg chewable tablet for dogs', unit: null };
+  const [old] = medsDays([{ id: 'c7', administration_method: 'dispense', quantity: 1, instructions: '', goods_services: g }]);
+  assert.equal(old.days, 7);
+  const [fresh] = medsDays([{ id: 'c7', administration_method: 'dispense', quantity: 10, instructions: '1 tablet twice daily', goods_services: g }]);
+  assert.equal(refreshSuggestedMeds([old], [old], [fresh])[0].days, 5);
+  const edited = { ...old, days: 14 };
+  assert.equal(refreshSuggestedMeds([edited], [old], [fresh])[0].days, 14);
+});

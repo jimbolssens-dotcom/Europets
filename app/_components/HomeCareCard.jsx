@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   HOME_CARE_TASKS, HOME_CARE_WATCH, HOME_CARE_TEMPLATES, MAX_TIMES_PER_DAY,
-  applyTemplate, newKey, taskItem, watchItem, planLastDay, missingMeds as missingMedsFor, recalcMedDays,
+  applyTemplate, newKey, taskItem, watchItem, planLastDay, missingMeds as missingMedsFor, recalcMedDays, refreshSuggestedMeds,
 } from '@/lib/homeCare';
 
 function shortDate(iso) {
@@ -34,6 +34,22 @@ export default function HomeCareCard({ visitId = null, hospitalizationId = null,
 
   const query = visitId ? `visit_id=${visitId}` : `hospitalization_id=${hospitalizationId}`;
   const loadedRef = useRef(false);
+  const suggestedRef = useRef([]);
+  // Read again when coming back to the page and every minute: a medicine
+  // logged or edited after the card opened (a stay page has no other
+  // signal) still reaches it.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const again = () => document.visibilityState === 'visible' && setTick((t) => t + 1);
+    const timer = setInterval(again, 60 * 1000);
+    window.addEventListener('focus', again);
+    document.addEventListener('visibilitychange', again);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', again);
+      document.removeEventListener('visibilitychange', again);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,10 +58,13 @@ export default function HomeCareCard({ visitId = null, hospitalizationId = null,
       .then((d) => {
         if (cancelled || !d) return;
         setData(d);
-        // The list itself only on the first load: a reload (a medicine was
-        // dispensed meanwhile) keeps what's being edited and offers the new
-        // medicine as a "+ add" chip instead.
+        // The list itself on the first load. After that a new medicine is
+        // offered as a "+ add" chip, and a suggested line nobody has touched
+        // takes the fresh suggestion (refreshSuggestedMeds): its quantity
+        // or instructions may have changed since.
         if (!loadedRef.current) setItems(d.plan ? d.plan.items : d.suggestedMeds || []);
+        else setItems((prev) => refreshSuggestedMeds(prev, suggestedRef.current, d.suggestedMeds));
+        suggestedRef.current = d.suggestedMeds || [];
         loadedRef.current = true;
         if (d.plan || d.suggestedMeds?.length) setOpen(true);
       })
@@ -53,7 +72,7 @@ export default function HomeCareCard({ visitId = null, hospitalizationId = null,
     return () => {
       cancelled = true;
     };
-  }, [query, reloadKey]);
+  }, [query, reloadKey, tick]);
 
   const saved = data?.plan || null;
   const dirty = useMemo(() => JSON.stringify(items) !== JSON.stringify(saved ? saved.items : []), [items, saved]);

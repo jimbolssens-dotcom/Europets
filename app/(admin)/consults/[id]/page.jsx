@@ -1905,7 +1905,7 @@ export default function ConsultDetailPage() {
           opened. Filled in from the dispensed medicines, plus chips and
           templates. */}
       {activeTab === 'homecare' && (
-        <HomeCareCard visitId={id} defaultOpen reloadKey={treatmentItems.filter((t) => itemGoesHome(t)).map((t) => `${t.id}:${t.instructions || ''}`).join(',')} />
+        <HomeCareCard visitId={id} defaultOpen reloadKey={treatmentItems.filter((t) => itemGoesHome(t)).map((t) => `${t.id}:${t.quantity}:${t.instructions || ''}`).join(',')} />
       )}
 
       <div hidden={activeTab !== 'reports'}>
