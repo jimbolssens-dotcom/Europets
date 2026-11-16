@@ -50,7 +50,7 @@ import { checklistItemAction } from '@/lib/checklistItemAction';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
 import { supabase } from '@/lib/supabaseClient';
 import { temperatureError } from '@/lib/bodyTemperature';
-import { uaeDate } from '@/lib/wallPlanItems';
+import { dueOn, uaeDate } from '@/lib/wallPlanItems';
 import { COURSE_PRESETS, densityFor, doseCourse } from '@/lib/doseCourse';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
@@ -209,7 +209,7 @@ export default function DayTreatmentPlan({
   // The dose bar's data (lib/doseCourse.js): doses logged per UAE day since
   // the task went on the plan.
   function courseFor(item) {
-    if (item.frequency !== 'once_daily' && item.frequency !== 'twice_daily') return null;
+    if (item.frequency !== 'once_daily' && item.frequency !== 'twice_daily' && item.frequency !== 'every_other_day') return null;
     const countsByDate = {};
     for (const n of doneEver(item.id)) countsByDate[n.note_date] = (countsByDate[n.note_date] || 0) + 1;
     return doseCourse({
@@ -965,8 +965,10 @@ export default function DayTreatmentPlan({
           const isTest = checklistItemAction(item, catalog, subcategories) === 'test';
           const freqStatus = taskFrequencyStatus(item, done);
           const course = courseFor(item);
+          // Every other day (migration 255): nothing to do on the days between.
+          const restDay = !done.length && !dueOn(item, today);
           return (
-            <div key={item.id} className={`day-plan-task${done.length ? ' done' : ''}${freqStatus.overdue ? ' overdue' : ''}`}>
+            <div key={item.id} className={`day-plan-task${done.length ? ' done' : ''}${freqStatus.overdue ? ' overdue' : ''}${restDay ? ' rest-day' : ''}`}>
               <button
                 type="button"
                 onClick={() => {
@@ -992,7 +994,9 @@ export default function DayTreatmentPlan({
                     ? 'Logging...'
                     : done.length
                       ? `✓ ${done.length > 1 ? `${done.length}× today · ` : ''}last ${formatTime(last.created_at)} · ${authorName(last.author_id)}`
-                      : 'Not done yet today'}
+                      : restDay
+                        ? 'Not due today · next tomorrow'
+                        : 'Not done yet today'}
                 </span>
                 {freqStatus.label && <span className="day-plan-task-warning">⚠ {freqStatus.label}</span>}
                 {course && <DoseBar course={course} />}
@@ -1262,6 +1266,7 @@ export default function DayTreatmentPlan({
 const FREQUENCY_OPTIONS = [
   { value: 'once_daily', label: 'Once a day' },
   { value: 'twice_daily', label: 'Morning & afternoon' },
+  { value: 'every_other_day', label: 'Every other day' },
   { value: 'one_time', label: 'One-time only' },
 ];
 
@@ -1274,9 +1279,11 @@ function DoseBar({ course }) {
       <span className={`dose-bar dose-bar-${densityFor(course.total)}`} aria-hidden="true">
         {course.days.map((d) => (
           <span key={d.date} className="dose-day">
-            {d.doses.map((state, k) => (
-              <i key={k} className={`dose dose-${state}`} />
-            ))}
+            {d.off ? (
+              <i className="dose dose-rest" title="Not due this day" />
+            ) : (
+              d.doses.map((state, k) => <i key={k} className={`dose dose-${state}`} />)
+            )}
           </span>
         ))}
       </span>

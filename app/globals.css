@@ -16925,3 +16925,15 @@ button.catalog-home-toggle.on { border-color: #3f8f5f; background: #eaf6ee; colo
 
 /* Home care: "from 10 tab" beside days worked out from what was dispensed. */
 .hc-days-from { font-size: 0.7rem; color: #888; margin-left: 4px; white-space: nowrap; }
+
+/* Every other day (migration 255): the days in between in the dose bar,
+   and the tile on a day it isn't due. */
+.dose-rest { background: transparent; box-shadow: inset 0 -1.5px 0 #e2e2e2; }
+.day-plan-task.rest-day > button:not(.day-plan-remove):not(.day-plan-test-link) { background: #fafafa; border-style: dashed; }
+/* Four schedule choices: wrap onto two lines on a phone instead of
+   running off the edge. */
+.day-plan-schedule .day-plan-segmented:not(.day-plan-course-options) { flex-wrap: wrap; }
+@media (max-width: 480px) {
+  .day-plan-schedule .day-plan-segmented:not(.day-plan-course-options) { display: flex; border: none; border-radius: 0; gap: 4px; overflow: visible; }
+  .day-plan-schedule .day-plan-segmented:not(.day-plan-course-options) .day-plan-segment { border: 1px solid var(--pink); border-radius: 999px; padding: 0.35rem 0.7rem; }
+}

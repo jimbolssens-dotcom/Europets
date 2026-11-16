@@ -44,3 +44,19 @@ test('course length from a form', () => {
   assert.ok(cleanCourseDays(2.5).error);
   assert.ok(cleanCourseDays(500).error);
 });
+
+// Every other day (migration 255).
+import { dueOn, wallItemsForToday } from '../lib/wallPlanItems.js';
+
+test('every other day is due on the day added, then every second day', () => {
+  const item = { frequency: 'every_other_day', created_at: '2026-11-13T05:00:00Z' }; // 13 Nov UAE
+  assert.deepEqual(['2026-11-13', '2026-11-14', '2026-11-15', '2026-11-16', '2026-11-17'].map((d) => dueOn(item, d)), [true, false, true, false, true]);
+  assert.equal(dueOn({ frequency: 'once_daily', created_at: '2026-11-13T05:00:00Z' }, '2026-11-14'), true);
+  assert.deepEqual(wallItemsForToday([item, { frequency: 'once_daily' }], '2026-11-14').length, 1);
+});
+
+test('its dose bar leaves the days in between empty', () => {
+  const c = doseCourse({ frequency: 'every_other_day', startDate: '2026-11-13', today: '2026-11-17', courseDays: 7, countsByDate: { '2026-11-13': 1, '2026-11-15': 1 } });
+  assert.deepEqual(c.days.map((d) => (d.off ? 'off' : d.doses[0])), ['given', 'off', 'given', 'off', 'due', 'off', 'future']);
+  assert.equal(c.label, 'Day 5 of 7');
+});

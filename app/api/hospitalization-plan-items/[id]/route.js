@@ -15,7 +15,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 
-const VALID_FREQUENCIES = ['once_daily', 'twice_daily', 'one_time'];
+const VALID_FREQUENCIES = ['once_daily', 'twice_daily', 'every_other_day', 'one_time'];
 
 export async function PATCH(request, { params }) {
   const body = await request.json();
