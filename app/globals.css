@@ -16922,3 +16922,6 @@ button.goes-home-chip.on { border-color: #3f8f5f; background: #eaf6ee; color: #2
 /* "Usually goes home" in the Catalog's method cell. */
 button.catalog-home-toggle { width: auto; margin: 4px 0 0; padding: 1px 8px; border: 1.5px solid #d6d6d6; border-radius: 999px; background: #fff; color: #999; font-size: 0.72rem; font-weight: 700; box-shadow: none; white-space: nowrap; filter: grayscale(1); }
 button.catalog-home-toggle.on { border-color: #3f8f5f; background: #eaf6ee; color: #2f7550; filter: none; }
+
+/* Home care: "from 10 tab" beside days worked out from what was dispensed. */
+.hc-days-from { font-size: 0.7rem; color: #888; margin-left: 4px; white-space: nowrap; }

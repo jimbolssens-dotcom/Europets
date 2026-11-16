@@ -127,3 +127,31 @@ test('a medicine already on the plan, even under an old per-dose key, is not off
   assert.equal(missingOnce([{ key: 'm_old-dose-id', kind: 'med', name: 'Doxycare 40mg (Doxycycline)' }], suggested).length, 0);
   assert.equal(missingOnce([], suggested).length, 1);
 });
+
+// Course length from what was dispensed (Jim, 16 Nov).
+import { courseDays, doseAmountFromText, recalcMedDays, medsFromTreatmentItems as medsDays, cleanItems as cleanDays } from '../lib/homeCare.js';
+
+test('10 tablets twice a day is 5 days; half a tablet makes it 10', () => {
+  assert.equal(courseDays({ quantity: 10, catalogUnit: 'tab', instructions: '1 tablet twice daily', timesPerDay: 2 }), 5);
+  assert.equal(courseDays({ quantity: 10, catalogUnit: 'tab', instructions: '½ tablet twice daily', timesPerDay: 2 }), 10);
+  assert.equal(courseDays({ quantity: 14, catalogUnit: 'tab', instructions: '', timesPerDay: 2 }), 7);
+  assert.equal(courseDays({ quantity: 10, catalogUnit: 'tab', instructions: '1 tab three times a day', timesPerDay: 3 }), 3);
+  assert.equal(courseDays({ quantity: 30, catalogUnit: 'ml', instructions: '0.4 ml once daily', timesPerDay: 1 }), 75);
+  assert.equal(courseDays({ quantity: 1, catalogUnit: 'bottle', instructions: '0.4 ml once daily', timesPerDay: 1 }), null);
+  assert.deepEqual(doseAmountFromText('1 1/2 tabs bid'), { amount: 1.5, unit: 'count' });
+});
+
+test('the home care line gets the worked-out days, and follows a change of times a day', () => {
+  const [med] = medsDays([{ id: 't', administration_method: 'dispense', quantity: 10, instructions: '1 tablet twice daily', goods_services: { name: 'Doxycare 40mg', unit: 'tab' } }]);
+  assert.equal(med.times_per_day, 2);
+  assert.equal(med.days, 5);
+  assert.equal(med.days_auto, true);
+  assert.equal(recalcMedDays({ ...med, times_per_day: 1 }).days, 10);
+  // Days typed by hand stay as typed.
+  assert.equal(recalcMedDays({ ...med, days: 14, days_auto: false, times_per_day: 1 }).days, 14);
+  // Written days in the instructions win.
+  const [written] = medsDays([{ id: 'u', administration_method: 'dispense', quantity: 10, instructions: '1 tablet twice daily for 3 days', goods_services: { name: 'X', unit: 'tab' } }]);
+  assert.equal(written.days, 3);
+  // Kept through saving, so it still follows later changes.
+  assert.equal(cleanDays([med])[0].supply, 10);
+});

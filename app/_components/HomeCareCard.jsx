@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   HOME_CARE_TASKS, HOME_CARE_WATCH, HOME_CARE_TEMPLATES, MAX_TIMES_PER_DAY,
-  applyTemplate, newKey, taskItem, watchItem, planLastDay, missingMeds as missingMedsFor,
+  applyTemplate, newKey, taskItem, watchItem, planLastDay, missingMeds as missingMedsFor, recalcMedDays,
 } from '@/lib/homeCare';
 
 function shortDate(iso) {
@@ -130,19 +130,21 @@ export default function HomeCareCard({ visitId = null, hospitalizationId = null,
             <div className="hc-med" key={m.key}>
               <div className="hc-med-text">
                 <input className="hc-med-name" value={m.name} onChange={(e) => update(m.key, { name: e.target.value })} aria-label="Medicine" />
-                <input className="hc-med-dose" value={m.dose || ''} placeholder="How much, how (e.g. ½ tablet with food)" onChange={(e) => update(m.key, { dose: e.target.value })} aria-label="Dose" />
+                <input className="hc-med-dose" value={m.dose || ''} placeholder="How much, how (e.g. ½ tablet with food)" onChange={(e) => setItems((prev) => prev.map((i) => (i.key === m.key ? recalcMedDays({ ...i, dose: e.target.value }) : i)))} aria-label="Dose" />
               </div>
               <div className="hc-med-when">
                 <span className="hc-seg" role="group" aria-label="Times a day">
                   {Array.from({ length: MAX_TIMES_PER_DAY }, (_, n) => n + 1).map((n) => (
-                    <button key={n} type="button" className={m.times_per_day === n ? 'on' : ''} onClick={() => update(m.key, { times_per_day: n })}>
+                    <button key={n} type="button" className={m.times_per_day === n ? 'on' : ''} onClick={() => setItems((prev) => prev.map((i) => (i.key === m.key ? recalcMedDays({ ...i, times_per_day: n }) : i)))}>
                       {n}×
                     </button>
                   ))}
                 </span>
                 <label className="hc-days">
-                  <input type="number" min="1" max="365" inputMode="numeric" value={m.days || ''} onChange={(e) => update(m.key, { days: e.target.value === '' ? '' : Number(e.target.value) })} />
+                  <input type="number" min="1" max="365" inputMode="numeric" value={m.days || ''} onChange={(e) => update(m.key, { days: e.target.value === '' ? '' : Number(e.target.value), days_auto: false })} />
                   days
+                  {/* Worked out from what was dispensed (lib/homeCare.js courseDays). */}
+                  {m.days_auto && m.supply ? <span className="hc-days-from" title="Worked out from the amount dispensed. Type a number to set it yourself.">from {m.supply}{m.unit ? ` ${m.unit}` : ''}</span> : null}
                 </label>
                 <button type="button" className="hc-x" onClick={() => remove(m.key)} aria-label={`Remove ${m.name}`}>×</button>
               </div>
