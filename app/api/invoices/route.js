@@ -24,7 +24,7 @@ import { searchInvoiceIds } from '@/lib/invoiceSearchServer';
 
 const SEARCH_LIMIT = 300;
 const LIST_SELECT =
-  '*, clients(full_name, phone, email, client_number), visits(patient_id, patients(name, patient_number)), hospitalizations(patient_id, patients(name, patient_number))';
+  '*, clients(full_name, phone, email, client_number), visits(patient_id, patients(name, patient_number)), hospitalizations(patient_id, patients(name, patient_number)), cattery_bookings(patients(name, patient_number), cattery_booking_cats(patients(name, patient_number)))';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);

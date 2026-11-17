@@ -16945,3 +16945,6 @@ button.catalog-home-toggle.on { border-color: #3f8f5f; background: #eaf6ee; colo
 .share-version button:first-of-type { border-radius: 999px 0 0 999px; }
 .share-version button:last-of-type { border-radius: 0 999px 999px 0; border-left: none; }
 .share-version button.on { background: var(--pink); color: #fff; }
+
+/* The pet(s) an invoice is for, beside its number in the client app list. */
+.client-app-invoice-pet { margin-left: 0.5rem; font-size: 0.8em; font-weight: 600; color: var(--ash, #aaa); }

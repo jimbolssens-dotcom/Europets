@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
 import { money, balanceDue, invoiceLabel } from '@/lib/paymentReminders';
 import { formatShortDate } from '@/lib/formatTimestamp';
+import { invoicePetsLabel } from '@/lib/invoicePets';
 import { useClientAppRestore, saveClientAppCopy } from '@/app/_components/useClientAppCache';
 
 const STATUS_LABEL = {
@@ -77,6 +78,8 @@ export default function ClientAppInvoicesPage() {
           <ul className="mobile-list">
             {invoices.map((inv) => {
               const due = balanceDue(inv);
+              // Which pet it's for, beside the number (Jim, 17 Nov).
+              const pets = invoicePetsLabel(inv);
               return (
                 <li key={inv.id}>
                   <a
@@ -90,6 +93,8 @@ export default function ClientAppInvoicesPage() {
                       <span className={`client-app-status-pill client-app-status-${inv.status}`}>
                         {STATUS_LABEL[inv.status] || inv.status}
                       </span>
+                      {/* After the status, so a long name wraps rather than the tag. */}
+                      {pets && <span className="client-app-invoice-pet">{pets}</span>}
                     </span>
                     <span className="mobile-list-meta client-app-mobile-only-inline">
                       {formatShortDate(inv.created_at)} · AED {money(inv.total)}
@@ -98,6 +103,7 @@ export default function ClientAppInvoicesPage() {
 
                     <span className="client-app-table-cell client-app-table-cell-primary client-app-desktop-only-inline">
                       {invoiceLabel(inv)}
+                      {pets && <span className="client-app-invoice-pet">{pets}</span>}
                     </span>
                     <span className="client-app-table-cell client-app-table-cell-date client-app-desktop-only-inline">
                       {formatShortDate(inv.created_at)}
