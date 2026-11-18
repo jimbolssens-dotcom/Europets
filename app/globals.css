@@ -16963,5 +16963,20 @@ button.catalog-home-toggle.on { border-color: #3f8f5f; background: #eaf6ee; colo
 .patient-header-photo-error { font-size: 0.75rem; }
 
 /* Phone pages: the pet's photo button before its name (PetPhotoButton). */
-.mobile-pet-title .pet-photo-button { vertical-align: middle; margin-right: 0.5rem; }
+.mobile-pet-title .pet-photo-wrap { margin-right: 0.5rem; }
 .mobile-pet-title .patient-header-avatar { width: 42px; height: 42px; margin-right: 0; }
+
+/* The Take photo / Choose photo menu under a pet's picture (PetPhotoButton). */
+.pet-photo-wrap { position: relative; display: inline-flex; flex: none; vertical-align: middle; }
+button.pet-photo-button { width: auto; padding: 0; margin: 0; border: none; background: none; box-shadow: none; border-radius: 50%; cursor: pointer; }
+.pet-photo-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
+  display: flex; flex-direction: column; min-width: 170px; padding: 4px;
+  background: #fff; border: 1px solid #eee; border-radius: 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+.pet-photo-menu button {
+  width: 100%; margin: 0; padding: 0.6rem 0.75rem; text-align: left;
+  font-size: 0.95rem; font-weight: 600; color: var(--ink, #222);
+  background: none; border: none; border-radius: 8px; box-shadow: none;
+}
+.pet-photo-menu button:hover, .pet-photo-menu button:active { background: var(--pink-tint, #fce8f1); }
