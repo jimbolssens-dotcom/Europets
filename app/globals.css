@@ -16948,3 +16948,16 @@ button.catalog-home-toggle.on { border-color: #3f8f5f; background: #eaf6ee; colo
 
 /* The pet(s) an invoice is for, beside its number in the client app list. */
 .client-app-invoice-pet { margin-left: 0.5rem; font-size: 0.8em; font-weight: 600; color: var(--ash, #aaa); }
+
+/* Patient header: tap the picture or the cat/dog icon to add or change the
+   profile photo (PatientHeader.jsx). A small camera badge says it can. */
+.patient-header-photo { position: relative; display: inline-flex; flex: none; cursor: pointer; margin: 0; }
+.patient-header-photo.busy { opacity: 0.6; cursor: progress; }
+.patient-header-photo-badge {
+  position: absolute; right: -2px; bottom: -2px;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #fff; border: 1px solid var(--pink-tint); font-size: 10px; line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.patient-header-photo-error { font-size: 0.75rem; }

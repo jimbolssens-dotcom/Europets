@@ -17,6 +17,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { petAgeLabel, estimatedDateOfBirth, sexLabel, speciesEmoji } from '@/lib/petAge';
+import { uploadPatientProfilePhoto } from '@/lib/attachments';
 
 export default function PatientHeader({
   patient,
@@ -31,6 +32,12 @@ export default function PatientHeader({
   const p = patient || {};
   const age = petAgeLabel(p.date_of_birth, p.date_of_birth_estimated);
   const [ageOpen, setAgeOpen] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState(null);
+  // The new photo, shown straight away. Not passed up through
+  // onPatientUpdated: on a consult that can also finish completing it.
+  const [photoUrl, setPhotoUrl] = useState(null);
+  const shownPhoto = photoUrl || p.profile_photo_url;
   const [dob, setDob] = useState('');
   const [years, setYears] = useState('');
   const [months, setMonths] = useState('');
@@ -120,6 +127,25 @@ export default function PatientHeader({
     if (onPatientUpdated) onPatientUpdated(data);
   }
 
+  // Tap the picture (or the cat/dog icon) to add or change the profile
+  // photo from the phone's camera or library; it's shrunk before upload
+  // (lib/profilePhoto.js). Jim, 18 Nov.
+  async function changePhoto(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !p.id) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const updated = await uploadPatientProfilePhoto(p.id, file);
+      setPhotoUrl(updated.profile_photo_url);
+    } catch (err) {
+      setPhotoError(err.message || 'Could not save the photo');
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
   const species = [p.species ? `${speciesEmoji(p.species)} ${p.species[0].toUpperCase()}${p.species.slice(1)}` : null, p.breed]
     .filter(Boolean)
     .join(' · ');
@@ -127,11 +153,16 @@ export default function PatientHeader({
   return (
     <div className="patient-header">
       <div className="patient-header-row1" ref={row1Ref}>
-        {p.profile_photo_url ? (
-          <img className="patient-header-avatar" src={p.profile_photo_url} alt="" />
-        ) : (
-          <span className="patient-header-avatar patient-header-avatar-emoji">{speciesEmoji(p.species)}</span>
-        )}
+        <label className={`patient-header-photo${photoBusy ? ' busy' : ''}`} title={shownPhoto ? 'Change the photo' : 'Add a photo'}>
+          {shownPhoto ? (
+            <img className="patient-header-avatar" src={shownPhoto} alt="" />
+          ) : (
+            <span className="patient-header-avatar patient-header-avatar-emoji">{speciesEmoji(p.species)}</span>
+          )}
+          <span className="patient-header-photo-badge" aria-hidden="true">{photoBusy ? '…' : '📷'}</span>
+          <input type="file" accept="image/*" hidden onChange={changePhoto} disabled={photoBusy} aria-label={shownPhoto ? 'Change the photo' : 'Add a photo'} />
+        </label>
+        {photoError && <span className="error patient-header-photo-error">{photoError}</span>}
         <h1>
           <a href={`/patients/${p.id}`} title="Open the patient record">{p.name || 'Patient'}</a>
         </h1>
