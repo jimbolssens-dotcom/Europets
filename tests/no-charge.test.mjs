@@ -21,3 +21,9 @@ test('a hospital stay unbilled item, or a charged one, is not', () => {
   assert.equal(isNoChargeItem({ ...item, billable: true }), false);
   assert.equal(isNoChargeLine({ description: 'Eye drops', line_total: 25 }), false);
 });
+
+test('a free item on a day procedure shows too; on an admission it stays off', () => {
+  const xray = { id: 'x2', billable: false, hospitalization_note_id: 'n1', goods_services: { id: 'g', name: 'X-ray (2 views)' } };
+  assert.equal(isNoChargeItem({ ...xray, _sourceKind: 'day_procedure' }), true);
+  assert.equal(isNoChargeItem({ ...xray, _sourceKind: 'admission' }), false);
+});
