@@ -11,6 +11,7 @@ const source = (await readFile(new URL('../lib/invoicing.js', import.meta.url), 
   .replace(/export /g, '');
 
 const ADMINISTRATION_METHOD_CODES = { dispense: 'DIS', sc: 'SC', im: 'IM' };
+const { isNoChargeItem, noChargeLine } = await import('../lib/noCharge.js');
 
 // lib/invoicing.js writes through the server-side supabaseAdmin client:
 // hand it the same fake db the test made last.
@@ -23,8 +24,10 @@ function loadInvoicing() {
     'runConsultCompletionEffects',
     'runHospitalizationDischargeEffects',
     'supabaseAdmin',
+    'isNoChargeItem',
+    'noChargeLine',
     source + '\nreturn { syncInvoiceTreatmentItems, recomputeInvoiceTotals };'
-  )(ADMINISTRATION_METHOD_CODES, async () => {}, async () => {}, supabaseAdmin);
+  )(ADMINISTRATION_METHOD_CODES, async () => {}, async () => {}, supabaseAdmin, isNoChargeItem, noChargeLine);
 }
 
 // A small in-memory fake matching the query-builder shapes lib/invoicing.js
@@ -243,5 +246,38 @@ test('a paid invoice stays locked once the stay is discharged', async () => {
   const db = paidConsultThenAdmitted('discharged');
   const result = await syncInvoiceTreatmentItems(makeSupabase(db), 'inv1', [hospItem('t1')]);
   assert.equal(result.blockedCount, 1);
+  assert.equal(db.invoice_line_items.length, 0);
+});
+
+// Jim, 18 Nov: a consult item ticked free shows on the bill, at no charge.
+test('a free consult item goes on the bill at 0.00, marked no charge', async () => {
+  const { syncInvoiceTreatmentItems } = loadInvoicing();
+  const db = makeDb();
+  const supabase = makeSupabase(db);
+  await syncInvoiceTreatmentItems(supabase, 'inv1', [
+    hospItem('t1', { hospitalization_note_id: null, visit_id: 'visit-1' }),
+    hospItem('t2', { hospitalization_note_id: null, visit_id: 'visit-1', billable: false }),
+  ]);
+  assert.equal(db.invoice_line_items.length, 2);
+  const free = db.invoice_line_items.find((l) => l.source_treatment_item_ids.includes('t2'));
+  assert.equal(free.line_total, 0);
+  assert.match(free.description, /no charge$/);
+  // A re-sync doesn't add it twice.
+  await syncInvoiceTreatmentItems(supabase, 'inv1', [
+    hospItem('t1', { hospitalization_note_id: null, visit_id: 'visit-1' }),
+    hospItem('t2', { hospitalization_note_id: null, visit_id: 'visit-1', billable: false }),
+  ]);
+  assert.equal(db.invoice_line_items.length, 2);
+});
+
+test('on a closed consult a free item is left off without a billing warning', async () => {
+  const { syncInvoiceTreatmentItems } = loadInvoicing();
+  const db = makeDb();
+  db.invoices = [{ id: 'inv1', total: 0, status: 'unpaid', visit_id: 'v1', hospitalization_id: null }];
+  db.visits = [{ id: 'v1', status: 'complete' }];
+  const supabase = makeSupabase(db);
+  const result = await syncInvoiceTreatmentItems(supabase, 'inv1', [hospItem('t2', { hospitalization_note_id: null, visit_id: 'v1', billable: false })]);
+  assert.equal(result.addedCount, 0);
+  assert.equal(result.blockedCount, undefined);
   assert.equal(db.invoice_line_items.length, 0);
 });
