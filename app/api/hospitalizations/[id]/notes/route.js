@@ -24,6 +24,7 @@ import { mirrorVitalsToLinkedHospitalizations } from '@/lib/hospitalizationVital
 import { resolvePlanItemBillable } from '@/lib/planItemBilling';
 import { temperatureError } from '@/lib/bodyTemperature';
 import { uaeDate } from '@/lib/wallPlanItems';
+import { entryToJoin, isItemsOnly } from '@/lib/worksheetGrouping';
 
 // See app/api/hospitalizations/[id]/route.js — same caching gotcha, and
 // this is the route the client portal's Temp/Weight/Appetite fields
@@ -138,13 +139,31 @@ export async function POST(request, { params }) {
     clientSummary = buildEmpathicCheckinText(checkinFields, hosp?.patients?.name);
   }
 
-  const { data: note, error } = await supabaseAdmin
+  // Items only (a surgery logged item by item on a day procedure): joins
+  // the same person's item-only entry from the last few minutes instead
+  // of making one entry per item (lib/worksheetGrouping.js).
+  const entryDate = note_date || uaeDate();
+  let joined = null;
+  if (isItemsOnly({ ...body, force_feeding_done: forceFeedingDone, feed_kind: feed.feed_kind }) && Array.isArray(treatment_items) && treatment_items.length > 0) {
+    const { data: latest } = await supabase
+      .from('hospitalization_notes')
+      .select('*, staff(full_name)')
+      .eq('hospitalization_id', params.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    joined = entryToJoin(latest, { author_id: author_id || null, note_date: entryDate });
+  }
+
+  const { data: note, error } = joined
+    ? { data: joined, error: null }
+    : await supabaseAdmin
     .from('hospitalization_notes')
     .insert([
       {
         hospitalization_id: params.id,
         author_id: author_id || null,
-        note_date: note_date || uaeDate(), // the UAE day, not UTC's
+        note_date: entryDate, // the UAE day, not UTC's
         appetite: appetite || null,
         condition: condition || null,
         temperature_c: temperature_c !== undefined && temperature_c !== '' ? Number(temperature_c) : null,

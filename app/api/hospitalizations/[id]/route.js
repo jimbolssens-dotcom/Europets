@@ -21,6 +21,7 @@ import { attachCages } from '@/lib/attachCages';
 import { runHospitalizationDischargeEffects } from '@/lib/hospitalizationDischarge';
 import { detectWeightLossAlarm } from '@/lib/weightLossAlarm';
 import { NextResponse } from 'next/server';
+import { foldPlan } from '@/lib/worksheetGrouping';
 
 export const maxDuration = 60;
 
@@ -231,7 +232,39 @@ export async function PATCH(request, { params }) {
     await runHospitalizationDischargeEffects(supabase, params.id);
   }
 
+  // "Move to Hospital": the day procedure's item-only entries become one
+  // entry on the stay (lib/worksheetGrouping.js). Best-effort.
+  if (update.kind === 'admission') {
+    await foldDayProcedureEntries(params.id).catch((err) => console.error('Could not fold day procedure entries', params.id, err));
+  }
+
   return NextResponse.json(await attachCages(data));
+}
+
+// Moves the items of a day procedure's item-only entries onto the first of
+// them and removes the emptied ones; entries with text, readings, plan taps
+// or a photo are left exactly as they were.
+async function foldDayProcedureEntries(hospitalizationId) {
+  const { data: notes } = await supabaseAdmin.from('hospitalization_notes').select('*').eq('hospitalization_id', hospitalizationId);
+  if (!notes || notes.length < 2) return;
+  const { data: withFiles } = await supabaseAdmin
+    .from('attachments')
+    .select('entity_id')
+    .eq('entity_type', 'hospitalization_note')
+    .in('entity_id', notes.map((n) => n.id));
+  const plan = foldPlan(notes, new Set((withFiles || []).map((a) => a.entity_id)));
+  if (!plan) return;
+  const otherIds = plan.others.map((n) => n.id);
+  const { error: moveError } = await supabaseAdmin
+    .from('treatment_items')
+    .update({ hospitalization_note_id: plan.target.id })
+    .in('hospitalization_note_id', otherIds);
+  if (moveError) throw moveError;
+  // Only entries now truly empty go.
+  const { data: stillUsed } = await supabaseAdmin.from('treatment_items').select('hospitalization_note_id').in('hospitalization_note_id', otherIds);
+  const used = new Set((stillUsed || []).map((t) => t.hospitalization_note_id));
+  const empty = otherIds.filter((id) => !used.has(id));
+  if (empty.length) await supabaseAdmin.from('hospitalization_notes').delete().in('id', empty);
 }
 
 export async function DELETE(request, { params }) {
