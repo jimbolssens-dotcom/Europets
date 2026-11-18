@@ -948,22 +948,19 @@ export default function ConsultDetailPage() {
   }
 
   // The Hospitalization button, clicked while the linked case is still a
-  // day procedure — promotes it to a full admission in place (same
-  // transition as "Move to Hospital" on the hospitalization page itself)
-  // instead of creating a second hospitalization row for this consult.
+  // day procedure: the same "Move to Hospital" as on the day procedure's
+  // own page (a new stay, the day procedure completed with its own invoice).
   async function moveLinkedToHospital() {
     if (!linkedDayProcedure) return;
     setAdmitting(true);
     setHospitalizationError(null);
     try {
-      const res = await fetch(`/api/hospitalizations/${linkedDayProcedure.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'admission' }),
-      });
+      // A new stay with the day procedure as one entry and its own invoice
+      // to merge there (see the move-to-hospital route).
+      const res = await fetch(`/api/hospitalizations/${linkedDayProcedure.id}/move-to-hospital`, { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not move to hospital.');
-      setLinkedAdmission(data);
+      setLinkedAdmission({ id: data.id });
       setLinkedDayProcedure(null);
       router.push(`/hospitalization/${data.id}`);
     } catch (error) {

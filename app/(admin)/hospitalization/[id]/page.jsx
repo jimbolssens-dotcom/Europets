@@ -794,20 +794,20 @@ export default function HospitalizationDetailPage() {
     loadAdmission();
   }
 
+  // Starts a hospital stay for the patient (or uses the open one), with
+  // this day procedure as one worksheet entry on it and its own invoice to
+  // merge there; this day procedure is completed. See the move-to-hospital
+  // route.
   async function moveToHospital() {
-    if (!confirm('Move this day procedure to a full hospital admission?')) return;
+    if (!confirm('Admit this patient to hospital? The day procedure is completed and kept with its own invoice, which you can merge on the stay.')) return;
     setMoveToHospitalError(null);
-    const res = await fetch(`/api/hospitalizations/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: 'admission' }),
-    });
+    const res = await fetch(`/api/hospitalizations/${id}/move-to-hospital`, { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
       setMoveToHospitalError(data.error || 'Failed to move to hospital');
       return;
     }
-    loadAdmission();
+    router.push(`/hospitalization/${data.id}`);
   }
 
   async function addConsult() {

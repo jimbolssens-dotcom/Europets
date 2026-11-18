@@ -450,14 +450,12 @@ export default function InvoiceDetailPage() {
     setLinking('hosp');
     setLinkError(null);
     try {
-      const res = await fetch(`/api/hospitalizations/${invoice.hospitalization_id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'admission' }),
-      });
+      // A new stay with this day procedure as one entry and this invoice to
+      // merge there (see the move-to-hospital route).
+      const res = await fetch(`/api/hospitalizations/${invoice.hospitalization_id}/move-to-hospital`, { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not move to hospital.');
-      router.push(`/hospitalization/${invoice.hospitalization_id}`);
+      router.push(`/hospitalization/${data.id}`);
     } catch (err) {
       setLinkError(err.message);
     } finally {
