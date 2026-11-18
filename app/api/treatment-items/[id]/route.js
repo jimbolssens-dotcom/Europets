@@ -67,9 +67,12 @@ export async function PATCH(request, { params }) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  if (update.billable === false) {
+  // Free ticked or unticked: its line comes off an open invoice, and the
+  // next sync puts it back as it now is: charged, or at 0.00 marked "no
+  // charge" (lib/noCharge.js). A paid invoice stays as it was paid.
+  if (update.billable !== undefined) {
     const cleanup = await removeTreatmentItemFromInvoiceLines(supabase, params.id, { onlyOpenInvoices: true });
-    if (cleanup.error) console.error('Failed to take a no-charge item off its invoice', params.id, cleanup.error);
+    if (cleanup.error) console.error('Failed to update an item\'s line after its free tick changed', params.id, cleanup.error);
   }
   return NextResponse.json(data);
 }
