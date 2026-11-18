@@ -16980,3 +16980,14 @@ button.pet-photo-button { width: auto; padding: 0; margin: 0; border: none; back
   background: none; border: none; border-radius: 8px; box-shadow: none;
 }
 .pet-photo-menu button:hover, .pet-photo-menu button:active { background: var(--pink-tint, #fce8f1); }
+
+/* The camera badge is its own button (change the photo); the photo itself
+   opens large (PetPhotoButton). */
+button.pet-photo-badge { width: 24px; height: 24px; right: -5px; bottom: -5px; padding: 0; margin: 0; font-size: 12px; cursor: pointer; z-index: 1; }
+.pet-photo-large {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  background: rgba(0, 0, 0, 0.85); cursor: zoom-out; padding: 16px;
+}
+.pet-photo-large img { max-width: min(92vw, 640px); max-height: 80vh; width: auto; height: auto; border-radius: 16px; object-fit: contain; }
+.pet-photo-large-hint { color: #ddd; font-size: 0.85rem; font-weight: 500; }

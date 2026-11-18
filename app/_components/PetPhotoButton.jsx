@@ -1,6 +1,9 @@
 // app/_components/PetPhotoButton.jsx
 // The pet's round picture (or its cat/dog icon) with a small camera badge.
-// Tap it for two choices: 📷 Take photo (opens the camera straight away,
+// With a photo on file, tapping the photo shows it large (tap anywhere to
+// close) and the camera badge offers the choices below; with none yet,
+// tapping the icon does (Jim, 18 Nov).
+// The choices: 📷 Take photo (opens the camera straight away,
 // capture="environment") or 🖼️ Choose photo (the library); a plain file
 // picker only offered the gallery on the clinic's phones (Jim, 18 Nov).
 // Shrunk before upload (lib/profilePhoto.js, via uploadPatientProfilePhoto).
@@ -18,9 +21,18 @@ export default function PetPhotoButton({ patient }) {
   const [error, setError] = useState(null);
   const [url, setUrl] = useState(null);
   const [menu, setMenu] = useState(false);
+  const [enlarged, setEnlarged] = useState(false);
   const wrap = useRef(null);
   const camera = useRef(null);
   const library = useRef(null);
+
+  // Escape closes the large view.
+  useEffect(() => {
+    if (!enlarged) return;
+    const key = (e) => e.key === 'Escape' && setEnlarged(false);
+    document.addEventListener('keydown', key);
+    return () => document.removeEventListener('keydown', key);
+  }, [enlarged]);
 
   // Tapping anywhere else closes the menu.
   useEffect(() => {
@@ -52,21 +64,33 @@ export default function PetPhotoButton({ patient }) {
 
   return (
     <span className="pet-photo-wrap" ref={wrap}>
-      <button
-        type="button"
-        className={`patient-header-photo pet-photo-button${busy ? ' busy' : ''}`}
-        onClick={() => !busy && setMenu((m) => !m)}
-        title={shown ? 'Change the photo' : 'Add a photo'}
-        aria-label={shown ? 'Change the photo' : 'Add a photo'}
-        aria-expanded={menu}
-      >
+      <span className={`patient-header-photo${busy ? ' busy' : ''}`}>
         {shown ? (
-          <img className="patient-header-avatar" src={shown} alt="" />
+          <button type="button" className="pet-photo-button" onClick={() => setEnlarged(true)} title="See the photo large" aria-label="See the photo large">
+            <img className="patient-header-avatar" src={shown} alt="" />
+          </button>
         ) : (
-          <span className="patient-header-avatar patient-header-avatar-emoji">{speciesEmoji(patient.species)}</span>
+          <button type="button" className="pet-photo-button" onClick={() => !busy && setMenu((m) => !m)} title="Add a photo" aria-label="Add a photo" aria-expanded={menu}>
+            <span className="patient-header-avatar patient-header-avatar-emoji">{speciesEmoji(patient.species)}</span>
+          </button>
         )}
-        <span className="patient-header-photo-badge" aria-hidden="true">{busy ? '…' : '📷'}</span>
-      </button>
+        <button
+          type="button"
+          className="patient-header-photo-badge pet-photo-badge"
+          onClick={() => !busy && setMenu((m) => !m)}
+          title={shown ? 'Change the photo' : 'Add a photo'}
+          aria-label={shown ? 'Change the photo' : 'Add a photo'}
+          aria-expanded={menu}
+        >
+          {busy ? '…' : '📷'}
+        </button>
+      </span>
+      {enlarged && shown && (
+        <span className="pet-photo-large" role="dialog" aria-label={`${patient.name || 'Pet'} photo`} onClick={() => setEnlarged(false)}>
+          <img src={shown} alt={patient.name || ''} />
+          <span className="pet-photo-large-hint">Tap anywhere to close</span>
+        </span>
+      )}
       {menu && (
         <span className="pet-photo-menu" role="menu">
           <button type="button" role="menuitem" onClick={() => camera.current?.click()}>📷 Take photo</button>
