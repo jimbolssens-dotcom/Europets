@@ -12,6 +12,7 @@ import { useParams } from 'next/navigation';
 import AudioRecorder from '@/app/_components/AudioRecorder';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
+import PetPhotoButton from '@/app/_components/PetPhotoButton';
 
 export default function MobileConsultPage() {
   const { id } = useParams();
@@ -28,7 +29,8 @@ export default function MobileConsultPage() {
       <MobileHomeButton />
       {consult && (
         <>
-          <h1>
+          <h1 className="mobile-pet-title">
+            <PetPhotoButton patient={consult.patients} />
             {consult.patients?.name}
             {consult.patients?.patient_number ? ` (Patient #${consult.patients.patient_number})` : ''}
           </h1>

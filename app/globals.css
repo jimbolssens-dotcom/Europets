@@ -16961,3 +16961,7 @@ button.catalog-home-toggle.on { border-color: #3f8f5f; background: #eaf6ee; colo
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 .patient-header-photo-error { font-size: 0.75rem; }
+
+/* Phone pages: the pet's photo button before its name (PetPhotoButton). */
+.mobile-pet-title .pet-photo-button { vertical-align: middle; margin-right: 0.5rem; }
+.mobile-pet-title .patient-header-avatar { width: 42px; height: 42px; margin-right: 0; }

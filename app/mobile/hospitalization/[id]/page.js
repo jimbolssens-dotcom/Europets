@@ -37,6 +37,7 @@ import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import { uploadAttachment } from '@/lib/attachments';
+import PetPhotoButton from '@/app/_components/PetPhotoButton';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 
@@ -217,7 +218,8 @@ export default function MobileHospitalizationPage() {
       <MobileHomeButton />
       {admission && (
         <>
-          <h1>
+          <h1 className="mobile-pet-title">
+            <PetPhotoButton patient={admission.patients} />
             {admission.cages?.name || 'No cage'} — {admission.patients?.name}
             {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''}
           </h1>

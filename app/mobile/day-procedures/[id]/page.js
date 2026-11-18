@@ -35,6 +35,7 @@ import { useMobileStaff } from '@/app/_components/useMobileStaff';
 import { checklistItemAction } from '@/lib/checklistItemAction';
 import { ensureSurgicalReport } from '@/lib/surgicalReportAuto';
 import { uploadAttachment } from '@/lib/attachments';
+import PetPhotoButton from '@/app/_components/PetPhotoButton';
 
 const ACTION_HINTS = {
   dental: 'Tap to open the dental report',
@@ -257,7 +258,8 @@ export default function MobileDayProcedurePage() {
       <MobileHomeButton />
       {admission && (
         <>
-          <h1>
+          <h1 className="mobile-pet-title">
+            <PetPhotoButton patient={admission.patients} />
             {admission.patients?.name}
             {admission.patients?.patient_number ? ` (Patient #${admission.patients.patient_number})` : ''}
           </h1>
