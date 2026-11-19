@@ -16991,3 +16991,27 @@ button.pet-photo-badge { width: 24px; height: 24px; right: -5px; bottom: -5px; p
 }
 .pet-photo-large img { max-width: min(92vw, 640px); max-height: 80vh; width: auto; height: auto; border-radius: 16px; object-fit: contain; }
 .pet-photo-large-hint { color: #ddd; font-size: 0.85rem; font-weight: 500; }
+
+/* History dropdown: "Visits & invoices" / "Tests" switch (PatientHistoryPanel). */
+.history-view-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  margin: 0 0 0.5rem;
+  border: 1px solid #e5e1dc;
+  border-radius: 999px;
+}
+.history-view-switch button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-height: 0;
+}
+.history-view-switch button.active {
+  background: var(--pink);
+  color: #fff;
+}

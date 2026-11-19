@@ -20,6 +20,8 @@ import { useEffect, useState } from 'react';
 import { money, balanceDue, invoiceLabel } from '@/lib/paymentReminders';
 import { formatShortDate } from '@/lib/formatTimestamp';
 import RecordPhotoStrip from './RecordPhotoStrip';
+import { testHistoryRows, testKind, TEST_ICONS } from '@/lib/patientTests';
+import { reportPdfHref } from '@/lib/clientAppReports';
 
 function truncate(str, max = 160) {
   const s = (str || '').trim();
@@ -41,6 +43,19 @@ export default function PatientHistoryPanel({
   // as thumbnails under each one. Only for a single pet's history.
   const [photosByRecord, setPhotosByRecord] = useState({});
   const showPatientName = !patientId;
+  // A single pet's History also lists every test it has had (bloods,
+  // x-rays, ultrasounds...), newest first, under its own "Tests" switch
+  // (Jim, 19 Nov; lib/patientTests.js).
+  const [tests, setTests] = useState([]);
+  const [view, setView] = useState('visits');
+
+  useEffect(() => {
+    if (!patientId) return setTests([]);
+    fetch(`/api/patients/${patientId}/report-overview`)
+      .then((res) => res.json())
+      .then((rows) => setTests(testHistoryRows(Array.isArray(rows) ? rows : [])))
+      .catch(() => setTests([]));
+  }, [patientId]);
 
   useEffect(() => {
     if (!patientId && !clientId) return;
@@ -95,7 +110,7 @@ export default function PatientHistoryPanel({
     });
   }, [patientId, clientId, excludeVisitId, excludeHospitalizationId, showHospitalizations]);
 
-  if (events.length === 0) return null;
+  if (events.length === 0 && tests.length === 0) return null;
 
   function patientNameFor(item) {
     const patient =
@@ -106,7 +121,40 @@ export default function PatientHistoryPanel({
     return `${patient.name}${patient.patient_number ? ` (Patient #${patient.patient_number})` : ''}`;
   }
 
-  const list = (
+  const testList = (
+    <ul className="consult-history-list">
+      {tests.map((t) => {
+        const pdf = reportPdfHref(t);
+        const text = (t.ai_summary || t.result || t.findings || '').trim();
+        const here = (excludeVisitId && t.visit_id === excludeVisitId) || (excludeHospitalizationId && t.hospitalization_id === excludeHospitalizationId);
+        return (
+          <li key={`t-${t.reportType}-${t.recordId}`} className="consult-history-item">
+            <p className="visit-meta">
+              {TEST_ICONS[testKind(t)]} <strong>{t.kind}</strong>
+              {' · '}
+              {t.date ? formatShortDate(t.date) : 'Date not recorded'}
+              {here ? ' · this case' : <> · <a href={t.href}>{t.source === 'consult' ? 'Consult' : 'Stay'}</a></>}
+              {pdf && <> · <a href={pdf} target="_blank" rel="noreferrer">📄 PDF</a></>}
+            </p>
+            {text ? <p>{truncate(text)}</p> : <p className="note-empty">{t.lab_report_files?.length ? 'Lab report attached (PDF).' : 'No result recorded.'}</p>}
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  const switcher = patientId && tests.length > 0 && (
+    <div className="history-view-switch" role="group" aria-label="History view">
+      <button type="button" className={view === 'visits' ? 'active' : ''} onClick={() => setView('visits')}>
+        Visits & invoices <b>{events.length}</b>
+      </button>
+      <button type="button" className={view === 'tests' ? 'active' : ''} onClick={() => setView('tests')}>
+        🧪 Tests <b>{tests.length}</b>
+      </button>
+    </div>
+  );
+
+  const visitList = (
     <ul className="consult-history-list">
       {events.map((e) => {
           const petTag = showPatientName && patientNameFor(e) ? `${patientNameFor(e)} · ` : '';
@@ -177,6 +225,13 @@ export default function PatientHistoryPanel({
           );
         })}
     </ul>
+  );
+
+  const list = (
+    <>
+      {switcher}
+      {view === 'tests' && tests.length > 0 ? testList : events.length ? visitList : <p className="note-empty">No earlier visits.</p>}
+    </>
   );
 
   if (tab) {
