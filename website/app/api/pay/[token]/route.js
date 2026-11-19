@@ -42,7 +42,11 @@ export async function GET(request, { params }) {
     // The address to share: the short name when it has one.
     share_path: `/${clinicView ? 'rescues' : 'pay'}/${payLink.slug || payLink.token}`,
     pet_name: payLink.patients?.name || null,
-    balance_due: await balanceDue(payLink.client_id),
+    // What the client still owes, only when the page shows it: never for a
+    // link set to hide it (the clinic app's migration 257, e.g. an owner
+    // sharing it with donors) or with a personal page on (a gift form, which
+    // doesn't show it), so it isn't in the browser for anyone to find.
+    balance_due: payLink.hide_balance || payLink.page_enabled ? null : await balanceDue(payLink.client_id),
     payment,
     // A rescuer's personalised page, when staff turned it on (else null).
     page: await payPage(payLink, clinicView ? { style: 'photo' } : {}),

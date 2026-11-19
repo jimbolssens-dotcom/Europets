@@ -969,6 +969,10 @@ export default function ClientDetailPage() {
                       ))}
                     </select>
                   )}
+                  <label className="pay-link-check" title="The pay page won't show what they owe, e.g. for an owner sharing the link with donors">
+                    <input type="checkbox" checked={!!payLink.link.hide_balance} disabled={payLinkBusy}
+                      onChange={(e) => savePayLink({ hide_balance: e.target.checked })} /> Hide amount owed
+                  </label>
                   <button type="button" className={payPageOpen ? '' : 'secondary'} onClick={() => setPayPageOpen((o) => !o)} aria-expanded={payPageOpen}>
                     ✨ Page{payLink.link.page?.enabled ? ' ✓' : ''}
                   </button>

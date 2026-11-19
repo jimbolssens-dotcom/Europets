@@ -20,7 +20,7 @@ export async function loadPayLink(token) {
   const { data } = await supabaseServerAdmin
     .from('client_payment_links')
     .select(
-      'id, token, slug, client_id, active, clients(id, full_name), patients(name), page_enabled, page_style, page_title, page_story, page_links, page_cover_path, page_story_image_path, instagram_handle, page_instagram, show_supporters, show_bills'
+      'id, token, slug, client_id, active, clients(id, full_name), patients(name), page_enabled, page_style, page_title, page_story, page_links, page_cover_path, page_story_image_path, instagram_handle, page_instagram, show_supporters, show_bills, hide_balance'
     )
     .or(column ? `token.eq.${token}` : `token.eq.${token},slug.eq.${String(token).toLowerCase()}`)
     .maybeSingle();

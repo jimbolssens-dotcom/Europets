@@ -3,7 +3,7 @@
 // GET  -> the client's personal payment link (migration 213), if any, its
 //         URL, their credit (money paid in with nothing left to pay) and
 //         any supporter bonus approved for them (migration 215).
-// POST { patient_id?, fresh?, staff_id? } -> the link, made if there isn't
+// POST { patient_id?, hide_balance?, fresh?, staff_id? } -> the link, made if there isn't
 //         one; fresh turns the old one off and makes a new one; patient_id
 //         sets the pet it's shown as for (null for none).
 
@@ -32,6 +32,7 @@ export async function POST(request, { params }) {
   const body = await request.json().catch(() => ({}));
   const { data: link, error } = await getOrCreatePayLink(params.id, {
     patientId: 'patient_id' in body ? body.patient_id || null : undefined,
+    hideBalance: 'hide_balance' in body ? body.hide_balance === true : undefined,
     staffId: body.staff_id || null,
     fresh: body.fresh === true,
   });
