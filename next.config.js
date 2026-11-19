@@ -31,6 +31,14 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // The staff app stays out of search engines (Jim, 19 Nov): every
+        // page, PDF and API response gets noindex, EXCEPT the client portal
+        // (/portal/..., /client-app/...), which Jim wants left as it is.
+        // The website (epc.vet) is a separate project and unaffected.
+        source: '/((?!portal(?:/|$)|client-app(?:/|$)).*)',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }],
+      },
+      {
         // Client-facing portal links are shared once (e.g. over WhatsApp)
         // and then reloaded from that same URL repeatedly by owners
         // checking in — mobile browsers and in-app browsers (WhatsApp's
