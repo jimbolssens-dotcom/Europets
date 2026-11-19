@@ -74,6 +74,8 @@ export default function DayTreatmentPlan({
   subcategories,
   onCatalogItemCreated,
   onOpenReport,
+  // The phone's hospital page: opens a scan tile's report card there.
+  onOpenScanReport,
   onFileWeightKg,
   species,
 }) {
@@ -735,7 +737,7 @@ export default function DayTreatmentPlan({
     setOpeningTestId(item.id);
     setError(null);
     try {
-      await onOpenReport?.(kind);
+      await (onOpenScanReport || onOpenReport)?.(kind);
     } catch (err) {
       setError(err.message || 'Failed to open the report');
     } finally {
@@ -1017,7 +1019,7 @@ export default function DayTreatmentPlan({
                 {freqStatus.label && <span className="day-plan-task-warning">⚠ {freqStatus.label}</span>}
                 {course && <DoseBar course={course} />}
               </button>
-              {scan && onOpenReport && (
+              {scan && (onOpenScanReport || onOpenReport) && (
                 <button
                   type="button"
                   className="procedure-checklist-link day-plan-test-link"

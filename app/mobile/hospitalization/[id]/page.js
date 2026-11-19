@@ -38,6 +38,8 @@ import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import DayTreatmentPlan from '@/app/_components/DayTreatmentPlan';
 import { uploadAttachment } from '@/lib/attachments';
 import PetPhotoButton from '@/app/_components/PetPhotoButton';
+import ScanReportList from '@/app/_components/ScanReportList';
+import { findOrStartScanReport } from '@/lib/scanReports';
 
 const MOBILE_STAFF_STORAGE_KEY = 'europets_mobile_staff_id';
 
@@ -239,7 +241,13 @@ export default function MobileHospitalizationPage() {
             onCatalogItemCreated={(item) => setCatalog((prev) => [...prev, item])}
             onFileWeightKg={admission.patients?.current_weight_kg}
         species={admission.patients?.species}
+            onOpenScanReport={async (kind) => {
+              const report = await findOrStartScanReport(kind, { hospitalizationId: id });
+              router.push(`/mobile/scan/${kind}/${report.id}`);
+            }}
           />
+
+          <ScanReportList hospitalizationId={id} record={admission} />
 
           <h2 className="mobile-section-header">Add Worksheet Entry</h2>
           <p className="mobile-hint">

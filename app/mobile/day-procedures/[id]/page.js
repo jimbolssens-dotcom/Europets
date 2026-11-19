@@ -19,10 +19,9 @@
 //                     the "AI interpretation" button in the desktop
 //                     Reports section for a compact abnormalities-only
 //                     summary.
-//   - X-ray / Ultrasound / Gastroscopy -> auto-creates the diagnostic +
-//                     report and opens a mobile dictation screen (new —
-//                     dental/surgery already had one, x-ray/ultrasound/
-//                     gastroscopy didn't).
+//   - X-ray / Ultrasound / Gastroscopy -> marks it done (its test comes
+//                     with its report, migration 256) and opens the
+//                     shared scan report card (app/mobile/scan).
 //   - Anything else (Microchip, Ear Clean, ...) -> plain tap to mark done.
 
 'use client';
@@ -33,6 +32,8 @@ import { supabase } from '@/lib/supabaseClient';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import { useMobileStaff } from '@/app/_components/useMobileStaff';
 import { checklistItemAction } from '@/lib/checklistItemAction';
+import { findOrStartScanReport } from '@/lib/scanReports';
+import ScanReportList from '@/app/_components/ScanReportList';
 import { ensureSurgicalReport } from '@/lib/surgicalReportAuto';
 import { uploadAttachment } from '@/lib/attachments';
 import PetPhotoButton from '@/app/_components/PetPhotoButton';
@@ -42,16 +43,10 @@ const ACTION_HINTS = {
   vaccine: 'Tap to log the vaccination',
   spay_neuter: 'Tap to confirm — auto-fills the post-op report',
   surgery: 'Tap to dictate the surgical report',
-  xray: 'Tap to dictate the X-ray report',
-  ultrasound: 'Tap to dictate the ultrasound report',
-  gastroscopy: 'Tap to dictate the gastroscopy report',
+  xray: 'Tap to open the X-ray report',
+  ultrasound: 'Tap to open the ultrasound report',
+  gastroscopy: 'Tap to open the gastroscopy report',
   test: 'Tap to photograph and log the result',
-};
-
-const IMAGING_REPORT_API_BASE = {
-  xray: '/api/xray-reports',
-  ultrasound: '/api/ultrasound-reports',
-  gastroscopy: '/api/gastroscopy-reports',
 };
 
 function todayISODate() {
@@ -167,19 +162,6 @@ export default function MobileDayProcedurePage() {
     return data;
   }
 
-  async function findOrCreateImagingReport(reportType, diagnosticId) {
-    const apiBase = IMAGING_REPORT_API_BASE[reportType];
-    const list = await fetch(`${apiBase}?hospitalization_id=${id}`).then((res) => res.json());
-    const existing = Array.isArray(list) ? list.find((r) => r.diagnostic_id === diagnosticId) : null;
-    if (existing) return existing;
-    const res = await fetch(apiBase, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hospitalization_id: id, diagnostic_id: diagnosticId }),
-    });
-    return res.json();
-  }
-
   async function handleTestPhoto(item, e) {
     const file = e.target.files[0];
     e.target.value = '';
@@ -239,10 +221,12 @@ export default function MobileDayProcedurePage() {
         return;
       }
       if (action === 'xray' || action === 'ultrasound' || action === 'gastroscopy') {
-        const diagnostic = await findOrCreateDiagnostic(item.goods_service_id);
-        const report = await findOrCreateImagingReport(action, diagnostic.id);
+        // Logging it done bills the scan once and makes its test, which
+        // comes with its report (migration 256); then open that report.
+        // (Before 19 Nov this also ordered the test separately: billed twice.)
         if (!alreadyLogged) await logDone(item);
-        router.push(`/mobile/${action}/${report.id}`);
+        const report = await findOrStartScanReport(action, { hospitalizationId: id });
+        router.push(`/mobile/scan/${action}/${report.id}`);
         return;
       }
       if (!alreadyLogged) await logDone(item);
@@ -298,6 +282,8 @@ export default function MobileDayProcedurePage() {
               );
             })}
           </div>
+
+          <ScanReportList hospitalizationId={id} record={admission} />
 
           <button type="button" className="mobile-secondary-action" onClick={() => router.push('/mobile/day-procedures')}>
             Done

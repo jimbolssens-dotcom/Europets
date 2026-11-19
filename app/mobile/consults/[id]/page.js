@@ -13,6 +13,7 @@ import AudioRecorder from '@/app/_components/AudioRecorder';
 import AttachmentSection from '@/app/_components/AttachmentSection';
 import MobileHomeButton from '@/app/_components/MobileHomeButton';
 import PetPhotoButton from '@/app/_components/PetPhotoButton';
+import ScanReportList from '@/app/_components/ScanReportList';
 
 export default function MobileConsultPage() {
   const { id } = useParams();
@@ -48,6 +49,8 @@ export default function MobileConsultPage() {
 
           <h2 className="mobile-section-header">Photos</h2>
           <AttachmentSection entityType="visit" entityId={id} />
+
+          <ScanReportList visitId={id} record={consult} />
 
           <a href={`/consults/${id}`} className="mobile-desktop-link">
             View full consult &rarr;
