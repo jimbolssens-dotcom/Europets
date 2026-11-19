@@ -19,10 +19,9 @@ import VaccinationHistory from '@/app/_components/VaccinationHistory';
 import CatalogPicker from '@/app/_components/CatalogPicker';
 import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
-import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
 import { appOrigin } from '@/lib/appOrigin';
-import { isXrayTest } from '@/lib/xrayProduct';
-import { isGastroscopyTest } from '@/lib/gastroscopyProduct';
+import ScanReportCard from '@/app/_components/ScanReportCard';
+import { SCAN_KINDS, scanKind, reportForTest } from '@/lib/scanReports';
 import RecordReports from '@/app/_components/RecordReports';
 import { ADMINISTRATION_METHOD_LABELS, ADMINISTRATION_METHOD_CODES } from '@/lib/administrationMethods';
 import { subcategoryName, ADD_ITEM_LABELS } from '@/lib/catalogGrouping';
@@ -137,16 +136,10 @@ export default function ConsultDetailPage() {
   const [dentalReports, setDentalReports] = useState([]);
 
   const [ultrasoundReports, setUltrasoundReports] = useState([]);
-  const [dictatingUltrasoundFor, setDictatingUltrasoundFor] = useState(null); // diagnostic id currently starting a report
-  const [ultrasoundForm, setUltrasoundForm] = useState({}); // diagnostic id -> { performed_by, findings, notes }
 
   const [xrayReports, setXrayReports] = useState([]);
-  const [dictatingXrayFor, setDictatingXrayFor] = useState(null); // diagnostic id currently starting a report
-  const [xrayForm, setXrayForm] = useState({}); // diagnostic id -> { performed_by, findings, notes }
 
   const [gastroscopyReports, setGastroscopyReports] = useState([]);
-  const [dictatingGastroscopyFor, setDictatingGastroscopyFor] = useState(null); // diagnostic id currently starting a report
-  const [gastroscopyForm, setGastroscopyForm] = useState({}); // diagnostic id -> { performed_by, findings, notes }
 
   // Shared across all five report types' "Generate AI Report" button — only
   // one generation runs at a time, so one set of state is enough to track
@@ -266,6 +259,8 @@ export default function ConsultDetailPage() {
   const loadXrayReports = () => loadReportList('xray-reports', setXrayReports);
 
   const loadGastroscopyReports = () => loadReportList('gastroscopy-reports', setGastroscopyReports);
+  const scanLoaders = { ultrasound: loadUltrasoundReports, xray: loadXrayReports, gastroscopy: loadGastroscopyReports };
+  const scanReportsByKind = { ultrasound: ultrasoundReports, xray: xrayReports, gastroscopy: gastroscopyReports };
 
   const loadInvoiceInfo = () =>
     fetch(`/api/invoices?visit_id=${id}`)
@@ -568,6 +563,9 @@ export default function ConsultDetailPage() {
       setDiagForm({ goods_service_id: '', description: '', result: '' });
       loadDiagnostics();
       loadTreatmentItems();
+      // A scan comes with its report card (migration 256).
+      const kind = scanKind(catalog.find((c) => c.id === data.goods_service_id)?.name);
+      if (kind) scanLoaders[kind]();
     } catch {
       setDiagError('Could not reach the server, check before ordering again');
     } finally {
@@ -785,81 +783,19 @@ export default function ConsultDetailPage() {
     saveTreatmentItemField(item.id, { administration_method: value || null });
   }
 
-  // Same pattern as the dental/surgical "Dictate" button, but scoped to
-  // one specific Ultrasound diagnostic entry (diagnosticId) rather than a
-  // standalone section — a consult can have more than one scan.
-  async function startDictateUltrasoundReport(diagnosticId) {
-    setDictatingUltrasoundFor(diagnosticId);
-    const res = await fetch('/api/ultrasound-reports', {
+  // A scan logged before 19 Nov has no report yet (since then every scan
+  // comes with one, migration 256): start it, with any result typed on the
+  // test as its findings.
+  const [startingScanFor, setStartingScanFor] = useState(null);
+  async function startScanReport(kind, diagnostic) {
+    setStartingScanFor(diagnostic.id);
+    await fetch(SCAN_KINDS[kind].apiBase, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId }),
+      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnostic.id, findings: diagnostic.result || null }),
     });
-    setDictatingUltrasoundFor(null);
-    if (res.ok) loadUltrasoundReports();
-  }
-
-  // Same pattern, for an X-ray diagnostic entry.
-  async function startDictateXrayReport(diagnosticId) {
-    setDictatingXrayFor(diagnosticId);
-    const res = await fetch('/api/xray-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId }),
-    });
-    setDictatingXrayFor(null);
-    if (res.ok) loadXrayReports();
-  }
-
-  // Same pattern, for a Gastroscopy diagnostic entry.
-  async function startDictateGastroscopyReport(diagnosticId) {
-    setDictatingGastroscopyFor(diagnosticId);
-    const res = await fetch('/api/gastroscopy-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId }),
-    });
-    setDictatingGastroscopyFor(null);
-    if (res.ok) loadGastroscopyReports();
-  }
-
-  // Alternative to "Dictate Report" for ultrasound/x-ray/gastroscopy —
-  // types findings straight in instead, same shape as the dental/surgical
-  // "Or add manually" forms below.
-  async function addUltrasoundReport(e, diagnosticId) {
-    e.preventDefault();
-    const form = ultrasoundForm[diagnosticId] || { performed_by: '', findings: '', notes: '' };
-    await fetch('/api/ultrasound-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId, ...form }),
-    });
-    setUltrasoundForm((prev) => ({ ...prev, [diagnosticId]: { performed_by: '', findings: '', notes: '' } }));
-    loadUltrasoundReports();
-  }
-
-  async function addXrayReport(e, diagnosticId) {
-    e.preventDefault();
-    const form = xrayForm[diagnosticId] || { performed_by: '', findings: '', notes: '' };
-    await fetch('/api/xray-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId, ...form }),
-    });
-    setXrayForm((prev) => ({ ...prev, [diagnosticId]: { performed_by: '', findings: '', notes: '' } }));
-    loadXrayReports();
-  }
-
-  async function addGastroscopyReport(e, diagnosticId) {
-    e.preventDefault();
-    const form = gastroscopyForm[diagnosticId] || { performed_by: '', findings: '', notes: '' };
-    await fetch('/api/gastroscopy-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visit_id: id, diagnostic_id: diagnosticId, ...form }),
-    });
-    setGastroscopyForm((prev) => ({ ...prev, [diagnosticId]: { performed_by: '', findings: '', notes: '' } }));
-    loadGastroscopyReports();
+    setStartingScanFor(null);
+    await scanLoaders[kind]();
   }
 
   // Runs the same AI report generation a dictation triggers (see
@@ -1372,9 +1308,16 @@ export default function ConsultDetailPage() {
 
         {diagnostics.map((d) => {
           const testName = diagnosticLabel(d, catalog);
-          const ultrasoundReport = ultrasoundReports.find((r) => r.diagnostic_id === d.id);
-          const xrayReport = xrayReports.find((r) => r.diagnostic_id === d.id);
-          const gastroscopyReport = gastroscopyReports.find((r) => r.diagnostic_id === d.id);
+          // An ultrasound / x-ray / gastroscopy shows its report card instead
+          // of a Results box (Jim, 19 Nov). An "X-ray second" view shares the
+          // card of its "X-ray first" (lib/scanReports.js).
+          const kind = scanKind(testName);
+          const scanReports = kind ? scanReportsByKind[kind] : null;
+          const scanReport = kind ? reportForTest(d, scanReports) : null;
+          const scanTests = scanReport
+            ? diagnostics.filter((x) => scanKind(diagnosticLabel(x, catalog)) === kind && reportForTest(x, scanReports)?.id === scanReport.id)
+            : [];
+          const cardHere = scanReport && scanTests[0]?.id === d.id;
 
           return (
             <div key={d.id} className="visit-card">
@@ -1385,6 +1328,26 @@ export default function ConsultDetailPage() {
                 </button>
               </div>
               {d.description && <p>{d.description}</p>}
+              {kind ? (
+                scanReport ? (
+                  cardHere ? (
+                    <ScanReportCard kind={kind} report={scanReport} record={consult} staff={reportStaff}
+                      onChanged={scanLoaders[kind]} open={!scanReport.ai_summary}
+                      tests={scanTests.map((x) => ({ id: x.id, name: diagnosticLabel(x, catalog) }))} />
+                  ) : (
+                    <p className="visit-meta">Part of the {SCAN_KINDS[kind].label} report above.</p>
+                  )
+                ) : (
+                  <div className="postop-panel">
+                    {d.result && <p style={{ whiteSpace: 'pre-wrap' }}><strong>Earlier result:</strong> {d.result}</p>}
+                    <button type="button" onClick={() => startScanReport(kind, d)} disabled={startingScanFor === d.id}>
+                      {startingScanFor === d.id ? 'Starting…' : `${SCAN_KINDS[kind].icon} Start ${SCAN_KINDS[kind].label} report`}
+                    </button>
+                    <AttachmentSection entityType="diagnostic" entityId={d.id} refreshKey={diagPhotoVersion[d.id]}
+                      onUploaded={() => handleDiagnosticPhotoUploaded(d.id)} />
+                  </div>
+                )
+              ) : (<>
               <div className="diagnostic-result-row">
                 <textarea
                   placeholder="Result (attach the lab PDF/photo below — it's kept on file, not auto-read; use AI interpretation in Reports for a compact abnormalities-only summary)"
@@ -1407,285 +1370,7 @@ export default function ConsultDetailPage() {
                 refreshKey={diagPhotoVersion[d.id]}
                 onUploaded={() => handleDiagnosticPhotoUploaded(d.id)}
               />
-
-              {isUltrasoundTest(testName) && (
-                <div className="postop-panel">
-                  <h4>Ultrasound Report</h4>
-                  {!ultrasoundReport ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => startDictateUltrasoundReport(d.id)}
-                        disabled={dictatingUltrasoundFor === d.id}
-                      >
-                        🎤 {dictatingUltrasoundFor === d.id ? 'Starting...' : 'Dictate Report'}
-                      </button>
-                      <details>
-                        <summary>Or add manually</summary>
-                        <form className="form-grid" onSubmit={(e) => addUltrasoundReport(e, d.id)}>
-                          <select
-                            value={ultrasoundForm[d.id]?.performed_by || ''}
-                            onChange={(e) =>
-                              setUltrasoundForm({
-                                ...ultrasoundForm,
-                                [d.id]: { ...(ultrasoundForm[d.id] || {}), performed_by: e.target.value },
-                              })
-                            }
-                          >
-                            <option value="">Performed by...</option>
-                            {reportStaff.map((v) => (
-                              <option key={v.id} value={v.id}>
-                                {v.full_name}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            placeholder="Findings"
-                            value={ultrasoundForm[d.id]?.findings || ''}
-                            onChange={(e) =>
-                              setUltrasoundForm({
-                                ...ultrasoundForm,
-                                [d.id]: { ...(ultrasoundForm[d.id] || {}), findings: e.target.value },
-                              })
-                            }
-                          />
-                          <textarea
-                            rows={2}
-                            placeholder="Notes"
-                            value={ultrasoundForm[d.id]?.notes || ''}
-                            onChange={(e) =>
-                              setUltrasoundForm({
-                                ...ultrasoundForm,
-                                [d.id]: { ...(ultrasoundForm[d.id] || {}), notes: e.target.value },
-                              })
-                            }
-                          />
-                          <button type="submit">Add</button>
-                        </form>
-                      </details>
-                    </>
-                  ) : (
-                    <>
-                      <p className="visit-meta">
-                        {ultrasoundReport.staff?.full_name || 'unassigned'} ·{' '}
-                        {ultrasoundReport.performed_at
-                          ? formatDateTime(ultrasoundReport.performed_at)
-                          : ''}
-                      </p>
-                      <AudioRecorder
-                        entityType="ultrasound_report"
-                        entityId={ultrasoundReport.id}
-                        onRefresh={loadUltrasoundReports}
-                      />
-                      <AttachmentSection entityType="ultrasound_report" entityId={ultrasoundReport.id} />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          generateAiReport(
-                            '/api/ultrasound-reports',
-                            ultrasoundReport.id,
-                            !!ultrasoundReport.ai_summary,
-                            loadUltrasoundReports
-                          )
-                        }
-                        disabled={
-                          generatingReportId === ultrasoundReport.id ||
-                          !(ultrasoundReport.findings || ultrasoundReport.notes || ultrasoundReport.ai_summary)
-                        }
-                      >
-                        {generatingReportId === ultrasoundReport.id
-                          ? 'Generating...'
-                          : ultrasoundReport.ai_summary
-                            ? '🔄 Regenerate AI Report'
-                            : '✨ Generate AI Report'}
-                      </button>
-                      {generateReportErrorId === ultrasoundReport.id && <p className="error">{generateReportError}</p>}
-                      <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {isXrayTest(testName) && (
-                <div className="postop-panel">
-                  <h4>X-ray Report</h4>
-                  {!xrayReport ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => startDictateXrayReport(d.id)}
-                        disabled={dictatingXrayFor === d.id}
-                      >
-                        🎤 {dictatingXrayFor === d.id ? 'Starting...' : 'Dictate Report'}
-                      </button>
-                      <details>
-                        <summary>Or add manually</summary>
-                        <form className="form-grid" onSubmit={(e) => addXrayReport(e, d.id)}>
-                          <select
-                            value={xrayForm[d.id]?.performed_by || ''}
-                            onChange={(e) =>
-                              setXrayForm({
-                                ...xrayForm,
-                                [d.id]: { ...(xrayForm[d.id] || {}), performed_by: e.target.value },
-                              })
-                            }
-                          >
-                            <option value="">Performed by...</option>
-                            {reportStaff.map((v) => (
-                              <option key={v.id} value={v.id}>
-                                {v.full_name}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            placeholder="Findings"
-                            value={xrayForm[d.id]?.findings || ''}
-                            onChange={(e) =>
-                              setXrayForm({
-                                ...xrayForm,
-                                [d.id]: { ...(xrayForm[d.id] || {}), findings: e.target.value },
-                              })
-                            }
-                          />
-                          <textarea
-                            rows={2}
-                            placeholder="Notes"
-                            value={xrayForm[d.id]?.notes || ''}
-                            onChange={(e) =>
-                              setXrayForm({
-                                ...xrayForm,
-                                [d.id]: { ...(xrayForm[d.id] || {}), notes: e.target.value },
-                              })
-                            }
-                          />
-                          <button type="submit">Add</button>
-                        </form>
-                      </details>
-                    </>
-                  ) : (
-                    <>
-                      <p className="visit-meta">
-                        {xrayReport.staff?.full_name || 'unassigned'} ·{' '}
-                        {xrayReport.performed_at ? formatDateTime(xrayReport.performed_at) : ''}
-                      </p>
-                      <AudioRecorder
-                        entityType="xray_report"
-                        entityId={xrayReport.id}
-                        onRefresh={loadXrayReports}
-                      />
-                      <AttachmentSection entityType="xray_report" entityId={xrayReport.id} />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          generateAiReport('/api/xray-reports', xrayReport.id, !!xrayReport.ai_summary, loadXrayReports)
-                        }
-                        disabled={generatingReportId === xrayReport.id || !(xrayReport.findings || xrayReport.notes || xrayReport.ai_summary)}
-                      >
-                        {generatingReportId === xrayReport.id
-                          ? 'Generating...'
-                          : xrayReport.ai_summary
-                            ? '🔄 Regenerate AI Report'
-                            : '✨ Generate AI Report'}
-                      </button>
-                      {generateReportErrorId === xrayReport.id && <p className="error">{generateReportError}</p>}
-                      <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {isGastroscopyTest(testName) && (
-                <div className="postop-panel">
-                  <h4>Gastroscopy Report</h4>
-                  {!gastroscopyReport ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => startDictateGastroscopyReport(d.id)}
-                        disabled={dictatingGastroscopyFor === d.id}
-                      >
-                        🎤 {dictatingGastroscopyFor === d.id ? 'Starting...' : 'Dictate Report'}
-                      </button>
-                      <details>
-                        <summary>Or add manually</summary>
-                        <form className="form-grid" onSubmit={(e) => addGastroscopyReport(e, d.id)}>
-                          <select
-                            value={gastroscopyForm[d.id]?.performed_by || ''}
-                            onChange={(e) =>
-                              setGastroscopyForm({
-                                ...gastroscopyForm,
-                                [d.id]: { ...(gastroscopyForm[d.id] || {}), performed_by: e.target.value },
-                              })
-                            }
-                          >
-                            <option value="">Performed by...</option>
-                            {reportStaff.map((v) => (
-                              <option key={v.id} value={v.id}>
-                                {v.full_name}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            placeholder="Findings"
-                            value={gastroscopyForm[d.id]?.findings || ''}
-                            onChange={(e) =>
-                              setGastroscopyForm({
-                                ...gastroscopyForm,
-                                [d.id]: { ...(gastroscopyForm[d.id] || {}), findings: e.target.value },
-                              })
-                            }
-                          />
-                          <textarea
-                            rows={2}
-                            placeholder="Notes"
-                            value={gastroscopyForm[d.id]?.notes || ''}
-                            onChange={(e) =>
-                              setGastroscopyForm({
-                                ...gastroscopyForm,
-                                [d.id]: { ...(gastroscopyForm[d.id] || {}), notes: e.target.value },
-                              })
-                            }
-                          />
-                          <button type="submit">Add</button>
-                        </form>
-                      </details>
-                    </>
-                  ) : (
-                    <>
-                      <p className="visit-meta">
-                        {gastroscopyReport.staff?.full_name || 'unassigned'} ·{' '}
-                        {gastroscopyReport.performed_at ? formatDateTime(gastroscopyReport.performed_at) : ''}
-                      </p>
-                      <AudioRecorder
-                        entityType="gastroscopy_report"
-                        entityId={gastroscopyReport.id}
-                        onRefresh={loadGastroscopyReports}
-                      />
-                      <AttachmentSection entityType="gastroscopy_report" entityId={gastroscopyReport.id} />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          generateAiReport(
-                            '/api/gastroscopy-reports',
-                            gastroscopyReport.id,
-                            !!gastroscopyReport.ai_summary,
-                            loadGastroscopyReports
-                          )
-                        }
-                        disabled={generatingReportId === gastroscopyReport.id || !(gastroscopyReport.findings || gastroscopyReport.notes || gastroscopyReport.ai_summary)}
-                      >
-                        {generatingReportId === gastroscopyReport.id
-                          ? 'Generating...'
-                          : gastroscopyReport.ai_summary
-                            ? '🔄 Regenerate AI Report'
-                            : '✨ Generate AI Report'}
-                      </button>
-                      {generateReportErrorId === gastroscopyReport.id && <p className="error">{generateReportError}</p>}
-                      <button type="button" className="button-link" onClick={() => setActiveTab('reports')}>View and share in Reports</button>
-                    </>
-                  )}
-                </div>
-              )}
+              </>)}
             </div>
           );
         })}
@@ -1913,9 +1598,9 @@ export default function ConsultDetailPage() {
           groups={[
             { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', staffField: 'performed_by', reload: loadDentalReports },
             { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', staffField: 'surgeon_id', reload: loadSurgicalReports },
-            { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', staffField: 'performed_by', sourceTab: 'exam', reload: loadUltrasoundReports, hasClientSummary: true },
-            { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', staffField: 'performed_by', sourceTab: 'exam', reload: loadXrayReports, hasClientSummary: true },
-            { label: 'Gastroscopy report', reports: gastroscopyReports, apiBase: '/api/gastroscopy-reports', entityType: 'gastroscopy_report', staffField: 'performed_by', sourceTab: 'exam', reload: loadGastroscopyReports, hasClientSummary: true },
+            { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', staffField: 'performed_by', sourceTab: 'exam', reload: loadUltrasoundReports, hasClientSummary: true, scanKind: 'ultrasound' },
+            { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', staffField: 'performed_by', sourceTab: 'exam', reload: loadXrayReports, hasClientSummary: true, scanKind: 'xray' },
+            { label: 'Gastroscopy report', reports: gastroscopyReports, apiBase: '/api/gastroscopy-reports', entityType: 'gastroscopy_report', staffField: 'performed_by', sourceTab: 'exam', reload: loadGastroscopyReports, hasClientSummary: true, scanKind: 'gastroscopy' },
           ]}
           assignableStaff={reportStaff}
           onRecordSaved={loadConsult} onOpenSource={setActiveTab}

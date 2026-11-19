@@ -18,6 +18,8 @@ import VoiceToTextButton from './VoiceToTextButton';
 import { useState } from 'react';
 import { isImagingDiagnostic } from '@/lib/diagnosticReportPolicy';
 import { formatDateTime } from '@/lib/formatTimestamp';
+import ScanReportCard from './ScanReportCard';
+import { scanKind, reportForTest } from '@/lib/scanReports';
 
 export default function RecordReports({ record, recordApiBase, showOverallReport, diagnostics, catalog, groups, onRecordSaved,
   onGenerate, generatingId, generationError, generationErrorId,
@@ -86,7 +88,20 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
       setInterpreting((prev) => ({ ...prev, [diagnostic.id]: false }));
     }
   }
-  const count = diagnostics.length + groups.reduce((n, group) => n + group.reports.length, 0);
+  const testName = (diagnostic) => catalog.find((item) => item.id === diagnostic.goods_service_id)?.name || diagnostic.type?.replaceAll('_', ' ') || 'Test';
+  // An ultrasound, x-ray or gastroscopy shows as its report card (one card
+  // per scan, see ScanReportCard); its test line only stays in the test
+  // list when it has no report (an older scan logged before 19 Nov).
+  const scanGroups = Object.fromEntries(groups.filter((g) => g.scanKind).map((g) => [g.scanKind, g]));
+  const scanReportOf = (diagnostic) => {
+    const kind = scanKind(testName(diagnostic));
+    return kind && scanGroups[kind] ? reportForTest(diagnostic, scanGroups[kind].reports) : null;
+  };
+  const testsOn = (kind, report) => diagnostics
+    .filter((d) => scanKind(testName(d)) === kind && reportForTest(d, scanGroups[kind]?.reports)?.id === report.id)
+    .map((d) => ({ id: d.id, name: testName(d) }));
+  const plainDiagnostics = diagnostics.filter((d) => !scanReportOf(d));
+  const count = plainDiagnostics.length + groups.reduce((n, group) => n + group.reports.length, 0);
   return <section className="consult-reports" aria-label="Reports">
     <h3>Reports</h3>
     <p className="visit-meta">Reports and test results for this record. Review and save changes before sharing.</p>
@@ -110,7 +125,10 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
     {!count && !reportsError && <p>No procedure reports or test results added yet.</p>}
     {groups.map((group) => group.reports.length > 0 && <section key={group.apiBase} id={group.anchorId} aria-label={group.label}>
       <h4>{group.label}</h4>
-      {group.reports.map((report) => <details className="card" key={report.id}>
+      {group.scanKind && group.reports.map((report) => <ScanReportCard key={report.id} kind={group.scanKind} report={report} record={record}
+        staff={assignableStaff} onChanged={group.reload} onDelete={(r) => deleteGroupReport(group, r)}
+        tests={testsOn(group.scanKind, report)} open={group.openReportId === report.id} />)}
+      {!group.scanKind && group.reports.map((report) => <details className="card" key={report.id}>
         <summary>{report.procedure_name || group.label} · {report.performed_at ? formatDateTime(report.performed_at) : 'Date not recorded'} · {report.ai_summary ? 'Report available' : 'Report pending'}{hasAttachment[report.id] > 0 ? ` · 📎 ${hasAttachment[report.id]}` : ''}</summary>
         {group.staffField ? (
           <label className="visit-meta">
@@ -147,7 +165,7 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
           onAttachmentsChange={(count) => setHasAttachment((prev) => ({ ...prev, [report.id]: count }))} />
       </details>)}
     </section>)}
-    {(diagnostics.length > 0 || record.test_results) && <section id="report-test-results" aria-label="Test results">
+    {(plainDiagnostics.length > 0 || record.test_results) && <section id="report-test-results" aria-label="Test results">
       <h4>Test results and blood reports</h4>
       <ReportShareActions reportId={record.id} apiBase={recordApiBase} pdfPath="test-report-pdf"
         client={record.clients} patient={record.patients} reportLabel="test results" />
@@ -155,8 +173,8 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
         <p style={{ whiteSpace: 'pre-wrap' }}>{record.test_results}</p>
         {onOpenSource && <button type="button" onClick={() => onOpenSource('exam')}>Edit in Exam &amp; Notes</button>}
       </details>}
-      {diagnostics.map((diagnostic) => {
-        const name = catalog.find((item) => item.id === diagnostic.goods_service_id)?.name || diagnostic.type?.replaceAll('_', ' ') || 'Test';
+      {plainDiagnostics.map((diagnostic) => {
+        const name = testName(diagnostic);
         const done = !!diagnostic.result || hasAttachment[diagnostic.id] > 0;
         return <details className="card" key={diagnostic.id}>
           <summary>{name} · {done ? 'Result recorded' : 'Awaiting result'}{hasAttachment[diagnostic.id] > 0 ? ` · 📎 ${hasAttachment[diagnostic.id]}` : ''}</summary>

@@ -483,9 +483,8 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
     return staff.find((s) => s.id === id)?.full_name || 'Unknown';
   }
 
-  // Dental/surgical/test reports need more than a scroll — unlike xray/
-  // ultrasound/gastroscopy/vaccine (still a plain anchor below, since those
-  // already auto-create their diagnostic the moment the item is added), nothing
+  // Dental/surgical/test/scan reports need more than a scroll (only the
+  // vaccine link is still a plain anchor below): nothing
   // auto-creates a plain test's diagnostic row ahead of time, so the link
   // would otherwise land on an empty section with no result field in
   // sight (see HospitalizationReportsSection, which owns the actual
@@ -500,6 +499,10 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
       onOpenReport?.('surgery', { procedureName: catalogItem?.name || item.label, isSpayNeuter: action === 'spay_neuter' });
     } else if (action === 'test') {
       await onOpenReport?.('test', { goodsServiceId: item.goods_service_id });
+    } else if (action === 'xray' || action === 'ultrasound' || action === 'gastroscopy') {
+      // Opens that scan's own report card (and scrolls to it).
+      await onOpenReport?.(action);
+      return;
     }
     const href = ACTION_LINKS[action]?.href;
     if (href) document.querySelector(href)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -594,7 +597,7 @@ export default function ProcedureChecklist({ hospitalizationId, admittedAt, staf
         const last = done[done.length - 1];
         const action = checklistItemAction(item, catalog, subcategories);
         const link = ACTION_LINKS[action] || null;
-        const linkTriggersReport = action === 'dental' || action === 'surgery' || action === 'spay_neuter' || action === 'test';
+        const linkTriggersReport = ['dental', 'surgery', 'spay_neuter', 'test', 'xray', 'ultrasound', 'gastroscopy'].includes(action);
         return (
           <div key={item.id} className="procedure-checklist-row">
             <button

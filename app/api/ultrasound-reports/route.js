@@ -52,6 +52,27 @@ export async function POST(request) {
     return NextResponse.json({ error: 'visit_id or hospitalization_id is required' }, { status: 400 });
   }
 
+  // The scan's report usually exists already (migration 256 makes it with
+  // the test): hand that one back, with anything typed filled in, rather
+  // than starting a second report for the same scan.
+  if (diagnostic_id) {
+    const { data: existing } = await supabase.from('ultrasound_reports').select('id').eq('diagnostic_id', diagnostic_id).limit(1).maybeSingle();
+    if (existing) {
+      const update = {};
+      if (performed_by) update.performed_by = performed_by;
+      if (findings) update.findings = findings;
+      if (notes) update.notes = notes;
+      const query = Object.keys(update).length
+        ? supabaseAdmin.from('ultrasound_reports').update(update).eq('id', existing.id)
+        : supabase.from('ultrasound_reports').select('*, staff(full_name)').eq('id', existing.id);
+      const { data: kept, error: keptError } = Object.keys(update).length
+        ? await query.select('*, staff(full_name)').single()
+        : await query.single();
+      if (keptError) return NextResponse.json({ error: keptError.message }, { status: 500 });
+      return NextResponse.json(kept, { status: 200 });
+    }
+  }
+
   const { data, error } = await supabaseAdmin
     .from('ultrasound_reports')
     .insert([

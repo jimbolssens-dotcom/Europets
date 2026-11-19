@@ -39,6 +39,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NextResponse } from 'next/server';
 import { recordWorksheetTests } from '@/lib/worksheetTests';
+import { scanKind } from '@/lib/scanReports';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { checkTreatmentNoteCoverage } from '@/lib/anthropicClient';
 import { resolvePlanItemBillable } from '@/lib/planItemBilling';
@@ -138,6 +139,19 @@ export async function POST(request) {
 
   if (visit_id) {
     await syncTreatmentPlanNotes(visit_id, data.goods_services?.name, data.instructions);
+  }
+
+  // An ultrasound, x-ray or gastroscopy added to a consult's treatment list
+  // is also one of its tests, so it gets its report card like any other
+  // scan (migration 256 makes the report with the test). Once per line.
+  if (visit_id && data.goods_services?.main_category === 'test' && scanKind(data.goods_services?.name)) {
+    const { data: already } = await supabase.from('diagnostics').select('id').eq('treatment_item_id', data.id).limit(1);
+    if (!already?.length) {
+      const { error: testError } = await supabaseAdmin
+        .from('diagnostics')
+        .insert([{ visit_id, goods_service_id, treatment_item_id: data.id, description: data.instructions || null }]);
+      if (testError) console.error('Failed to add the scan test for a treatment line', visit_id, testError.message);
+    }
   }
 
   // A test added to a worksheet entry also becomes one of the stay's tests

@@ -46,6 +46,7 @@ import DoseHint, { useDoseGuidelines, doseReasonNote } from '@/app/_components/D
 import TempDial from '@/app/_components/TempDial';
 import WeightDial from '@/app/_components/WeightDial';
 import { ADMINISTRATION_METHOD_LABELS } from '@/lib/administrationMethods';
+import { SCAN_KINDS } from '@/lib/scanReports';
 import { checklistItemAction } from '@/lib/checklistItemAction';
 import { dubaiDayBoundaries } from '@/lib/dubaiTime';
 import { supabase } from '@/lib/supabaseClient';
@@ -730,6 +731,18 @@ export default function DayTreatmentPlan({
   // diagnostic (same catalog item) so there's an actual result field/
   // photo/file upload to land on, then scrolls to it — see
   // HospitalizationReportsSection.openOrStartTestResult.
+  async function openScanReport(item, kind) {
+    setOpeningTestId(item.id);
+    setError(null);
+    try {
+      await onOpenReport?.(kind);
+    } catch (err) {
+      setError(err.message || 'Failed to open the report');
+    } finally {
+      setOpeningTestId(null);
+    }
+  }
+
   async function openTestResult(item) {
     setOpeningTestId(item.id);
     setError(null);
@@ -962,7 +975,10 @@ export default function DayTreatmentPlan({
         {taskItems.map((item) => {
           const done = doneToday(item.id);
           const last = done[done.length - 1];
-          const isTest = checklistItemAction(item, catalog, subcategories) === 'test';
+          const tileAction = checklistItemAction(item, catalog, subcategories);
+          const isTest = tileAction === 'test';
+          // An ultrasound / x-ray / gastroscopy tile opens its report card.
+          const scan = SCAN_KINDS[tileAction] ? tileAction : null;
           const freqStatus = taskFrequencyStatus(item, done);
           const course = courseFor(item);
           // Every other day (migration 255): nothing to do on the days between.
@@ -1001,6 +1017,16 @@ export default function DayTreatmentPlan({
                 {freqStatus.label && <span className="day-plan-task-warning">⚠ {freqStatus.label}</span>}
                 {course && <DoseBar course={course} />}
               </button>
+              {scan && onOpenReport && (
+                <button
+                  type="button"
+                  className="procedure-checklist-link day-plan-test-link"
+                  onClick={() => openScanReport(item, scan)}
+                  disabled={openingTestId === item.id}
+                >
+                  {openingTestId === item.id ? 'Opening…' : `Open ${SCAN_KINDS[scan].label} Report →`}
+                </button>
+              )}
               {isTest && onOpenReport && (
                 <button
                   type="button"

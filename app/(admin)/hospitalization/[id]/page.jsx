@@ -143,6 +143,7 @@ export default function HospitalizationDetailPage() {
     if (action === 'dental') return reportsSectionRef.current?.openOrStartDentalReport();
     if (action === 'surgery') return reportsSectionRef.current?.openOrStartSurgicalReport(opts?.procedureName, opts?.isSpayNeuter);
     if (action === 'test') return reportsSectionRef.current?.openOrStartTestResult(opts?.goodsServiceId);
+    if (action === 'ultrasound' || action === 'xray' || action === 'gastroscopy') return reportsSectionRef.current?.openOrStartScanReport(action);
   }
 
   function openReportFromChecklist(action, opts) {

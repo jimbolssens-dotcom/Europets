@@ -17,9 +17,7 @@ import AudioRecorder from './AudioRecorder';
 import CatalogPicker from './CatalogPicker';
 import DentalChart from './DentalChart';
 import RecordReports from './RecordReports';
-import { isUltrasoundTest } from '@/lib/ultrasoundProduct';
-import { isXrayTest } from '@/lib/xrayProduct';
-import { isGastroscopyTest } from '@/lib/gastroscopyProduct';
+import { SCAN_KINDS, scanKind, scanReportAnchor } from '@/lib/scanReports';
 import { ensureSurgicalReport } from '@/lib/surgicalReportAuto';
 import { resolveCaseScope, loadCaseReports } from '@/lib/caseReportScope';
 
@@ -63,16 +61,10 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   const [savingDentalChart, setSavingDentalChart] = useState(false);
 
   const [ultrasoundReports, setUltrasoundReports] = useState([]);
-  const [dictatingUltrasoundFor, setDictatingUltrasoundFor] = useState(null);
-  const [autoRecordUltrasoundId, setAutoRecordUltrasoundId] = useState(null);
 
   const [xrayReports, setXrayReports] = useState([]);
-  const [dictatingXrayFor, setDictatingXrayFor] = useState(null);
-  const [autoRecordXrayId, setAutoRecordXrayId] = useState(null);
 
   const [gastroscopyReports, setGastroscopyReports] = useState([]);
-  const [dictatingGastroscopyFor, setDictatingGastroscopyFor] = useState(null);
-  const [autoRecordGastroscopyId, setAutoRecordGastroscopyId] = useState(null);
 
   const [generatingReportId, setGeneratingReportId] = useState(null);
   const [generateReportError, setGenerateReportError] = useState(null);
@@ -88,14 +80,25 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   const startReportDetailsRef = useRef(null);
   useEffect(() => {
     if (
-      !autoRecordDentalId && !autoRecordSurgicalId && !autoRecordUltrasoundId && !autoRecordXrayId && !autoRecordGastroscopyId &&
+      !autoRecordDentalId && !autoRecordSurgicalId &&
       !photoRecordDentalId && !photoRecordSurgicalId
     ) return;
     const el = startReportDetailsRef.current;
     if (!el) return;
     el.open = true;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [autoRecordDentalId, autoRecordSurgicalId, autoRecordUltrasoundId, autoRecordXrayId, autoRecordGastroscopyId, photoRecordDentalId, photoRecordSurgicalId]);
+  }, [autoRecordDentalId, autoRecordSurgicalId, photoRecordDentalId, photoRecordSurgicalId]);
+
+  // The scan report card to open and scroll to (an "Open X-ray Report"
+  // link, or a scan just ordered): { kind, id }.
+  const [openScan, setOpenScan] = useState(null);
+  useEffect(() => {
+    if (!openScan) return;
+    const el = document.getElementById(scanReportAnchor(openScan.kind, openScan.id));
+    if (!el) return;
+    el.open = true;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   // A "case" can be more than just this one hospitalizations row — the
   // consult it started from (originating_visit_id), and/or a parallel
@@ -132,6 +135,34 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   const loadUltrasoundReports = () => loadReportList('ultrasound-reports', setUltrasoundReports);
   const loadXrayReports = () => loadReportList('xray-reports', setXrayReports);
   const loadGastroscopyReports = () => loadReportList('gastroscopy-reports', setGastroscopyReports);
+
+  const scanSetters = { ultrasound: setUltrasoundReports, xray: setXrayReports, gastroscopy: setGastroscopyReports };
+
+  // Opens a scan's report card: the one already on this case (the newest
+  // not written yet, else the newest), or a new one. A new one is just the
+  // report, not a billed test: the scan is billed once, when it's ticked
+  // done or ordered, and that test then joins this same report
+  // (migration 256).
+  async function openOrStartScanReport(kind, diagnosticId) {
+    const meta = SCAN_KINDS[kind];
+    let reports = await loadCaseReports(`${kind}-reports`, caseScope);
+    const newest = (list) => [...list].sort((a, b) => new Date(b.performed_at || b.created_at) - new Date(a.performed_at || a.created_at))[0];
+    let report = (diagnosticId && reports.find((r) => r.diagnostic_id === diagnosticId))
+      || newest(reports.filter((r) => !r.ai_summary)) || newest(reports);
+    if (!report) {
+      const res = await fetch(meta.apiBase, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hospitalization_id: hospitalizationId, diagnostic_id: diagnosticId || null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Could not start the ${meta.label.toLowerCase()} report`);
+      report = data;
+      reports = await loadCaseReports(`${kind}-reports`, caseScope);
+    }
+    scanSetters[kind](reports);
+    setOpenScan({ kind, id: report.id });
+  }
 
   const scopeKey = `${caseScope.hospitalizationIds.join(',')}|${caseScope.visitIds.join(',')}`;
 
@@ -188,6 +219,9 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
       }
       setDiagForm({ goods_service_id: '', description: '' });
       loadDiagnostics();
+      // A scan comes with its report card: open it.
+      const kind = scanKind(catalog.find((c) => c.id === data.goods_service_id)?.name);
+      if (kind) await openOrStartScanReport(kind, data.id).catch(() => {});
     } catch {
       setDiagError('Could not reach the server, check before ordering again');
     } finally {
@@ -393,6 +427,7 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
     // catalog item, same as the mobile checklist's own find-or-create) or
     // creates it, so "Enter Test Result" always lands on a real row with
     // a result field and photo/file upload, not an empty section.
+    openOrStartScanReport,
     async openOrStartTestResult(goodsServiceId) {
       const existing = diagnostics.find((d) => d.goods_service_id === goodsServiceId);
       if (existing) return existing;
@@ -420,51 +455,6 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
     const data = await res.json();
     setSavingDentalChart(false);
     if (res.ok) onPatientUpdated?.(data.dental_chart);
-  }
-
-  async function startDictateUltrasoundReport(diagnosticId) {
-    setDictatingUltrasoundFor(diagnosticId);
-    const res = await fetch('/api/ultrasound-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hospitalization_id: hospitalizationId, diagnostic_id: diagnosticId }),
-    });
-    const data = await res.json();
-    setDictatingUltrasoundFor(null);
-    if (res.ok) {
-      setAutoRecordUltrasoundId(data.id);
-      loadUltrasoundReports();
-    }
-  }
-
-  async function startDictateXrayReport(diagnosticId) {
-    setDictatingXrayFor(diagnosticId);
-    const res = await fetch('/api/xray-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hospitalization_id: hospitalizationId, diagnostic_id: diagnosticId }),
-    });
-    const data = await res.json();
-    setDictatingXrayFor(null);
-    if (res.ok) {
-      setAutoRecordXrayId(data.id);
-      loadXrayReports();
-    }
-  }
-
-  async function startDictateGastroscopyReport(diagnosticId) {
-    setDictatingGastroscopyFor(diagnosticId);
-    const res = await fetch('/api/gastroscopy-reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hospitalization_id: hospitalizationId, diagnostic_id: diagnosticId }),
-    });
-    const data = await res.json();
-    setDictatingGastroscopyFor(null);
-    if (res.ok) {
-      setAutoRecordGastroscopyId(data.id);
-      loadGastroscopyReports();
-    }
   }
 
   async function deleteDiagnostic(diagId) {
@@ -503,9 +493,6 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
   // since a tech routinely performs a dental cleaning or assists on other
   // procedures.
   const vets = (staff || []).filter((s) => s.role === 'vet' || s.role === 'tech');
-  const ultrasoundByDiagnostic = Object.fromEntries(ultrasoundReports.map((r) => [r.diagnostic_id, r]));
-  const xrayByDiagnostic = Object.fromEntries(xrayReports.map((r) => [r.diagnostic_id, r]));
-  const gastroscopyByDiagnostic = Object.fromEntries(gastroscopyReports.map((r) => [r.diagnostic_id, r]));
 
   return (
     <div className="hospitalization-reports-section">
@@ -519,9 +506,9 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
         groups={[
           { label: 'Dental report', reports: dentalReports, apiBase: '/api/dental-reports', entityType: 'dental_report', staffField: 'performed_by', anchorId: 'report-dental', reload: loadDentalReports },
           { label: 'Surgical report', reports: surgicalReports, apiBase: '/api/surgical-reports', entityType: 'surgical_report', staffField: 'surgeon_id', anchorId: 'report-surgical', reload: loadSurgicalReports },
-          { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', staffField: 'performed_by', anchorId: 'report-ultrasound', reload: loadUltrasoundReports, hasClientSummary: true },
-          { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', staffField: 'performed_by', anchorId: 'report-xray', reload: loadXrayReports, hasClientSummary: true },
-          { label: 'Gastroscopy report', reports: gastroscopyReports, apiBase: '/api/gastroscopy-reports', entityType: 'gastroscopy_report', staffField: 'performed_by', anchorId: 'report-gastroscopy', reload: loadGastroscopyReports, hasClientSummary: true },
+          { label: 'Ultrasound report', reports: ultrasoundReports, apiBase: '/api/ultrasound-reports', entityType: 'ultrasound_report', staffField: 'performed_by', anchorId: 'report-ultrasound', reload: loadUltrasoundReports, hasClientSummary: true, scanKind: 'ultrasound', openReportId: openScan?.kind === 'ultrasound' ? openScan.id : null },
+          { label: 'X-ray report', reports: xrayReports, apiBase: '/api/xray-reports', entityType: 'xray_report', staffField: 'performed_by', anchorId: 'report-xray', reload: loadXrayReports, hasClientSummary: true, scanKind: 'xray', openReportId: openScan?.kind === 'xray' ? openScan.id : null },
+          { label: 'Gastroscopy report', reports: gastroscopyReports, apiBase: '/api/gastroscopy-reports', entityType: 'gastroscopy_report', staffField: 'performed_by', anchorId: 'report-gastroscopy', reload: loadGastroscopyReports, hasClientSummary: true, scanKind: 'gastroscopy', openReportId: openScan?.kind === 'gastroscopy' ? openScan.id : null },
         ]}
         assignableStaff={vets}
         onGenerate={generateAiReport} generatingId={generatingReportId}
@@ -553,56 +540,6 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
           />
           <button type="submit" disabled={orderingTest}>{orderingTest ? 'Ordering…' : 'Order test'}</button>
         </form>
-
-        {diagnostics.map((d) => {
-          const testName = catalog.find((c) => c.id === d.goods_service_id)?.name || LEGACY_DIAGNOSTIC_TYPE_LABELS[d.type] || d.type;
-          if (isUltrasoundTest(testName)) {
-            const report = ultrasoundByDiagnostic[d.id];
-            return (
-              <p key={d.id} className="visit-meta">
-                🔊 {testName}:{' '}
-                {report ? (
-                  'Report started — see Reports above'
-                ) : (
-                  <button type="button" onClick={() => startDictateUltrasoundReport(d.id)} disabled={dictatingUltrasoundFor === d.id}>
-                    🎤 {dictatingUltrasoundFor === d.id ? 'Starting...' : 'Dictate Ultrasound Report'}
-                  </button>
-                )}
-              </p>
-            );
-          }
-          if (isXrayTest(testName)) {
-            const report = xrayByDiagnostic[d.id];
-            return (
-              <p key={d.id} className="visit-meta">
-                🩻 {testName}:{' '}
-                {report ? (
-                  'Report started — see Reports above'
-                ) : (
-                  <button type="button" onClick={() => startDictateXrayReport(d.id)} disabled={dictatingXrayFor === d.id}>
-                    🎤 {dictatingXrayFor === d.id ? 'Starting...' : 'Dictate X-ray Report'}
-                  </button>
-                )}
-              </p>
-            );
-          }
-          if (isGastroscopyTest(testName)) {
-            const report = gastroscopyByDiagnostic[d.id];
-            return (
-              <p key={d.id} className="visit-meta">
-                🔬 {testName}:{' '}
-                {report ? (
-                  'Report started — see Reports above'
-                ) : (
-                  <button type="button" onClick={() => startDictateGastroscopyReport(d.id)} disabled={dictatingGastroscopyFor === d.id}>
-                    🎤 {dictatingGastroscopyFor === d.id ? 'Starting...' : 'Dictate Gastroscopy Report'}
-                  </button>
-                )}
-              </p>
-            );
-          }
-          return null;
-        })}
 
         <h4>Dental Reports</h4>
         <div className="card">
@@ -679,24 +616,6 @@ const HospitalizationReportsSection = forwardRef(function HospitalizationReports
           </details>
         </div>
 
-        {autoRecordUltrasoundId && (
-          <div className="card">
-            <p className="visit-meta">Ultrasound report — dictate now</p>
-            <AudioRecorder entityType="ultrasound_report" entityId={autoRecordUltrasoundId} onRefresh={loadUltrasoundReports} />
-          </div>
-        )}
-        {autoRecordXrayId && (
-          <div className="card">
-            <p className="visit-meta">X-ray report — dictate now</p>
-            <AudioRecorder entityType="xray_report" entityId={autoRecordXrayId} onRefresh={loadXrayReports} />
-          </div>
-        )}
-        {autoRecordGastroscopyId && (
-          <div className="card">
-            <p className="visit-meta">Gastroscopy report — dictate now</p>
-            <AudioRecorder entityType="gastroscopy_report" entityId={autoRecordGastroscopyId} onRefresh={loadGastroscopyReports} />
-          </div>
-        )}
       </details>
     </div>
   );

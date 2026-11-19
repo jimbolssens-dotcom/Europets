@@ -52,21 +52,31 @@ export async function GET() {
       .is('ai_summary', null),
     supabase
       .from('ultrasound_reports')
-      .select(`id, visit_id, hospitalization_id, performed_at, created_at, ${RELATIONS}`)
+      .select(`id, visit_id, hospitalization_id, diagnostic_id, performed_at, created_at, ${RELATIONS}`)
       .is('ai_summary', null),
     supabase
       .from('xray_reports')
-      .select(`id, visit_id, hospitalization_id, performed_at, created_at, ${RELATIONS}`)
+      .select(`id, visit_id, hospitalization_id, diagnostic_id, performed_at, created_at, ${RELATIONS}`)
       .is('ai_summary', null),
     supabase
       .from('gastroscopy_reports')
-      .select(`id, visit_id, hospitalization_id, performed_at, created_at, ${RELATIONS}`)
+      .select(`id, visit_id, hospitalization_id, diagnostic_id, performed_at, created_at, ${RELATIONS}`)
       .is('ai_summary', null),
     supabase
       .from('diagnostics')
       .select(`id, visit_id, hospitalization_id, created_at, type, goods_services(name), ${RELATIONS}`)
       .is('result', null),
   ]);
+
+  // A scan test (ultrasound, x-ray, gastroscopy) is tracked by its report
+  // since 19 Nov (one report card per scan, migration 256): its test line
+  // has no Results box any more, so it never counts as empty on its own
+  // once it has a report.
+  const scanTestsWithReport = new Set();
+  for (const t of ['ultrasound_reports', 'xray_reports', 'gastroscopy_reports']) {
+    const { data } = await supabase.from(t).select('diagnostic_id').not('diagnostic_id', 'is', null);
+    for (const row of data || []) scanTestsWithReport.add(row.diagnostic_id);
+  }
 
   const candidates = [
     ...(dental.data || []).map((r) => ({ ...r, kind: 'Dental report', date: r.performed_at || r.created_at, reportType: 'dental' })),
@@ -79,7 +89,7 @@ export async function GET() {
     ...(ultrasound.data || []).map((r) => ({ ...r, kind: 'Ultrasound report', date: r.performed_at || r.created_at, reportType: 'ultrasound' })),
     ...(xray.data || []).map((r) => ({ ...r, kind: 'X-ray report', date: r.performed_at || r.created_at, reportType: 'xray' })),
     ...(gastroscopy.data || []).map((r) => ({ ...r, kind: 'Gastroscopy report', date: r.performed_at || r.created_at, reportType: 'gastroscopy' })),
-    ...(diagnostics.data || []).map((r) => ({
+    ...(diagnostics.data || []).filter((r) => !scanTestsWithReport.has(r.id)).map((r) => ({
       ...r,
       kind: r.goods_services?.name || r.type || 'Diagnostic test',
       date: r.created_at,
@@ -89,7 +99,8 @@ export async function GET() {
 
   // Drop anything with at least one file attached — that file IS the
   // record even with no text logged (see the file header comment).
-  const candidateIds = candidates.map((r) => r.id);
+  // A scan report's images are usually on its test line: they count too.
+  const candidateIds = [...candidates.map((r) => r.id), ...candidates.map((r) => r.diagnostic_id).filter(Boolean)];
   let attachedKeys = new Set();
   if (candidateIds.length > 0) {
     const { data: attachments } = await supabase
@@ -101,7 +112,8 @@ export async function GET() {
   }
 
   const rows = candidates
-    .filter((r) => !attachedKeys.has(`${ENTITY_TYPE_BY_REPORT_TYPE[r.reportType]}:${r.id}`))
+    .filter((r) => !attachedKeys.has(`${ENTITY_TYPE_BY_REPORT_TYPE[r.reportType]}:${r.id}`)
+      && !(r.diagnostic_id && attachedKeys.has(`diagnostic:${r.diagnostic_id}`)))
     .map((r) => {
       const { patient, client } = patientClientFor(r);
       return {
