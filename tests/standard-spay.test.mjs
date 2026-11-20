@@ -6,6 +6,9 @@ import { procedureReportSystemPrompt } from '../lib/procedureReportPrompt.js';
 test('spay names', () => {
   assert.ok(isSpayProcedure('Spay - Cat'));
   assert.ok(isSpayProcedure('Ovariohysterectomy'));
+  assert.ok(isSpayProcedure('Spey cat'));
+  assert.ok(isSpayProcedure('Spey dog10-25kg'));
+  assert.ok(!isSpayProcedure('Pyometra spay'));
   assert.ok(!isSpayProcedure('Castration - Dog'));
   assert.ok(!isSpayProcedure('Mass removal'));
 });
