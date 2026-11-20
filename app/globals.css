@@ -17113,3 +17113,97 @@ button.pet-photo-badge { width: 24px; height: 24px; right: -5px; bottom: -5px; p
     padding-top: 0.4rem;
   }
 }
+
+/* Homepage proposal for the team (DiscountProposal): full width, one line
+   until opened. */
+.kind-proposal {
+  grid-column: 1 / -1;
+}
+.kind-proposal > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  list-style: none;
+}
+.kind-proposal > summary::-webkit-details-marker {
+  display: none;
+}
+.kind-proposal-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--pink);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+.kind-proposal-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.kind-proposal-open {
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--pink-dark);
+}
+.kind-proposal[open] .kind-proposal-open {
+  visibility: hidden;
+}
+.kind-proposal-intro {
+  margin: 0.8rem 0 0.4rem;
+  line-height: 1.5;
+}
+.kind-proposal h3 {
+  margin: 0.4rem 0 0.4rem;
+  font-size: 0.95rem;
+  color: var(--pink-dark);
+}
+.kind-proposal-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.8rem;
+  margin: 0.6rem 0;
+}
+.kind-proposal-group {
+  background: #fff;
+  border-radius: 14px;
+  padding: 0.6rem 0.8rem;
+}
+.kind-proposal-group ul,
+.kind-proposal-cols ul,
+.kind-proposal-cols ol {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  line-height: 1.4;
+}
+.kind-proposal-offer {
+  display: block;
+  font-weight: 600;
+}
+.kind-proposal-give {
+  display: block;
+  font-size: 0.85rem;
+  color: #1d6b35;
+}
+.kind-proposal-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.8rem;
+}
+.kind-proposal-phrases li {
+  font-style: italic;
+}
+.kind-proposal-avoid li {
+  color: #8a2a12;
+}
+.kind-proposal-foot {
+  margin: 0.8rem 0 0;
+  font-size: 0.82rem;
+  color: #6b5f64;
+}

@@ -18,6 +18,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FLOWERS, KINDNESS_QUOTES, greetingFor, missionFor } from '@/lib/kindness';
 import { startPacedRefresh } from '@/lib/pacedRefresh';
+import DiscountProposal from './DiscountProposal';
 
 const NAME_KEY = 'europets_smile_name';
 
@@ -148,6 +149,8 @@ export default function KindnessHome() {
       </section>
 
       <div className="kind-grid">
+        <DiscountProposal />
+
         <section className="kind-card kind-mission">
           <span className="kind-label">Today&apos;s kindness mission</span>
           <p className="kind-mission-text">
