@@ -151,3 +151,6 @@
 .error { color: #a01232; font-size: 12px; }
 .loading { font-size: 12px; }
 .back:focus-visible { outline: 2px solid #9a3661; outline-offset: 1px; }
+
+/* LT pair with the ICU box under it (WallFloorPlan). */
+.columnStack { display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }

@@ -19,7 +19,14 @@ export default function WallFloorPlan({ cages, renderTile }) {
   const postPositions = ['1 / 2', '1 / 3', '1 / 4', '2 / 3', '2 / 4'];
   return <div className={styles.floorPlan}>
     <div className={styles.upperRow}>
-      {cluster('LT', lt.slice(0, 2), 1)}
+      {/* The kittens' ICU box (migration 258) in the free spot under the
+          left LT pair: the right LT column is one cage taller. */}
+      <div className={styles.columnStack}>
+        {cluster('LT', lt.slice(0, 2), 1)}
+        {byGroup(cages, 'icu_box').length > 0 && (
+          <div className={styles.clusterGrid} style={{ '--columns': 1 }}>{byGroup(cages, 'icu_box').map(renderTile)}</div>
+        )}
+      </div>
       {cluster('Hospitalization Cages', byGroup(cages, 'standard'), 6)}
       {cluster('LT', lt.slice(2), 1)}
     </div>

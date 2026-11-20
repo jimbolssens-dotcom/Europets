@@ -39,7 +39,7 @@ function MobileCageTile({ cage, hosp, checkinOnly, useSinhala }) {
     return (
       <a
         href={href}
-        className={`cage-tile cage-tile-mobile-occupied${alarmClass ? ` ${alarmClass}` : ''}`}
+        className={`cage-tile cage-tile-mobile-occupied${cage.group_name === 'icu_box' ? ' cage-icu-box' : ''}${alarmClass ? ` ${alarmClass}` : ''}`}
         title={needsAttention ? attention.join(' • ') : undefined}
       >
         <div className="cage-tile-header">
@@ -56,7 +56,7 @@ function MobileCageTile({ cage, hosp, checkinOnly, useSinhala }) {
     );
   }
   return (
-    <div className={`cage-tile cage-empty cage-group-${cage.group_name}`}>
+    <div className={`cage-tile cage-empty cage-group-${cage.group_name}${cage.group_name === 'icu_box' ? ' cage-icu-box' : ''}`}>
       <div className="cage-tile-header">
         <span className="cage-name">{cage.name}</span>
         {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}
@@ -133,6 +133,9 @@ function MobileCageColumns({ cages, renderTile, useSinhala }) {
           <Cluster label={t('Recovery Cages', useSinhala)} cages={recoveryCages} cols={1} renderTile={renderTile} />
           <IsoCluster cages={isoCages} renderTile={renderTile} useSinhala={useSinhala} />
           <Cluster label={t('Dog Cages', useSinhala)} cages={dogCages} cols={2} renderTile={renderTile} />
+          {/* The kittens' ICU box (migration 258), in the space left under
+              this column. */}
+          <Cluster label={t('ICU Box', useSinhala)} cages={byGroup(cages, 'icu_box')} cols={1} renderTile={renderTile} />
         </div>
         <div className="mobile-cage-col mobile-cage-col-right">
           <Cluster label={t('LT', useSinhala)} cages={ltUpper} cols={ltUpper.length} renderTile={renderTile} />

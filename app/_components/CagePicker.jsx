@@ -39,7 +39,7 @@ export default function CagePicker({ cages, occupiedCageIds, value, onChange }) 
               .join(' ')}
             onClick={() => onChange(selected ? '' : cage.id)}
           >
-            {shortLabel(cage.name)}
+            {cage.group_name === 'icu_box' ? 'ICU' : shortLabel(cage.name)}
           </button>
         );
       }}

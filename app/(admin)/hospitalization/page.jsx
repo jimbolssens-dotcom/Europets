@@ -57,6 +57,7 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
         className={[
           'cage-tile',
           'cage-occupied',
+          cage.group_name === 'icu_box' ? 'cage-icu-box' : '',
           alarmClass,
           isDragSource ? 'cage-drag-source' : '',
           isDropTarget ? 'cage-drop-target' : '',
@@ -103,7 +104,7 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
 
   return (
     <div
-      className={`cage-tile cage-empty cage-group-${cage.group_name}${isDropTarget ? ' cage-drop-target' : ''}`}
+      className={`cage-tile cage-empty cage-group-${cage.group_name}${cage.group_name === 'icu_box' ? ' cage-icu-box' : ''}${isDropTarget ? ' cage-drop-target' : ''}`}
       data-cage-id={cage.id}
     >
       <div className="cage-tile-header">

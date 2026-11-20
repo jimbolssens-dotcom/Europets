@@ -17068,3 +17068,48 @@ button.pet-photo-badge { width: 24px; height: 24px; right: -5px; bottom: -5px; p
   font-size: 0.85rem;
   white-space: nowrap;
 }
+
+/* LT pair with the kittens' ICU box under it (CageFloorPlan). */
+.cage-column-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* The neonatal ICU box (migration 258): a little incubator, domed on top
+   and softly tinted, so it reads as the kittens' box, not another cage. */
+.cage-empty.cage-group-icu_box {
+  background: #fff3f6;
+  border-color: #f2b8c9;
+}
+.cage-tile.cage-icu-box {
+  border-radius: 40px 40px 12px 12px;
+  border-width: 2px;
+  padding-top: 0.8rem;
+}
+.cage-tile.cage-icu-box .cage-tile-header {
+  justify-content: center;
+}
+.cage-tile.cage-icu-box .cage-tile-header::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f7a8c0;
+  box-shadow: 0 0 0 3px #ffe0ea;
+}
+.cage-empty.cage-icu-box .cage-status {
+  text-align: center;
+}
+/* Phones: the ICU box sits beside LT 4 (the LT pair is a row there). */
+@media (max-width: 700px) {
+  .hosp-page .cage-column-stack {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 0.3rem;
+  }
+  .hosp-page .cage-tile.cage-icu-box {
+    border-radius: 22px 22px 8px 8px;
+    padding-top: 0.4rem;
+  }
+}

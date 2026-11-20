@@ -29,6 +29,10 @@ export default function CageFloorPlan({ cages, renderTile, compact = false }) {
   const dogCages = byGroup(cages, 'dog');
   const isoCages = byGroup(cages, 'isolation');
   const postOpCages = byGroup(cages, 'post_op');
+  // The neonatal ICU box for kittens (migration 258): no fixed place on the
+  // floor, so it sits in the free spot under the left LT column (that
+  // column has 2 cages, the right one 3), moving nothing else.
+  const icuBoxes = byGroup(cages, 'icu_box');
 
   function renderCluster(label, groupCages, cols) {
     if (groupCages.length === 0) return null;
@@ -45,7 +49,14 @@ export default function CageFloorPlan({ cages, renderTile, compact = false }) {
   return (
     <div className={compact ? 'cage-floorplan cage-floorplan-compact' : 'cage-floorplan'}>
       <div className="floor-plan-row">
-        {renderCluster('LT', ltLeft, 1)}
+        <div className="cage-column-stack">
+          {renderCluster('LT', ltLeft, 1)}
+          {icuBoxes.length > 0 && (
+            <div className="cage-cluster" style={{ '--cols': 1 }}>
+              {icuBoxes.map((cage) => renderTile(cage))}
+            </div>
+          )}
+        </div>
         {renderCluster(compact ? 'Cages' : 'Hospitalization Cages', standardCages, 6)}
         {renderCluster('LT', ltRight, 1)}
       </div>
