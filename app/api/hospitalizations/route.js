@@ -28,6 +28,7 @@ import { dubaiDateISO, nightsBetween, shortDayLabel } from '@/lib/dayProcedureSc
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { selectAll } from '@/lib/selectAll';
 import { NextResponse } from 'next/server';
+import { consultToLink } from '@/lib/admitConsultLink';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
 
@@ -333,6 +334,24 @@ export async function POST(request) {
   }
 
   const resolvedKind = kind || (originating_hospitalization_id ? 'day_procedure' : 'admission');
+
+  // Admitted some other way than the consult's own Hospitalize button
+  // (e.g. "Admit Patient" on the Hospitalization page) while the patient is
+  // in a consult today: link it to that consult anyway, so its medications
+  // are offered for the Day Treatment Plan and its vitals carry over
+  // (lib/admitConsultLink.js).
+  if (!originating_visit_id && !appointment_id && !originating_hospitalization_id) {
+    const { data: openVisits } = await supabase
+      .from('visits')
+      .select('id, status, started_at')
+      .eq('patient_id', patient_id)
+      .eq('status', 'in_progress');
+    const ids = (openVisits || []).map((v) => v.id);
+    if (ids.length) {
+      const { data: linkedStays } = await supabase.from('hospitalizations').select('originating_visit_id').in('originating_visit_id', ids);
+      originating_visit_id = consultToLink(openVisits, (linkedStays || []).map((h) => h.originating_visit_id), today);
+    }
+  }
 
   // A day procedure can also start from the patient file, a consult, or an
   // auto-checked-in appointment — none of which go through "Book Day
