@@ -54,3 +54,19 @@ test('a long stay groups into weeks of 7 days, each the average', () => {
   assert.equal(weeks[0].selfPct, 0);
   assert.equal(weeks[8].selfPct, 100);
 });
+
+import { rampFraction, rampDay, dayTargetKcal, feedPlan } from '../lib/feeding.js';
+test('3-day ramp-up: a third, two thirds, then full', () => {
+  assert.equal(dayTargetKcal(139, '2026-11-21', '2026-11-21'), 46);
+  assert.equal(dayTargetKcal(139, '2026-11-21', '2026-11-22'), 93);
+  assert.equal(dayTargetKcal(139, '2026-11-21', '2026-11-23'), 139);
+  assert.equal(dayTargetKcal(139, '2026-11-21', '2026-11-30'), 139);
+  assert.equal(rampFraction('2026-11-21', '2026-11-20'), 1);
+  assert.equal(rampDay('2026-11-21', '2026-11-23'), 3);
+  assert.equal(rampDay('2026-11-21', '2026-11-24'), null);
+  assert.equal(dayTargetKcal(139, null, '2026-11-21'), 139);
+});
+test('Recovery Liquid per feed, 6 feeds', () => {
+  assert.deepEqual(feedPlan(46, 'rc_recovery_liquid', 6), { mlPerDay: 46, feeds: 6, mlPerFeed: 7.5 });
+  assert.deepEqual(feedPlan(139, 'rc_recovery_liquid', 6), { mlPerDay: 139, feeds: 6, mlPerFeed: 23 });
+});

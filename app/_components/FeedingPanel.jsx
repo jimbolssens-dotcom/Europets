@@ -37,7 +37,10 @@ export default function FeedingPanel({ hospitalizationId, authorId, onLogged }) 
   const [targetDraft, setTargetDraft] = useState('');
 
   const today = data?.days?.[data.days.length - 1];
-  const target = data?.targetKcal;
+  // Today's target: a ramp-up's share of it while one runs (migration 259).
+  const target = data?.todayTargetKcal ?? data?.targetKcal;
+  const plan = data?.todayPlan;
+  const ramp = data?.ramp;
   const chosenMl = ml === 'other' ? Number(otherMl) : ml;
   const thisKcal = kind === 'forced' ? forceFeedKcal(chosenMl, food) : null;
   const afterKcal = today && thisKcal ? Math.round(today.fedKcal + thisKcal) : null;
@@ -93,6 +96,20 @@ export default function FeedingPanel({ hospitalizationId, authorId, onLogged }) 
 
   const fedPct = today?.fedPct || 0;
 
+  // Start a 3-day ramp-up from today, 6 feeds a day unless set otherwise;
+  // or stop it (back to the full target every day).
+  async function setRamp(start) {
+    setError(null);
+    const res = await fetch(`/api/hospitalizations/${hospitalizationId}/feeding`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(start ? { feed_ramp_start: start, feeds_per_day: data?.feedsPerDay || 6 } : { feed_ramp_start: null }),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) return setError(out.error || 'Could not change the ramp-up');
+    window.dispatchEvent(new CustomEvent(FEEDING_CHANGED, { detail: hospitalizationId }));
+  }
+
   return (
     <>
     <div className={`day-plan-vitals-tile feeding-tile${today?.fedKcal || today?.appetite ? ' done' : ''}`}>
@@ -121,6 +138,14 @@ export default function FeedingPanel({ hospitalizationId, authorId, onLogged }) 
         )}
       </div>
 
+      {plan && (ramp?.day || data?.feedsPerDay) && (
+        <p className="feeding-plan">
+          {ramp?.day ? <>Ramp-up day <b>{ramp.day} of {ramp.days}</b> · </> : null}
+          Today: <b>{plan.mlPerDay} ml</b> Recovery Liquid
+          {plan.feeds ? <> = <b>{plan.feeds} feeds of {plan.mlPerFeed} ml</b></> : null}
+        </p>
+      )}
+
       {open ? (
         <div className="feeding-form">
           <div className="feeding-kind" role="group" aria-label="Kind of feed">
@@ -130,6 +155,9 @@ export default function FeedingPanel({ hospitalizationId, authorId, onLogged }) 
           {kind === 'forced' ? (
             <>
               <div className="feeding-chips">
+                {plan?.mlPerFeed && !FORCE_FEED_ML_CHOICES.includes(plan.mlPerFeed) && (
+                  <button type="button" className={ml === plan.mlPerFeed ? 'on' : ''} onClick={() => setMl(plan.mlPerFeed)} title="One feed of today's plan">{plan.mlPerFeed} ml</button>
+                )}
                 {FORCE_FEED_ML_CHOICES.map((v) => (
                   <button key={v} type="button" className={ml === v ? 'on' : ''} onClick={() => setMl(v)}>{v} ml</button>
                 ))}
@@ -187,11 +215,17 @@ export default function FeedingPanel({ hospitalizationId, authorId, onLogged }) 
               <button type="button" className="rare-link" onClick={() => saveTarget(null)}>Back to RER</button>
             )}
           </>
-        ) : target ? (
+        ) : data?.targetKcal ? (
           <>
-            Energy target <b>{target} kcal/day</b>
-            {data.targetSource === 'rer' ? ` (RER for ${data.weightKg} kg)` : ' (set for this stay)'}{' '}
-            <button type="button" className="rare-link" onClick={() => { setTargetDraft(String(target)); setEditingTarget(true); }}>change</button>
+            Energy target <b>{data.targetKcal} kcal/day</b>
+            {data.targetSource === 'rer' ? ` (RER for ${data.weightKg} kg)` : ' (set for this stay)'}
+            {ramp?.day ? `, today ${target} kcal` : ''}{' '}
+            <button type="button" className="rare-link" onClick={() => { setTargetDraft(String(data.targetKcal)); setEditingTarget(true); }}>change</button>{' '}
+            {ramp?.day ? (
+              <button type="button" className="rare-link" onClick={() => setRamp(null)}>stop ramp-up</button>
+            ) : (
+              <button type="button" className="rare-link" onClick={() => setRamp(todayISODate())} title="A third of the target today, two thirds tomorrow, the full target from day 3, in 6 feeds a day">3-day ramp-up</button>
+            )}
           </>
         ) : (
           <>

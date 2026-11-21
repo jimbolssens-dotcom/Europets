@@ -49,7 +49,7 @@ const shortDate = (iso) =>
 
 function dayTip(d, targetKcal) {
   const parts = [];
-  if (d.fedKcal > 0) parts.push(`force-fed ${d.fedMl ? `${d.fedMl} ml = ` : ''}${Math.round(d.fedKcal)} kcal (${d.fedPct}% of ${targetKcal} kcal)`);
+  if (d.fedKcal > 0) parts.push(`force-fed ${d.fedMl ? `${d.fedMl} ml = ` : ''}${Math.round(d.fedKcal)} kcal (${d.fedPct}% of ${d.targetKcal ?? targetKcal} kcal${d.rampDay ? `, ramp-up day ${d.rampDay}` : ''})`);
   parts.push(`by itself: ${d.appetite ? APPETITE_LABELS[d.appetite] : 'not logged'}`);
   return `${d.today ? 'Today so far' : shortDate(d.date)}: ${parts.join(' · ')}`;
 }
