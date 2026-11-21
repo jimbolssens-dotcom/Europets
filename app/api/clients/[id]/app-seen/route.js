@@ -17,7 +17,8 @@ export async function POST(request, { params }) {
   // Public now (see middleware.js) — a non-staff caller can only ping
   // this for themselves, even though the worst case of skipping this
   // check would just be a wrong last-seen timestamp, not a data leak.
-  if (!(await isStaffRequest(request))) {
+  const staff = await isStaffRequest(request);
+  if (!staff) {
     const sessionClientId = await getClientSession(request);
     if (!sessionClientId || sessionClientId !== params.id) {
       return NextResponse.json({ error: 'not authorized' }, { status: 403 });
@@ -32,5 +33,8 @@ export async function POST(request, { params }) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  // The day's use, for daily / weekly / monthly active users on the Client
+  // app chart (migration 260). Staff trying the app don't count.
+  if (!staff) await supabaseAdmin.rpc('touch_client_app_day', { p_client: params.id }).then(() => {}, () => {});
   return NextResponse.json({ ok: true });
 }

@@ -280,6 +280,21 @@ export default function AccountingChartsPage() {
             </p>
           </Card>
 
+          <Card title="Client app: active users" why="Different clients who opened the app in each period, whether or not they logged in again (staff trying it don't count). Hover a bar for the average a day. Counted from 21 Nov; before that only each client's last visit is known.">
+            <p className="visit-meta">
+              Today <b>{data.app.totals.today}</b> · last 7 days <b>{data.app.totals.last7}</b> · last 30 days <b>{data.app.totals.last30}</b>
+            </p>
+            <BarChart
+              buckets={data.buckets}
+              unit={unit}
+              total={false}
+              format={(v) => String(Math.round(v))}
+              tooltipFormat={(v, b) => `${v} active client${v === 1 ? '' : 's'}${data.app.activeDailyAvg?.[b] != null ? `, about ${data.app.activeDailyAvg[b]} a day` : ''}`}
+              series={[{ key: 'active', label: 'Active clients', color: 'var(--chart-3)', values: data.app.active || {} }]}
+              height={190}
+            />
+          </Card>
+
           <Card title="Discounts given" why="What came off bills in each period (VAT included), on the day it was given, supporter bonuses included (hover for how many invoices).">
             <BarChart
               buckets={data.buckets}

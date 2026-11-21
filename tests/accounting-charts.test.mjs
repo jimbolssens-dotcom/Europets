@@ -157,3 +157,19 @@ test('without the old float, nothing changes', () => {
   assert.equal(d.outgoing['2026-09-14'], 12);
   assert.deepEqual(d.oldFloatBuckets, []);
 });
+
+import { appActiveStats } from '../lib/accountingCharts.js';
+test('client app active users: different clients per week, a day on average, today/7/30', () => {
+  const days = [
+    { client_id: 'a', day: '2026-11-17' },
+    { client_id: 'a', day: '2026-11-18' },
+    { client_id: 'b', day: '2026-11-18' },
+    { client_id: 'c', day: '2026-11-21' },
+    { client_id: 'a', day: '2026-11-21' },
+    { client_id: 'd', day: '2026-10-01' },
+  ];
+  const s = appActiveStats({ days, unit: 'week', buckets: ['2026-11-16'], today: '2026-11-21' });
+  assert.equal(s.active['2026-11-16'], 3);
+  assert.equal(s.dailyAvg['2026-11-16'], 0.7); // 5 client-days over 7 days
+  assert.deepEqual(s.totals, { today: 2, last7: 3, last30: 3 });
+});

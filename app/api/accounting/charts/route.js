@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 import { selectAll } from '@/lib/selectAll';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { bucketsUpTo, rangeStartIso, buildChartData, lineItemCategory, appLoginStats } from '@/lib/accountingCharts';
+import { bucketsUpTo, rangeStartIso, buildChartData, lineItemCategory, appLoginStats, appActiveStats } from '@/lib/accountingCharts';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,19 +115,22 @@ export async function GET(request) {
   });
   // The client app: who asked for a login code, who logged in, who uses it.
   const since30 = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const [codesRes, { data: staffPhones }, { count: usedEver }, { count: used30 }] = await Promise.all([
+  const [codesRes, { data: staffPhones }, { count: usedEver }, { count: used30 }, daysRes] = await Promise.all([
     selectAll(() => supabaseAdmin.from('client_otp_codes').select('id, phone, created_at, consumed_at, attempts').order('id')),
     supabaseAdmin.from('staff').select('whatsapp_phone').not('whatsapp_phone', 'is', null),
     supabaseAdmin.from('clients').select('id', { count: 'exact', head: true }).not('client_app_last_seen_at', 'is', null),
     supabaseAdmin.from('clients').select('id', { count: 'exact', head: true }).gte('client_app_last_seen_at', since30),
+    // Which clients used the app on which day (migration 260).
+    selectAll(() => supabaseAdmin.from('client_app_days').select('client_id, day').order('day').order('client_id')),
   ]);
   if (codesRes.error) return NextResponse.json({ error: codesRes.error.message }, { status: 500 });
   const app = appLoginStats({ codes: codesRes.data, unit, buckets, staffPhones: (staffPhones || []).map((s) => s.whatsapp_phone) });
+  const active = appActiveStats({ days: daysRes.data || [], unit, buckets, today: new Date(now + 4 * 60 * 60 * 1000).toISOString().slice(0, 10) });
 
   return NextResponse.json(
     {
       ...data,
-      app: { ...app, totals: { ...app.totals, usedEver: usedEver || 0, used30: used30 || 0 } },
+      app: { ...app, active: active.active, activeDailyAvg: active.dailyAvg, totals: { ...app.totals, ...active.totals, usedEver: usedEver || 0, used30: used30 || 0 } },
     },
     { headers: { 'Cache-Control': 'no-store' } }
   );
