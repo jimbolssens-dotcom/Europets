@@ -48,7 +48,7 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
   const isDropTarget = dropTargetId === cage.id;
 
   if (hosp) {
-    const { yellow, red } = hospitalizationAttentionReasons(hosp);
+    const { yellow, red, deceased } = hospitalizationAttentionReasons(hosp);
     const attention = [...yellow, ...red];
     const needsAttention = attention.length > 0;
     const alarmClass = cageAlarmClass(hospitalizationAlarmLevel(hosp));
@@ -86,6 +86,7 @@ function CageTile({ cage, hosp, unassignedAdmitted, onAssign, onUnassign, onDrag
         </button>
         <div className="cage-tile-header">
           <span className="cage-name">{cage.name}</span>
+          {deceased.length > 0 && <span title={deceased.join(' • ')}>🕯️</span>}
           {red.length > 0 && <span title={red.join(' • ')}>🩺</span>}
           {yellow.length > 0 && <span title={yellow.join(' • ')}>🔔</span>}
           {cage.is_oxygen_room && <span title="Oxygen room">🫧</span>}

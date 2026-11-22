@@ -1,5 +1,6 @@
 'use client';
 
+import PassedAwayAlarm from '@/app/_components/PassedAwayAlarm';
 import AutoScreenSwitcher from '@/app/_components/AutoScreenSwitcher';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -66,6 +67,7 @@ const PHONE_PAGE_TITLES = {
 
 // The phone menu's dot for a hospitalization / day procedure alarm level.
 function phoneAlert(level) {
+  if (level === 'deceased') return 'black';
   if (level === 'red' || level === 'both') return 'red';
   if (level === 'yellow') return 'amber';
   return '';
@@ -94,11 +96,11 @@ export default function AdminLayout({ children }) {
   }, []);
   const hospitalizationAlarmClass = navAlarmClass(hospitalizationAlarmLevel);
   const hospitalizationAlarmIcon =
-    hospitalizationAlarmLevel === 'red' || hospitalizationAlarmLevel === 'both' ? ' 🩺' : hospitalizationAlarmLevel === 'yellow' ? ' 🔔' : '';
+    hospitalizationAlarmLevel === 'deceased' ? ' 🕯️' : hospitalizationAlarmLevel === 'red' || hospitalizationAlarmLevel === 'both' ? ' 🩺' : hospitalizationAlarmLevel === 'yellow' ? ' 🔔' : '';
   const dayProcedureAlarmLevel = useHospitalizationUpdatePending({ kind: 'day_procedure' });
   const dayProcedureAlarmClass = navAlarmClass(dayProcedureAlarmLevel);
   const dayProcedureAlarmIcon =
-    dayProcedureAlarmLevel === 'red' || dayProcedureAlarmLevel === 'both' ? ' 🩺' : dayProcedureAlarmLevel === 'yellow' ? ' 🔔' : '';
+    dayProcedureAlarmLevel === 'deceased' ? ' 🕯️' : dayProcedureAlarmLevel === 'red' || dayProcedureAlarmLevel === 'both' ? ' 🩺' : dayProcedureAlarmLevel === 'yellow' ? ' 🔔' : '';
   const [hasPendingAppointmentRequest, setHasPendingAppointmentRequest] = useState(false);
   const [hasPendingInviteRequest, setHasPendingInviteRequest] = useState(false);
   const [hasPendingReviewRequest, setHasPendingReviewRequest] = useState(false);
@@ -242,7 +244,7 @@ export default function AdminLayout({ children }) {
   }, [pathname]);
 
   if (pathname === '/hospitalization/wall' || pathname === '/day-procedures/wall') {
-    return <><AppVersionWatcher /><main>{children}</main></>;
+    return <><AppVersionWatcher /><main><PassedAwayAlarm />{children}</main></>;
   }
 
   return (
@@ -438,6 +440,7 @@ export default function AdminLayout({ children }) {
         className={pathname?.startsWith('/messages/') ? 'content content-fill' : 'content'}
         data-phone-title={PHONE_PAGE_TITLES[pathname] ? '' : undefined}
       >
+        <PassedAwayAlarm />
         {children}
       </main>
     </>

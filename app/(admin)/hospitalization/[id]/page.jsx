@@ -44,6 +44,7 @@ import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
 import MiniCageStrip from '@/app/_components/MiniCageStrip';
 import HospitalizationReportsSection from '@/app/_components/HospitalizationReportsSection';
 import PatientHistoryPanel from '@/app/_components/PatientHistoryPanel';
+import PassedAwayButton from '@/app/_components/PassedAwayButton';
 import PatientReportOverview from '@/app/_components/PatientReportOverview';
 import WeightHistoryChart from '@/app/_components/WeightHistoryChart';
 import PatientHeader, { PatientMeta, PatientTrend } from '@/app/_components/PatientHeader';
@@ -1293,6 +1294,9 @@ export default function HospitalizationDetailPage() {
             {admission.status === 'admitted' && (
               <button type="button" className="button-link" onClick={discharge}>Complete</button>
             )}
+            {admission.status === 'admitted' && !admission.passed_away_at && (
+              <PassedAwayButton hospitalizationId={id} patientName={admission.patients?.name} staff={staff} onMarked={loadAdmission} />
+            )}
             {/* Only a day procedure with no originating admission needs this —
                 one booked off an existing stay (originating_hospitalization_id)
                 already has an open admission covering "still hospitalized",
@@ -1461,6 +1465,9 @@ export default function HospitalizationDetailPage() {
         <div className="case-bar-actions" role="group" aria-label="Hospitalization actions">
         {admission.status === 'admitted' && (
           <button type="button" className="button-link" onClick={discharge}>Discharge</button>
+        )}
+        {admission.status === 'admitted' && !admission.passed_away_at && (
+          <PassedAwayButton hospitalizationId={id} patientName={admission.patients?.name} staff={staff} onMarked={loadAdmission} />
         )}
         <CrossRecordLinks>
           <button type="button" className={`button-link${invoiceInfo ? ' button-link-invoice' : ''}`} onClick={createInvoice} disabled={creatingInvoice}

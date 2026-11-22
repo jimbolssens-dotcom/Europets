@@ -12717,6 +12717,11 @@ form.card.walkin-inline > .booking-owner-picked {
     background: #d32f2f;
   }
 
+  .phone-tab-dot-black {
+    background: #111;
+    box-shadow: 0 0 0 2px #e11d48;
+  }
+
   .phone-more-backdrop {
     display: block;
     position: fixed;
@@ -17216,4 +17221,160 @@ button.pet-photo-badge { width: 24px; height: 24px; right: -5px; bottom: -5px; p
   color: #5c0a2e;
   border-radius: 10px;
   padding: 0.35rem 0.6rem;
+}
+
+/* The biggest alarm (PassedAwayAlarm, migration 261): a patient passed away
+   and the owner hasn't been told. Black, with a pulsing red edge, across
+   the top of every staff screen until someone records the owner knows. */
+.passed-away-alarm {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: #111;
+  color: #fff;
+  border: 4px solid #e11d48;
+  border-radius: 14px;
+  margin: 0.5rem 0 0.8rem;
+  padding: 0.7rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  box-shadow: 0 8px 30px rgba(225, 29, 72, 0.35);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .passed-away-alarm {
+    animation: passed-away-pulse 1.2s ease-in-out infinite;
+  }
+}
+@keyframes passed-away-pulse {
+  0%, 100% { border-color: #e11d48; box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.55); }
+  50% { border-color: #ff8fa8; box-shadow: 0 0 0 10px rgba(225, 29, 72, 0); }
+}
+.passed-away-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.passed-away-text {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  flex: 1 1 320px;
+}
+.passed-away-icon {
+  font-size: 2rem;
+}
+.passed-away-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.passed-away-alarm a,
+.passed-away-alarm button,
+.passed-away-alarm select {
+  font: 600 0.9rem inherit;
+  font-family: inherit;
+  border-radius: 999px;
+  min-height: 40px;
+  padding: 0 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.passed-away-call {
+  background: #fff;
+  color: #111 !important;
+}
+.passed-away-open {
+  color: #fff !important;
+  border: 1px solid #777;
+}
+.passed-away-done,
+.passed-away-confirm {
+  background: #e11d48;
+  color: #fff;
+  border: 0;
+}
+.passed-away-undo {
+  background: none;
+  border: 0;
+  color: #bbb;
+  font-weight: 400 !important;
+  text-decoration: underline;
+}
+.passed-away-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.passed-away-form select {
+  background: #fff;
+  color: #111;
+  border: 0;
+}
+.passed-away-how {
+  display: inline-flex;
+  gap: 2px;
+  background: #333;
+  border-radius: 999px;
+  padding: 2px;
+}
+.passed-away-how button {
+  background: none;
+  border: 0;
+  color: #ddd;
+  min-height: 36px;
+}
+.passed-away-how button.on {
+  background: #fff;
+  color: #111;
+}
+.passed-away-error {
+  color: #ff9db0;
+}
+
+/* Its cage and menu link: black, so they outrank red and yellow. */
+.cage-alarm-deceased {
+  background: #111 !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 3px #e11d48;
+}
+.cage-alarm-deceased .cage-patient-species,
+.cage-alarm-deceased .cage-patient-no {
+  color: #ddd !important;
+}
+.topnav-links a.nav-alarm-deceased {
+  background: #111 !important;
+  color: #fff !important;
+  border: 2px solid #e11d48;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cage-alarm-deceased,
+  .topnav-links a.nav-alarm-deceased {
+    animation: passed-away-pulse 1.2s ease-in-out infinite;
+  }
+}
+
+/* "🕯️ Passed away" on a stay (PassedAwayButton). */
+.passed-away-mark {
+  color: #333 !important;
+}
+.passed-away-mark-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: #fff;
+  border: 2px solid #111;
+  border-radius: 14px;
+  padding: 0.8rem 1rem;
+  max-width: 360px;
 }

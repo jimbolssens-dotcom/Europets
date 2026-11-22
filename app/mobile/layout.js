@@ -16,6 +16,7 @@
 // mobile route, not just the home screen — see that component for what
 // triggers it and its one deliberate escape hatch (My Schedule itself).
 
+import PassedAwayAlarm from '@/app/_components/PassedAwayAlarm';
 import AppVersionWatcher from '@/app/_components/AppVersionWatcher';
 import MobileBodyFillToggle from '@/app/_components/MobileBodyFillToggle';
 import MobileRosterGate from '@/app/_components/MobileRosterGate';
@@ -50,6 +51,7 @@ export default function MobileLayout({ children }) {
       <MobileBodyFillToggle />
       <MobileRosterGate />
       <AutoScreenSwitcher />
+      <PassedAwayAlarm />
       {children}
     </div>
   );

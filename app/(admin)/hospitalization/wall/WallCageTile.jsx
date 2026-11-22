@@ -197,7 +197,7 @@ export default function WallCageTile({ cage, hospitalization, details, authorId,
       )}
     </div>
     {!hospitalization ? <span className={styles.noPlan}>Empty</span> : <>
-      {needsAttention && <span className={styles.attentionLabel}>Needs attention</span>}
+      {needsAttention && <span className={styles.attentionLabel}>{alarmLevel === 'deceased' ? '🕯️ Passed away: tell the owner' : 'Needs attention'}</span>}
       {error && <span role="alert" className={styles.error}>{error}</span>}
       {details?.error ? <span role="status" className={styles.error}>Treatment details unavailable</span> : planItems.length === 0 ?
         <div className={styles.noPlan}>No treatment plan entered.</div> :

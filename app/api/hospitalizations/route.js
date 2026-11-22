@@ -29,6 +29,7 @@ import { resolveAdministrationMethod } from '@/lib/administrationMethods';
 import { selectAll } from '@/lib/selectAll';
 import { NextResponse } from 'next/server';
 import { consultToLink } from '@/lib/admitConsultLink';
+import { hiddenFromClient } from '@/lib/passedAway';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
 
@@ -166,7 +167,8 @@ export async function GET(request) {
   // never the broad staff dashboard queries (status=admitted with no
   // client_id/patient_id, or the originating_*/appointment_id/kind
   // filters) this same route also serves.
-  if (!(await isStaffRequest(request))) {
+  const staffRequest = await isStaffRequest(request);
+  if (!staffRequest) {
     const sessionClientId = await getClientSession(request);
     if (!sessionClientId) {
       return NextResponse.json({ error: 'not authorized' }, { status: 403 });
@@ -221,7 +223,9 @@ export async function GET(request) {
   }
 
   const withCages = await attachCages(data);
-  return NextResponse.json(await attachScheduledUpdateStatus(withCages));
+  const result = await attachScheduledUpdateStatus(withCages);
+  // The owner's app never sees that a pet passed away (migration 261).
+  return NextResponse.json(staffRequest ? result : (Array.isArray(result) ? result.map(hiddenFromClient) : result));
 }
 
 export async function POST(request) {

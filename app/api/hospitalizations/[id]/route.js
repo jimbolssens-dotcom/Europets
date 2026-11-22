@@ -21,6 +21,8 @@ import { attachCages } from '@/lib/attachCages';
 import { runHospitalizationDischargeEffects } from '@/lib/hospitalizationDischarge';
 import { detectWeightLossAlarm } from '@/lib/weightLossAlarm';
 import { NextResponse } from 'next/server';
+import { hiddenFromClient } from '@/lib/passedAway';
+import { isStaffRequest } from '@/lib/staffAuth';
 import { foldPlan } from '@/lib/worksheetGrouping';
 
 export const maxDuration = 60;
@@ -63,7 +65,9 @@ export async function GET(request, { params }) {
     data.weight_loss_alarm = null;
   }
 
-  return NextResponse.json(await attachCages(data));
+  // The owner's portal never sees that a pet passed away (migration 261).
+  const withCages = await attachCages(data);
+  return NextResponse.json((await isStaffRequest(request)) ? withCages : hiddenFromClient(withCages));
 }
 
 export async function PATCH(request, { params }) {

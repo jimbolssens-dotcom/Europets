@@ -19,7 +19,8 @@ function isOn(pathname, href) {
 
 function Dot({ alert }) {
   if (!alert) return null;
-  return <span className={`phone-tab-dot${alert === 'red' ? ' phone-tab-dot-red' : ''}`} aria-hidden="true" />;
+  // black: a patient passed away and the owner hasn't been told (PassedAwayAlarm).
+  return <span className={`phone-tab-dot${alert === 'red' ? ' phone-tab-dot-red' : alert === 'black' ? ' phone-tab-dot-black' : ''}`} aria-hidden="true" />;
 }
 
 export default function PhoneTabBar({ main, more }) {
@@ -32,7 +33,7 @@ export default function PhoneTabBar({ main, more }) {
   }, [pathname]);
 
   const moreOn = more.some((item) => isOn(pathname, item.href));
-  const moreAlert = more.some((item) => item.alert === 'red') ? 'red' : more.some((item) => item.alert) ? 'amber' : '';
+  const moreAlert = more.some((item) => item.alert === 'black') ? 'black' : more.some((item) => item.alert === 'red') ? 'red' : more.some((item) => item.alert) ? 'amber' : '';
 
   return (
     <>
