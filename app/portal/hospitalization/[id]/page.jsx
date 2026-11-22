@@ -167,17 +167,25 @@ export default function HospitalizationPortalPage() {
       <div className="portal-card">
         <h1>
           {admission.patients?.name}
-          <span className={`portal-status portal-status-${admission.status}`}>
-            {admission.status === 'admitted' ? 'Currently admitted' : 'Discharged'}
+          <span className={`portal-status portal-status-${admission.passed_away_on ? 'memory' : admission.status}`}>
+            {admission.passed_away_on ? 'In loving memory' : admission.status === 'admitted' ? 'Currently admitted' : 'Discharged'}
           </span>
           <WeightHistoryChart data={stayWeightHistory} mini />
           <TemperatureHistoryChart data={stayTemperatureHistory} mini />
         </h1>
         <p className="visit-meta">
           Admitted {formatDateTime(admission.admitted_at)}
-          {admission.discharged_at && ` · Discharged ${formatDateTime(admission.discharged_at)}`}
+          {/* A pet that passed away with us (migration 261): said gently, never "Discharged". */}
+          {admission.passed_away_on
+            ? ` · Passed away ${formatDateTime(admission.passed_away_on)}`
+            : admission.discharged_at && ` · Discharged ${formatDateTime(admission.discharged_at)}`}
         </p>
         {admission.reason && <p>{admission.reason}</p>}
+        {admission.passed_away_on && (
+          <p className="portal-memory-note">
+            We are so sorry for the loss of {admission.patients?.name || 'your companion'}. Our thoughts are with you, and we are here whenever you need us.
+          </p>
+        )}
       </div>
 
       {admission.status === 'admitted' && (
@@ -223,7 +231,7 @@ export default function HospitalizationPortalPage() {
         <AttachmentGallery
           entityType="hospitalization"
           entityId={id}
-          emptyText="No photos shared yet."
+          emptyText={admission.passed_away_on ? 'No photos were shared.' : 'No photos shared yet.'}
         />
       </div>
 
@@ -267,7 +275,7 @@ export default function HospitalizationPortalPage() {
 
       <div className="portal-card">
         <h2>Daily Updates</h2>
-        {ownerNotes.length === 0 && <p className="visit-meta">No updates yet — check back soon.</p>}
+        {ownerNotes.length === 0 && <p className="visit-meta">{admission.passed_away_on ? 'No updates were shared.' : 'No updates yet — check back soon.'}</p>}
         {groupNotesByDate(ownerNotes).map((group) => (
           <div key={group.date} className="worksheet-day">
             <h3 className="worksheet-day-header">{formatDayHeader(group.date)}</h3>
@@ -305,7 +313,7 @@ export default function HospitalizationPortalPage() {
         ))}
       </div>
 
-      <p className="portal-footer">This page updates automatically — no need to refresh.</p>
+      {!admission.passed_away_on && <p className="portal-footer">This page updates automatically — no need to refresh.</p>}
     </div>
     </div>
     </NoteAttachmentsProvider>

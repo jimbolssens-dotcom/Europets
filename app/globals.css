@@ -17378,3 +17378,17 @@ button.pet-photo-badge { width: 24px; height: 24px; right: -5px; bottom: -5px; p
   padding: 0.8rem 1rem;
   max-width: 360px;
 }
+
+/* Portal: a pet that passed away with us (migration 261), once the owner knows. */
+.portal-status-memory {
+  background: #ece8f3 !important;
+  color: #4a3d6b !important;
+}
+.portal-memory-note {
+  margin: 0.6rem 0 0;
+  padding: 0.7rem 0.9rem;
+  background: #f6f3fa;
+  border-radius: 12px;
+  color: #3f3556;
+  line-height: 1.5;
+}

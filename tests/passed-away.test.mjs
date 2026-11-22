@@ -20,3 +20,8 @@ test('the owner never sees it', () => {
   const row = hiddenFromClient({ id: 'h', status: 'admitted', passed_away_at: 'x', passed_away_by: 'y', owner_informed_at: null, owner_informed_by: null, owner_informed_how: null });
   assert.deepEqual(row, { id: 'h', status: 'admitted' });
 });
+
+test('once the owner knows, the portal gets only the date', () => {
+  const row = hiddenFromClient({ id: 'h', status: 'discharged', passed_away_at: '2026-11-19T10:00:00Z', passed_away_by: 'y', owner_informed_at: '2026-11-19T12:00:00Z', owner_informed_by: 'z', owner_informed_how: 'phone' });
+  assert.deepEqual(row, { id: 'h', status: 'discharged', passed_away_on: '2026-11-19T10:00:00Z' });
+});
