@@ -24,6 +24,7 @@ import { downloadWhatsAppMedia } from '@/lib/metaWhatsapp';
 import { staffForPhone, quotedTeamGroup, postFromWhatsApp } from '@/lib/teamWhatsapp';
 import { startsWithTeamTag } from '@/lib/teamChatPlan';
 import { maybeRunConcierge, applyConciergeDecision, isWhatsAppAiEnabled } from '@/lib/whatsappConcierge';
+import { debounceFor } from '@/lib/conciergeDebounce';
 import { isAssistantOwnerPhone, relayToAssistant } from '@/lib/personalAssistantRelay';
 import { transcribeVoiceNote } from '@/lib/assemblyai';
 import { NextResponse } from 'next/server';
@@ -177,7 +178,9 @@ async function newerClientMessageSince(clientId, phone, waMessageId) {
 async function runConciergeForInbound(message, clientId, digits) {
   try {
     if (!isWhatsAppAiEnabled()) return;
-    await new Promise((resolve) => setTimeout(resolve, CONCIERGE_DEBOUNCE_MS));
+    // A bare greeting waits longer: the real question nearly always follows
+    // within seconds (lib/conciergeDebounce.js).
+    await new Promise((resolve) => setTimeout(resolve, message.type === 'text' ? debounceFor(message.text?.body) : CONCIERGE_DEBOUNCE_MS));
     if (await newerClientMessageSince(clientId, digits, message.id)) return;
 
     const decision = await maybeRunConcierge({ clientId, phone: digits, inboundWaId: message.id });
