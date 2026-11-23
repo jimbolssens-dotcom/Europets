@@ -23,6 +23,7 @@ import { readViewCacheEntry, writeViewCacheEntry } from '@/lib/viewCache';
 import { fetchJsonPrefetched } from '@/lib/prefetchData';
 import ActionMenu from '@/app/_components/ActionMenu';
 import CrossRecordLinks from '@/app/_components/CrossRecordLinks';
+import ClientInHospital from '@/app/_components/ClientInHospital';
 import PayLinkPageEditor from '@/app/_components/PayLinkPageEditor';
 
 export default function ClientDetailPage() {
@@ -619,6 +620,7 @@ export default function ClientDetailPage() {
         <a href={`/messages/${client.id}`} className="button-link" title="Open this client's message thread — the clinic's own WhatsApp number and app chat, unified">
           💬<span className="client-long-label"> Chat</span>
         </a>
+        <ClientInHospital clientId={client.id} />
         <CrossRecordLinks>
           <a href={`/consults?client_id=${client.id}`} className="button-link">
             Consult
