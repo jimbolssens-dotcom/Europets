@@ -128,7 +128,7 @@ export async function POST(request, { params }) {
   const tempError = temperatureError(temperature_c);
   if (tempError) return NextResponse.json({ error: tempError }, { status: 400 });
 
-  const checkinFields = { stool, urine, vomit, drinking, mood, temperature_feel, medication_given, force_feeding_done: forceFeedingDone, appetite, temperature_c };
+  const checkinFields = { stool, urine, vomit, drinking, mood, temperature_feel, medication_given, force_feeding_done: forceFeedingDone, appetite, temperature_c, ...feed };
   let clientSummary = null;
   if (hasCheckinData(checkinFields)) {
     const { data: hosp } = await supabase

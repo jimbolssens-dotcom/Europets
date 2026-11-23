@@ -47,10 +47,10 @@ export function useStayFeeding(hospitalizationId) {
 const shortDate = (iso) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
-function dayTip(d, targetKcal) {
+function dayTip(d, targetKcal, owner = false) {
   const parts = [];
-  if (d.fedKcal > 0) parts.push(`force-fed ${d.fedMl ? `${d.fedMl} ml = ` : ''}${Math.round(d.fedKcal)} kcal (${d.fedPct}% of ${d.targetKcal ?? targetKcal} kcal${d.rampDay ? `, ramp-up day ${d.rampDay}` : ''})`);
-  parts.push(`by itself: ${d.appetite ? APPETITE_LABELS[d.appetite] : 'not logged'}`);
+  if (d.fedKcal > 0) parts.push(`${owner ? 'assisted feeding' : 'force-fed'} ${d.fedMl ? `${d.fedMl} ml = ` : ''}${Math.round(d.fedKcal)} kcal (${d.fedPct}% of ${d.targetKcal ?? targetKcal} kcal${d.rampDay ? `, ramp-up day ${d.rampDay}` : ''})`);
+  parts.push(`${owner ? 'unassisted' : 'by itself'}: ${d.appetite ? APPETITE_LABELS[d.appetite] : 'not logged'}`);
   return `${d.today ? 'Today so far' : shortDate(d.date)}: ${parts.join(' · ')}`;
 }
 
@@ -102,8 +102,8 @@ function BarSvg({ bars, width, height, labelEvery = 1, dark = false, onPick, pic
   );
 }
 
-const dayBars = (days, targetKcal) =>
-  days.map((d) => ({ key: d.date, fed: d.fedPct, self: d.selfPct, label: d.today ? 'Today' : shortDate(d.date), tip: dayTip(d, targetKcal), partial: d.today }));
+const dayBars = (days, targetKcal, owner = false) =>
+  days.map((d) => ({ key: d.date, fed: d.fedPct, self: d.selfPct, label: d.today ? 'Today' : shortDate(d.date), tip: dayTip(d, targetKcal, owner), partial: d.today }));
 
 const PERIODS = [
   { key: '2w', label: '2 weeks', days: 14 },
@@ -116,11 +116,11 @@ export function FoodIntakeLegend({ dark = false, owner = false }) {
     <div className={`food-intake-legend${dark ? ' dark' : ''}`}>
       <span>
         <i style={{ background: FEED_COLORS.fed }} />
-        {owner ? 'Fed by syringe by our team' : 'Force-fed (% of energy target)'}
+        {owner ? 'Assisted feeding by syringe (% of energy target)' : 'Force-fed (% of energy target)'}
       </span>
       <span>
         <i style={{ background: FEED_COLORS.self }} />
-        {owner ? 'Eating by itself' : 'Ate by itself (a little ≈ ¼, well = full)'}
+        {owner ? 'Eating unassisted' : 'Ate by itself (a little ≈ ¼, well = full)'}
       </span>
       {!owner && <span>┄ Target</span>}
     </div>
@@ -142,13 +142,13 @@ export function FoodIntakeChart({ data, dark = false, owner = false, initialPeri
           fed: w.fedPct,
           self: w.selfPct,
           label: `Wk ${w.week}`,
-          tip: `Week ${w.week} (${shortDate(w.from)} to ${shortDate(w.to)}): force-fed ${w.fedPct}% of target on average · by itself ${w.selfPct}%`,
+          tip: `Week ${w.week} (${shortDate(w.from)} to ${shortDate(w.to)}): ${owner ? 'assisted feeding' : 'force-fed'} ${w.fedPct}% of target on average · ${owner ? 'unassisted' : 'by itself'} ${w.selfPct}%`,
         })),
       };
     }
     const shown = Number.isFinite(p.days) ? days.slice(-p.days) : days;
-    return { weekly: false, bars: dayBars(shown, data?.targetKcal) };
-  }, [period, days, data]);
+    return { weekly: false, bars: dayBars(shown, data?.targetKcal, owner) };
+  }, [period, days, data, owner]);
 
   if (!data) return null;
   if (!days.some((d) => d.fedKcal > 0 || d.appetite)) {
@@ -182,15 +182,17 @@ export function FoodIntakeChart({ data, dark = false, owner = false, initialPeri
       <FoodIntakeLegend dark={dark} owner={owner} />
       <BarSvg bars={view.bars} width={owner ? 380 : 640} height={owner ? 150 : 210} labelEvery={labelEvery} dark={dark} onPick={onPick} picked={picked} />
       {view.weekly && <p className="food-intake-hint">One bar per week (the average). Tap a week to see its days.</p>}
-      {pickedDay && !owner && (
+      {pickedDay && (
+        // Each feed of the day tapped: time, ml and kcal (the owner too,
+        // without staff names, which their copy of the data doesn't have).
         <ul className="food-intake-feeds">
-          <li className="food-intake-feeds-head">{dayTip(pickedDay, data.targetKcal)}</li>
+          <li className="food-intake-feeds-head">{dayTip(pickedDay, data.targetKcal, owner)}</li>
           {pickedDay.feeds.map((f, i) => (
             <li key={i}>
               <span className="dot" style={{ background: f.kind === 'forced' ? FEED_COLORS.fed : FEED_COLORS.self }} />
               {new Date(f.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' })}{' '}
               {f.kind === 'forced'
-                ? `force-fed ${f.ml} ml ${feedingFood(f.food)?.name || ''} (${Math.round(f.kcal)} kcal)`
+                ? `${owner ? 'assisted feed' : 'force-fed'} ${f.ml} ml ${feedingFood(f.food)?.name || ''} (${Math.round(f.kcal * 10) / 10} kcal)`
                 : `by itself: ${APPETITE_LABELS[f.appetite]}`}
               {f.by ? ` · ${f.by}` : ''}
             </li>
@@ -240,11 +242,16 @@ export function OwnerEatingCard({ hospitalizationId, petName }) {
   const name = petName || 'Your pet';
   const today = days[days.length - 1];
   const parts = [];
-  if (today.fedKcal > 0) parts.push(`we gave ${name} ${today.fedPct}% of the day's energy needs by syringe`);
-  if (today.appetite === 'good') parts.push(`${name} is eating well by itself 🎉`);
-  else if (today.appetite === 'reduced') parts.push(`${name} is eating a little by itself`);
-  else if (today.appetite === 'none') parts.push(`${name} isn't eating by itself yet`);
-  const line = parts.length ? `Today ${parts.join(', and ')}.` : 'Nothing logged yet today.';
+  // Clinical wording with the amounts (Jim, 23 Nov): millilitres, kcal and
+  // the share of the day's energy target.
+  if (today.fedKcal > 0) {
+    const n = today.feeds.filter((f) => f.kind === 'forced').length;
+    parts.push(`assisted feeding by syringe: ${today.fedMl} ml (${Math.round(today.fedKcal * 10) / 10} kcal) in ${n} feed${n === 1 ? '' : 's'}, ${today.fedPct}% of today's energy target${today.targetKcal ? ` of ${today.targetKcal} kcal` : ''}`);
+  }
+  if (today.appetite === 'good') parts.push(`eating unassisted: good appetite`);
+  else if (today.appetite === 'reduced') parts.push(`eating unassisted: reduced appetite`);
+  else if (today.appetite === 'none') parts.push(`eating unassisted: not eating`);
+  const line = parts.length ? `Today, ${parts.join('; ')}.` : 'Nothing logged yet today.';
   const shown = whole ? data : { ...data, days: days.slice(-7) };
   return (
     <div className="portal-card food-intake-card">
