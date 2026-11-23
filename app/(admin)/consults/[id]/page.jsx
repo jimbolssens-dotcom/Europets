@@ -21,6 +21,8 @@ import MicrochipCaptureModal from '@/app/_components/MicrochipCaptureModal';
 import { isMicrochipProduct } from '@/lib/microchipProduct';
 import { appOrigin } from '@/lib/appOrigin';
 import ScanReportCard from '@/app/_components/ScanReportCard';
+import CvrlFormButton from '@/app/_components/CvrlFormButton';
+import { isCvrlTest } from '@/lib/cvrlForm';
 import { SCAN_KINDS, scanKind, reportForTest } from '@/lib/scanReports';
 import RecordReports from '@/app/_components/RecordReports';
 import { ADMINISTRATION_METHOD_LABELS, ADMINISTRATION_METHOD_CODES } from '@/lib/administrationMethods';
@@ -1370,6 +1372,7 @@ export default function ConsultDetailPage() {
                 refreshKey={diagPhotoVersion[d.id]}
                 onUploaded={() => handleDiagnosticPhotoUploaded(d.id)}
               />
+              {isCvrlTest(testName) && <CvrlFormButton diagnosticId={d.id} />}
               </>)}
             </div>
           );

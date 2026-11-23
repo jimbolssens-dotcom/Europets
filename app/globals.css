@@ -17399,3 +17399,43 @@ button.pet-photo-badge { width: 24px; height: 24px; right: -5px; bottom: -5px; p
   color: #1d6b35 !important;
   font-weight: 600;
 }
+
+/* CVRL requisition form panel (CvrlFormButton). */
+.cvrl-form-panel {
+  border: 1px solid #e5d9df;
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: #fff;
+}
+.cvrl-form-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cvrl-form-panel fieldset {
+  border: 1px solid #eee;
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+  align-items: center;
+}
+.cvrl-form-panel fieldset input[type='text'],
+.cvrl-form-panel fieldset input:not([type]) {
+  flex: 1 1 100%;
+}
+.cvrl-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.88rem;
+}
+.cvrl-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}

@@ -26,6 +26,8 @@ const nextConfig = {
     serverComponentsExternalPackages: ['ffmpeg-static'],
     outputFileTracingIncludes: {
       '/api/social-posts/[id]/reel': ['./node_modules/ffmpeg-static/ffmpeg'],
+      // CVRL's blank requisition form, filled per test (lib/cvrlForm.js).
+      '/api/diagnostics/[id]/cvrl-form': ['./assets/cvrl-requisition-form.pdf'],
     },
   },
   async headers() {

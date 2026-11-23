@@ -19,6 +19,8 @@ import { useState } from 'react';
 import { isImagingDiagnostic } from '@/lib/diagnosticReportPolicy';
 import { formatDateTime } from '@/lib/formatTimestamp';
 import ScanReportCard from './ScanReportCard';
+import CvrlFormButton from './CvrlFormButton';
+import { isCvrlTest } from '@/lib/cvrlForm';
 import { scanKind, reportForTest } from '@/lib/scanReports';
 
 export default function RecordReports({ record, recordApiBase, showOverallReport, diagnostics, catalog, groups, onRecordSaved,
@@ -214,6 +216,7 @@ export default function RecordReports({ record, recordApiBase, showOverallReport
             </div>
           )}
           {interpretErrors[diagnostic.id] && <p className="error" role="alert">{interpretErrors[diagnostic.id]}</p>}
+          {isCvrlTest(name) && <CvrlFormButton diagnosticId={diagnostic.id} />}
         </details>;
       })}
     </section>}
