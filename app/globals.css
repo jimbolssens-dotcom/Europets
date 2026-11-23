@@ -17392,3 +17392,10 @@ button.pet-photo-badge { width: 24px; height: 24px; right: -5px; bottom: -5px; p
   color: #3f3556;
   line-height: 1.5;
 }
+
+/* Client app pets search: the microchip that matched (lib/petSearch.js). */
+.client-app-chip-match {
+  display: block;
+  color: #1d6b35 !important;
+  font-weight: 600;
+}

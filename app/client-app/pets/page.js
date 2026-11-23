@@ -7,6 +7,7 @@
 
 'use client';
 
+import { petMatches, microchipMatches } from '@/lib/petSearch';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useClientAppSession } from '@/app/_components/useClientAppSession';
@@ -126,11 +127,10 @@ export default function ClientAppPetsPage() {
   const activePets = pets.filter((pet) => !pet.deceased && !pet.rehomed);
   const careById = Object.fromEntries(care.map((c) => [c.id, c]));
   const query = search.trim().toLowerCase();
-  const shownPets = activePets.filter(
-    (pet) =>
-      (!onlyCare || careById[pet.id]) &&
-      (!query || pet.name?.toLowerCase().includes(query) || String(pet.patient_number || '').includes(query))
-  );
+  // By name, patient number or microchip (lib/petSearch.js); a search also
+  // looks through past pets, so a chip can be checked against every pet.
+  const shownPets = activePets.filter((pet) => (!onlyCare || careById[pet.id]) && petMatches(pet, query));
+  const shownPastPets = query ? pets.filter((pet) => (pet.deceased || pet.rehomed) && petMatches(pet, query)) : [];
   const manyPets = activePets.length > 8;
   const dosesLeftToday = care.reduce((n, c) => n + c.dosesLeft, 0);
   const pastPets = pets.filter((pet) => pet.deceased || pet.rehomed);
@@ -178,6 +178,9 @@ export default function ClientAppPetsPage() {
                 {[pet.species, pet.breed, age].filter(Boolean).join(' · ')}
                 {pet.current_weight_kg ? ` · ${pet.current_weight_kg} kg` : ''}
               </span>
+              {microchipMatches(pet, query) && (
+                <span className="mobile-list-meta client-app-chip-match">✓ Microchip {pet.microchip_number}</span>
+              )}
             </div>
           </div>
           {admission && (
@@ -240,10 +243,11 @@ export default function ClientAppPetsPage() {
         </div>
       )}
 
-      {manyPets && (
+      {pets.length > 0 && (
         <>
-          <input className="client-app-pets-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 Search by name or number" />
-          {care.length > 0 && (
+          <input className="client-app-pets-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="🔍 Search by name, number or microchip" aria-label="Search your pets by name, number or microchip" />
+          {manyPets && care.length > 0 && (
             <div className="client-app-pets-filters">
               <button type="button" className={onlyCare ? 'on' : ''} onClick={() => setOnlyCare(true)}>On home care ({care.length})</button>
               <button type="button" className={!onlyCare ? 'on' : ''} onClick={() => setOnlyCare(false)}>All</button>
@@ -273,8 +277,13 @@ export default function ClientAppPetsPage() {
             <p className="mobile-subtitle">No pets on file yet.</p>
           ) : (
             <>
-              <ul className="mobile-list">{(manyPets ? shownPets.slice(0, query ? 200 : 60) : activePets).map(renderPetCard)}</ul>
-              {manyPets && shownPets.length === 0 && <p className="mobile-subtitle">No pet with that name.</p>}
+              <ul className="mobile-list">{(manyPets || query ? shownPets.slice(0, query ? 200 : 60) : activePets).map(renderPetCard)}</ul>
+              {query && shownPastPets.length > 0 && <ul className="mobile-list">{shownPastPets.map(renderPetCard)}</ul>}
+              {query && shownPets.length === 0 && shownPastPets.length === 0 && (
+                <p className="mobile-subtitle">
+                  {/\d{6,}/.test(search) ? 'That microchip isn\'t on any of your pets.' : 'No pet matches that.'}
+                </p>
+              )}
               {manyPets && !query && shownPets.length > 60 && (
                 <p className="mobile-subtitle">Showing 60 of {shownPets.length}. Search to find the others.</p>
               )}
