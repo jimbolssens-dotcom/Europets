@@ -217,6 +217,7 @@ export default function ClientAppPetsPage() {
       <div className="client-app-pets-head">
         <h1>My Pets</h1>
         {activePets.length > 8 && <span className="client-app-pets-count">{activePets.length}</span>}
+        <a href="/client-app/pets/new" className="client-app-pets-add" title="Add a pet to your account">+ Add a pet</a>
         {activePets.length > 0 && (
           <button type="button" className="client-app-pets-log" onClick={() => setLogSheet(true)}>
             + Log{activePets.length > 1 ? ' for several' : ''}

@@ -15,6 +15,7 @@
 
 'use client';
 
+import ClientAddedChip from './ClientAddedChip';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { petAgeLabel, estimatedDateOfBirth, sexLabel, speciesEmoji } from '@/lib/petAge';
 import PetPhotoButton from '@/app/_components/PetPhotoButton';
@@ -149,6 +150,7 @@ export default function PatientHeader({
         )}
         {species && <span className="patient-chip">{species}</span>}
         {sexLabel(p.sex) && <span className="patient-chip">{sexLabel(p.sex)}</span>}
+        <ClientAddedChip patient={p} onChecked={(updated) => updated && onPatientUpdated?.(updated)} />
         {chips}
         {status && <span className={`patient-status patient-status-${status.tone || 'progress'}`}>{status.label}</span>}
         {actions && actionsRow === 1 && (

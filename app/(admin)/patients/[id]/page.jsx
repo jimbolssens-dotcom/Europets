@@ -7,6 +7,7 @@
 
 'use client';
 
+import ClientAddedChip from '@/app/_components/ClientAddedChip';
 import DewormingChip from '@/app/_components/DewormingChip';
 import { OwnerLogsSection } from '@/app/_components/OwnerLogs';
 import { confirmWeight } from '@/lib/weightCheck';
@@ -428,6 +429,7 @@ export default function PatientDetailPage() {
           {patient.deceased && <span className="error"> · Deceased</span>}
           {patient.rehomed && <span className="error"> · Rehomed</span>}
         </h1>
+        <ClientAddedChip patient={patient} onChecked={(p) => p && setPatient((prev) => ({ ...prev, client_details_checked_at: p.client_details_checked_at }))} />
         {!editing && (
           <button type="button" className="client-edit-link patient-edit-link" onClick={startEdit}>
             ✏️ Edit

@@ -26,6 +26,8 @@ const EDITABLE_FIELDS = [
   'notes',
   'dental_chart',
   'profile_photo_url',
+  // A pet the owner added in the client app, checked by staff (migration 262).
+  'client_details_checked_at',
 ];
 
 // All a non-staff caller (a logged-in client, editing their own pet from

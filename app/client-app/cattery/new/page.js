@@ -107,7 +107,9 @@ export default function ClientAppCatteryBookPage() {
       {cats === null ? (
         <p className="mobile-subtitle">Loading...</p>
       ) : cats.length === 0 ? (
-        <p className="mobile-subtitle">We don&apos;t have a cat on file for you yet. Send us a message in Chat and we&apos;ll set it up.</p>
+        <p className="mobile-subtitle">
+          We don&apos;t have a cat on file for you yet. <a href="/client-app/pets/new">Add your cat</a> first, then book the stay.
+        </p>
       ) : (
         <>
           <p className="client-app-cattery-label">Which cat?</p>
