@@ -30,6 +30,7 @@ export default function HealthCertificatePanel({ patientId, staff, onClose }) {
     external_date: '',
     visited: 'None (resident in the United Arab Emirates)',
     remarks: '',
+    vaccine_edits: {},
   });
   const [preview, setPreview] = useState(null);
   const [issued, setIssued] = useState([]);
@@ -37,6 +38,8 @@ export default function HealthCertificatePanel({ patientId, staff, onClose }) {
   const [error, setError] = useState(null);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const setVaccine = (id, k) => (e) =>
+    setForm((f) => ({ ...f, vaccine_edits: { ...f.vaccine_edits, [id]: { ...(f.vaccine_edits[id] || {}), [k]: e.target.value } } }));
 
   useEffect(() => {
     if (!form.vet_id && vets[0]) setForm((f) => ({ ...f, vet_id: vets[0].id }));
@@ -66,6 +69,14 @@ export default function HealthCertificatePanel({ patientId, staff, onClose }) {
         .then((d) => {
           if (!d.data) return;
           setPreview(d.data);
+          // Each vaccine's product and batch from the records, once, then editable.
+          setForm((f) => {
+            const missing = (d.data.vaccines || []).filter((v) => v.protocol_id && !f.vaccine_edits[v.protocol_id]);
+            if (!missing.length) return f;
+            const edits = { ...f.vaccine_edits };
+            for (const v of missing) edits[v.protocol_id] = { product: v.product || '', batch: v.batch || '' };
+            return { ...f, vaccine_edits: edits };
+          });
           // The owner's address from their file, once, then editable.
           setForm((f) => (f.owner_address === undefined ? { ...f, owner_address: d.data.owner.address || '' } : f));
         })
@@ -117,6 +128,21 @@ export default function HealthCertificatePanel({ patientId, staff, onClose }) {
             Rabies <b>{rabies ? `${day(rabies.date_given)} → ${day(rabies.valid_until) || '?'}` : 'none'}</b>
           </span>
           {others.length > 0 && <span>Also {others.map((v) => v.disease).join(', ')}</span>}
+        </div>
+      )}
+      {preview?.vaccines?.some((v) => v.protocol_id) && (
+        <div className="health-cert-vaccines">
+          {preview.vaccines
+            .filter((v) => v.protocol_id)
+            .map((v) => (
+              <div key={v.protocol_id} className="health-cert-vaccine">
+                <span className="health-cert-vaccine-name">
+                  <b>{v.kind === 'rabies' ? 'Rabies' : v.disease}</b> {day(v.date_given)}
+                </span>
+                <input aria-label={`${v.disease} product`} placeholder="Product" value={form.vaccine_edits[v.protocol_id]?.product ?? ''} onChange={setVaccine(v.protocol_id, 'product')} />
+                <input aria-label={`${v.disease} batch`} placeholder="Batch (sticker)" className="health-cert-batch" value={form.vaccine_edits[v.protocol_id]?.batch ?? ''} onChange={setVaccine(v.protocol_id, 'batch')} />
+              </div>
+            ))}
         </div>
       )}
       {preview?.warnings?.length > 0 && (
@@ -189,7 +215,7 @@ export default function HealthCertificatePanel({ patientId, staff, onClose }) {
         <button type="button" onClick={issue} disabled={busy || !form.vet_id}>
           {busy ? 'Issuing...' : 'Issue certificate (PDF)'}
         </button>
-        <span className="visit-meta">Print it, sign it and stamp it. It&apos;s numbered and kept below.</span>
+        <span className="visit-meta">Signed and stamped with the vet&apos;s uploaded signature and stamp (Staff page). It&apos;s numbered and kept below.</span>
       </div>
 
       {issued.length > 0 && (

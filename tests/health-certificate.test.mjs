@@ -23,7 +23,7 @@ test('rabies first, latest dose of each vaccine, with its product and validity',
   const vaccinations = [
     { vaccine_protocol_id: 'rab', vaccine_name: 'Rabies', date_given: '2025-09-29', next_due_date: '2026-09-29', batch_number: 'OLD' },
     { vaccine_protocol_id: 'rab', vaccine_name: 'Rabies', date_given: '2026-09-29', next_due_date: '2027-09-29', batch_number: '746032A' },
-    { vaccine_protocol_id: 'pch', vaccine_name: 'PCH', date_given: '2026-09-29', next_due_date: '2027-09-29' },
+    { vaccine_protocol_id: 'pch', vaccine_name: 'PCH', date_given: '2026-09-29', next_due_date: '2027-09-29', batch_number: 'P1' },
     { vaccine_protocol_id: 'rab', vaccine_name: 'Rabies', date_given: null, next_due_date: '2026-11-01' },
   ];
   const v = certificateVaccines({ vaccinations, protocols, species: 'cat', examDate: '2026-10-27', travelDate: '2026-10-30' });
@@ -49,7 +49,7 @@ test('the certificate data, with what is missing flagged', () => {
     client: { full_name: 'Test Owner', address: 'Sharjah', phone: '+971500000000' },
     clinic: { legal_name: 'Europets Veterinary Clinic' },
     vet: { full_name: 'Dr. Test Vet', licence_number: '' },
-    vaccinations: [{ vaccine_protocol_id: 'rab', date_given: '2026-09-29', next_due_date: '2027-09-29' }],
+    vaccinations: [{ vaccine_protocol_id: 'rab', date_given: '2026-09-29', next_due_date: '2027-09-29', batch_number: 'R1' }],
     protocols,
     form: { exam_date: '2026-10-27', destination: 'Netherlands', internal_product: 'Milbemax', internal_date: '2026-10-27' },
   });
@@ -60,4 +60,25 @@ test('the certificate data, with what is missing flagged', () => {
   assert.match(data.travel.visited, /United Arab Emirates/);
   assert.deepEqual(data.warnings, ["The signing vet's licence number isn't on their staff profile."]);
   assert.equal(sexLabel('female_spayed'), 'Female, spayed');
+});
+
+test('a product and batch typed in on the form replace the record\'s, and a missing batch is flagged', () => {
+  const protocols = [{ id: 'rab', name: 'Rabies', is_rabies: true }, { id: 'pch', name: 'PCH', core: true }];
+  const vaccinations = [
+    { id: 'v1', vaccine_protocol_id: 'rab', date_given: '2026-08-05', next_due_date: '2027-08-05' },
+    { id: 'v2', vaccine_protocol_id: 'pch', date_given: '2026-08-05', next_due_date: '2027-08-05' },
+  ];
+  const bare = certificateVaccines({ vaccinations, protocols, species: 'cat', examDate: '2026-11-24' });
+  assert.ok(bare.warnings.some((w) => /No batch number for Rabies, PCH/.test(w)));
+  const v = certificateVaccines({
+    vaccinations, protocols, species: 'cat', examDate: '2026-11-24',
+    edits: { rab: { product: 'Biofel PCHR (Bioveta)', batch: 'B1' }, pch: { batch: ' B1 ' } },
+  });
+  assert.equal(v.rows[0].product, 'Biofel PCHR (Bioveta)');
+  assert.equal(v.rows[0].batch, 'B1');
+  assert.equal(v.rows[0].vaccination_id, 'v1');
+  assert.equal(v.rows[0].batch_on_record, false);
+  assert.equal(v.rows[1].batch, 'B1');
+  assert.equal(v.rows[1].product, 'Biofel PCH (Bioveta)');
+  assert.ok(!v.warnings.some((w) => /batch/.test(w)));
 });

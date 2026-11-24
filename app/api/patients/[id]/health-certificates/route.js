@@ -3,12 +3,13 @@
 // POST { exam_date, vet_id, destination?, travel_date?, owner_address?,
 //        microchip_location?, internal_product?, internal_date?,
 //        external_product?, external_date?, visited?, remarks?, staff_id?,
-//        preview? }
+//        vaccine_edits?: { [protocol id]: { product?, batch? } }, preview? }
 //      -> preview: what the certificate would say, with what's missing
 //         (warnings), nothing saved. Otherwise issues it: numbered
 //         HC-YY-NNN, the details saved as printed (lib/healthCertificate.js),
 //         and returns { id, certificate_number } for its PDF
-//         (/api/health-certificates/:id/pdf).
+//         (/api/health-certificates/:id/pdf). A batch typed in for a dose
+//         whose record has none is saved on that vaccination too.
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -36,6 +37,13 @@ export async function POST(request, { params }) {
   for (const f of FORM_FIELDS) if (body[f] !== undefined && body[f] !== null) form[f] = String(body[f]).trim().slice(0, 500);
   for (const f of ['internal_date', 'external_date', 'travel_date']) if (form[f] && !isDate(form[f])) delete form[f];
   if (!isDate(form.exam_date)) return NextResponse.json({ error: 'Pick the date of the examination' }, { status: 400 });
+  form.vaccine_edits = {};
+  if (body.vaccine_edits && typeof body.vaccine_edits === 'object') {
+    for (const [id, e] of Object.entries(body.vaccine_edits).slice(0, 20)) {
+      if (!/^[0-9a-f-]{36}$/i.test(id) || !e || typeof e !== 'object') continue;
+      form.vaccine_edits[id] = { product: String(e.product || '').trim().slice(0, 120), batch: String(e.batch || '').trim().slice(0, 60) };
+    }
+  }
   if (form.exam_date > uaeToday()) return NextResponse.json({ error: "The examination can't be in the future" }, { status: 400 });
   if (!body.vet_id) return NextResponse.json({ error: 'Pick the vet who signs it' }, { status: 400 });
 
@@ -45,7 +53,7 @@ export async function POST(request, { params }) {
     patient.client_id ? supabaseAdmin.from('clients').select('full_name, address, phone').eq('id', patient.client_id).maybeSingle() : Promise.resolve({ data: null }),
     supabaseAdmin.from('clinic_settings').select('legal_name, address, phone, email').eq('id', true).maybeSingle(),
     supabaseAdmin.from('staff').select('id, full_name, licence_number').eq('id', body.vet_id).maybeSingle(),
-    supabaseAdmin.from('vaccinations').select('vaccine_protocol_id, vaccine_name, date_given, next_due_date, batch_number').eq('patient_id', params.id),
+    supabaseAdmin.from('vaccinations').select('id, vaccine_protocol_id, vaccine_name, date_given, next_due_date, batch_number').eq('patient_id', params.id),
     supabaseAdmin.from('vaccine_protocols').select('id, name, core, is_rabies'),
   ]);
   if (!vet) return NextResponse.json({ error: 'That vet was not found' }, { status: 400 });
@@ -62,5 +70,12 @@ export async function POST(request, { params }) {
     .select('id, certificate_number')
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // A batch typed in from the sticker goes on the vaccination record too,
+  // only where the record has none.
+  await Promise.all(
+    (data.vaccines || [])
+      .filter((v) => v.vaccination_id && v.batch && !v.batch_on_record)
+      .map((v) => supabaseAdmin.from('vaccinations').update({ batch_number: v.batch }).eq('id', v.vaccination_id).is('batch_number', null)),
+  );
   return NextResponse.json(row, { status: 201 });
 }
