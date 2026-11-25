@@ -37,6 +37,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { perOccasionQuantityError } from '@/lib/perOccasion';
 import { NextResponse } from 'next/server';
 import { recomputeInvoiceTotals, applyAdministrationFee, stripAdministrationFeeTag, VAT_RATE } from '@/lib/invoicing';
 
@@ -72,7 +73,7 @@ export async function PATCH(request, { params }) {
 
   const { data: current, error: currentError } = await supabase
     .from('invoice_line_items')
-    .select('*, goods_services(administration_method)')
+    .select('*, goods_services(name, administration_method, charge_per_occasion)')
     .eq('id', params.itemId)
     .eq('invoice_id', params.id)
     .single();
@@ -91,6 +92,9 @@ export async function PATCH(request, { params }) {
     if (Number.isNaN(quantity) || quantity <= 0) {
       return NextResponse.json({ error: 'quantity must be a positive number' }, { status: 400 });
     }
+    // SubQ fluids and the like bill per session, never per ml (lib/perOccasion.js).
+    const sessionsError = hasQuantity ? perOccasionQuantityError(current.goods_services, quantity) : null;
+    if (sessionsError) return NextResponse.json({ error: sessionsError }, { status: 400 });
     const timesGiven = hasTimesGiven ? Number(body.times_given) : Number(current.times_given) || 1;
     if (!Number.isInteger(timesGiven) || timesGiven <= 0) {
       return NextResponse.json({ error: 'times_given must be a positive whole number' }, { status: 400 });

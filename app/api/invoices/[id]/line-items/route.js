@@ -15,6 +15,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { perOccasionQuantityError } from '@/lib/perOccasion';
 import { NextResponse } from 'next/server';
 import { recomputeInvoiceTotals, applyAdministrationFee } from '@/lib/invoicing';
 import { resolveAdministrationMethod } from '@/lib/administrationMethods';
@@ -64,6 +65,9 @@ export async function POST(request, { params }) {
   if (Number.isNaN(qty) || qty <= 0) {
     return NextResponse.json({ error: 'quantity must be a positive number' }, { status: 400 });
   }
+  // SubQ fluids and the like bill per session, never per ml (lib/perOccasion.js).
+  const sessionsError = perOccasionQuantityError(item, qty);
+  if (sessionsError) return NextResponse.json({ error: sessionsError }, { status: 400 });
 
   const resolved = resolveAdministrationMethod(item.administration_method);
 
