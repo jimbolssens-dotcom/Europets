@@ -10,8 +10,9 @@
 //      ({ body, staff_id, channel?, subject?, media_url?, media_type?, media_name? }).
 //      channel defaults to 'app' (an ordinary client-app chat row, exactly
 //      as before); 'whatsapp' also sends it live via the WhatsApp Cloud API
-//      to this client's own phone number (clients.phone — see migrations/
-//      055) before logging it, and fails the request if that send fails
+//      to the number the client last wrote from if that number's 24-hour
+//      window is open, else their main number (clients.phone; see
+//      lib/whatsappReplyTarget.js) before logging it, and fails the request if that send fails
 //      rather than logging a reply that was never actually delivered. A
 //      photo or file (see lib/attachments.js's uploadClientMessageMedia,
 //      already uploaded to Storage client-side before this is called)
@@ -25,8 +26,8 @@
 //      commonly: this is the first time anyone's messaging them on this
 //      number at all), a plain reply can get accepted by Meta's API and
 //      then silently fail delivery moments later. So a text-only send
-//      first checks whether that window is actually open (hasOpenWhatsAppWindow
-//      below) and falls back to sendFirstContactMessage's pre-approved
+//      first checks whether that window is actually open (lib/
+//      whatsappReplyTarget.js) and falls back to sendFirstContactMessage's pre-approved
 //      template when it isn't — media has no such fallback (Meta templates
 //      can't carry arbitrary media), so that combination is refused
 //      outright with an explicit error instead of risking the same silent
@@ -50,24 +51,9 @@ import { sendPushToClient } from '@/lib/pushNotifications';
 import { NextResponse } from 'next/server';
 import { isStaffRequest } from '@/lib/staffAuth';
 import { getClientSession } from '@/lib/clientAppAuth';
+import { whatsappReplyTarget } from '@/lib/whatsappReplyTarget';
 
 export const dynamic = 'force-dynamic';
-
-const WHATSAPP_WINDOW_MS = 24 * 60 * 60 * 1000;
-
-async function hasOpenWhatsAppWindow(clientId) {
-  const { data } = await supabase
-    .from('client_messages')
-    .select('created_at')
-    .eq('client_id', clientId)
-    .eq('sender', 'client')
-    .eq('channel', 'whatsapp')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!data) return false;
-  return Date.now() - new Date(data.created_at).getTime() < WHATSAPP_WINDOW_MS;
-}
 
 export async function GET(request, { params }) {
   // Reachable without the staff PIN now (the client app's own chat tab —
@@ -148,12 +134,10 @@ export async function POST(request, { params }) {
   }
 
   if (channel === 'whatsapp') {
-    const { data: client } = await supabase
-      .from('clients')
-      .select('full_name, phone')
-      .eq('id', params.id)
-      .maybeSingle();
-    const digits = (client?.phone || '').replace(/\D/g, '');
+    const { data: client } = await supabase.from('clients').select('full_name').eq('id', params.id).maybeSingle();
+    // Answers the number the client last wrote from when that number's
+    // window is open, else their main number (see lib/whatsappReplyTarget.js).
+    const { digits, windowOpen } = await whatsappReplyTarget(params.id);
     if (!digits) {
       return NextResponse.json(
         { error: 'This client has no phone number on file to send a WhatsApp reply to' },
@@ -161,7 +145,6 @@ export async function POST(request, { params }) {
       );
     }
 
-    const windowOpen = await hasOpenWhatsAppWindow(params.id);
     if (mediaUrl && !windowOpen) {
       return NextResponse.json(
         {
